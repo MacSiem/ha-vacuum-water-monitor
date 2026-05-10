@@ -950,6 +950,46 @@ if (typeof window !== 'undefined') {
     return function(s){ return typeof s === 'string' ? s.replace(/[&<>"']/g, function(c){ return MAP[c]; }) : (s == null ? '' : s); };
   })();
 }
+// Universal donate footer injector — guarantees the support box appears
+// on every split-tool card regardless of internal render state.
+if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
+  window.__haToolsSplitDonateInjector = true;
+  var SPLIT_TAGS = ['ha-purge-cache','ha-yaml-checker','ha-data-exporter','ha-baby-tracker','ha-chore-tracker','ha-energy-optimizer','ha-energy-insights','ha-energy-email','ha-log-email','ha-smart-reports','ha-network-map','ha-trace-viewer','ha-automation-analyzer','ha-storage-monitor','ha-backup-manager','ha-security-check','ha-device-health','ha-sentence-manager','ha-encoding-fixer','ha-entity-renamer','ha-frigate-privacy','ha-vacuum-water-monitor'];
+  var DONATE_HTML = ''
+    + '<div class="donate-section" data-source="ha-tools-split-injector">'
+    + '  <div class="donate-text">'
+    + '    <h3>❤️ Support HA Tools Development</h3>'
+    + '    <p>If this tool makes your Home Assistant life easier, consider supporting the project. Every coffee motivates further development!</p>'
+    + '  </div>'
+    + '  <div class="donate-buttons">'
+    + '    <a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a>'
+    + '    <a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a>'
+    + '  </div>'
+    + '</div>';
+  function injectAll() {
+    SPLIT_TAGS.forEach(function(tag){
+      document.querySelectorAll(tag).forEach(function(el){
+        if (!el.shadowRoot) return;
+        if (el.shadowRoot.querySelector('.donate-section')) return;
+        var target = el.shadowRoot.querySelector('.card, .card-container, .main-card, [class$="-card"]') || el.shadowRoot.firstElementChild || el.shadowRoot;
+        try { target.insertAdjacentHTML('beforeend', DONATE_HTML); } catch(e) {}
+      });
+    });
+  }
+  // Initial + periodic for first 60s; then MutationObserver for later mounts.
+  setTimeout(injectAll, 250);
+  var pollCount = 0;
+  var pollInterval = setInterval(function(){
+    injectAll();
+    if (++pollCount >= 30) {
+      clearInterval(pollInterval);
+      try {
+        var obs = new MutationObserver(function(){ injectAll(); });
+        obs.observe(document.body, { childList: true, subtree: true });
+      } catch(e) {}
+    }
+  }, 2000);
+}
 /* ============================================================ */
 
 class HAVacuumWaterMonitor extends HTMLElement {
