@@ -966,9 +966,22 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
     + '    <a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a>'
     + '  </div>'
     + '</div>';
+  function deepFindAll(tag, root) {
+    var out = [];
+    (function walk(node){
+      if (!node || !node.querySelectorAll) return;
+      var children = node.querySelectorAll('*');
+      for (var i = 0; i < children.length; i++) {
+        var c = children[i];
+        if (c.tagName && c.tagName.toLowerCase() === tag) out.push(c);
+        if (c.shadowRoot) walk(c.shadowRoot);
+      }
+    })(root || document);
+    return out;
+  }
   function injectAll() {
     SPLIT_TAGS.forEach(function(tag){
-      document.querySelectorAll(tag).forEach(function(el){
+      deepFindAll(tag).forEach(function(el){
         if (!el.shadowRoot) return;
         if (el.shadowRoot.querySelector('.donate-section')) return;
         var target = el.shadowRoot.querySelector('.card, .card-container, .main-card, [class$="-card"]') || el.shadowRoot.firstElementChild || el.shadowRoot;
