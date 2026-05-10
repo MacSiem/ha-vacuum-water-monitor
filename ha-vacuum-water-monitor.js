@@ -989,19 +989,31 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
       });
     });
   }
-  // Initial + periodic for first 60s; then MutationObserver for later mounts.
+  // Run immediately, then aggressive MutationObserver for late mounts + view switches.
+  injectAll();
   setTimeout(injectAll, 250);
+  setTimeout(injectAll, 1000);
+  setTimeout(injectAll, 3000);
+  // MutationObserver catches every new node anywhere in the DOM, including shadow root attachments
+  // that are deferred until the user navigates to a view.
+  try {
+    var obs = new MutationObserver(function(muts){
+      // Debounce: schedule a microtask injection
+      if (window.__haToolsDonateScheduled) return;
+      window.__haToolsDonateScheduled = true;
+      setTimeout(function(){ window.__haToolsDonateScheduled = false; injectAll(); }, 100);
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  } catch(e) {}
+  // Also re-inject on hash/path change (Lovelace view switches)
+  window.addEventListener('hashchange', function(){ setTimeout(injectAll, 200); });
+  window.addEventListener('popstate', function(){ setTimeout(injectAll, 200); });
+  // Backup interval (every 3s for first 5min — handles cases where MutationObserver missed events)
   var pollCount = 0;
   var pollInterval = setInterval(function(){
     injectAll();
-    if (++pollCount >= 30) {
-      clearInterval(pollInterval);
-      try {
-        var obs = new MutationObserver(function(){ injectAll(); });
-        obs.observe(document.body, { childList: true, subtree: true });
-      } catch(e) {}
-    }
-  }, 2000);
+    if (++pollCount >= 100) clearInterval(pollInterval);
+  }, 3000);
 }
 /* ============================================================ */
 
