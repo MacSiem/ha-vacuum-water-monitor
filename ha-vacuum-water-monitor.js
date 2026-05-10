@@ -985,6 +985,27 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
     'ha-log-email':    { service: 'ha_tools_email', repo: 'ha-tools-email-integration', label: 'HA Tools Email integration', kind: 'integration' },
     'ha-encoding-fixer': { shellCommand: 'fix_encoding', label: 'shell_command.fix_encoding (optional advanced feature)', kind: 'shell_command_optional' }
   };
+  // Per-tool first-run intro banner (one-line scope + 3 use cases)
+  var INTROS = {
+    'ha-yaml-checker': { headline: 'Validate Home Assistant YAML configuration on demand.', steps: ['Click \'Check HA Configuration\' to run homeassistant.check_config.', 'Switch to \'Encje\' tab to search entities by domain.', 'Use \'Template\' tab to preview Jinja2 templates.'] },
+    'ha-data-exporter': { headline: 'Browse, filter, and export Home Assistant entity data.', steps: ['Filter by domain or search entities live.', 'Take a snapshot or export selection to CSV / JSON.', 'Privacy warning before downloading attributes with sensitive data.'] },
+    'ha-chore-tracker': { headline: 'Household chore tracker with kanban + recurring schedules.', steps: ['Add a chore: name + assignee + frequency.', 'Drag from \'Todo\' to \'Done\' to mark complete.', 'Stats tab shows counts per assignee.'] },
+    'ha-energy-optimizer': { headline: 'Tariff-aware energy usage with hourly heatmaps + tips.', steps: ['Today / Yesterday / 7-day / 30-day usage and cost.', 'Patterns tab — hourly heatmap of consumption.', 'Recommendations tab — auto-generated tips.'] },
+    'ha-energy-insights': { headline: 'Daily / weekly / monthly energy charts + top consumers.', steps: ['Switch view tabs to see consumption over time.', 'Top devices ranked by kWh.', 'Tips tab with energy-saving suggestions.'] },
+    'ha-energy-email': { headline: 'Energy reports delivered by email via ha_tools_email.', steps: ['Click \'Send Now\' to email the current snapshot.', 'Schedule daily / weekly / monthly delivery.', 'Configure SMTP in the Schedule tab (one-time).'] },
+    'ha-log-email': { headline: 'Daily error / warning digests delivered by email.', steps: ['Click \'Send Now\' to email the current digest.', 'Schedule daily delivery + threshold (e.g. \u22653 errors).', 'Requires ha-tools-email-integration.'] },
+    'ha-smart-reports': { headline: 'Aggregate weekly / monthly reports — energy + automations + state changes.', steps: ['Weekly summary card on Overview.', 'Drill down by Energy / Automations / System sub-tabs.', 'Privacy-safe view strips entity names before sharing.'] },
+    'ha-network-map': { headline: 'Visualise the network around HA — devices, topology, MAC bindings.', steps: ['Devices tab — table of all known devices.', 'Topology tab — graph view of the network.', 'Click \'Rescan\' to ping the local subnet (user-initiated).'] },
+    'ha-trace-viewer': { headline: 'Step through HA automation traces with a flow graph.', steps: ['Pick automation in sidebar to see latest 5 traces.', 'Click trace for full path through triggers / conditions / actions.', 'Export trace as JSON for offline debug.'] },
+    'ha-automation-analyzer': { headline: 'Surface slow / failing / suspicious automations.', steps: ['Overview shows total + health score + top failing.', 'Performance tab ranks by avg runtime.', 'Optimization tab suggests improvements (loops, redundant triggers).'] },
+    'ha-storage-monitor': { headline: 'Disk + recorder DB + add-on storage breakdown.', steps: ['Overview shows used / free + per-category breakdown.', 'Backups tab — count + size warning.', 'Cleanup tab — actionable suggestions.'] },
+    'ha-backup-manager': { headline: 'Create + list + inspect HA backups.', steps: ['List existing backups (date / size / encryption).', 'Click \'Create backup now\' to invoke backup.create.', 'Restore selected backup.'] },
+    'ha-security-check': { headline: 'Security audit + remediation tips.', steps: ['Overview shows score (X/100) + letter grade.', 'Click warning row for step-by-step remediation.', 'Tips tab — checklist of best practices.'] },
+    'ha-device-health': { headline: 'Device battery / signal / last-seen health.', steps: ['List devices grouped by health (OK / Warning / Critical).', 'Filter by low battery (<20%) or weak signal.', 'Click device for model / manufacturer / last seen.'] },
+    'ha-encoding-fixer': { headline: 'Detect + fix UTF-8 / mojibake issues across HA.', steps: ['Click \'Scan\' to walk entity registry + states.', 'Per-entity \'Fix\' button calls homeassistant.reload.', 'Optional: deep file scan via shell_command (see README).'] },
+    'ha-entity-renamer': { headline: 'Bulk-rename HA entities + friendly names.', steps: ['Pick an entity, set new ID — entity_registry/update.', 'Bulk pattern: sensor.old_* \u2192 sensor.new_*.', 'Optional: rewrite Lovelace dashboard refs.'] },
+    'ha-frigate-privacy': { headline: 'One-click Frigate privacy mode (pause detection / recording / snapshots).', steps: ['Click \'Pause 15 min\' for instant privacy.', 'Schedules tab — daily privacy window (e.g. 22:00\u201306:00).', 'Resume at any time to re-enable cameras.'] }
+  };
   var PREREQ_HTML_CACHE = {};
   function buildPrereqBanner(tag, prereq, hass) {
     if (PREREQ_HTML_CACHE[tag]) return PREREQ_HTML_CACHE[tag];
@@ -1011,6 +1032,22 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
     PREREQ_HTML_CACHE[tag] = html;
     return html;
   }
+  function buildIntroBanner(tag, intro) {
+    var stepsHtml = intro.steps.map(function(s){ return '<li>' + s + '</li>'; }).join('');
+    return '<div class="intro-banner" data-intro="' + tag + '">' +
+      '<button class="intro-dismiss" type="button" title="Dismiss" aria-label="Dismiss">✕</button>' +
+      '<div class="intro-headline">💡 ' + intro.headline + '</div>' +
+      '<ol class="intro-steps">' + stepsHtml + '</ol>' +
+    '</div>';
+  }
+  function introDismissed(tag) {
+    try { return localStorage.getItem('ha-intro-dismissed-' + tag) === '1'; } catch(e) { return false; }
+  }
+  function dismissIntro(tag, el) {
+    try { localStorage.setItem('ha-intro-dismissed-' + tag, '1'); } catch(e) {}
+    var node = el.shadowRoot && el.shadowRoot.querySelector('.intro-banner[data-intro="' + tag + '"]');
+    if (node) node.remove();
+  }
   function injectAll() {
     SPLIT_TAGS.forEach(function(tag){
       deepFindAll(tag).forEach(function(el){
@@ -1019,6 +1056,22 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
           try { el.setConfig({ type: 'custom:' + tag, title: tag }); } catch(e) {}
         }
         if (!el.shadowRoot) return;
+        // 0) First-run intro banner (skip if tool has its own native tip)
+        var intro = INTROS[tag];
+        if (intro && !introDismissed(tag)) {
+          var hasOwnTip = el.shadowRoot.querySelector('#tip-banner, .tip-banner');
+          var injectedIntro = el.shadowRoot.querySelector('.intro-banner[data-intro="' + tag + '"]');
+          if (!hasOwnTip && !injectedIntro) {
+            var topCard = el.shadowRoot.querySelector('.card, .card-container, .main-card, [class$="-card"]') || el.shadowRoot.firstElementChild;
+            if (topCard) {
+              try {
+                topCard.insertAdjacentHTML('afterbegin', buildIntroBanner(tag, intro));
+                var btn = el.shadowRoot.querySelector('.intro-banner[data-intro="' + tag + '"] .intro-dismiss');
+                if (btn) btn.addEventListener('click', function(ev){ ev.stopPropagation(); dismissIntro(tag, el); });
+              } catch(e) {}
+            }
+          }
+        }
         // 1) Prereq banner — checked every poll so it disappears when prereq becomes available
         var prereq = PREREQS[tag];
         if (prereq && el._hass) {
@@ -2651,6 +2704,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
 .prereq-banner .prereq-cta:hover { background: var(--bento-primary-hover, #2563EB); }
 @media (prefers-color-scheme: dark) {  .prereq-banner.prereq-error { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: rgba(239, 68, 68, 0.4); }  .prereq-banner.prereq-info  { background: rgba(59, 130, 246, 0.12); color: #93c5fd; border-color: rgba(59, 130, 246, 0.4); }  .prereq-banner code { background: rgba(255,255,255,0.08); } }
 @media (max-width: 600px) {  .prereq-banner { flex-direction: column; align-items: stretch; }  .prereq-banner .prereq-cta { align-self: flex-start; } }
+/* === First-run intro banner === */
+.intro-banner {  position: relative; padding: 14px 44px 14px 18px; margin: 0 0 14px;  background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.08));  border: 1px solid rgba(59,130,246,0.25);  border-radius: var(--bento-radius-sm, 10px);  font-size: 13px; line-height: 1.55;}
+.intro-banner .intro-headline { font-weight: 700; font-size: 14px; margin-bottom: 8px; color: var(--bento-primary, #2563eb); }
+.intro-banner .intro-steps { margin: 6px 0 0; padding-left: 22px; }
+.intro-banner .intro-steps li { margin-bottom: 4px; line-height: 1.5; color: var(--bento-text, #1e293b); }
+.intro-banner .intro-dismiss {  position: absolute; top: 10px; right: 10px;  background: none; border: none; cursor: pointer;  font-size: 18px; line-height: 1; color: var(--bento-text-secondary, #64748B);  padding: 4px 8px; border-radius: 6px;}
+.intro-banner .intro-dismiss:hover { background: rgba(0,0,0,0.06); color: var(--bento-text, #1e293b); }
+@media (prefers-color-scheme: dark) {  .intro-banner { background: linear-gradient(135deg, rgba(59,130,246,0.18), rgba(139,92,246,0.14)); border-color: rgba(96,165,250,0.4); }  .intro-banner .intro-headline { color: #93c5fd; }  .intro-banner .intro-steps li { color: #e2e8f0; }  .intro-banner .intro-dismiss:hover { background: rgba(255,255,255,0.08); color: #f3f4f6; } }
 
 
         * { box-sizing: border-box; }
