@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Editor
+.idea/
+.vscode/
+*.iml
+
+# Build / scratch
+node_modules/
+dist/
+build/
+*.log
+*.tmp
+
+# Local
+.env
+.env.local
