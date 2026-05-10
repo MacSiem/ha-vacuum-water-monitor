@@ -982,10 +982,11 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
   function injectAll() {
     SPLIT_TAGS.forEach(function(tag){
       deepFindAll(tag).forEach(function(el){
-        // panel_custom auto-init: HA assigns hass/panel/narrow but never calls setConfig.
-        // Many split tools gate their first render on setConfig. Call it once with a stub.
-        if (!el.__haToolsPanelInit && typeof el.setConfig === 'function' && !el.config && !el._config) {
-          el.__haToolsPanelInit = true;
+        // panel_custom auto-init: HA assigns hass/panel/narrow but does not always call setConfig.
+        // Many split tools gate their first render on setConfig. Call it whenever the element
+        // is mounted but still has no config — this naturally retries on the next poll if
+        // the first attempt fails (e.g. setConfig depends on hass which has not arrived yet).
+        if (typeof el.setConfig === 'function' && !el.config && !el._config) {
           try { el.setConfig({ type: 'custom:' + tag, title: tag }); } catch(e) {}
         }
         if (!el.shadowRoot) return;
