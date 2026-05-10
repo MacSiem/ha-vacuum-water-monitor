@@ -979,17 +979,64 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
     })(root || document);
     return out;
   }
+  // Per-tool prerequisite check + inline install banner
+  var PREREQS = {
+    'ha-energy-email': { service: 'ha_tools_email', repo: 'ha-tools-email-integration', label: 'HA Tools Email integration', kind: 'integration' },
+    'ha-log-email':    { service: 'ha_tools_email', repo: 'ha-tools-email-integration', label: 'HA Tools Email integration', kind: 'integration' },
+    'ha-encoding-fixer': { shellCommand: 'fix_encoding', label: 'shell_command.fix_encoding (optional advanced feature)', kind: 'shell_command_optional' }
+  };
+  var PREREQ_HTML_CACHE = {};
+  function buildPrereqBanner(tag, prereq, hass) {
+    if (PREREQ_HTML_CACHE[tag]) return PREREQ_HTML_CACHE[tag];
+    var html = '';
+    if (prereq.kind === 'integration') {
+      html = '<div class="prereq-banner prereq-error" data-prereq="' + tag + '">' +
+        '<div class="prereq-icon">⚠️</div>' +
+        '<div class="prereq-text">' +
+          '<strong>This tool requires the ' + prereq.label + '</strong><br>' +
+          'Install it from HACS: <code>https://github.com/MacSiem/' + prereq.repo + '</code> ' +
+          '(Category: <strong>Integration</strong>) — then add <code>' + prereq.service + ':</code> to your <code>configuration.yaml</code> and restart HA.' +
+        '</div>' +
+        '<a class="prereq-cta" href="https://github.com/MacSiem/' + prereq.repo + '" target="_blank" rel="noopener noreferrer">Open install guide ↗</a>' +
+      '</div>';
+    } else if (prereq.kind === 'shell_command_optional') {
+      html = '<div class="prereq-banner prereq-info" data-prereq="' + tag + '">' +
+        '<div class="prereq-icon">💡</div>' +
+        '<div class="prereq-text">' +
+          '<strong>Optional advanced feature: deep file scan</strong><br>' +
+          'To enable scanning of <code>configuration.yaml</code> files, install the bundled <code>encoding_scanner.py</code> + add <code>shell_command:</code> entries. See README.' +
+        '</div>' +
+      '</div>';
+    }
+    PREREQ_HTML_CACHE[tag] = html;
+    return html;
+  }
   function injectAll() {
     SPLIT_TAGS.forEach(function(tag){
       deepFindAll(tag).forEach(function(el){
         // panel_custom auto-init: HA assigns hass/panel/narrow but does not always call setConfig.
-        // Many split tools gate their first render on setConfig. Call it whenever the element
-        // is mounted but still has no config — this naturally retries on the next poll if
-        // the first attempt fails (e.g. setConfig depends on hass which has not arrived yet).
         if (typeof el.setConfig === 'function' && !el.config && !el._config) {
           try { el.setConfig({ type: 'custom:' + tag, title: tag }); } catch(e) {}
         }
         if (!el.shadowRoot) return;
+        // 1) Prereq banner — checked every poll so it disappears when prereq becomes available
+        var prereq = PREREQS[tag];
+        if (prereq && el._hass) {
+          var hassReady = !!el._hass;
+          var present = true;
+          if (prereq.service) present = !!(el._hass.services && el._hass.services[prereq.service]);
+          if (prereq.shellCommand) present = !!(el._hass.services && el._hass.services.shell_command && el._hass.services.shell_command[prereq.shellCommand]);
+          var existing = el.shadowRoot.querySelector('.prereq-banner[data-prereq="' + tag + '"]');
+          if (!present && hassReady) {
+            if (!existing) {
+              var top = el.shadowRoot.querySelector('.card, .card-container, .main-card, [class$="-card"]') || el.shadowRoot.firstElementChild || el.shadowRoot;
+              try { top.insertAdjacentHTML('afterbegin', buildPrereqBanner(tag, prereq, el._hass)); } catch(e) {}
+            }
+          } else if (present && existing) {
+            existing.remove();
+          }
+        }
+        // 2) Donate footer
         if (el.shadowRoot.querySelector('.donate-section')) return;
         var target = el.shadowRoot.querySelector('.card, .card-container, .main-card, [class$="-card"]') || el.shadowRoot.firstElementChild || el.shadowRoot;
         try { target.insertAdjacentHTML('beforeend', DONATE_HTML); } catch(e) {}
@@ -2593,6 +2640,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
 .donate-btn.paypal { background: #0070ba; color: #fff; border: 1px solid #005ea6; }
 @media (prefers-color-scheme: dark) {  .donate-section { background: linear-gradient(135deg, #2a1525 0%, #1e1530 50%, #251530 100%); border-color: #4a3555; }  .donate-section h3 { color: #f0c0d8; }  .donate-section p  { color: #d4a0b8; }  .donate-btn.coffee { background: #b8a100; color: #fff; border-color: #8a7a00; }  .donate-btn.paypal { background: #005a96; color: #e0f0ff; border-color: #004a7a; } }
 @media (max-width: 600px) {  .donate-section { flex-direction: column; text-align: center; padding: 16px; }  .donate-buttons { justify-content: center; } }
+/* === Prereq banner (HA Tools split injector) === */
+.prereq-banner { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px;  border-radius: var(--bento-radius-sm, 10px); margin: 10px 0 14px; font-size: 13px; line-height: 1.5;  border: 1px solid; }
+.prereq-banner.prereq-error { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.3); color: #991b1b; }
+.prereq-banner.prereq-info  { background: rgba(59, 130, 246, 0.06); border-color: rgba(59, 130, 246, 0.3); color: #1e40af; }
+.prereq-banner .prereq-icon { font-size: 22px; flex-shrink: 0; line-height: 1; padding-top: 2px; }
+.prereq-banner .prereq-text { flex: 1; min-width: 0; }
+.prereq-banner code { background: rgba(0,0,0,0.06); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+.prereq-banner .prereq-cta { display: inline-block; padding: 6px 12px; border-radius: 6px;  background: var(--bento-primary, #3B82F6); color: #fff !important; text-decoration: none;  font-weight: 600; font-size: 12px; flex-shrink: 0; }
+.prereq-banner .prereq-cta:hover { background: var(--bento-primary-hover, #2563EB); }
+@media (prefers-color-scheme: dark) {  .prereq-banner.prereq-error { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: rgba(239, 68, 68, 0.4); }  .prereq-banner.prereq-info  { background: rgba(59, 130, 246, 0.12); color: #93c5fd; border-color: rgba(59, 130, 246, 0.4); }  .prereq-banner code { background: rgba(255,255,255,0.08); } }
+@media (max-width: 600px) {  .prereq-banner { flex-direction: column; align-items: stretch; }  .prereq-banner .prereq-cta { align-self: flex-start; } }
 
 
         * { box-sizing: border-box; }
