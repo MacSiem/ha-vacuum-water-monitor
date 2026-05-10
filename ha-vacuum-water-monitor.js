@@ -982,6 +982,12 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
   function injectAll() {
     SPLIT_TAGS.forEach(function(tag){
       deepFindAll(tag).forEach(function(el){
+        // panel_custom auto-init: HA assigns hass/panel/narrow but never calls setConfig.
+        // Many split tools gate their first render on setConfig. Call it once with a stub.
+        if (!el.__haToolsPanelInit && typeof el.setConfig === 'function' && !el.config && !el._config) {
+          el.__haToolsPanelInit = true;
+          try { el.setConfig({ type: 'custom:' + tag, title: tag }); } catch(e) {}
+        }
         if (!el.shadowRoot) return;
         if (el.shadowRoot.querySelector('.donate-section')) return;
         var target = el.shadowRoot.querySelector('.card, .card-container, .main-card, [class$="-card"]') || el.shadowRoot.firstElementChild || el.shadowRoot;
