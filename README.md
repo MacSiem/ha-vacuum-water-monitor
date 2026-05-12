@@ -45,7 +45,8 @@ After restart, **Vacuum Water Monitor** appears in the HA sidebar.
 
 ## Privacy
 
-- No external network calls, no telemetry, no CDN-hosted assets
+- No telemetry, no analytics, no tracking
+- No external network calls, no CDN-hosted assets (system fonts only)
 - All data stays on your Home Assistant instance
 
 ## Changelog

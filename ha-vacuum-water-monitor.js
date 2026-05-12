@@ -1,4 +1,4 @@
-/* HA Tools split — ha-vacuum-water-monitor v4.0.0 (2026-05-10) — single-tool standalone repo */
+/* HA Tools split — ha-vacuum-water-monitor v4.1.3 (2026-05-12) — single-tool standalone repo */
 (function() {
 'use strict';
 
@@ -465,7 +465,6 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
    HA Tools — Bento Design System v2.0 (Premium)
    ═══════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :host {
   /* Brand palette — diamond top, gradient-friendly */
@@ -631,7 +630,7 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
   padding: 8px 16px !important;
   border: none !important; background: transparent !important; cursor: pointer !important;
   font-size: 13px !important; font-weight: 600 !important;
-  font-family: "Inter", sans-serif !important;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif !important;
   color: var(--bento-text-secondary) !important;
   border-radius: var(--bento-radius-pill) !important;
   margin-bottom: 0 !important;
@@ -742,7 +741,7 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
   border-radius: var(--bento-radius-pill); padding: 6px 14px;
   font-size: 12px; color: var(--bento-text-secondary);
   cursor: pointer; font-weight: 600; transition: all var(--bento-trans);
-  font-family: "Inter", sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
 }
 .refresh-btn:hover {
   background: var(--bento-card); color: var(--bento-primary);
@@ -753,7 +752,7 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
   background: var(--bento-grad-primary); border: none;
   border-radius: var(--bento-radius-xs); padding: 8px 16px;
   font-size: 13px; color: #fff; cursor: pointer; font-weight: 600;
-  transition: all var(--bento-trans); font-family: "Inter", sans-serif;
+  transition: all var(--bento-trans); font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
   letter-spacing: -0.005em;
   box-shadow: 0 4px 12px -2px var(--bento-primary-glow);
 }
@@ -766,7 +765,7 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
   background: var(--bento-grad-primary); color: #fff;
   border: none; border-radius: var(--bento-radius-sm);
   padding: 12px 20px; font-size: 14px; font-weight: 700;
-  cursor: pointer; font-family: "Inter", sans-serif;
+  cursor: pointer; font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
   letter-spacing: -0.01em;
   transition: all var(--bento-trans);
   box-shadow: 0 4px 14px -2px var(--bento-primary-glow);
@@ -825,7 +824,7 @@ input, select, textarea {
   padding: 10px 14px; border: 1.5px solid var(--bento-border);
   border-radius: var(--bento-radius-xs);
   background: var(--bento-card); color: var(--bento-text);
-  font-size: 14px; font-family: "Inter", sans-serif;
+  font-size: 14px; font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
   transition: all var(--bento-trans); outline: none;
   letter-spacing: -0.005em;
 }

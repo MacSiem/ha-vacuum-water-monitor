@@ -1,5 +1,12 @@
 # Changelog — Vacuum Water Monitor
 
+## [4.1.3] - 2026-05-12
+
+### Fixed
+- Removed Google Fonts CDN @import (1 occurrence(s)); now uses system font stack with Inter as the preferred locally-installed face.
+- Normalized bare `font-family: "Inter", sans-serif` declarations to a complete cross-platform system stack.
+- Privacy section in README: claim now matches behaviour (no CDN dependencies).
+
 All notable changes to **Vacuum Water Monitor** are documented here.
 
 ## [4.0.0] - 2026-05-10
