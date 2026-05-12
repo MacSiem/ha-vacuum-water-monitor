@@ -1,5 +1,7 @@
 # 🧹 Vacuum Water Monitor
 
+![Preview](banner.png)
+
 Track Roborock water tank usage and refill reminders.
 
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/Version-4.0.0-success.svg)](#changelog)
@@ -41,13 +43,12 @@ After restart, **Vacuum Water Monitor** appears in the HA sidebar.
 - Track Roborock water tank usage and refill reminders.
 - Bundled Bento Design System (light + dark mode, mobile-friendly)
 - Self-contained — no shared HA Tools dependency
-- HA `frontend/set_user_data` cross-device persistence (with `localStorage` cache fallback)
-
+- Tool settings and dismissed-banner state are cached in browser `localStorage`
 ## Privacy
 
-- No external network calls, no telemetry, no CDN-hosted assets
-- All data stays on your Home Assistant instance
-
+- No telemetry, no analytics, no tracking
+- No external network calls, no CDN-hosted assets (system fonts only)
+- No data leaves your device (no external network calls)
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
