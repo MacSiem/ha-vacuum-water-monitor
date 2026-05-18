@@ -12,6 +12,11 @@
 
 # Changelog — Vacuum Water Monitor
 
+## [5.0.3] - 2026-05-18
+
+### Fixed
+- Mirrors v4.1.6 plugin fixes (commit 5546671): per-device `brand_profile` in calibration label + Matter-bridge dedup in auto-discovery. Same bug surface lived in the bundled v5 integration card; both fixes applied verbatim so the card behaves identically whether installed as Lovelace plugin or via the integration.
+
 ## [5.0.2] - 2026-05-18
 
 ### Fixed
