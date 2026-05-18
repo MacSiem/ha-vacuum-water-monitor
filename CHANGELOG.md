@@ -1,3 +1,9 @@
+
+## [4.1.5] - 2026-05-18
+
+### Fixed
+- **Auto-discovery now picks up all vacuum entities** instead of silently skipping the hardcoded `vacuum.robotic_vacuum_cleaner` ID that leaked in from a prior workaround. Vacuums without native water sensors are still auto-added; estimation falls back to area/state-based dosing per the 'generic' brand profile, and users can remove unwanted vacuums via the Settings tab.
+
 # Changelog — Vacuum Water Monitor
 
 ## [5.0.0] - 2026-05-18
