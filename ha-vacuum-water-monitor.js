@@ -1659,11 +1659,49 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return [single, ...userDevs];
   }
 
-  // Auto-discover vacuum entities from HA states
+  // Auto-discover vacuum entities from HA states.
+  //
+  // Dedup: when the SAME physical robot is exposed via a Matter bridge AND a
+  // native vendor integration (e.g. Roborock cloud), HA registers two device
+  // entries — `vacuum.roborock_<model>` (platform: roborock) and
+  // `vacuum.robotic_vacuum_cleaner` (platform: matter), both with
+  // manufacturer = "Roborock". For card UX we prefer the native one because it
+  // exposes the rich sensor surface (water, dock, mop, brush time_left, …)
+  // and skip the Matter exposure (generic vacuum profile only).
+  //
+  // Heuristic: drop a candidate when (a) its entity platform is `matter` AND
+  // (b) another already-discovered vacuum has the same device manufacturer
+  // string but a non-matter platform. Falls back to no-op when hass.entities /
+  // hass.devices aren't populated (older HA frontends) — every vacuum is kept.
   _autoDiscoverVacuums() {
     if (!this._hass) return [];
-    return Object.values(this._hass.states)
-      .filter(s => s.entity_id.startsWith('vacuum.'))
+    const all = Object.values(this._hass.states)
+      .filter(s => s.entity_id.startsWith('vacuum.'));
+    const entityReg = this._hass.entities || {};
+    const deviceReg = this._hass.devices || {};
+    const platform = (id) => entityReg[id]?.platform || null;
+    const manufacturer = (id) => {
+      const devId = entityReg[id]?.device_id;
+      return devId ? (deviceReg[devId]?.manufacturer || null) : null;
+    };
+    // Pre-compute platform + manufacturer per candidate so we don't re-walk
+    // the registry for every comparison below.
+    const meta = all.map(s => ({
+      entity_id: s.entity_id,
+      platform: platform(s.entity_id),
+      manufacturer: manufacturer(s.entity_id),
+    }));
+    const isDuplicate = (m) => {
+      if (m.platform !== 'matter' || !m.manufacturer) return false;
+      return meta.some(other =>
+        other.entity_id !== m.entity_id &&
+        other.manufacturer === m.manufacturer &&
+        other.platform &&
+        other.platform !== 'matter'
+      );
+    };
+    return all
+      .filter(s => !isDuplicate(meta.find(m => m.entity_id === s.entity_id)))
       .map(s => ({
         entity_id: s.entity_id,
         name: (s.attributes && s.attributes.friendly_name) || s.entity_id,
@@ -1896,7 +1934,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const dockHtml = (cfg.show_dock_status !== false) ? this._buildDockSection(device, data) : '';
     // Q1/Q2: Calibration info based on brand profile
     let calibHtml = '';
-    const profileKey = cfg.brand_profile || 'generic';
+    // Prefer per-device brand_profile (auto-detected) over card-level YAML config.
+    // Multi-device cards have N devices with potentially different brand profiles;
+    // reading from `cfg.brand_profile` collapses them all to the same calibration,
+    // which is why a Roborock S8 MaxV Ultra was rendering as "Generic / Unknown model"
+    // even though `_userDevices[idx].brand_profile = 'roborock_s8_maxv_ultra'` was set.
+    const profileKey = (device && device.brand_profile) || cfg.brand_profile || 'generic';
     const calib = typeof CALIBRATION_DATA !== 'undefined' ? CALIBRATION_DATA[profileKey] || CALIBRATION_DATA['generic'] : null;
     if (calib) {
       const levels = Object.entries(calib.water_per_m2).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${k}:</b> ${v} ml/m²</span>`).join('');
