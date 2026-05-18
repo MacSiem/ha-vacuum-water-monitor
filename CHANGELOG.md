@@ -1,4 +1,10 @@
 
+## [4.1.6] - 2026-05-18
+
+### Fixed
+- **Calibration label** now reads from the per-device auto-detected `brand_profile` (e.g. `roborock_s8_maxv_ultra`) instead of the card-level YAML config. Multi-device cards no longer collapse every device to the same calibration; a Roborock S8 MaxV Ultra renders as such (Tank 3000 ml, Mop VibraRise 3.0 dual spinning, ~250 m² per charge) rather than "Generic / Unknown model".
+- **Matter-bridge dedup**. When the same physical robot is exposed via both the native vendor integration (e.g. `vacuum.roborock_s8_maxv_ultra`, platform `roborock`) and a Matter bridge (`vacuum.robotic_vacuum_cleaner`, platform `matter`), auto-discovery now drops the Matter exposure if a non-matter alternative with the same manufacturer string exists. Prefers the native entity because it exposes the rich sensor surface (water, dock, mop, brushes). Reads `hass.entities` + `hass.devices` synchronously — no extra WS calls.
+
 ## [4.1.5] - 2026-05-18
 
 ### Fixed
