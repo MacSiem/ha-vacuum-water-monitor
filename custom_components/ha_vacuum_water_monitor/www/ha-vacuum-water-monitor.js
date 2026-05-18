@@ -1482,8 +1482,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   // Returns true if HA already has helper entities for this device.
+  // Mirror of the Python `_has_user_priv_helpers` in tick.py — if the device
+  // config points at an existing input_number/template sensor for water tracking,
+  // the user already has DIY automation/template accounting and we must defer.
+  // Both card and tick must agree on this so the integration never overwrites
+  // a user's pre-existing helper from JS, and never displays double-counted state.
   _hasPrivHelpers(device) {
-    return false;
+    if (!this._hass || !device) return false;
+    const inp = device.water_used_input && this._hass.states[device.water_used_input];
+    return !!inp;
   }
 
   // Core state machine moved to Python tick.py in v5.

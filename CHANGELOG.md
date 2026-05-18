@@ -6,6 +6,11 @@
 
 # Changelog — Vacuum Water Monitor
 
+## [5.0.2] - 2026-05-18
+
+### Fixed
+- **Respect user's pre-existing DIY automations.** `_hasPrivHelpers()` in the card was hard-coded to `false`, so the integration always ran its own water accounting even when the user already had an `input_number.*_water_used_ml` helper updated by their own template sensor / automation. Now both the JS card and the Python tick check whether `device.water_used_input` resolves to an existing HA entity and skip integration-side accounting when it does — the card only displays state, never overwrites it. Pairs with the v4 plugin's `_hasPrivHelpers` check (line 1393) which had been working since the standalone-mode aneks 2026-04-18.
+
 ## [5.0.1] - 2026-05-18
 
 ### Fixed
