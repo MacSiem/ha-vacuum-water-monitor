@@ -1684,12 +1684,36 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return [single, ...userDevs];
   }
 
-  // Auto-discover vacuum entities from HA states
+  // Auto-discover vacuum entities from HA states. See plugin commit 6f6444a
+  // (Matter dedup) for the heuristic — when one robot is exposed via both the
+  // native vendor integration and a Matter bridge, prefer the native entity.
   _autoDiscoverVacuums() {
     if (this._discoveredVacuums && this._discoveredVacuums.length) return this._discoveredVacuums;
     if (!this._hass) return [];
-    return Object.values(this._hass.states)
-      .filter(s => s.entity_id.startsWith('vacuum.'))
+    const all = Object.values(this._hass.states)
+      .filter(s => s.entity_id.startsWith('vacuum.'));
+    const entityReg = this._hass.entities || {};
+    const deviceReg = this._hass.devices || {};
+    const meta = all.map(s => {
+      const ent = entityReg[s.entity_id];
+      const dev = ent?.device_id ? deviceReg[ent.device_id] : null;
+      return {
+        entity_id: s.entity_id,
+        platform: ent?.platform || null,
+        manufacturer: dev?.manufacturer || null,
+      };
+    });
+    const isDuplicate = (m) => {
+      if (m.platform !== 'matter' || !m.manufacturer) return false;
+      return meta.some(other =>
+        other.entity_id !== m.entity_id &&
+        other.manufacturer === m.manufacturer &&
+        other.platform &&
+        other.platform !== 'matter'
+      );
+    };
+    return all
+      .filter(s => !isDuplicate(meta.find(m => m.entity_id === s.entity_id)))
       .map(s => ({
         entity_id: s.entity_id,
         name: (s.attributes && s.attributes.friendly_name) || s.entity_id,
@@ -1904,7 +1928,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const dockHtml = (cfg.show_dock_status !== false) ? this._buildDockSection(device, data) : '';
     // Q1/Q2: Calibration info based on brand profile
     let calibHtml = '';
-    const profileKey = cfg.brand_profile || 'generic';
+    // Prefer per-device brand_profile (auto-detected) over card-level YAML config.
+    // Mirror of the v4 plugin fix — see ha-vacuum-water-monitor.js commit
+    // 6f6444a for rationale.
+    const profileKey = (device && device.brand_profile) || cfg.brand_profile || 'generic';
     const calib = typeof CALIBRATION_DATA !== 'undefined' ? CALIBRATION_DATA[profileKey] || CALIBRATION_DATA['generic'] : null;
     if (calib) {
       const levels = Object.entries(calib.water_per_m2).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${k}:</b> ${v} ml/m²</span>`).join('');
