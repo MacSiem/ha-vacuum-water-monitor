@@ -1681,9 +1681,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
   _autoDiscoverVacuums() {
     if (this._discoveredVacuums && this._discoveredVacuums.length) return this._discoveredVacuums;
     if (!this._hass) return [];
-    const EXCLUDE_IDS = ['vacuum.robotic_vacuum_cleaner'];
     return Object.values(this._hass.states)
-      .filter(s => s.entity_id.startsWith('vacuum.') && !EXCLUDE_IDS.includes(s.entity_id))
+      .filter(s => s.entity_id.startsWith('vacuum.'))
       .map(s => ({
         entity_id: s.entity_id,
         name: (s.attributes && s.attributes.friendly_name) || s.entity_id,

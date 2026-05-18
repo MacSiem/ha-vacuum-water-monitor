@@ -1,13 +1,19 @@
 {
   "domain": "ha_vacuum_water_monitor",
   "name": "Vacuum Water Monitor",
-  "codeowners": ["@MacSiem"],
+  "codeowners": [
+    "@MacSiem"
+  ],
   "config_flow": true,
-  "dependencies": ["frontend", "http", "websocket_api"],
+  "dependencies": [
+    "frontend",
+    "http",
+    "websocket_api"
+  ],
   "documentation": "https://github.com/MacSiem/ha-vacuum-water-monitor",
   "integration_type": "service",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues",
   "requirements": [],
-  "version": "5.0.0"
+  "version": "5.0.1"
 }

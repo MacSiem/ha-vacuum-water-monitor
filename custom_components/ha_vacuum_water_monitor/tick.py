@@ -32,7 +32,6 @@ DEFAULT_INTENSITY_FACTOR = {
 DEFAULT_WASH_VOLUME_ML = 150
 AREA_MIN_DELTA = 0.1
 RESET_COOLDOWN_SEC = 60
-EXCLUDE_VACUUM_IDS = {"vacuum.robotic_vacuum_cleaner"}
 
 
 async def async_tick_water_state(
@@ -179,8 +178,6 @@ def list_vacuums(hass: HomeAssistant) -> list[dict[str, Any]]:
     """Return HA-known vacuum entities for the card."""
     vacuums = []
     for entity_id in sorted(hass.states.async_entity_ids("vacuum")):
-        if entity_id in EXCLUDE_VACUUM_IDS:
-            continue
         state = hass.states.get(entity_id)
         if state is None:
             continue
