@@ -1,65 +1,79 @@
-# 🧹 Vacuum Water Monitor
+# Vacuum Water Monitor
 
 ![Preview](banner.png)
 
-Track Roborock water tank usage and refill reminders.
+Track robot vacuum water tank usage and refill reminders in Home Assistant.
 
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/Version-4.0.0-success.svg)](#changelog)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/Version-5.0.0-success.svg)](#changelog)
 
-> Part of the [HA Tools](https://github.com/MacSiem) ecosystem — split into individual HACS-installable plugins.
+## Installation
 
-## Installation (HACS)
+1. Open HACS -> Custom repositories.
+2. Add `https://github.com/MacSiem/ha-vacuum-water-monitor` as category **Integration**.
+3. Install **Vacuum Water Monitor**.
+4. Restart Home Assistant.
+5. Go to Settings -> Devices & services -> Add integration, then search for **Vacuum Water Monitor**.
 
-1. Open HACS → Frontend → ⋮ → **Custom repositories**
-2. Repository URL: `https://github.com/MacSiem/ha-vacuum-water-monitor` — Category: **Lovelace**
-3. Install **Vacuum Water Monitor** from HACS
-4. Restart Home Assistant
+The integration registers the bundled Lovelace card automatically. You do not need to add a Lovelace resource manually.
 
 ## Usage
 
-### Lovelace card
+Add a manual Lovelace card:
 
 ```yaml
 type: custom:ha-vacuum-water-monitor
 ```
 
-### Optional sidebar panel (`configuration.yaml`)
+Optional card settings can still be supplied in YAML:
 
 ```yaml
-panel_custom:
-  - name: ha-vacuum-water-monitor
-    sidebar_title: Vacuum Water Monitor
-    sidebar_icon: mdi:home-assistant
-    url_path: ha-vacuum-water-monitor
-    js_url: /local/community/ha-vacuum-water-monitor/ha-vacuum-water-monitor.js
-    embed_iframe: false
-    config: {}
+type: custom:ha-vacuum-water-monitor
+title: Roborock
+vacuum_entity: vacuum.roborock_s8_maxv_ultra
+area_sensor: sensor.roborock_s8_maxv_ultra_cleaning_area
+dock_error_sensor: sensor.roborock_s8_maxv_ultra_dock_error
+warning_threshold: 20
+critical_threshold: 10
 ```
-
-After restart, **Vacuum Water Monitor** appears in the HA sidebar.
 
 ## Features
 
-- Track Roborock water tank usage and refill reminders.
-- Bundled Bento Design System (light + dark mode, mobile-friendly)
-- Self-contained — no shared HA Tools dependency
-- Tool settings and dismissed-banner state are cached in browser `localStorage`
+- Lists Home Assistant `vacuum.*` entities through the integration WebSocket API.
+- Stores tank counters, refill timestamps, card settings, maintenance items, custom calibration, and manual sessions in Home Assistant Store.
+- Runs water accounting server-side every 60 seconds.
+- Adds water usage when the vacuum enters known mop-wash states.
+- Adds area-based water usage when cleaning area increases while the vacuum is cleaning and mopping is enabled.
+- Resets tank usage when a configured tank door sensor closes or a dock `water_empty` error clears.
+- Supports a manual **Refilled** button through the bundled card.
+- Includes light/dark Bento-style card UI and mobile-friendly tabs.
+
+## Upgrading from v4
+
+v4 was a HACS Lovelace plugin. v5 is a HACS integration.
+
+1. In HACS, remove the old frontend/plugin installation if it is still present.
+2. Remove any manual Lovelace resource pointing at `/local/community/ha-vacuum-water-monitor/ha-vacuum-water-monitor.js`.
+3. Add this repository back to HACS as category **Integration**.
+4. Restart Home Assistant and add the integration from Devices & services.
+5. Keep the same Lovelace card YAML: `type: custom:ha-vacuum-water-monitor`.
+
+Browser-only v4 tank counters are not automatically imported. After installing v5, press **Refilled** once when the tank is full to establish the server-side baseline.
+
 ## Privacy
 
-- No telemetry, no analytics, no tracking
-- No external network calls, no CDN-hosted assets (system fonts only)
-- No data leaves your device (no external network calls)
+- No telemetry, analytics, or tracking.
+- No CDN-hosted assets.
+- Tank state is stored locally by Home Assistant in its normal storage area and is included in Home Assistant backups.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
 
 ## Support
 
-If this tool makes your Home Assistant life easier, consider supporting development:
-
-- [☕ Buy Me a Coffee](https://buymeacoffee.com/macsiem)
-- [💳 PayPal](https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W)
+- [Buy Me a Coffee](https://buymeacoffee.com/macsiem)
+- [PayPal](https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

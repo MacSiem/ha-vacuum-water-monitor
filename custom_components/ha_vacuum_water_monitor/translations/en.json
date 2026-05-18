@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Vacuum Water Monitor",
+        "description": "This registers the Vacuum Water Monitor integration. Tank accounting runs server-side and the bundled Lovelace card is loaded automatically.",
+        "data": {
+          "warning_threshold": "Low-water warning threshold",
+          "critical_threshold": "Critical-water threshold"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only a single instance of this integration is allowed."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Vacuum Water Monitor options",
+        "description": "Configure default refill warning thresholds.",
+        "data": {
+          "warning_threshold": "Low-water warning threshold",
+          "critical_threshold": "Critical-water threshold"
+        }
+      }
+    }
+  }
+}

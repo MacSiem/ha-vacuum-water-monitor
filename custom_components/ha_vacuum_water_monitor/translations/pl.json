@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Vacuum Water Monitor",
+        "description": "Rejestruje integracje Vacuum Water Monitor. Licznik wody dziala po stronie serwera, a wbudowana karta Lovelace jest ladowana automatycznie.",
+        "data": {
+          "warning_threshold": "Prog ostrzezenia o niskim poziomie wody",
+          "critical_threshold": "Prog krytyczny poziomu wody"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Dozwolona jest tylko jedna instancja tej integracji."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje Vacuum Water Monitor",
+        "description": "Ustaw domyslne progi ostrzezen o potrzebie dolewki.",
+        "data": {
+          "warning_threshold": "Prog ostrzezenia o niskim poziomie wody",
+          "critical_threshold": "Prog krytyczny poziomu wody"
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,14 @@
 # Changelog — Vacuum Water Monitor
 
+## [5.0.0] - 2026-05-18
+
+### Major
+- Migrated from a HACS Lovelace plugin to a HACS integration with a bundled Lovelace card.
+- Added config flow setup and automatic card registration through the integration frontend path.
+- Moved vacuum water tank counters and refill timestamps from browser storage to Home Assistant Store.
+- Ported the standalone water accounting loop to a 60-second server-side tick task.
+- Added WebSocket commands for vacuum discovery, persisted state, settings, tank reset, and intro dismissal.
+
 ## [4.1.3] - 2026-05-12
 
 ### Fixed
