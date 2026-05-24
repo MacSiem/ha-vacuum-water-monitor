@@ -4,7 +4,7 @@
 
 Track robot vacuum water tank usage and refill reminders in Home Assistant.
 
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/Version-5.0.0-success.svg)](#changelog)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/Version-5.0.4-success.svg)](#changelog)
 
 ## Installation
 
@@ -35,6 +35,26 @@ dock_error_sensor: sensor.roborock_s8_maxv_ultra_dock_error
 warning_threshold: 20
 critical_threshold: 10
 ```
+
+### Advanced YAML — bring your own counter
+
+If you already maintain your own water counter via a DIY template sensor or
+automation (for example `input_number.roborock_water_used_ml` updated by a
+`packages/roborock.yaml` automation), wire it into the card config to enable
+hybrid mode. The integration will skip its own server-side accounting and
+display your existing counter instead:
+
+```yaml
+type: custom:ha-vacuum-water-monitor
+vacuum_entity: vacuum.roborock_s8_maxv_ultra
+water_used_input: input_number.roborock_water_used_ml
+water_sensor: sensor.roborock_water_remaining             # optional template
+last_session_sensor: sensor.roborock_water_used_last_session_2  # optional
+last_reset_entity: input_datetime.roborock_last_water_reset      # optional
+```
+
+If `water_used_input` resolves to an existing HA entity, both the server-side
+tick and the card defer to your DIY setup and only render state.
 
 ## Features
 

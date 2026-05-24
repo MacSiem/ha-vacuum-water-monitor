@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.0.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.0.4 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -24,11 +24,12 @@ const BRAND_PROFILES = {
     icon: '\uD83E\uDDA4',
     water_total_ml: 3000,
     vacuum_entity: 'vacuum.roborock_s8_maxv_ultra',
-    water_sensor: 'sensor.roborock_water_remaining',
-    water_used_input: 'input_number.roborock_water_used_ml',
+    // Official Roborock integration entities only \u2014 private template sensors
+    // and input_helpers (water_used_input, water_sensor, last_session_sensor,
+    // last_reset_entity) are NOT baked into the profile because they render
+    // as `unknown` on fresh HACS installs. Advanced users can still wire DIY
+    // helpers via per-card YAML config (see README "Advanced YAML"). (v5.0.4)
     dock_error_sensor: 'sensor.roborock_s8_maxv_ultra_dock_error',
-    last_session_sensor: 'sensor.roborock_water_used_last_session_2',
-    last_reset_entity: 'input_datetime.roborock_last_water_reset',
     main_brush_sensor: 'sensor.roborock_s8_maxv_ultra_main_brush_time_left',
     side_brush_sensor: 'sensor.roborock_s8_maxv_ultra_side_brush_time_left',
     filter_time_sensor: 'sensor.roborock_s8_maxv_ultra_filter_time_left',
@@ -45,6 +46,11 @@ const BRAND_PROFILES = {
     last_clean_start: 'sensor.roborock_s8_maxv_ultra_last_clean_begin',
     last_clean_end: 'sensor.roborock_s8_maxv_ultra_last_clean_end',
     charge_sensor: 'sensor.roborock_s8_maxv_ultra_battery',
+    // Wire the server-side state machine to the real Roborock select
+    // entities \u2014 without these the tick falls back to `standard`/`medium`
+    // defaults (~50% underestimation at deep/high mopping). (v5.0.4)
+    mop_mode_entity: 'select.roborock_s8_maxv_ultra_mop_mode',
+    mop_intensity_entity: 'select.roborock_s8_maxv_ultra_mop_intensity',
   },
   'roborock_q7': {
     label: 'Roborock Q7',
@@ -1425,16 +1431,26 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (this._userDevices.find(d => d.vacuum_entity === entityId)) return false;
     const state = this._hass && this._hass.states[entityId];
     const name = (state && state.attributes && state.attributes.friendly_name) || entityId;
-    // Try to match a brand profile
+    // Try to match a brand profile. v5.0.4: fuzzy match by model suffix so
+    // renamed entities (e.g. `vacuum.s8_maxv_ultra`, `vacuum.salon_q_revo`)
+    // still pick up the right defaults. We override `vacuum_entity` after the
+    // spread so the merged profile reflects the user's actual entity_id.
     let profile = {};
     for (const [key, bp] of Object.entries(BRAND_PROFILES)) {
-      if (bp.vacuum_entity === entityId) { profile = { ...bp, brand_profile: key }; break; }
+      if (!bp.vacuum_entity) continue;
+      if (entityId === bp.vacuum_entity) { profile = { ...bp, brand_profile: key }; break; }
+      const modelSuffix = bp.vacuum_entity.replace(/^vacuum\./, '');
+      if (modelSuffix && (entityId.endsWith('_' + modelSuffix) || entityId.endsWith('.' + modelSuffix))) {
+        profile = { ...bp, brand_profile: key };
+        break;
+      }
     }
     this._userDevices.push({
       vacuum_entity: entityId,
       name: profile.label || name,
       icon: profile.icon || '\uD83E\uDD16',
       ...profile,
+      vacuum_entity: entityId, // ensure user's actual entity_id wins over profile default
     });
     this._saveUserDevices();
     return true;

@@ -1,4 +1,43 @@
 
+## [5.0.4] - 2026-05-24
+
+### Fixed
+
+- **`BRAND_PROFILES.roborock_s8_maxv_ultra` no longer pre-fills four
+  Maciej-private template/input entities** (`sensor.roborock_water_remaining`,
+  `input_number.roborock_water_used_ml`,
+  `sensor.roborock_water_used_last_session_2`,
+  `input_datetime.roborock_last_water_reset`). On a fresh HACS install those
+  entities don't exist, so the card was rendering four blank "unknown" tiles
+  even though server-side accounting in `tick.py` was working fine via the
+  hybrid-mode fallback. The Roborock profile now exposes only entities created
+  by the official `roborock` integration. Advanced users who maintain their
+  own DIY counter helpers can wire them in via per-card YAML — see
+  [README "Advanced YAML"](README.md#advanced-yaml).
+- **Mop dosing now reads the real Roborock select entities** instead of
+  always defaulting to `standard` mop_mode and `medium` mop_intensity. Added
+  `mop_mode_entity: select.roborock_s8_maxv_ultra_mop_mode` and
+  `mop_intensity_entity: select.roborock_s8_maxv_ultra_mop_intensity` to the
+  S8 MaxV Ultra brand profile, so the 60s tick uses your actual mop settings.
+  Prior behaviour underestimated water usage by ~50% at `deep`/`high`
+  (real 9 × 1.3 = 11.7 ml/m² vs default 6 × 1.0 = 6 ml/m²).
+- **`_addUserDevice` brand-profile matching is now fuzzy by model suffix**.
+  Previously the match required an exact `vacuum_entity` equality, so renamed
+  entities (`vacuum.s8_maxv_ultra`, `vacuum.salon_q_revo`,
+  `vacuum.parter_s7_maxv`) silently fell through to the generic profile
+  (`water_total_ml: 0` → blank water tile, no dock sensors). The matcher now
+  accepts entity IDs ending with `_<model_suffix>` or `.<model_suffix>`, then
+  forces `vacuum_entity` back to the user's actual entity ID after the spread.
+
+### Notes
+
+- If you upgraded **from v5.0.0 or v5.0.1** at any point on 2026-05-18 and
+  also maintain your own `input_number.*_water_used_ml` helper via a template
+  sensor / automation, your counter may have been double-counted for a few
+  hours (regression window between v5.0.0 publication and the v5.0.2 patch
+  that landed the `_hasPrivHelpers` check). Spot-check your counter history
+  for that day and reset the input_number manually if numbers look ~2× off.
+
 ## [4.1.6] - 2026-05-18
 
 ### Fixed
