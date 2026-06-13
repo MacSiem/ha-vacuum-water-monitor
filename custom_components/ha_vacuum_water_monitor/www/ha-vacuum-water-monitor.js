@@ -1673,6 +1673,26 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return state && state.attributes ? state.attributes[attr] : null;
   }
 
+  _resolveProfileKey(device) {
+    // Auto-resolve the model profile from brand_profile or the vacuum entity id,
+    // so a known model (e.g. vacuum.roborock_s8_maxv_ultra) gets its real tank
+    // capacity OOTB without the user manually picking a Brand Profile.
+    if (!device) return null;
+    const bp = device.brand_profile;
+    if (bp && CALIBRATION_DATA[bp]) return bp;
+    const ent = String(device.vacuum_entity || '').toLowerCase();
+    if (ent.startsWith('vacuum.')) {
+      const cand = ent.slice(7);
+      if (CALIBRATION_DATA[cand]) return cand;
+    }
+    if (typeof BRAND_PROFILES !== 'undefined') {
+      for (const k in BRAND_PROFILES) {
+        if (BRAND_PROFILES[k].vacuum_entity && BRAND_PROFILES[k].vacuum_entity === device.vacuum_entity) return k;
+      }
+    }
+    return null;
+  }
+
   _getDevices() {
     if (this._config.devices && Array.isArray(this._config.devices)) {
       return this._config.devices.map(d => {
@@ -1761,7 +1781,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _calcDeviceData(device) {
     // Derive total water capacity: explicit config > calibration data > 0
-    const profileKey = device.brand_profile;
+    const profileKey = this._resolveProfileKey(device);
     const calib = profileKey ? (CALIBRATION_DATA[profileKey] || null) : null;
     const totalMl = device.water_total_ml || (calib ? calib.tank_ml : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
@@ -1968,7 +1988,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // Prefer per-device brand_profile (auto-detected) over card-level YAML config.
     // Mirror of the v4 plugin fix — see ha-vacuum-water-monitor.js commit
     // 6f6444a for rationale.
-    const profileKey = (device && device.brand_profile) || cfg.brand_profile || 'generic';
+    const profileKey = (device && this._resolveProfileKey(device)) || cfg.brand_profile || 'generic';
     const calib = typeof CALIBRATION_DATA !== 'undefined' ? CALIBRATION_DATA[profileKey] || CALIBRATION_DATA['generic'] : null;
     if (calib) {
       const levels = Object.entries(calib.water_per_m2).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${k}:</b> ${v} ml/m²</span>`).join('');

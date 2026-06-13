@@ -1,4 +1,17 @@
 
+## [5.1.2] - 2026-06-13
+
+### Fixed
+
+- **Card now auto-resolves the vacuum model profile (tank capacity) from the
+  entity id** — a known model such as `vacuum.roborock_s8_maxv_ultra` shows its
+  real tank size (e.g. 3000 ml) and tracks water out of the box, without the
+  user manually picking a Brand Profile. Previously a discovered vacuum with no
+  stored `brand_profile` rendered as "Generic / 300 ml / doesn't track water".
+- Added `getGridOptions()` for correct sizing in HA's sections (grid) layout.
+- Periodic `hass`-driven re-render is now gated by a vacuum-state signature, so
+  the card no longer rebuilds every 10s when nothing changed.
+
 ## [5.1.1] - 2026-06-13
 
 ### Fixed
