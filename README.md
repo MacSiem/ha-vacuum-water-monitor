@@ -4,7 +4,7 @@
 
 Track robot vacuum water tank usage and refill reminders in Home Assistant.
 
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/Version-5.0.4-success.svg)](#changelog)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/Version-5.1.0-success.svg)](#changelog)
 
 ## Installation
 
@@ -56,11 +56,49 @@ last_reset_entity: input_datetime.roborock_last_water_reset      # optional
 If `water_used_input` resolves to an existing HA entity, both the server-side
 tick and the card defer to your DIY setup and only render state.
 
+## Entity sensors
+
+v5.1.0 adds Store-backed sensor entities for each vacuum known to the
+integration. Sensor values refresh when the integration writes settings, resets
+a tank, or the 60-second server-side tick updates tank state.
+
+| Sensor | Unit | Entity category | Store source |
+|---|---:|---|---|
+| Water remaining | `%` | normal | `tank_states[<vacuum>].used_ml` plus `water_total_ml` from the stored vacuum config or `settings.custom_calibration[*].tank_ml` |
+| Water used since refill | `mL` | normal | `tank_states[<vacuum>].used_ml` |
+| Last refill | timestamp | diagnostic | `tank_states[<vacuum>].last_reset_iso` or `last_reset_ts` |
+| Next maintenance due | `d` | diagnostic | `settings.maintenance_items` (`name`, `intervalDays`, `lastDone`) |
+
+The maintenance schedule is currently stored globally by the card, so the
+maintenance sensor mirrors the same custom schedule on each vacuum device. HA
+consumable time-left entities are not duplicated unless they are persisted in
+the Store.
+
+Example low-water automation:
+
+```yaml
+alias: Vacuum water below 15 percent
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.roborock_s8_maxv_ultra_water_remaining
+    below: 15
+action:
+  - service: notify.mobile_app_phone
+    data:
+      title: Vacuum water low
+      message: >-
+        {{ state_attr(trigger.entity_id, 'vacuum_entity') }} has
+        {{ states(trigger.entity_id) }}% water remaining
+        ({{ state_attr(trigger.entity_id, 'remaining_ml') }} mL).
+mode: single
+```
+
 ## Features
 
 - Lists Home Assistant `vacuum.*` entities through the integration WebSocket API.
 - Stores tank counters, refill timestamps, card settings, maintenance items, custom calibration, and manual sessions in Home Assistant Store.
 - Runs water accounting server-side every 60 seconds.
+- Exposes Store-backed water, refill, and custom maintenance sensors for automations and dashboards.
 - Adds water usage when the vacuum enters known mop-wash states.
 - Adds area-based water usage when cleaning area increases while the vacuum is cleaning and mopping is enabled.
 - Resets tank usage when a configured tank door sensor closes or a dock `water_empty` error clears.

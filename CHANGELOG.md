@@ -1,4 +1,17 @@
 
+## [5.1.0] - 2026-06-13
+
+### Added
+
+- Added Store-backed `sensor` platform entities for each known vacuum:
+  water remaining percentage, water used since refill, last refill timestamp,
+  and next custom maintenance due in days.
+- Sensor entities refresh from the same Store write/tick path used by the
+  bundled card, so automations and dashboards can react without opening the
+  card.
+- Added pure-python tests for water estimate math, refill timestamp parsing,
+  Store device merging, and custom maintenance due derivation.
+
 ## [5.0.4] - 2026-05-24
 
 ### Fixed

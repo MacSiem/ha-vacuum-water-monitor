@@ -19,3 +19,10 @@ build/
 # Local
 .env
 .env.local
+
+# Python
+__pycache__/
+*.pyc
+
+# Codex worker runs (local only)
+codex-runs/

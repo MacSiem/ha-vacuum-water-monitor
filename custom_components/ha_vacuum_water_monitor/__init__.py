@@ -9,7 +9,9 @@ from datetime import timedelta
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 
 from .const import (
@@ -23,6 +25,7 @@ from .const import (
     DOMAIN,
     EVENT_STATE_CHANGED,
     VERSION,
+    signal_vacuum_water_updated,
 )
 from .storage import VacuumWaterStorage
 from .tick import async_tick_water_state
@@ -33,6 +36,8 @@ _LOGGER = logging.getLogger(__name__)
 _CARD_URL_PATH = f"/{DOMAIN}/ha-vacuum-water-monitor.js"
 _CARD_FILENAME = "ha-vacuum-water-monitor.js"
 _CARD_PACKAGE_DIR = "www"
+
+PLATFORMS = [Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -54,7 +59,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         bucket[DATA_WS_REGISTERED] = True
 
     await _async_register_frontend(hass)
-    _async_start_tick(hass, storage)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _async_start_tick(hass, storage, entry.entry_id)
 
     _LOGGER.debug("Vacuum Water Monitor set up (entry_id=%s)", entry.entry_id)
     return True
@@ -62,6 +68,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload the config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if not unload_ok:
+        return False
+
     bucket = hass.data.get(DOMAIN, {})
     if unsub := bucket.pop(DATA_TICK_UNSUB, None):
         unsub()
@@ -95,7 +105,9 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     _LOGGER.debug("Registered Lovelace card at %s", _CARD_URL_PATH)
 
 
-def _async_start_tick(hass: HomeAssistant, storage: VacuumWaterStorage) -> None:
+def _async_start_tick(
+    hass: HomeAssistant, storage: VacuumWaterStorage, entry_id: str
+) -> None:
     """Start the 60s server-side accounting task."""
     bucket = hass.data.setdefault(DOMAIN, {})
     if bucket.get(DATA_TICK_UNSUB):
@@ -108,6 +120,11 @@ def _async_start_tick(hass: HomeAssistant, storage: VacuumWaterStorage) -> None:
             _LOGGER.exception("Water state tick failed: %s", err)
             return
         if changed:
+            async_dispatcher_send(
+                hass,
+                signal_vacuum_water_updated(entry_id),
+                {"tank_states": changed},
+            )
             hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": changed})
 
     bucket[DATA_TICK_UNSUB] = async_track_time_interval(

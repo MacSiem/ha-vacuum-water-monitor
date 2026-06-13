@@ -9,14 +9,29 @@ import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from .const import DOMAIN, EVENT_STATE_CHANGED
+from .const import DOMAIN, EVENT_STATE_CHANGED, signal_vacuum_water_updated
 from .storage import VacuumWaterStorage
 from .tick import list_vacuums
 
 
 def _storage(hass: HomeAssistant) -> VacuumWaterStorage:
     return hass.data[DOMAIN]["storage"]
+
+
+def _entry_id(hass: HomeAssistant) -> str:
+    entries = hass.config_entries.async_entries(DOMAIN)
+    if entries:
+        return entries[0].entry_id
+    return DOMAIN
+
+
+def _notify_store_updated(hass: HomeAssistant, payload: dict[str, Any]) -> None:
+    async_dispatcher_send(
+        hass, signal_vacuum_water_updated(_entry_id(hass)), payload
+    )
+    hass.bus.async_fire(EVENT_STATE_CHANGED, payload)
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/list_vacuums"})
@@ -62,7 +77,7 @@ async def _ws_set_settings(
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
-    hass.bus.async_fire(EVENT_STATE_CHANGED, {"settings": settings})
+    _notify_store_updated(hass, {"settings": settings})
     connection.send_result(msg["id"], {"settings": settings})
 
 
@@ -84,9 +99,8 @@ async def _ws_reset_tank(
     state = await _storage(hass).async_reset_tank(
         msg["vacuum_entity"], now.isoformat(), int(now.timestamp() * 1000)
     )
-    hass.bus.async_fire(
-        EVENT_STATE_CHANGED,
-        {"tank_states": {msg["vacuum_entity"]: state}},
+    _notify_store_updated(
+        hass, {"tank_states": {msg["vacuum_entity"]: state}}
     )
     connection.send_result(msg["id"], {"state": state})
 
@@ -111,7 +125,7 @@ async def _ws_dismiss_intro(
     settings = await _storage(hass).async_set_settings(
         {"intro_dismissed": dismissed}
     )
-    hass.bus.async_fire(EVENT_STATE_CHANGED, {"settings": settings})
+    _notify_store_updated(hass, {"settings": settings})
     connection.send_result(msg["id"], {"ok": True})
 
 

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 DOMAIN = "ha_vacuum_water_monitor"
-VERSION = "5.0.4"
+VERSION = "5.1.0"
+MANUFACTURER = "HA Tools"
+MODEL = "Vacuum Water Monitor"
 
 EVENT_STATE_CHANGED = f"{DOMAIN}_state_changed"
 
@@ -22,3 +24,8 @@ DATA_WS_REGISTERED = "_ws_registered"
 
 STORAGE_KEY = DOMAIN
 STORAGE_VERSION = 1
+
+
+def signal_vacuum_water_updated(entry_id: str) -> str:
+    """Return the dispatcher signal for Store-backed sensor refreshes."""
+    return f"{DOMAIN}_{entry_id}_updated"
