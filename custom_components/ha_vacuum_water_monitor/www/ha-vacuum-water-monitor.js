@@ -1183,11 +1183,18 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   set hass(hass) {
-
-    if (hass?.language) this._lang = hass.language.startsWith('pl') ? 'pl' : 'en';    this._hass = hass;
+    if (hass?.language) this._lang = hass.language.startsWith('pl') ? 'pl' : 'en';
+    this._hass = hass;
     if (!hass) return;
 
     this._ensureServerState();
+
+    // Gate ONLY the periodic hass-driven refresh: server Store changes render
+    // independently via _ensureServerState(), and UI/tab actions call _render()
+    // directly. Skipping when no vacuum.* state changed avoids a full DOM
+    // rebuild (and scroll/focus loss) every 10s while nothing is happening.
+    const sig = this._hassSignature(hass);
+    if (!this._firstRender && sig === this._lastHassSig) return;
 
     const now = Date.now();
     if (!this._firstRender && now - this._lastRenderTime < 10000) {
@@ -1195,6 +1202,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._renderScheduled = true;
         setTimeout(() => {
           this._renderScheduled = false;
+          this._lastHassSig = this._hassSignature(this._hass);
           this._render();
           this._lastRenderTime = Date.now();
         }, 10000 - (now - this._lastRenderTime));
@@ -1202,8 +1210,19 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return;
     }
     this._firstRender = false;
+    this._lastHassSig = sig;
     this._render();
     this._lastRenderTime = now;
+  }
+
+  _hassSignature(hass) {
+    if (!hass || !hass.states) return '';
+    let s = '';
+    const st = hass.states;
+    for (const id in st) {
+      if (id.startsWith('vacuum.')) s += id + '=' + st[id].state + ';';
+    }
+    return s;
   }
 
   get _t() {
@@ -1288,6 +1307,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   getCardSize() { return 4; }
+
+  getGridOptions() { return { rows: 8, columns: 12, min_rows: 3, min_columns: 6 }; }
 
   async _ensureServerState() {
     if (!this._hass || this._serverLoadPromise) return this._serverLoadPromise;

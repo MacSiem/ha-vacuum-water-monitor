@@ -1279,6 +1279,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   getCardSize() { return 4; }
 
+  getGridOptions() { return { rows: 8, columns: 12, min_rows: 3, min_columns: 6 }; }
+
   _sanitize(s) { try { return decodeURIComponent(escape(s)); } catch(e) { return s; } }
 
   static getStubConfig() {
