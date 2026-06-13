@@ -65,6 +65,41 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertIsNone(estimate["remaining_percent"])
         self.assertEqual(estimate["source"], "unknown_capacity")
 
+    def test_estimate_water_state_uses_model_database_via_entity_id(self) -> None:
+        # No manual calibration, no stored capacity — capacity must come from the
+        # model database, auto-detected from the vacuum entity id (the card's rule).
+        estimate = estimate_water_state(
+            {"vacuum_entity": "vacuum.roborock_s8_maxv_ultra"},
+            {"used_ml": 0},
+            {"custom_calibration": {}},
+        )
+
+        self.assertEqual(estimate["total_ml"], 3000)
+        self.assertEqual(estimate["remaining_ml"], 3000)
+        self.assertEqual(estimate["remaining_percent"], 100)
+        self.assertEqual(estimate["source"], "stored_estimate")
+
+    def test_estimate_water_state_model_database_via_brand_profile(self) -> None:
+        estimate = estimate_water_state(
+            {"vacuum_entity": "vacuum.living_room", "brand_profile": "dreame_x40_ultra"},
+            {"used_ml": 900},
+            {},
+        )
+
+        self.assertEqual(estimate["total_ml"], 4500)
+        self.assertEqual(estimate["remaining_ml"], 3600)
+        self.assertEqual(estimate["remaining_percent"], 80)
+
+    def test_estimate_water_state_unknown_model_stays_unknown(self) -> None:
+        estimate = estimate_water_state(
+            {"vacuum_entity": "vacuum.robotic_vacuum_cleaner"},
+            {"used_ml": 50},
+            {},
+        )
+
+        self.assertIsNone(estimate["total_ml"])
+        self.assertEqual(estimate["source"], "unknown_capacity")
+
     def test_parse_refill_datetime_prefers_iso_and_falls_back_to_millis(self) -> None:
         parsed = parse_refill_datetime(
             {"last_reset_iso": "2026-06-12T08:30:00+00:00", "last_reset_ts": 1}

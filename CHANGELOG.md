@@ -1,4 +1,15 @@
 
+## [5.1.1] - 2026-06-13
+
+### Fixed
+
+- **Water remaining/used sensors now know tank capacity from the vacuum model
+  automatically**, without manual calibration. Capacity falls back to a built-in
+  per-model database (ported from the card's `CALIBRATION_DATA`), auto-detected
+  from the `brand_profile` or the vacuum entity id — e.g. a Roborock S8 MaxV
+  Ultra resolves to 3000 ml out of the box. Unrecognised models still report
+  `unknown` rather than a misleading percentage (mirrors the card's water calc).
+
 ## [5.1.0] - 2026-06-13
 
 ### Added

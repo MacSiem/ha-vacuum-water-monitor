@@ -8,6 +8,43 @@ from typing import Any
 
 MILLISECONDS_PER_DAY = 86_400_000
 
+# Default tank capacity (ml) per known vacuum model, ported from the card's
+# CALIBRATION_DATA so the sensor knows capacity from the device model WITHOUT
+# any manual calibration. The key matches the auto-detected brand_profile and
+# the vacuum entity_id slug (e.g. vacuum.roborock_s8_maxv_ultra). The generic
+# profile is intentionally excluded: an unrecognised model stays "unknown"
+# instead of reporting a misleading percentage, mirroring the card's water calc.
+DEFAULT_TANK_ML: dict[str, float] = {
+    "roborock_s8_maxv_ultra": 3000,
+    "roborock_s8_pro_ultra": 3500,
+    "roborock_s7_maxv_ultra": 3000,
+    "roborock_s7_maxv": 200,
+    "roborock_s9_maxv": 4000,
+    "roborock_q_revo": 5000,
+    "roborock_q_revo_maxv": 4000,
+    "roborock_q7_max": 350,
+    "roborock_q7": 300,
+    "dreame_x40_ultra": 4500,
+    "dreame_x30_ultra": 4500,
+    "dreame_l20_ultra": 4500,
+    "dreame_l10s_ultra": 2500,
+    "dreame_l10s_pro_ultra": 4500,
+    "dreame_d10_plus": 150,
+    "ecovacs_x2_omni": 4000,
+    "ecovacs_t20_omni": 4000,
+    "ecovacs_t30_omni": 4000,
+    "ecovacs_n20_plus": 220,
+    "irobot_combo_j9": 3000,
+    "irobot_combo_j7": 210,
+    "irobot_combo_essential": 200,
+    "narwal_freo_x_ultra": 5000,
+    "narwal_freo_x_plus": 280,
+    "eufy_x10_pro_omni": 3000,
+    "samsung_jet_bot_combo": 4000,
+    "xiaomi_x20_max": 4000,
+    "xiaomi_x20_pro": 4000,
+}
+
 
 def vacuum_slug(vacuum_entity: str) -> str:
     """Return a stable slug for a vacuum entity id."""
@@ -175,17 +212,29 @@ def _water_capacity_ml(
         return direct
 
     custom = settings.get("custom_calibration")
-    if not isinstance(custom, dict):
-        return None
-    profile_key = device.get("brand_profile") or "default"
-    for key in (profile_key, "default"):
-        value = custom.get(key)
-        if not isinstance(value, dict):
-            continue
-        tank_ml = _optional_number(value.get("tank_ml"))
-        if tank_ml and tank_ml > 0:
-            return tank_ml
-    return None
+    if isinstance(custom, dict):
+        profile_key = device.get("brand_profile") or "default"
+        for key in (profile_key, "default"):
+            value = custom.get(key)
+            if not isinstance(value, dict):
+                continue
+            tank_ml = _optional_number(value.get("tank_ml"))
+            if tank_ml and tank_ml > 0:
+                return tank_ml
+
+    # Model database fallback: capacity known from the vacuum model without any
+    # manual calibration, mirroring the card's auto-detected brand_profile.
+    return _model_tank_ml(device)
+
+
+def _model_tank_ml(device: dict[str, Any]) -> float | None:
+    """Default tank capacity (ml) resolved from the vacuum model database."""
+    key = device.get("brand_profile")
+    if not (isinstance(key, str) and key in DEFAULT_TANK_ML):
+        entity = str(device.get("vacuum_entity") or "").strip().lower()
+        key = entity[len("vacuum.") :] if entity.startswith("vacuum.") else ""
+    tank_ml = DEFAULT_TANK_ML.get(key)
+    return float(tank_ml) if tank_ml and tank_ml > 0 else None
 
 
 def _number(value: Any, default: float) -> float:
@@ -203,7 +252,7 @@ def _optional_number(value: Any) -> float | None:
 
 
 def _format_number(value: float) -> int | float:
-    rounded = round(value, 1)
+    rounded = round(float(value), 1)
     return int(rounded) if rounded.is_integer() else rounded
 
 
