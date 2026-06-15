@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.1.4 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.1.5 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -2160,27 +2160,70 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // ── TAB: MAINTENANCE ───────────────────────────────────────────────────────
 
   _buildMaintenanceTab(device, data) {
+    // Known default max lifespans (hours) per consumable type.
+    // These match Roborock factory defaults; other brands vary but are similar order-of-magnitude.
+    // The HA sensor may expose a `max` attribute — we prefer that when available.
+    const CON_MAX_H = {
+      main_brush:    300,
+      side_brush:    200,
+      filter:        150,
+      sensor:         30,
+      dock_brush:    300,
+      dock_strainer: 200,
+    };
+
+    // Helper: resolve life % remaining for a consumable.
+    // Tries sensor's own `max` attribute first, then falls back to CON_MAX_H default.
+    const _lifePct = (sensorKey, hours) => {
+      if (hours === null || isNaN(hours)) return null;
+      const sensorField = {
+        main_brush:    device.main_brush_sensor,
+        side_brush:    device.side_brush_sensor,
+        filter:        device.filter_time_sensor,
+        sensor:        device.sensor_dirty_sensor,
+        dock_brush:    device.dock_brush_sensor,
+        dock_strainer: device.dock_strainer_sensor,
+      }[sensorKey];
+      const attrMax = sensorField ? this._getAttr(sensorField, 'max') : null;
+      const maxH = (attrMax !== null && !isNaN(parseFloat(attrMax)) && parseFloat(attrMax) > 0)
+        ? parseFloat(attrMax)
+        : (CON_MAX_H[sensorKey] || 200);
+      if (hours <= 0) return 0;
+      return Math.min(100, Math.max(0, (hours / maxH) * 100));
+    };
+
+    // Bar color based on life % remaining: GREEN >50%, AMBER 20-50%, RED <=20%
+    const _lifePctColor = (pct) => {
+      if (pct === null) return '#6b7280';
+      if (pct > 50) return '#22c55e';
+      if (pct > 20) return '#f59e0b';
+      return '#ef4444';
+    };
+
     // HA consumables from sensors
     const haItems = [
-      { label: '\uD83E\uDDF9 Main Brush', hours: data.mainBrushH, key: 'main_brush' },
-      { label: '\uD83D\uDCCD Side Brush', hours: data.sideBrushH, key: 'side_brush' },
-      { label: '\uD83D\uDD0D Filter', hours: data.filterH, key: 'filter' },
-      { label: '\uD83D\uDCA7 Sensor Cleaning', hours: data.sensorH, key: 'sensor' },
-      { label: '\uD83D\uDD04 Dock Brush', hours: data.dockBrushH, key: 'dock_brush' },
-      { label: '\uD83D\uDD17 Dock Strainer', hours: data.dockStrainerH, key: 'dock_strainer' },
+      { label: '🧹 Main Brush', hours: data.mainBrushH, key: 'main_brush' },
+      { label: '📍 Side Brush', hours: data.sideBrushH, key: 'side_brush' },
+      { label: '🔍 Filter', hours: data.filterH, key: 'filter' },
+      { label: '💧 Sensor Cleaning', hours: data.sensorH, key: 'sensor' },
+      { label: '🔄 Dock Brush', hours: data.dockBrushH, key: 'dock_brush' },
+      { label: '🔗 Dock Strainer', hours: data.dockStrainerH, key: 'dock_strainer' },
     ].filter(i => i.hours !== null);
 
     const haRows = haItems.map(item => {
-      const disp = this._hoursToDisplay(item.hours);
-      if (!disp) return '';
-      const barPct = Math.min(100, Math.max(0, item.hours > 0 ? Math.min(100, (item.hours / 200) * 100) : 0));
+      const pct = _lifePct(item.key, item.hours);
+      if (pct === null) return '';
+      const barColor = _lifePctColor(pct);
+      const hoursDisp = this._hoursToDisplay(item.hours);
+      const pctLabel = Math.round(pct) + '%';
+      const hoursLabel = hoursDisp ? hoursDisp.text : '';
+      const valLabel = hoursLabel ? `${pctLabel} · ${hoursLabel}` : pctLabel;
       return `<div class="consumable-row">
         <span class="con-label">${item.label}</span>
-        <div class="con-bar-wrap"><div class="con-bar"><div class="con-bar-fill" style="background:${disp.color};opacity:0.7;width:${barPct}%"></div></div></div>
-        <span class="con-val" style="color:${disp.color}">${disp.text}</span>
+        <div class="con-bar-wrap"><div class="con-bar"><div class="con-bar-fill" style="background:${barColor};opacity:0.85;width:${pct.toFixed(1)}%"></div></div></div>
+        <span class="con-val con-val-wide" style="color:${barColor}">${valLabel}</span>
       </div>`;
     }).join('');
-
     // Custom maintenance items from HA Store
     const now = Date.now();
     const customRows = this._maintenanceItems.map((item, idx) => {
@@ -2945,9 +2988,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
         .consumable-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
         .con-label { font-size: 11px; color: var(--bento-text-secondary); width: 100px; flex-shrink: 0; }
         .con-bar-wrap { flex: 1; }
-        .con-bar { height: 4px; background: rgba(59,130,246,0.12); border-radius: 2px; overflow: hidden; }
-        .con-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+        .con-bar { height: 6px; background: rgba(59,130,246,0.10); border-radius: 3px; overflow: hidden; }
+        .con-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
         .con-val { font-size: 11px; font-weight: 600; width: 55px; text-align: right; flex-shrink: 0; }
+        .con-val-wide { width: 80px; }
         /* Custom maintenance */
         .custom-maint-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; }
         .custom-maint-row .con-label { flex: 1; width: auto; }
