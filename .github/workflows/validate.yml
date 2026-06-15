@@ -1,0 +1,33 @@
+name: validate
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: JS syntax (node --check)
+        run: |
+          fail=0
+          for f in $(git ls-files '*.js'); do
+            node --check "$f" || { echo "SYNTAX FAIL: $f"; fail=1; }
+          done
+          exit $fail
+      - name: Theming invariant (no OS prefers-color-scheme)
+        run: |
+          if grep -rln "@media (prefers-color-scheme" --include='*.js' .; then
+            echo "FAIL: OS prefers-color-scheme present — cards must follow HA theme via :host(.bento-dark) luminance"
+            exit 1
+          fi
+          echo "OK: no OS prefers-color-scheme"
+      - name: A11y invariant (focus-visible present in cards)
+        run: |
+          miss=0
+          for f in $(git ls-files '*.js' | grep -vE 'editor|\.min\.'); do
+            if grep -q 'customElements.define' "$f" && grep -q ':host' "$f"; then
+              grep -q ':focus-visible' "$f" || { echo "WARN: no :focus-visible in $f"; }
+            fi
+          done
+          echo "a11y check done"
