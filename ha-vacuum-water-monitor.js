@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.1.3 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.1.4 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -472,6 +472,8 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
    ═══════════════════════════════════════════════ */
 
 
+/* keyboard a11y */
+:focus-visible { outline: 2px solid var(--bento-primary, #6366f1); outline-offset: 2px; border-radius: 3px; }
 :host {
   /* Brand palette — diamond top, gradient-friendly */
   --bento-primary: #6366f1;

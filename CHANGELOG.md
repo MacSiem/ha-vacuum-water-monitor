@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.1.4] - 2026-06-15
+
+- Theme: dark/light now follows the active Home Assistant theme (luminance of --card-background-color) instead of OS prefers-color-scheme.
+- Sync bundled card (root and integration www copy now identical, both themed).
+
+
 ## [5.1.3] - 2026-06-15
 
 - Theme: dark/light now follows the active Home Assistant theme (luminance of --card-background-color) instead of OS prefers-color-scheme.
