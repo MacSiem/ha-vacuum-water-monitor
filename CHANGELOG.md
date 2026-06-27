@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.1.6] - 2026-06-27
+
+- Fix: large i18n cleanup — the setup banner, all 29 brand-profile notes, the refill notification, the auto-created automation alias, button/status states, and table labels were hardcoded in Polish; they now render in English. The bilingual `_t` table for the main UI is unchanged. The bundled card (repo root + integration `www` copy) is kept in sync.
+- Docs: added a real card screenshot to the README.
+
 ## [5.1.5] - 2026-06-15
 
 - Theme: dark/light now follows the active Home Assistant theme (luminance of --card-background-color) instead of OS prefers-color-scheme.

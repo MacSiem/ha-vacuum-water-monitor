@@ -6,6 +6,10 @@ Track robot vacuum water tank usage and refill reminders in Home Assistant.
 
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/Version-5.1.0-success.svg)](#changelog)
 
+## Screenshot
+
+![Screenshot](screenshot.png)
+
 ## Installation
 
 1. Open HACS -> Custom repositories.
