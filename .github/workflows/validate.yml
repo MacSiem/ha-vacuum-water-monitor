@@ -7,7 +7,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ''22''
       - name: JS syntax (node --check)
         run: |
           fail=0
@@ -31,3 +31,8 @@ jobs:
             fi
           done
           echo "a11y check done"
+      - name: Runtime smoke (jsdom render)
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install jsdom >/dev/null 2>&1
+          node .github/smoke.cjs
