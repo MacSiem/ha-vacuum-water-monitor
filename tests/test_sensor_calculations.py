@@ -20,6 +20,7 @@ spec.loader.exec_module(sensor_calculations)
 
 build_vacuum_devices = sensor_calculations.build_vacuum_devices
 estimate_water_state = sensor_calculations.estimate_water_state
+filter_active_devices = sensor_calculations.filter_active_devices
 next_maintenance_due = sensor_calculations.next_maintenance_due
 parse_refill_datetime = sensor_calculations.parse_refill_datetime
 vacuum_slug = sensor_calculations.vacuum_slug
@@ -166,6 +167,52 @@ class VacuumSensorCalculationTests(unittest.TestCase):
 
     def test_vacuum_slug_is_stable_for_entity_ids(self) -> None:
         self.assertEqual(vacuum_slug("vacuum.Roborock S8 MaxV"), "vacuum_roborock_s8_maxv")
+
+    def test_tank_state_entry_gets_friendly_name_from_discovery(self) -> None:
+        """Issue #1: device seeded from tank_states must not stay named by id."""
+        devices = build_vacuum_devices(
+            {},
+            {"vacuum.roborock_s7_maxv": {"used_ml": 40}},
+            [{"entity_id": "vacuum.roborock_s7_maxv", "name": "Roborock S7 MaxV"}],
+        )
+
+        by_entity = {device["vacuum_entity"]: device for device in devices}
+        self.assertEqual(
+            by_entity["vacuum.roborock_s7_maxv"]["name"], "Roborock S7 MaxV"
+        )
+
+    def test_discovery_name_does_not_override_user_name(self) -> None:
+        devices = build_vacuum_devices(
+            {
+                "configured_devices": [
+                    {"vacuum_entity": "vacuum.roborock_s7_maxv", "name": "Salon robot"}
+                ]
+            },
+            {},
+            [{"entity_id": "vacuum.roborock_s7_maxv", "name": "Roborock S7 MaxV"}],
+        )
+
+        self.assertEqual(devices[0]["name"], "Salon robot")
+
+    def test_filter_active_devices_drops_ghosts(self) -> None:
+        """Issue #1: phantom configured entity must not create an HA device."""
+        devices = [
+            {"vacuum_entity": "vacuum.roborock_s8_maxv_ultra", "name": "Vacuum"},
+            {"vacuum_entity": "vacuum.roborock_s7_maxv", "name": "Roborock S7 MaxV"},
+            {"vacuum_entity": "vacuum.offline_bot", "name": "Offline bot"},
+            {"name": "no entity"},
+        ]
+
+        kept = filter_active_devices(
+            devices,
+            {"vacuum.roborock_s7_maxv"},
+            {"vacuum.offline_bot": {"used_ml": 10}},
+        )
+
+        kept_entities = [device["vacuum_entity"] for device in kept]
+        self.assertEqual(
+            kept_entities, ["vacuum.roborock_s7_maxv", "vacuum.offline_bot"]
+        )
 
 
 if __name__ == "__main__":

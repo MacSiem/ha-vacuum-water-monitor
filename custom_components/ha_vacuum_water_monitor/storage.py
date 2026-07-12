@@ -96,6 +96,17 @@ class VacuumWaterStorage:
             await self._store.async_save(data)
             return deepcopy(settings)
 
+    async def async_replace_settings_key(self, key: str, value: Any) -> None:
+        """Replace one settings key, bypassing the empty-list guard.
+
+        Only for explicit migrations (e.g. pruning ghost configured_devices);
+        regular writes must go through async_set_settings.
+        """
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            data["settings"][str(key)] = deepcopy(value)
+            await self._store.async_save(data)
+
     async def async_get_tank_state(self, vacuum_entity: str) -> dict[str, Any]:
         """Return one vacuum tank state."""
         data = await self.async_load()

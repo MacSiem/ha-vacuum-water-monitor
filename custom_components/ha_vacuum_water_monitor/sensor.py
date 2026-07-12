@@ -27,6 +27,7 @@ from .const import (
 from .sensor_calculations import (
     build_vacuum_devices,
     estimate_water_state,
+    filter_active_devices,
     next_maintenance_due,
     parse_refill_datetime,
     vacuum_slug,
@@ -86,8 +87,19 @@ class VacuumSensorManager:
             _LOGGER.debug("Unable to list vacuum entities for sensors: %s", err)
             discovered = []
 
+        known_entities = {
+            str(item.get("entity_id"))
+            for item in discovered
+            if isinstance(item, dict) and item.get("entity_id")
+        }
+        devices = filter_active_devices(
+            build_vacuum_devices(settings, tank_states, discovered),
+            known_entities,
+            tank_states,
+        )
+
         entities: list[VacuumStoreSensor] = []
-        for device in build_vacuum_devices(settings, tank_states, discovered):
+        for device in devices:
             vacuum_entity = device.get("vacuum_entity")
             if not vacuum_entity:
                 continue

@@ -98,7 +98,46 @@ def build_vacuum_devices(
             ),
         )
 
+    # Backfill display names from live discovery: entries seeded from
+    # tank_states or configured_devices may carry no name and fall back to the
+    # raw entity_id ("vacuum.roborock_s7_maxv" instead of "Roborock S7 MaxV").
+    for item in discovered_vacuums:
+        if not isinstance(item, dict):
+            continue
+        entity = str(item.get("entity_id") or item.get("vacuum_entity") or "")
+        name = item.get("name")
+        if not entity or not name or entity not in devices:
+            continue
+        device = devices[entity]
+        if not device.get("name") or device.get("name") == entity:
+            device["name"] = str(name)
+
     return list(devices.values())
+
+
+def filter_active_devices(
+    devices: list[dict[str, Any]],
+    known_entities: set[str],
+    tank_states: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Drop ghost devices before entity/device creation.
+
+    A device is kept when its vacuum_entity currently exists in HA (known) or
+    has recorded tank history (real vacuum that is temporarily offline).
+    Phantom entries — e.g. a profile-default entity id persisted by a pre-5.1.6
+    card stub config — match neither and must not create HA devices.
+    """
+    tank_states = tank_states if isinstance(tank_states, dict) else {}
+    kept: list[dict[str, Any]] = []
+    for device in devices:
+        vacuum_entity = device.get("vacuum_entity")
+        if not vacuum_entity:
+            continue
+        entity = str(vacuum_entity)
+        if entity not in known_entities and entity not in tank_states:
+            continue
+        kept.append(device)
+    return kept
 
 
 def estimate_water_state(

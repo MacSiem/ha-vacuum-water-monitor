@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VWM screenshot harness</title>
+<style>
+  html, body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body.light { background: #f4f5f7; }
+  body.light ha-vacuum-water-monitor { --card-background-color: #ffffff; --primary-background-color: #f4f5f7; }
+  body.dark { background: #111318; }
+  body.dark ha-vacuum-water-monitor { --card-background-color: #1c1e26; --primary-background-color: #111318; }
+  ha-vacuum-water-monitor { display: block; width: 460px; }
+</style>
+</head>
+<body>
+<ha-vacuum-water-monitor id="card"></ha-vacuum-water-monitor>
+<script>
+  // Dismiss the first-run intro banner for clean screenshots
+  try { localStorage.setItem('ha-intro-dismissed-ha-vacuum-water-monitor', '1'); } catch (e) {}
+</script>
+<script src="../../ha-vacuum-water-monitor.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const theme = params.get('theme') === 'dark' ? 'dark' : 'light';
+  const tab = params.get('tab') || 'water';
+  document.body.className = theme;
+
+  const VAC = 'vacuum.roborock_s8_maxv_ultra';
+  const now = Date.now();
+  const dayMs = 86400000;
+
+  const settings = {
+    warning_threshold: 20,
+    critical_threshold: 10,
+    configured_devices: [],
+    user_devices: [
+      {
+        vacuum_entity: VAC,
+        name: 'Roborock S8 MaxV Ultra',
+        icon: '🤖',
+        brand_profile: 'roborock_s8_maxv_ultra',
+        water_total_ml: 3000,
+      },
+    ],
+    maintenance_items: [
+      { name: 'Wash mop pads', icon: '🧽', intervalDays: 7, lastDone: now - 5 * dayMs },
+      { name: 'Clean dock strainer', icon: '🪣', intervalDays: 30, lastDone: now - 12 * dayMs },
+    ],
+    refill_config: {},
+    custom_calibration: {},
+    sessions: {},
+    intro_dismissed: { 'ha-vacuum-water-monitor': true },
+  };
+
+  const tankStates = {};
+  tankStates[VAC] = {
+    used_ml: 750,
+    last_reset_iso: new Date(now - 2 * dayMs).toISOString(),
+    last_reset_ts: now - 2 * dayMs,
+    last_status: 'docked',
+    last_area: 32.5,
+    last_dock_err: null,
+    last_door: null,
+  };
+
+  const states = {};
+  states[VAC] = {
+    entity_id: VAC,
+    state: 'docked',
+    attributes: {
+      friendly_name: 'Roborock S8 MaxV Ultra',
+      battery_level: 100,
+      status: 'docked',
+    },
+    last_changed: new Date(now - 3600000).toISOString(),
+  };
+  states['sensor.roborock_s8_maxv_ultra_cleaning_area'] = {
+    entity_id: 'sensor.roborock_s8_maxv_ultra_cleaning_area',
+    state: '32.5',
+    attributes: { friendly_name: 'Cleaning area', unit_of_measurement: 'm²' },
+  };
+
+  const hass = {
+    language: 'en',
+    themes: { darkMode: theme === 'dark' },
+    states,
+    services: {},
+    connection: {
+      subscribeEvents: () => Promise.resolve(() => {}),
+    },
+    callWS: async (msg) => {
+      const type = String(msg && msg.type || '');
+      if (type.endsWith('/list_vacuums')) {
+        return { vacuums: [{ entity_id: VAC, name: 'Roborock S8 MaxV Ultra', state: 'docked', battery: 100 }] };
+      }
+      if (type.endsWith('/get_state')) {
+        return { settings, tank_states: tankStates };
+      }
+      if (type.endsWith('/set_settings')) {
+        Object.assign(settings, (msg && msg.patch) || {});
+        return { settings };
+      }
+      if (type.endsWith('/reset_tank')) {
+        return { state: tankStates[VAC] };
+      }
+      return {};
+    },
+    callService: async () => ({}),
+    callApi: async () => ({}),
+  };
+
+  const card = document.getElementById('card');
+  card.setConfig({ type: 'custom:ha-vacuum-water-monitor', title: 'Vacuum Water Monitor', default_tab: tab });
+  card.hass = hass;
+  // Re-assign hass once server state has loaded, so theme/luminance and render settle.
+  setTimeout(() => { card.hass = { ...hass }; }, 400);
+  const scrub = () => {
+    try {
+      const sr = card.shadowRoot;
+      if (!sr) return;
+      sr.querySelectorAll('#tip-banner, .tip-banner, .intro-banner, .donate-section').forEach((n) => n.remove());
+    } catch (e) {}
+  };
+  setInterval(scrub, 150);
+  setTimeout(() => { scrub(); document.title = 'VWM-READY'; }, 1300);
+})();
+</script>
+</body>
+</html>

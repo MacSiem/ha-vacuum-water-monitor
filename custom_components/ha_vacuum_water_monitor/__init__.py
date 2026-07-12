@@ -54,6 +54,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await storage.async_set_settings(option_patch)
     bucket[DATA_STORAGE] = storage
 
+    await _async_prune_ghost_devices(hass, storage)
+
     if not bucket.get(DATA_WS_REGISTERED):
         async_register_commands(hass)
         bucket[DATA_WS_REGISTERED] = True
@@ -78,6 +80,59 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     bucket.pop(DATA_STORAGE, None)
     _LOGGER.debug("Vacuum Water Monitor unloaded (entry_id=%s)", entry.entry_id)
     return True
+
+
+async def _async_prune_ghost_devices(
+    hass: HomeAssistant, storage: VacuumWaterStorage
+) -> None:
+    """One-time cleanup of ghost vacuums (pre-5.1.6 card stub configs).
+
+    Older card versions could persist a configured_device pointing at a brand
+    profile's default entity id that never existed in this HA instance. Drop
+    such entries — no matching entity AND no tank history — and remove their
+    leftover device registry entries so users stop seeing a phantom "Vacuum"
+    device (issue #1).
+    """
+    from homeassistant.helpers import device_registry as dr
+
+    from .sensor_calculations import vacuum_slug
+    from .tick import list_vacuums
+
+    state = await storage.async_get_state()
+    settings = state.get("settings") or {}
+    tank_states = state.get("tank_states") or {}
+    known = {vacuum["entity_id"] for vacuum in list_vacuums(hass)}
+
+    def _is_ghost(item: object) -> bool:
+        if not isinstance(item, dict):
+            return True
+        entity = str(item.get("vacuum_entity") or "")
+        return bool(entity) and entity not in known and entity not in tank_states
+
+    configured = settings.get("configured_devices") or []
+    ghosts = [item for item in configured if _is_ghost(item)]
+    if not ghosts:
+        return
+
+    kept = [item for item in configured if not _is_ghost(item)]
+    ghost_entities = [
+        str(item.get("vacuum_entity"))
+        for item in ghosts
+        if isinstance(item, dict) and item.get("vacuum_entity")
+    ]
+    _LOGGER.info(
+        "Pruning ghost configured_devices with no HA entity: %s", ghost_entities
+    )
+    await storage.async_replace_settings_key("configured_devices", kept)
+
+    registry = dr.async_get(hass)
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        for entity in ghost_entities:
+            device = registry.async_get_device(
+                identifiers={(DOMAIN, f"{entry.entry_id}_{vacuum_slug(entity)}")}
+            )
+            if device:
+                registry.async_remove_device(device.id)
 
 
 async def _async_register_frontend(hass: HomeAssistant) -> None:

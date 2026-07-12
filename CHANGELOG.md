@@ -1,5 +1,25 @@
 # Changelog
 
+## [5.1.7] - 2026-07-12
+
+Fixes for [#1](https://github.com/MacSiem/ha-vacuum-water-monitor/issues/1) and
+[#2](https://github.com/MacSiem/ha-vacuum-water-monitor/issues/2). Thanks @chris400!
+
+- Fix: ghost "Vacuum" device created for users who added the card from the UI picker.
+  The card's stub config carried a brand profile whose default `vacuum_entity` leaked
+  into saved settings. The stub is now minimal, brand profiles can no longer inject an
+  entity id, and the card only persists config devices whose entity exists in HA.
+- Fix: one-time migration prunes previously saved ghost `configured_devices` (no matching
+  HA entity and no tank history) and removes their leftover device registry entries.
+- Fix: vacuums seeded from stored tank state are now named with their HA friendly name
+  (e.g. "Roborock S7 MaxV") instead of the raw entity id.
+- Fix: the card now works for non-admin Home Assistant users — websocket commands no
+  longer require admin (authentication is still required).
+- Docs: rewritten README with a "How it works" section, automatic-vs-manual table, quick
+  start, entity/automation examples, and FAQ; new English screenshots (light + dark).
+- Chore: removed committed `__pycache__` from the repo; aligned versions across
+  `manifest.json`, `const.VERSION`, and the bundled card header (5.1.7).
+
 ## [5.1.6] - 2026-06-27
 
 - Fix: large i18n cleanup — the setup banner, all 29 brand-profile notes, the refill notification, the auto-created automation alias, button/status states, and table labels were hardcoded in Polish; they now render in English. The bilingual `_t` table for the main UI is unchanged. The bundled card (repo root + integration `www` copy) is kept in sync.

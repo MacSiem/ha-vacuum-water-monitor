@@ -34,8 +34,11 @@ def _notify_store_updated(hass: HomeAssistant, payload: dict[str, Any]) -> None:
     hass.bus.async_fire(EVENT_STATE_CHANGED, payload)
 
 
+# NOTE: no require_admin on any command. The card must work for every
+# logged-in HA user (household members are rarely admins); WS already
+# enforces authentication, and none of these commands expose secrets or
+# perform privileged operations (issue #1 follow-up, v5.1.6).
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/list_vacuums"})
-@websocket_api.require_admin
 @websocket_api.async_response
 async def _ws_list_vacuums(
     hass: HomeAssistant,
@@ -47,7 +50,6 @@ async def _ws_list_vacuums(
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/get_state"})
-@websocket_api.require_admin
 @websocket_api.async_response
 async def _ws_get_state(
     hass: HomeAssistant,
@@ -64,7 +66,6 @@ async def _ws_get_state(
         vol.Required("patch"): dict,
     }
 )
-@websocket_api.require_admin
 @websocket_api.async_response
 async def _ws_set_settings(
     hass: HomeAssistant,
@@ -87,7 +88,6 @@ async def _ws_set_settings(
         vol.Required("vacuum_entity"): str,
     }
 )
-@websocket_api.require_admin
 @websocket_api.async_response
 async def _ws_reset_tank(
     hass: HomeAssistant,
@@ -111,7 +111,6 @@ async def _ws_reset_tank(
         vol.Required("tag"): str,
     }
 )
-@websocket_api.require_admin
 @websocket_api.async_response
 async def _ws_dismiss_intro(
     hass: HomeAssistant,

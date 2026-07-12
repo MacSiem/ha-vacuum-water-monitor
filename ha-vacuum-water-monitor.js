@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.1.5 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.1.7 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -1289,6 +1289,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     let profile = {};
     if (config.brand_profile && BRAND_PROFILES[config.brand_profile]) {
       profile = { ...BRAND_PROFILES[config.brand_profile] };
+      // Profile defaults must never invent an entity id — only the user's
+      // explicit config or live discovery may name a vacuum_entity. A leaked
+      // profile default used to create a ghost "Vacuum" device (issue #1).
+      delete profile.vacuum_entity;
     }
 
     this._config = {
@@ -1312,9 +1316,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._activeTab = this._config.default_tab || 'water';
     try { localStorage.setItem('ha-tools-vacuum-water-monitor-settings', JSON.stringify({ _activeTab: this._activeTab, _activeDeviceIdx: this._activeDeviceIdx })); } catch(e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
     this._applyServerSettings();
-    const configuredDevices = this._configuredDevicesFromConfig();
+    const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
     if (configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices });
     this._ensureServerState();
+  }
+
+  // Drop config devices whose vacuum_entity does not exist in HA: persisting
+  // them would create ghost devices server-side (issue #1). Without hass we
+  // cannot verify, so defer — _ensureServerState() re-runs this with hass set.
+  _filterExistingVacuums(devices) {
+    if (!this._hass) return devices;
+    return devices.filter(d => !d.vacuum_entity || !!this._hass.states[d.vacuum_entity]);
   }
 
   getCardSize() { return 4; }
@@ -1335,7 +1347,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         };
         this._discoveredVacuums = (listed && listed.vacuums) || [];
         this._applyServerSettings();
-        const configuredDevices = this._configuredDevicesFromConfig();
+        const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
         if (configuredDevices.length) {
           const saved = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch: { configured_devices: configuredDevices } });
           if (saved && saved.settings) {
@@ -1432,9 +1444,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   static getStubConfig() {
+    // Keep the stub minimal: a brand_profile here used to leak the profile's
+    // default vacuum_entity into saved settings, creating a ghost device for
+    // every user who added the card from the UI picker (issue #1, v5.1.7).
     return {
-      title: 'Roborock S8 MaxV',
-      brand_profile: 'roborock_s8_maxv_ultra',
+      title: 'Vacuum Water Monitor',
       warning_threshold: 20,
       critical_threshold: 10,
     };
