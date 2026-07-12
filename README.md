@@ -151,6 +151,18 @@ warning_threshold: 20
 critical_threshold: 10
 ```
 
+### Extra sensor hooks
+
+These optional keys let you wire additional entities into the water accounting
+(used by both the card and the server-side integration):
+
+| Option | Example | What it does |
+|---|---|---|
+| `status_sensor` | `sensor.roborock_..._status` | Dedicated status entity used instead of the vacuum's `status` attribute (or its state). Drives mop-wash detection — every transition into a washing state adds one wash volume (default 150 mL) — and the "cleaning" check for area-based dosing. |
+| `mop_mode_entity` | `select.roborock_..._mop_mode` | Current mop mode (`fast` / `standard` / `deep`). Selects the per-m² usage rate (defaults: 4 / 6 / 9 mL/m²). Mode `off` disables area-based dosing entirely; `unavailable` or unset falls back to `standard`. |
+| `mop_intensity_entity` | `select.roborock_..._mop_intensity` | Current mop intensity / water level. Multiplies the usage rate (defaults: `low` ×0.8, `medium` ×1.0, `high` ×1.2, `max` ×1.3). Falls back to `medium` when unset or `unavailable`. |
+| `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. An `on` → `off` transition counts as "tank refilled" and resets the used-water counter automatically (60 s debounce between auto-resets). |
+
 ### Advanced — bring your own counter
 
 If you already maintain your own water counter (DIY template sensor or automation updating
