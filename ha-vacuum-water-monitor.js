@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.1.7 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.1.9 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -1074,9 +1074,7 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
     var node = el.shadowRoot && el.shadowRoot.querySelector('.intro-banner[data-intro="' + tag + '"]');
     if (node) node.remove();
   }
-  function injectAll() {
-    SPLIT_TAGS.forEach(function(tag){
-      deepFindAll(tag).forEach(function(el){
+  function injectInto(tag, el) {
         // panel_custom auto-init: HA assigns hass/panel/narrow but does not always call setConfig.
         if (typeof el.setConfig === 'function' && !el.config && !el._config) {
           try { el.setConfig({ type: 'custom:' + tag, title: tag }); } catch(e) {}
@@ -1126,7 +1124,23 @@ if (typeof window !== 'undefined' && !window.__haToolsSplitDonateInjector) {
           _donateTmp.innerHTML = DONATE_HTML;
           while (_donateTmp.firstChild) el.shadowRoot.appendChild(_donateTmp.firstChild);
         } catch(e) {}
-      });
+    // Anti-flicker: watch this card's own shadowRoot so a re-render (innerHTML wipe)
+    // re-injects the footer synchronously in the same microtask, before paint.
+    if (el.shadowRoot && !el.__haToolsReinjectObs) {
+      try {
+        el.__haToolsReinjectObs = new MutationObserver(function(){
+          if (el.__haToolsReinjecting) return;
+          el.__haToolsReinjecting = true;
+          try { injectInto(tag, el); } catch(e) {}
+          el.__haToolsReinjecting = false;
+        });
+        el.__haToolsReinjectObs.observe(el.shadowRoot, { childList: true });
+      } catch(e) {}
+    }
+  }
+  function injectAll() {
+    SPLIT_TAGS.forEach(function(tag){
+      deepFindAll(tag).forEach(function(el){ injectInto(tag, el); });
     });
   }
   // Run immediately, then aggressive MutationObserver for late mounts + view switches.
@@ -1502,9 +1516,34 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return true;
   }
 
-  _removeUserDevice(entityId) {
+  async _removeUserDevice(entityId) {
+    if (!this._hass) return;
+    const prev = this._userDevices;
     this._userDevices = this._userDevices.filter(d => d.vacuum_entity !== entityId);
-    this._saveUserDevices();
+    try {
+      const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/remove_user_device`, vacuum_entity: entityId });
+      if (result && result.settings) {
+        this._serverState.settings = result.settings;
+        this._applyServerSettings();
+      }
+      this._toast('Device removed');
+      this._render();
+    } catch (err) {
+      this._userDevices = prev;
+      console.error('[ha-vacuum-water-monitor] remove device failed:', err);
+      this._toast('Could not remove device: ' + ((err && err.message) || 'unknown error'), true);
+      this._render();
+    }
+  }
+
+  _toast(message, isError) {
+    try {
+      this.dispatchEvent(new CustomEvent('hass-notification', {
+        detail: { message: (isError ? '⚠️ ' : '') + message },
+        bubbles: true,
+        composed: true,
+      }));
+    } catch (e) {}
   }
 
   _upsertUserDevicePatch(device, patch) {

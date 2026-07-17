@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.1.9 (2026-07-18)
+
+- Fix (#4): removing a manually-added device now works even when it is the last one. The card used the generic settings patch, whose empty-list guard refused the write, so the device silently reappeared with no feedback. A dedicated remove command persists the deletion and the card shows a confirmation / error toast.
+- Fix (#3): the donate/support footer no longer flickers on state changes, tab switches, or view navigation — it is re-injected synchronously before paint.
+
 ## 5.1.8 (2026-07-17)
 
 - Fix (UI): responsive tab bar — tabs stretch to fill the card width and wrap on narrow layouts instead of being pinned to content width and clipped (shared HA Tools tab styling).

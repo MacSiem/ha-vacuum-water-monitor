@@ -84,6 +84,43 @@ async def _ws_set_settings(
 
 @websocket_api.websocket_command(
     {
+        vol.Required("type"): f"{DOMAIN}/remove_user_device",
+        vol.Required("vacuum_entity"): str,
+    }
+)
+@websocket_api.async_response
+async def _ws_remove_user_device(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Explicitly remove one manually-added device.
+
+    Uses async_replace_settings_key so removing the last device (an empty
+    list) is honored — the generic set_settings guard refuses empty-list
+    patches to protect against accidental frontend init writes, but an
+    explicit user delete is intentional.
+    """
+    storage = _storage(hass)
+    current = await storage.async_get_settings()
+    remaining = [
+        d
+        for d in (current.get("user_devices") or [])
+        if not (
+            isinstance(d, dict)
+            and d.get("vacuum_entity") == msg["vacuum_entity"]
+        )
+    ]
+    await storage.async_replace_settings_key("user_devices", remaining)
+    settings = await storage.async_get_settings()
+    _notify_store_updated(hass, {"settings": settings})
+    connection.send_result(
+        msg["id"], {"settings": settings, "removed": msg["vacuum_entity"]}
+    )
+
+
+@websocket_api.websocket_command(
+    {
         vol.Required("type"): f"{DOMAIN}/reset_tank",
         vol.Required("vacuum_entity"): str,
     }
@@ -134,6 +171,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_list_vacuums,
         _ws_get_state,
         _ws_set_settings,
+        _ws_remove_user_device,
         _ws_reset_tank,
         _ws_dismiss_intro,
     ):
