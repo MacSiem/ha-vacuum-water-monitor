@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.1.8 (2026-07-17)
+
+- Fix (UI): responsive tab bar — tabs stretch to fill the card width and wrap on narrow layouts instead of being pinned to content width and clipped (shared HA Tools tab styling).
+
 ## [5.1.7] - 2026-07-12
 
 Fixes for [#1](https://github.com/MacSiem/ha-vacuum-water-monitor/issues/1) and
