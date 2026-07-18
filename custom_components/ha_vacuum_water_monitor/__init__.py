@@ -64,8 +64,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_start_tick(hass, storage, entry.entry_id)
 
+    # Apply option changes immediately. Without this listener the OptionsFlow
+    # wrote the new thresholds to the entry but nothing re-read them, so they
+    # only took effect after a Home Assistant restart.
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+
     _LOGGER.debug("Vacuum Water Monitor set up (entry_id=%s)", entry.entry_id)
     return True
+
+
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Re-apply changed options immediately (no restart required)."""
+    bucket = hass.data.get(DOMAIN, {})
+    storage = bucket.get(DATA_STORAGE)
+    if storage is None:
+        return
+    option_patch = {
+        key: entry.options[key]
+        for key in (CONF_WARNING_THRESHOLD, CONF_CRITICAL_THRESHOLD)
+        if key in entry.options
+    }
+    if option_patch:
+        await storage.async_set_settings(option_patch)
+        _LOGGER.debug("Applied updated options: %s", sorted(option_patch))
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

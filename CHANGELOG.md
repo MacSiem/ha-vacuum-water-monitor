@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.1.11 (2026-07-18)
+
+- Fix: threshold changes made in the integration Options now apply immediately. The options flow saved them, but nothing re-read them, so they previously only took effect after a Home Assistant restart.
+
 ## 5.1.10 (2026-07-18)
 
 - Fix (UI): the small accent dot before section titles no longer detaches from the title text (it was pushed to the opposite edge by the header's flex space-between); it is now pinned next to the title.
