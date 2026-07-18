@@ -705,13 +705,14 @@ if (typeof window !== 'undefined' && !window.HAToolsBentoCSS) {
 /* ── Section headers ─────────────────────────── */
 .section-header, .section-title {
   display: flex; align-items: center; justify-content: space-between;
+  position: relative; padding-left: 12px;
   font-size: 12px; font-weight: 700; color: var(--bento-text-secondary);
   text-transform: uppercase; letter-spacing: 0.08em;
   margin: 16px 0 10px;
 }
 .section-header::before, .section-title::before {
   content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--bento-primary);
-  margin-right: 8px; flex-shrink: 0;
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%); flex-shrink: 0;
 }
 
 /* ── Loading / Empty / Info ──────────────────── */

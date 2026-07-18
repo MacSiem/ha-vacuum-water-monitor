@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.1.10 (2026-07-18)
+
+- Fix (UI): the small accent dot before section titles no longer detaches from the title text (it was pushed to the opposite edge by the header's flex space-between); it is now pinned next to the title.
+
 ## 5.1.9 (2026-07-18)
 
 - Fix (#4): removing a manually-added device now works even when it is the last one. The card used the generic settings patch, whose empty-list guard refused the write, so the device silently reappeared with no feedback. A dedicated remove command persists the deletion and the card shows a confirmation / error toast.
