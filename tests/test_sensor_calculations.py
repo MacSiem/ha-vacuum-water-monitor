@@ -53,6 +53,140 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(estimate["remaining_ml"], 1250)
         self.assertEqual(estimate["remaining_percent"], 50)
 
+    def test_entity_calibration_overrides_legacy_default(self) -> None:
+        settings = {
+            "custom_calibration": {
+                "vacuum.kitchen": {"tank_ml": 1800},
+                "vacuum.upstairs": {"tank_ml": 900},
+                "default": {"tank_ml": 3000},
+            }
+        }
+
+        kitchen = estimate_water_state(
+            {"vacuum_entity": "vacuum.kitchen"}, {"used_ml": 0}, settings
+        )
+        upstairs = estimate_water_state(
+            {"vacuum_entity": "vacuum.upstairs"}, {"used_ml": 0}, settings
+        )
+
+        self.assertEqual(kitchen["total_ml"], 1800)
+        self.assertEqual(upstairs["total_ml"], 900)
+
+    def test_configured_device_overrides_duplicate_user_device(self) -> None:
+        devices = build_vacuum_devices(
+            {
+                "user_devices": [
+                    {
+                        "vacuum_entity": "vacuum.kitchen",
+                        "water_total_ml": 3000,
+                        "water_total_source": "profile",
+                        "reset_door_sensor": "binary_sensor.kitchen_tank_door",
+                    }
+                ],
+                "configured_devices": [
+                    {
+                        "vacuum_entity": "vacuum.kitchen",
+                        "water_total_ml": 2750,
+                        "water_total_source": "config",
+                    }
+                ],
+            },
+            {},
+        )
+
+        self.assertEqual(len(devices), 1)
+        self.assertEqual(devices[0]["water_total_ml"], 2750)
+        self.assertEqual(devices[0]["water_total_source"], "config")
+        self.assertEqual(
+            devices[0]["reset_door_sensor"],
+            "binary_sensor.kitchen_tank_door",
+        )
+
+    def test_entity_calibration_overrides_profile_default_not_explicit_yaml(self) -> None:
+        settings = {
+            "custom_calibration": {
+                "vacuum.roborock_s8_maxv_ultra": {"tank_ml": 4321}
+            }
+        }
+
+        profiled = estimate_water_state(
+            {
+                "vacuum_entity": "vacuum.roborock_s8_maxv_ultra",
+                "brand_profile": "roborock_s8_maxv_ultra",
+                "water_total_ml": 3000,
+                "water_total_source": "profile",
+            },
+            {"used_ml": 0},
+            settings,
+        )
+        explicit = estimate_water_state(
+            {
+                "vacuum_entity": "vacuum.roborock_s8_maxv_ultra",
+                "brand_profile": "roborock_s8_maxv_ultra",
+                "water_total_ml": 2750,
+                "water_total_source": "config",
+            },
+            {"used_ml": 0},
+            settings,
+        )
+
+        self.assertEqual(profiled["total_ml"], 4321)
+        self.assertEqual(explicit["total_ml"], 2750)
+
+    def test_legacy_configured_capacity_does_not_inherit_user_profile_source(self) -> None:
+        devices = build_vacuum_devices(
+            {
+                "user_devices": [
+                    {
+                        "vacuum_entity": "vacuum.unknown",
+                        "water_total_ml": 3000,
+                        "water_total_source": "profile",
+                    }
+                ],
+                "configured_devices": [
+                    {
+                        "vacuum_entity": "vacuum.unknown",
+                        "water_total_ml": 2750,
+                    }
+                ],
+                "custom_calibration": {"default": {"tank_ml": 999}},
+            },
+            {},
+        )
+
+        self.assertNotIn("water_total_source", devices[0])
+        estimate = estimate_water_state(
+            devices[0],
+            {"used_ml": 0},
+            {"custom_calibration": {"default": {"tank_ml": 999}}},
+        )
+        self.assertEqual(estimate["total_ml"], 2750)
+
+    def test_legacy_unmarked_explicit_capacity_remains_authoritative(self) -> None:
+        estimate = estimate_water_state(
+            {
+                "vacuum_entity": "vacuum.unknown",
+                "water_total_ml": 2750,
+            },
+            {"used_ml": 0},
+            {"custom_calibration": {"default": {"tank_ml": 999}}},
+        )
+
+        self.assertEqual(estimate["total_ml"], 2750)
+
+    def test_legacy_profile_calibration_is_inferred_from_entity_id(self) -> None:
+        estimate = estimate_water_state(
+            {"vacuum_entity": "vacuum.roborock_s8_maxv_ultra"},
+            {"used_ml": 0},
+            {
+                "custom_calibration": {
+                    "roborock_s8_maxv_ultra": {"tank_ml": 4321}
+                }
+            },
+        )
+
+        self.assertEqual(estimate["total_ml"], 4321)
+
     def test_estimate_water_state_returns_unknown_without_capacity(self) -> None:
         estimate = estimate_water_state(
             {"vacuum_entity": "vacuum.unknown"},
@@ -160,8 +294,8 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         )
 
         by_entity = {device["vacuum_entity"]: device for device in devices}
-        self.assertEqual(by_entity["vacuum.roborock"]["name"], "Card Roborock")
-        self.assertEqual(by_entity["vacuum.roborock"]["water_total_ml"], 3500)
+        self.assertEqual(by_entity["vacuum.roborock"]["name"], "YAML Roborock")
+        self.assertEqual(by_entity["vacuum.roborock"]["water_total_ml"], 3000)
         self.assertEqual(by_entity["vacuum.legacy"]["name"], "vacuum.legacy")
         self.assertEqual(by_entity["vacuum.discovered"]["name"], "Discovered")
 

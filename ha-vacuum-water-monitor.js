@@ -1181,6 +1181,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._hass = null;
     this._config = {};
+    this._rawConfig = {};
     this._lastRenderTime = 0;
     this._renderScheduled = false;
     this._firstRender = true;
@@ -1190,11 +1191,18 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._userDevices = []; // user-added devices from HA Store
     this._refillConfig = {}; // refill method config from HA Store
     this._lastHtml = ''; // cache to prevent unnecessary DOM updates
+    this._renderedContextKey = '';
     this._serverState = { settings: {}, tank_states: {} };
     this._discoveredVacuums = [];
     this._serverReady = false;
     this._serverLoadPromise = null;
+    this._serverSubscribePromise = null;
+    this._serverRecoveryPromise = null;
+    this._serverNeedsRecovery = false;
     this._serverUnsub = null;
+    this._serverConnection = null;
+    this._serverConnectionReadyHandler = null;
+    this._serverConnectionGeneration = 0;
   }
 
   set hass(hass) {
@@ -1211,44 +1219,30 @@ class HAVacuumWaterMonitor extends HTMLElement {
     } catch (e) {}
     if (hass?.language) this._lang = hass.language.startsWith('pl') ? 'pl' : 'en';
     this._hass = hass;
+    this._bindServerConnection(hass && hass.connection);
     if (!hass) return;
 
     this._ensureServerState();
 
-    // Gate ONLY the periodic hass-driven refresh: server Store changes render
-    // independently via _ensureServerState(), and UI/tab actions call _render()
-    // directly. Skipping when no vacuum.* state changed avoids a full DOM
-    // rebuild (and scroll/focus loss) every 10s while nothing is happening.
-    const sig = this._hassSignature(hass);
-    if (!this._firstRender && sig === this._lastHassSig) return;
-
+    // Home Assistant can update any configured helper sensor or a vacuum
+    // attribute without changing the vacuum's state string. Throttle the HTML
+    // calculation, but let every hass update participate; _render() keeps the
+    // existing DOM when the visible HTML is unchanged.
     const now = Date.now();
     if (!this._firstRender && now - this._lastRenderTime < 10000) {
       if (!this._renderScheduled) {
         this._renderScheduled = true;
         setTimeout(() => {
           this._renderScheduled = false;
-          this._lastHassSig = this._hassSignature(this._hass);
-          this._render();
+          this._render(true);
           this._lastRenderTime = Date.now();
         }, 10000 - (now - this._lastRenderTime));
       }
       return;
     }
     this._firstRender = false;
-    this._lastHassSig = sig;
-    this._render();
+    this._render(true);
     this._lastRenderTime = now;
-  }
-
-  _hassSignature(hass) {
-    if (!hass || !hass.states) return '';
-    let s = '';
-    const st = hass.states;
-    for (const id in st) {
-      if (id.startsWith('vacuum.')) s += id + '=' + st[id].state + ';';
-    }
-    return s;
   }
 
   get _t() {
@@ -1299,6 +1293,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   setConfig(config) {
     if (!config) throw new Error('Configuration required');
+    this._rawConfig = config;
 
     // Apply brand profile if specified
     let profile = {};
@@ -1334,6 +1329,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
     if (configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices });
     this._ensureServerState();
+    // Once Store hydration is one-shot, config changes no longer get an
+    // incidental render from _ensureServerState(). Render them directly.
+    if (this._hass) this._render(true);
   }
 
   // Drop config devices whose vacuum_entity does not exist in HA: persisting
@@ -1348,14 +1346,79 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   getGridOptions() { return { rows: 8, columns: 12, min_rows: 3, min_columns: 6 }; }
 
+  _bindServerConnection(connection) {
+    if (connection === this._serverConnection) return;
+    this._unbindServerConnection();
+    this._serverConnection = connection || null;
+    if (!connection) return;
+
+    if (this._serverReady) this._serverNeedsRecovery = true;
+    if (typeof connection.addEventListener === 'function') {
+      this._serverConnectionReadyHandler = () => {
+        if (connection !== this._serverConnection || !this._serverReady) return;
+        // Event subscriptions are restored automatically by HA, but events
+        // emitted while offline are not replayed. Take one full catch-up
+        // snapshot whenever the WebSocket becomes ready again.
+        this._serverNeedsRecovery = true;
+        this._recoverServerSubscription();
+      };
+      connection.addEventListener('ready', this._serverConnectionReadyHandler);
+    }
+  }
+
+  _unbindServerConnection() {
+    this._serverConnectionGeneration += 1;
+    const connection = this._serverConnection;
+    if (connection && this._serverConnectionReadyHandler && typeof connection.removeEventListener === 'function') {
+      connection.removeEventListener('ready', this._serverConnectionReadyHandler);
+    }
+    this._serverConnectionReadyHandler = null;
+    this._serverConnection = null;
+    this._releaseServerSubscription(this._serverUnsub);
+    this._serverUnsub = null;
+    this._serverLoadPromise = null;
+    this._serverSubscribePromise = null;
+    this._serverRecoveryPromise = null;
+    if (this._serverReady) this._serverNeedsRecovery = true;
+  }
+
+  _releaseServerSubscription(unsub) {
+    if (typeof unsub !== 'function') return;
+    try {
+      Promise.resolve(unsub()).catch((err) => {
+        console.debug('[ha-vacuum-water-monitor] unsubscribe failed:', err);
+      });
+    } catch (err) {
+      console.debug('[ha-vacuum-water-monitor] unsubscribe failed:', err);
+    }
+  }
+
   async _ensureServerState() {
+    // `hass` is assigned for every Home Assistant state update. Hydrate once
+    // and rely on the event subscription below for subsequent Store changes;
+    // otherwise every assignment replaces the whole shadow DOM and destroys
+    // whichever form control the user is editing (issue #8).
     if (!this._hass || this._serverLoadPromise) return this._serverLoadPromise;
-    this._serverLoadPromise = (async () => {
+    if (this._serverReady) {
+      // If the initial subscription failed, subscribe first and then take one
+      // recovery snapshot so Store events from the gap cannot be lost.
+      return this._recoverServerSubscription();
+    }
+    const loadConnection = this._serverConnection;
+    const loadGeneration = this._serverConnectionGeneration;
+    const loadHass = this._hass;
+    const pending = (async () => {
       try {
+        // Establish the event stream before reading the snapshot. WebSocket
+        // message ordering then closes the usual subscribe/snapshot race.
+        const unsub = await this._subscribeServerEvents();
+        if (loadConnection !== this._serverConnection || loadGeneration !== this._serverConnectionGeneration) return;
+        this._serverNeedsRecovery = !unsub;
         const [state, listed] = await Promise.all([
-          this._hass.callWS({ type: `${VWM_DOMAIN}/get_state` }),
-          this._hass.callWS({ type: `${VWM_DOMAIN}/list_vacuums` }),
+          loadHass.callWS({ type: `${VWM_DOMAIN}/get_state` }),
+          loadHass.callWS({ type: `${VWM_DOMAIN}/list_vacuums` }),
         ]);
+        if (loadConnection !== this._serverConnection || loadGeneration !== this._serverConnectionGeneration) return;
         this._serverState = {
           settings: (state && state.settings) || {},
           tank_states: (state && state.tank_states) || {},
@@ -1364,29 +1427,75 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._applyServerSettings();
         const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
         if (configuredDevices.length) {
-          const saved = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch: { configured_devices: configuredDevices } });
-          if (saved && saved.settings) {
-            this._serverState.settings = saved.settings;
-            this._applyServerSettings();
+          try {
+            const saved = await loadHass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch: { configured_devices: configuredDevices } });
+            if (loadConnection !== this._serverConnection || loadGeneration !== this._serverConnectionGeneration) return;
+            if (saved && saved.settings) {
+              this._serverState.settings = saved.settings;
+              this._applyServerSettings();
+            }
+          } catch (err) {
+            // Persisting optional card config must not turn a successful
+            // snapshot/subscription into an endless hydration retry loop.
+            console.warn('[ha-vacuum-water-monitor] configured device sync failed:', err);
           }
+          if (loadConnection !== this._serverConnection || loadGeneration !== this._serverConnectionGeneration) return;
         }
-        this._subscribeServerEvents();
         this._serverReady = true;
-        this._lastHtml = '';
-        this._render();
+        this._render(true);
       } catch (err) {
         console.error('[ha-vacuum-water-monitor] server state load failed:', err);
       } finally {
-        this._serverLoadPromise = null;
+        if (this._serverLoadPromise === pending) this._serverLoadPromise = null;
+        if ((loadConnection !== this._serverConnection || loadGeneration !== this._serverConnectionGeneration) && this.isConnected && this._hass) {
+          Promise.resolve().then(() => this._ensureServerState());
+        }
       }
     })();
-    return this._serverLoadPromise;
+    this._serverLoadPromise = pending;
+    return pending;
+  }
+
+  _recoverServerSubscription() {
+    if (this._serverUnsub && !this._serverNeedsRecovery) return Promise.resolve(this._serverUnsub);
+    if (this._serverRecoveryPromise) return this._serverRecoveryPromise;
+    const connection = this._serverConnection;
+    const generation = this._serverConnectionGeneration;
+    const pending = (async () => {
+      const unsub = this._serverUnsub || await this._subscribeServerEvents();
+      if (!unsub || !this._hass || connection !== this._serverConnection || generation !== this._serverConnectionGeneration) return null;
+      if (!this._serverNeedsRecovery) return unsub;
+      try {
+        const state = await this._hass.callWS({ type: `${VWM_DOMAIN}/get_state` });
+        if (connection !== this._serverConnection || generation !== this._serverConnectionGeneration) return null;
+        this._serverState = {
+          settings: (state && state.settings) || {},
+          tank_states: (state && state.tank_states) || {},
+        };
+        this._applyServerSettings();
+        this._serverNeedsRecovery = false;
+        this._render(true);
+      } catch (err) {
+        console.debug('[ha-vacuum-water-monitor] recovery snapshot failed:', err);
+      }
+      return unsub;
+    })();
+    this._serverRecoveryPromise = pending;
+    pending.finally(() => {
+      if (this._serverRecoveryPromise === pending) this._serverRecoveryPromise = null;
+    });
+    return pending;
   }
 
   _subscribeServerEvents() {
-    if (this._serverUnsub || !this._hass?.connection?.subscribeEvents) return;
-    this._hass.connection.subscribeEvents((event) => {
-      const data = (event && event.data) || {};
+    if (this._serverUnsub) return Promise.resolve(this._serverUnsub);
+    if (this._serverSubscribePromise) return this._serverSubscribePromise;
+    const connection = this._serverConnection || this._hass?.connection;
+    const generation = this._serverConnectionGeneration;
+    if (!connection) return Promise.resolve(null);
+    const handleUpdate = (event) => {
+      if (connection !== this._serverConnection || generation !== this._serverConnectionGeneration) return;
+      const data = (event && event.data) || event || {};
       if (data.settings) {
         this._serverState.settings = data.settings;
         this._applyServerSettings();
@@ -1397,22 +1506,100 @@ class HAVacuumWaterMonitor extends HTMLElement {
           ...data.tank_states,
         };
       }
-      this._lastHtml = '';
-      this._render();
-    }, VWM_EVENT).then((unsub) => { this._serverUnsub = unsub; }).catch((err) => {
+      // Let the HTML cache keep the current DOM when an event does not affect
+      // the visible tab. This preserves in-progress form values and focus.
+      this._render(true);
+    };
+    const subscribe = () => {
+      if (typeof connection.subscribeMessage === 'function') {
+        return connection.subscribeMessage(handleUpdate, { type: `${VWM_DOMAIN}/subscribe_state` });
+      }
+      if (typeof connection.subscribeEvents === 'function') {
+        return connection.subscribeEvents(handleUpdate, VWM_EVENT);
+      }
+      return null;
+    };
+    const pending = Promise.resolve().then(subscribe).then((unsub) => {
+      if (connection !== this._serverConnection || generation !== this._serverConnectionGeneration) {
+        this._releaseServerSubscription(unsub);
+        return null;
+      }
+      this._serverUnsub = unsub;
+      return unsub;
+    }).catch((err) => {
       console.debug('[ha-vacuum-water-monitor] event subscription failed:', err);
+      return null;
     });
+    this._serverSubscribePromise = pending;
+    pending.finally(() => {
+      if (this._serverSubscribePromise === pending) this._serverSubscribePromise = null;
+    });
+    return pending;
   }
 
   _applyServerSettings() {
     const settings = (this._serverState && this._serverState.settings) || {};
-    this._maintenanceItems = Array.isArray(settings.maintenance_items) ? [...settings.maintenance_items] : [];
-    this._userDevices = Array.isArray(settings.user_devices) ? [...settings.user_devices] : [];
-    this._refillConfig = settings.refill_config && typeof settings.refill_config === 'object' ? { ...settings.refill_config } : {};
-    const custom = settings.custom_calibration || {};
-    this._customCalib = custom[this._config?.brand_profile || 'default'] || null;
-    if (settings.warning_threshold && this._config.warning_threshold == null) this._config.warning_threshold = settings.warning_threshold;
-    if (settings.critical_threshold && this._config.critical_threshold == null) this._config.critical_threshold = settings.critical_threshold;
+    this._maintenanceItems = Array.isArray(settings.maintenance_items)
+      ? settings.maintenance_items.filter((item) => item && typeof item === 'object' && !Array.isArray(item)).map((item) => ({ ...item }))
+      : [];
+    this._userDevices = Array.isArray(settings.user_devices)
+      ? settings.user_devices.filter((item) => item && typeof item === 'object' && !Array.isArray(item)).map((item) => ({ ...item }))
+      : [];
+    this._refillConfig = settings.refill_config && typeof settings.refill_config === 'object' && !Array.isArray(settings.refill_config)
+      ? { ...settings.refill_config }
+      : {};
+    const rawConfig = this._rawConfig || {};
+    if (!Object.prototype.hasOwnProperty.call(rawConfig, 'warning_threshold') && settings.warning_threshold != null) {
+      this._config.warning_threshold = settings.warning_threshold;
+    }
+    if (!Object.prototype.hasOwnProperty.call(rawConfig, 'critical_threshold') && settings.critical_threshold != null) {
+      this._config.critical_threshold = settings.critical_threshold;
+    }
+  }
+
+  _customCalibrationKey(device) {
+    const entity = String((device && device.vacuum_entity) || '').trim();
+    if (entity) return entity;
+    return (device && (device.brand_profile || this._resolveProfileKey(device))) || this._config?.brand_profile || 'default';
+  }
+
+  _sanitizeCustomCalibration(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const result = {};
+    ['tank_ml', 'robot_tank_ml', 'mop_wash_ml', 'avg_area_per_charge'].forEach((field) => {
+      const number = Number(value[field]);
+      if (Number.isFinite(number) && number > 0) result[field] = number;
+    });
+    if (value.water_per_m2 && typeof value.water_per_m2 === 'object' && !Array.isArray(value.water_per_m2)) {
+      const modes = {};
+      Object.entries(value.water_per_m2).forEach(([name, raw]) => {
+        const number = Number(raw);
+        const safeName = String(name).trim().slice(0, 64);
+        if (safeName && Number.isFinite(number) && number > 0) modes[safeName] = number;
+      });
+      if (Object.keys(modes).length) {
+        result.water_per_m2 = modes;
+        result.mop_modes = modes;
+      }
+    }
+    return Object.keys(result).length ? result : null;
+  }
+
+  _getCustomCalibration(device) {
+    const all = (this._serverState && this._serverState.settings && this._serverState.settings.custom_calibration) || {};
+    if (!all || typeof all !== 'object' || Array.isArray(all)) return null;
+    const keys = [
+      device && device.vacuum_entity,
+      device && device.brand_profile,
+      device && this._resolveProfileKey(device),
+      this._config?.brand_profile,
+      'default',
+    ].filter((key, index, items) => key && items.indexOf(key) === index);
+    for (const key of keys) {
+      const calibration = this._sanitizeCustomCalibration(all[key]);
+      if (calibration) return calibration;
+    }
+    return null;
   }
 
   async _saveServerSettings(patch) {
@@ -1434,10 +1621,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!this._config) return [];
     if (this._config.devices && Array.isArray(this._config.devices)) {
       return this._config.devices.map(d => {
+        let device = d;
         if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-          return { ...BRAND_PROFILES[d.brand_profile], ...d };
+          device = { ...BRAND_PROFILES[d.brand_profile], ...d };
         }
-        return d;
+        if (Object.prototype.hasOwnProperty.call(d, 'water_total_ml')) {
+          return { ...device, water_total_source: 'config' };
+        }
+        if (d.brand_profile && Object.prototype.hasOwnProperty.call(BRAND_PROFILES[d.brand_profile] || {}, 'water_total_ml')) {
+          return { ...device, water_total_source: 'profile' };
+        }
+        return device;
       });
     }
     const single = {};
@@ -1454,6 +1648,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     ];
     keys.forEach(k => { if (this._config[k] != null) single[k] = this._config[k]; });
     if (!Object.keys(single).length || !single.vacuum_entity) return [];
+    if (Object.prototype.hasOwnProperty.call(this._rawConfig || {}, 'water_total_ml')) {
+      single.water_total_source = 'config';
+    } else if (this._config.brand_profile && Object.prototype.hasOwnProperty.call(BRAND_PROFILES[this._config.brand_profile] || {}, 'water_total_ml')) {
+      single.water_total_source = 'profile';
+    }
     single.name = single.device_name || this._config.device_name || 'Vacuum';
     return [single];
   }
@@ -1464,8 +1663,6 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // every user who added the card from the UI picker (issue #1, v5.1.7).
     return {
       title: 'Vacuum Water Monitor',
-      warning_threshold: 20,
-      critical_threshold: 10,
     };
   }
 
@@ -1506,13 +1703,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
         break;
       }
     }
-    this._userDevices.push({
+    const addedDevice = {
       vacuum_entity: entityId,
       name: profile.label || name,
       icon: profile.icon || '\uD83E\uDD16',
       ...profile,
       vacuum_entity: entityId, // ensure user's actual entity_id wins over profile default
-    });
+    };
+    if (Object.prototype.hasOwnProperty.call(profile, 'water_total_ml')) {
+      addedDevice.water_total_source = 'profile';
+    }
+    this._userDevices.push(addedDevice);
     this._saveUserDevices();
     return true;
   }
@@ -1762,10 +1963,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (this._config.devices && Array.isArray(this._config.devices)) {
       return this._config.devices.map(d => {
         // Apply brand profile if each device specifies one
+        let device = d;
         if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-          return { ...BRAND_PROFILES[d.brand_profile], ...d };
+          device = { ...BRAND_PROFILES[d.brand_profile], ...d };
         }
-        return d;
+        if (Object.prototype.hasOwnProperty.call(d, 'water_total_ml')) {
+          return { ...device, water_total_source: 'config' };
+        }
+        if (d.brand_profile && Object.prototype.hasOwnProperty.call(BRAND_PROFILES[d.brand_profile] || {}, 'water_total_ml')) {
+          return { ...device, water_total_source: 'profile' };
+        }
+        return device;
       });
     }
     // Single device mode
@@ -1783,7 +1991,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (Object.keys(single).length === 0) {
       const serverDevices = (this._userDevices && this._userDevices.length)
         ? this._userDevices
-        : (this._discoveredVacuums || []).map(v => ({
+        : this._autoDiscoverVacuums().map(v => ({
             vacuum_entity: v.entity_id,
             name: v.name || v.entity_id,
             icon: '\uD83E\uDD16',
@@ -1794,6 +2002,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
         }
         return d;
       });
+    }
+    if (Object.prototype.hasOwnProperty.call(this._rawConfig || {}, 'water_total_ml')) {
+      single.water_total_source = 'config';
+    } else if (this._config.brand_profile && Object.prototype.hasOwnProperty.call(BRAND_PROFILES[this._config.brand_profile] || {}, 'water_total_ml')) {
+      single.water_total_source = 'profile';
     }
     single.name = single.device_name || this._config.device_name || 'Vacuum';
     // Merge config single device + user-added devices
@@ -1810,8 +2023,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // (Matter dedup) for the heuristic — when one robot is exposed via both the
   // native vendor integration and a Matter bridge, prefer the native entity.
   _autoDiscoverVacuums() {
-    if (this._discoveredVacuums && this._discoveredVacuums.length) return this._discoveredVacuums;
-    if (!this._hass) return [];
+    // Prefer live HA state so entities added or removed after the one-shot
+    // Store hydration appear immediately. The WS list is only a fallback.
+    if (!this._hass) return this._discoveredVacuums || [];
     const all = Object.values(this._hass.states)
       .filter(s => s.entity_id.startsWith('vacuum.'));
     const entityReg = this._hass.entities || {};
@@ -1848,7 +2062,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // Derive total water capacity: explicit config > calibration data > 0
     const profileKey = this._resolveProfileKey(device);
     const calib = profileKey ? (CALIBRATION_DATA[profileKey] || null) : null;
-    const totalMl = device.water_total_ml || (calib ? calib.tank_ml : 0);
+    const customCalib = this._getCustomCalibration(device);
+    const rawDirectTotal = Number(device.water_total_ml);
+    const directTotal = Number.isFinite(rawDirectTotal) && rawDirectTotal > 0 ? rawDirectTotal : 0;
+    const customTotal = customCalib && customCalib.tank_ml;
+    // A raw YAML capacity is explicit and remains authoritative. Values merged
+    // from a built-in profile are defaults, so a per-device calibration can
+    // intentionally correct them.
+    const totalMl = device.water_total_source === 'config'
+      ? (directTotal || customTotal || (calib ? calib.tank_ml : 0))
+      : (customTotal || directTotal || (calib ? calib.tank_ml : 0));
     let remainingL = null, percentRemaining = null, usedMl = null;
 
     // The integration state machine populates usedMl when no live water sensor exists.
@@ -2028,7 +2251,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     // Refill button resets the integration's HA Store state.
     const refillBtn = (cfg.show_refill_button !== false)
-      ? `<button class="refill-btn" data-vacuum="${device.vacuum_entity || ''}">\uD83D\uDCA7 Refilled</button>` : '';
+      ? `<button class="refill-btn" data-vacuum="${_esc(String(device.vacuum_entity || ''))}">\uD83D\uDCA7 Refilled</button>` : '';
 
     const alertBanner = (data.waterEmpty || data.waterShortage)
       ? `<div class="alert-banner">\u26A0\uFE0F Water shortage! Please refill now.</div>`
@@ -2054,15 +2277,22 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // Mirror of the v4 plugin fix — see ha-vacuum-water-monitor.js commit
     // 6f6444a for rationale.
     const profileKey = (device && this._resolveProfileKey(device)) || cfg.brand_profile || 'generic';
-    const calib = typeof CALIBRATION_DATA !== 'undefined' ? CALIBRATION_DATA[profileKey] || CALIBRATION_DATA['generic'] : null;
+    const baseCalib = typeof CALIBRATION_DATA !== 'undefined' ? CALIBRATION_DATA[profileKey] || CALIBRATION_DATA['generic'] : null;
+    const customCalib = this._getCustomCalibration(device);
+    const calib = customCalib ? {
+      ...(baseCalib || {}),
+      ...customCalib,
+      label: baseCalib && profileKey !== 'generic' ? `${baseCalib.label} (custom)` : 'Custom',
+      water_per_m2: customCalib.water_per_m2 || (baseCalib && baseCalib.water_per_m2) || {},
+    } : baseCalib;
     if (calib) {
-      const levels = Object.entries(calib.water_per_m2).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${k}:</b> ${v} ml/m²</span>`).join('');
+      const levels = Object.entries(calib.water_per_m2).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${_esc(String(k))}:</b> ${_esc(String(v))} ml/m²</span>`).join('');
       const estArea = data.totalMl > 0 ? Math.round(data.totalMl / (calib.water_per_m2.medium || 10)) : calib.avg_area_per_charge;
       calibHtml = `
         <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
           <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 Calibration: ${calib.label}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
-            <div>🪣 Tank: <b>${calib.tank_ml} ml</b></div>
+            <div>🪣 Tank: <b>${data.totalMl || calib.tank_ml} ml</b></div>
             <div>🧹 Mop: <b>${calib.mop_type}</b></div>
             <div>📏 Est. area/charge: <b>~${calib.avg_area_per_charge} m²</b></div>
             <div>📏 Est. area/tank: <b>~${estArea} m²</b> (medium)</div>
@@ -2115,11 +2345,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const sensors = this._getDoorSensors();
 
     const buttonOpts = buttons.map(b =>
-      `<option value="${b.id}" ${rc.buttonEntity === b.id ? 'selected' : ''}>${b.name}</option>`
+      `<option value="${_esc(String(b.id || ''))}" ${rc.buttonEntity === b.id ? 'selected' : ''}>${_esc(String(b.name || ''))}</option>`
     ).join('');
 
     const sensorOpts = sensors.map(s =>
-      `<option value="${s.id}" ${rc.sensorEntity === s.id ? 'selected' : ''}>${s.name} (${s.state})</option>`
+      `<option value="${_esc(String(s.id || ''))}" ${rc.sensorEntity === s.id ? 'selected' : ''}>${_esc(String(s.name || ''))} (${_esc(String(s.state || ''))})</option>`
     ).join('');
 
     const methodStyle = 'margin-bottom:10px;padding:12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)';
@@ -2225,6 +2455,19 @@ class HAVacuumWaterMonitor extends HTMLElement {
       dock_brush:    300,
       dock_strainer: 200,
     };
+    const savedCalibration = this._getCustomCalibration(device) || {};
+    const calibrationValue = (field) => {
+      const value = savedCalibration[field];
+      return value == null ? '' : _esc(String(value));
+    };
+    const savedModeRows = Object.entries(savedCalibration.water_per_m2 || {});
+    while (savedModeRows.length < 3) savedModeRows.push(['', '']);
+    const modePlaceholders = ['e.g. low', 'e.g. medium', 'e.g. high'];
+    const customModeRows = savedModeRows.map(([name, value], index) => `
+      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
+        <input type="text" data-vwm-draft placeholder="${modePlaceholders[index] || 'e.g. custom'}" value="${_esc(String(name || ''))}" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name">
+        <input type="number" data-vwm-draft placeholder="ml/m\u00B2" value="${value === '' ? '' : _esc(String(value))}" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val">
+      </div>`).join('');
 
     // Helper: resolve life % remaining for a consumable.
     // Tries sensor's own `max` attribute first, then falls back to CON_MAX_H default.
@@ -2293,7 +2536,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         color = '#6b7280';
       }
       return `<div class="custom-maint-row" data-idx="${idx}">
-        <span class="con-label">${item.icon || '\uD83D\uDD27'} ${_esc(this._sanitize(item.name))}</span>
+        <span class="con-label">${_esc(String(item.icon || '\uD83D\uDD27'))} ${_esc(this._sanitize(item.name))}</span>
         <span class="con-val" style="color:${color}">${statusText}</span>
         <button class="maint-done-btn" data-idx="${idx}" title="Mark as done today">\u2705</button>
         <button class="maint-del-btn" data-idx="${idx}" title="Delete">\uD83D\uDDD1\uFE0F</button>
@@ -2308,9 +2551,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <div class="section-block">
           <div class="section-title">\u2795 Add Maintenance Item</div>
           <div class="add-maint-form">
-            <input class="maint-input" id="maint-name" placeholder="Name (e.g. Clean sensors)" type="text"/>
-            <input class="maint-input maint-days" id="maint-days" placeholder="Every N days" type="number" min="1" max="365"/>
-            <select class="maint-input maint-icon" id="maint-icon">
+            <input class="maint-input" id="maint-name" data-vwm-draft placeholder="Name (e.g. Clean sensors)" type="text"/>
+            <input class="maint-input maint-days" id="maint-days" data-vwm-draft placeholder="Every N days" type="number" min="1" max="365"/>
+            <select class="maint-input maint-icon" id="maint-icon" data-vwm-draft>
               <option value="\uD83D\uDD27">\uD83D\uDD27 Wrench</option>
               <option value="\uD83E\uDDF9">\uD83E\uDDF9 Brush</option>
               <option value="\uD83D\uDCA7">\uD83D\uDCA7 Water</option>
@@ -2326,42 +2569,31 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div class="section-title" style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
             \u2699\uFE0F Custom calibration values <span style="font-size:10px;color:var(--bento-text-muted);font-weight:400">(click to expand)</span>
           </div>
-          <div style="display:none;margin-top:8px">
+          <div id="vwm-custom-calibration-body" data-vwm-preserve-display style="display:none;margin-top:8px">
             <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
-              If your robot is not on the list or you want to correct values — enter your own data. They will be saved in browser memory.
+              If your robot is not on the list or you want to correct values — enter your own data. They will be saved in Home Assistant.
             </div>
             <div id="vwm-custom-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 Dock tank (ml)
-                <input type="number" id="vwm-custom-tank" placeholder="e.g. 3000" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                <input type="number" id="vwm-custom-tank" data-vwm-draft placeholder="e.g. 3000" value="${calibrationValue('tank_ml')}" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 Robot tank (ml)
-                <input type="number" id="vwm-custom-robot-tank" placeholder="e.g. 350" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                <input type="number" id="vwm-custom-robot-tank" data-vwm-draft placeholder="e.g. 350" value="${calibrationValue('robot_tank_ml')}" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 Mop washing (ml/cycle)
-                <input type="number" id="vwm-custom-wash" placeholder="e.g. 150" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                <input type="number" id="vwm-custom-wash" data-vwm-draft placeholder="e.g. 150" value="${calibrationValue('mop_wash_ml')}" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
-                Coverage / charge (m\u00B2)                <input type="number" id="vwm-custom-area" placeholder="e.g. 250" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                Coverage / charge (m\u00B2)                <input type="number" id="vwm-custom-area" data-vwm-draft placeholder="e.g. 250" value="${calibrationValue('avg_area_per_charge')}" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
             </div>
             <div style="margin-top:10px">
               <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:6px">Mopping modes — mode name and ml/m\u00B2 usage:</div>
               <div id="vwm-custom-modes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">
-                <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
-                  <input type="text" placeholder="np. low" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name">
-                  <input type="number" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val">
-                </div>
-                <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
-                  <input type="text" placeholder="np. medium" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name">
-                  <input type="number" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val">
-                </div>
-                <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
-                  <input type="text" placeholder="np. high" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name">
-                  <input type="number" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val">
-                </div>
+                ${customModeRows}
               </div>
               <div style="margin-top:6px;text-align:right">
                 <button onclick="this.getRootNode().host._addCustomMode()" style="padding:4px 10px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:10px;cursor:pointer">+ Add mode</button>
@@ -2427,9 +2659,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return `<div class="session-row">
         <div class="session-date">${label} <span class="session-time">${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</span></div>
         <div class="session-stats">
-          ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${s.area} m\u00B2</span>` : ''}
-          ${s.water ? `<span class="session-stat">\uD83D\uDCA7 ${s.water} ml</span>` : ''}
-          ${s.duration ? `<span class="session-stat">\u23F1\uFE0F ${s.duration}</span>` : ''}
+          ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${_esc(String(s.area))} m\u00B2</span>` : ''}
+          ${s.water ? `<span class="session-stat">\uD83D\uDCA7 ${_esc(String(s.water))} ml</span>` : ''}
+          ${s.duration ? `<span class="session-stat">\u23F1\uFE0F ${_esc(String(s.duration))}</span>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -2445,9 +2677,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <div class="section-block">
           <div class="section-title">\u270F\uFE0F Log Manual Session</div>
           <div class="add-maint-form">
-            <input class="maint-input" id="hist-area" placeholder="Area m\u00B2" type="number" min="0"/>
-            <input class="maint-input maint-days" id="hist-water" placeholder="Water ml" type="number" min="0"/>
-            <input class="maint-input maint-days" id="hist-duration" placeholder="Duration (e.g. 45m)" type="text"/>
+            <input class="maint-input" id="hist-area" data-vwm-draft placeholder="Area m\u00B2" type="number" min="0"/>
+            <input class="maint-input maint-days" id="hist-water" data-vwm-draft placeholder="Water ml" type="number" min="0"/>
+            <input class="maint-input maint-days" id="hist-duration" data-vwm-draft placeholder="Duration (e.g. 45m)" type="text"/>
             <button class="maint-add-btn" id="hist-log-btn">\u2795 Log</button>
           </div>
         </div>
@@ -2457,7 +2689,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
   _getSessionsFromStorage(device) {
     const key = (device && (device.vacuum_entity || device.name)) || 'default';
     const sessions = ((this._serverState.settings || {}).sessions || {})[key];
-    return Array.isArray(sessions) ? sessions : [];
+    return Array.isArray(sessions)
+      ? sessions.filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+      : [];
   }
 
   _saveSession(device, session) {
@@ -2479,7 +2713,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const status = this._getStatus(data, this._config);
       const pct = data.percentRemaining !== null ? Math.round(data.percentRemaining) : null;
       return `<div class="stats-row">
-        <span class="stats-device">${device.icon || '\uD83E\uDDA4'} ${_esc(this._sanitize(device.name || 'Vacuum'))}</span>
+        <span class="stats-device">${_esc(String(device.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</span>
         <span class="stats-status" style="color:${status.color}">${status.icon} ${status.label}</span>
         <span class="stats-pct" style="color:${status.color}">${pct !== null ? pct + '%' : '--'}</span>
       </div>`;
@@ -2543,27 +2777,35 @@ class HAVacuumWaterMonitor extends HTMLElement {
       custom.water_per_m2 = modes;
       custom.mop_modes = modes;
     }
-    if (Object.keys(custom).length === 0) return;
-    const key = this._config?.brand_profile || 'default';
+    const sanitized = this._sanitizeCustomCalibration(custom);
+    if (!sanitized) return;
+    const devices = this._getDevices();
+    const key = this._customCalibrationKey(devices[this._activeDeviceIdx] || devices[0]);
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
-    all[key] = custom;
-    this._customCalib = custom;
+    all[key] = sanitized;
     this._serverState.settings = { ...(this._serverState.settings || {}), custom_calibration: all };
     this._saveServerSettings({ custom_calibration: all });
-    this._lastHtml = '';
-    this._updateContent();
+    // The active tab has no derived calibration output to refresh. Keeping the
+    // DOM mounted leaves the form open and lets the success state stay visible.
     const btn = shadow.querySelector('[onclick*="saveCustom"]');
     if (btn) { const orig = btn.textContent; btn.textContent = '\u2705 Zapisano!'; setTimeout(() => btn.textContent = orig, 2000); }
   }
 
-  _clearCustomCalibration() {    const key = this._config?.brand_profile || 'default';
+  _clearCustomCalibration() {
+    const devices = this._getDevices();
+    const device = devices[this._activeDeviceIdx] || devices[0];
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
+    const preferredKey = this._customCalibrationKey(device);
+    const legacyKeys = [device && device.brand_profile, device && this._resolveProfileKey(device), this._config?.brand_profile, 'default'];
+    const key = Object.prototype.hasOwnProperty.call(all, preferredKey)
+      ? preferredKey
+      : legacyKeys.find((candidate) => candidate && Object.prototype.hasOwnProperty.call(all, candidate));
+    if (!key) return;
     delete all[key];
-    this._customCalib = null;
     this._serverState.settings = { ...(this._serverState.settings || {}), custom_calibration: all };
     this._saveServerSettings({ custom_calibration: all });
     this._lastHtml = '';
-    this._updateContent();
+    this._render();
   }
 
   _loadCustomCalibration() {
@@ -2574,8 +2816,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const container = this.shadowRoot.getElementById('vwm-custom-modes');
     if (!container) return;
     const div = document.createElement('div');
+    div.setAttribute('data-vwm-added-mode', '');
     div.style.cssText = 'display:flex;gap:4px;align-items:center';
-    div.innerHTML = '<input type="text" placeholder="tryb" style="flex:1;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name"><input type="number" placeholder="ml/m\u00B2" style="width:60px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val"><span onclick="this.parentElement.remove()" style="cursor:pointer;color:var(--bento-text-muted);font-size:14px">\u00D7</span>';
+    div.innerHTML = '<input type="text" data-vwm-draft placeholder="tryb" style="flex:1;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name"><input type="number" data-vwm-draft placeholder="ml/m\u00B2" style="width:60px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val"><span onclick="this.parentElement.remove()" style="cursor:pointer;color:var(--bento-text-muted);font-size:14px">\u00D7</span>';
     container.appendChild(div);
   }
   _buildDatabaseTab() {
@@ -2717,16 +2960,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const discoveredHtml = undiscovered.length > 0 ? `
       <div class="section-block">
         <div class="section-title">\uD83D\uDD0E Discovered vacuums (not configured)</div>
-        ${undiscovered.map(v => `<div class="disc-row" style="cursor:pointer" data-entity="${v.entity_id}">
+        ${undiscovered.map(v => `<div class="disc-row" style="cursor:pointer" data-entity="${_esc(String(v.entity_id || ''))}">
           <span class="disc-name">\uD83E\uDDA4 ${_esc(this._sanitize(v.name))}</span>
-          <span class="disc-id">${v.entity_id}</span>
-          <span class="disc-state" style="color:${v.state === 'cleaning' ? '#22c55e' : '#6b7280'}">${v.state}</span>
-          ${v.battery ? `<span class="disc-bat">\uD83D\uDD0B ${v.battery}%</span>` : ''}
-          <button class="maint-add-btn disc-add-btn" data-entity="${v.entity_id}" style="padding:3px 10px;font-size:11px">+ Add</button>
+          <span class="disc-id">${_esc(String(v.entity_id || ''))}</span>
+          <span class="disc-state" style="color:${v.state === 'cleaning' ? '#22c55e' : '#6b7280'}">${_esc(String(v.state || ''))}</span>
+          ${v.battery ? `<span class="disc-bat">\uD83D\uDD0B ${_esc(String(v.battery))}%</span>` : ''}
+          <button class="maint-add-btn disc-add-btn" data-entity="${_esc(String(v.entity_id || ''))}" style="padding:3px 10px;font-size:11px">+ Add</button>
         </div>`).join('')}
       </div>` : '';
 
-    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 Manually added</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${ud.icon || '\uD83E\uDDA4'} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="Remove">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
+    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 Manually added</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(String(ud.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(String(ud.vacuum_entity || ''))}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(String(ud.vacuum_entity || ''))}" title="Remove">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
 
     return `
       <div class="tab-content">
@@ -2749,7 +2992,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div class="section-block" style="margin-top:12px">
             <div class="section-title">Manual vacuum addition</div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
-              <input type="text" id="manual-vacuum-entity" placeholder="vacuum.roborock_s7" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--bento-border,#e2e8f0);border-radius:8px;font-size:13px;background:var(--bento-card,#fff);color:var(--bento-text,#1e293b)">
+              <input type="text" id="manual-vacuum-entity" data-vwm-draft placeholder="vacuum.roborock_s7" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--bento-border,#e2e8f0);border-radius:8px;font-size:13px;background:var(--bento-card,#fff);color:var(--bento-text,#1e293b)">
               <button class="btn-primary" id="btn-add-manual-vacuum" style="padding:8px 16px;white-space:nowrap">+ Add</button>
             </div>
             <p style="margin:6px 0 0;font-size:11px;color:var(--bento-text-secondary,#64748B)">Enter vacuum entity_id if auto-discovery didn't find it</p>
@@ -2782,10 +3025,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const sensors = this._getDoorSensors();
 
     const buttonOpts = buttons.map(b =>
-      `<option value="${b.id}" ${rc.buttonEntity === b.id ? 'selected' : ''}>${b.name}</option>`
+      `<option value="${_esc(String(b.id || ''))}" ${rc.buttonEntity === b.id ? 'selected' : ''}>${_esc(String(b.name || ''))}</option>`
     ).join('');
     const sensorOpts = sensors.map(s =>
-      `<option value="${s.id}" ${rc.sensorEntity === s.id ? 'selected' : ''}>${s.name} (${s.state})</option>`
+      `<option value="${_esc(String(s.id || ''))}" ${rc.sensorEntity === s.id ? 'selected' : ''}>${_esc(String(s.name || ''))} (${_esc(String(s.state || ''))})</option>`
     ).join('');
 
     const statusOk = '<span style="color:#22c55e;font-size:11px;font-weight:600">\u2705 Configured</span>';
@@ -2851,17 +3094,130 @@ class HAVacuumWaterMonitor extends HTMLElement {
   _buildDeviceTabs(devices) {
     if (devices.length <= 1) return '';
     return `<div class="device-tabs">
-      ${devices.map((d, i) => `<button class="dtab ${i === this._activeDeviceIdx ? 'dtab-active' : ''}" data-didx="${i}">${d.icon || '\uD83E\uDDA4'} ${_esc(this._sanitize(d.name || 'Device ' + (i+1)))}</button>`).join('')}
+      ${devices.map((d, i) => `<button class="dtab ${i === this._activeDeviceIdx ? 'dtab-active' : ''}" data-didx="${i}">${_esc(String(d.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(d.name || 'Device ' + (i+1)))}</button>`).join('')}
     </div>`;
   }
 
   // ── MAIN RENDER ───────────────────────────────────────────────────────────
 
-  _render() {
+  _renderContextKey() {
+    const devices = this._getDevices();
+    const device = devices[this._activeDeviceIdx] || devices[0] || {};
+    const deviceKey = device.vacuum_entity || device.name || '';
+    return `${this._activeTab}\u0000${deviceKey}`;
+  }
+
+  _captureRenderState() {
+    const sr = this.shadowRoot;
+    const active = sr && sr.activeElement;
+    const activeControl = active && active.matches && active.matches('input, select, textarea') ? active : null;
+    if (!sr) return null;
+
+    const controls = Array.from(sr.querySelectorAll('input, select, textarea'));
+    const occurrences = new Map();
+    const items = controls.map((control) => {
+      const base = control.id
+        ? `id:${control.id}`
+        : [control.localName, control.type || '', control.name || '', control.className || '', control.placeholder || ''].join('|');
+      const occurrence = occurrences.get(base) || 0;
+      occurrences.set(base, occurrence + 1);
+      const draft = control.hasAttribute('data-vwm-draft');
+      let dirty = false;
+      if (draft && control.localName === 'select') {
+        const options = Array.from(control.options || []);
+        const explicitDefault = options.findIndex((option) => option.defaultSelected);
+        dirty = control.selectedIndex !== (explicitDefault >= 0 ? explicitDefault : 0);
+      } else if (draft && (control.type === 'checkbox' || control.type === 'radio')) {
+        dirty = control.checked !== control.defaultChecked;
+      } else if (draft) {
+        dirty = control.value !== control.defaultValue;
+      }
+      return {
+        key: `${base}#${occurrence}`,
+        value: control.value,
+        checked: control.checked,
+        draft,
+        dirty,
+      };
+    });
+    const activeIndex = controls.indexOf(activeControl);
+    const preserveCustomModeCount = controls.some((control, index) =>
+      control.matches('.vwm-mode-name, .vwm-mode-val') && items[index].dirty
+    ) || Boolean(sr.querySelector('#vwm-custom-modes [data-vwm-added-mode]'));
+    const displays = Array.from(sr.querySelectorAll('[data-vwm-preserve-display][id]')).map((element) => ({
+      id: element.id,
+      display: element.style.display,
+    }));
+
+    return {
+      // Use the context that produced the mounted DOM. Store event handlers
+      // update the model before calling _render(), so recomputing here could
+      // already point at a different device.
+      contextKey: this._renderedContextKey,
+      items,
+      activeKey: activeIndex >= 0 ? items[activeIndex].key : null,
+      selectionStart: activeControl && typeof activeControl.selectionStart === 'number' ? activeControl.selectionStart : null,
+      selectionEnd: activeControl && typeof activeControl.selectionEnd === 'number' ? activeControl.selectionEnd : null,
+      selectionDirection: (activeControl && activeControl.selectionDirection) || 'none',
+      displays,
+      customModeCount: preserveCustomModeCount ? sr.querySelectorAll('.vwm-mode-name').length : null,
+    };
+  }
+
+  _restoreRenderState(state) {
+    if (!state || !this.shadowRoot) return;
+    // A Store update can remove/reorder devices while a form is open. Never
+    // transplant one vacuum's draft into another device at the same index.
+    if (state.contextKey !== this._renderContextKey()) return;
+
+    while (Number.isInteger(state.customModeCount) && this.shadowRoot.querySelectorAll('.vwm-mode-name').length < state.customModeCount) {
+      const before = this.shadowRoot.querySelectorAll('.vwm-mode-name').length;
+      this._addCustomMode();
+      if (this.shadowRoot.querySelectorAll('.vwm-mode-name').length === before) break;
+    }
+
+    const controls = Array.from(this.shadowRoot.querySelectorAll('input, select, textarea'));
+    const occurrences = new Map();
+    const byKey = new Map();
+    controls.forEach((control) => {
+      const base = control.id
+        ? `id:${control.id}`
+        : [control.localName, control.type || '', control.name || '', control.className || '', control.placeholder || ''].join('|');
+      const occurrence = occurrences.get(base) || 0;
+      occurrences.set(base, occurrence + 1);
+      byKey.set(`${base}#${occurrence}`, control);
+    });
+
+    state.items.forEach((item) => {
+      // Refill selectors and other model-backed controls must reflect the
+      // newly rendered server state. Only explicitly marked draft fields keep
+      // their unsubmitted value across background renders.
+      if (!item.draft || !item.dirty) return;
+      const control = byKey.get(item.key);
+      if (!control || !control.hasAttribute('data-vwm-draft')) return;
+      control.value = item.value;
+      if (typeof item.checked === 'boolean' && 'checked' in control) control.checked = item.checked;
+    });
+    state.displays.forEach((item) => {
+      const element = this.shadowRoot.getElementById(item.id);
+      if (element) element.style.display = item.display;
+    });
+
+    const active = state.activeKey && byKey.get(state.activeKey);
+    if (!active) return;
+    try { active.focus({ preventScroll: true }); } catch (e) { active.focus(); }
+    if (state.selectionStart !== null && typeof active.setSelectionRange === 'function') {
+      try { active.setSelectionRange(state.selectionStart, state.selectionEnd, state.selectionDirection); } catch (e) {}
+    }
+  }
+
+  _render(preserveFormState = false) {
     if (!this._hass) return;
+    const renderState = preserveFormState ? this._captureRenderState() : null;
    try {
     const devices = this._getDevices();
     const device = devices[this._activeDeviceIdx] || devices[0] || {};
+    const renderContextKey = `${this._activeTab}\u0000${device.vacuum_entity || device.name || ''}`;
     const data = Object.keys(device).length ? this._calcDeviceData(device) : {};
 
     const cfg = this._config;
@@ -2883,7 +3239,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     const deviceHeader = devices.length > 0 ? `
       <div class="device-header">
-        <div class="device-name">${device.icon || '\uD83E\uDDA4'} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
+        <div class="device-name">${_esc(String(device.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
         ${data.vacState !== undefined ? `<div class="status-badge" style="background:${status.color}20;color:${status.color};border:1px solid ${status.color}40">${status.icon} ${status.label}</div>` : ''}
       </div>` : '';
 
@@ -3148,10 +3504,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
         </div>`;
 
     // Only update DOM if content actually changed
-    if (_newHtml !== this._lastHtml) {
+    if (_newHtml !== this._lastHtml || renderContextKey !== this._renderedContextKey) {
       this.shadowRoot.innerHTML = _newHtml;
       this._lastHtml = _newHtml;
+      this._renderedContextKey = renderContextKey;
       this._attachListeners(devices, device);
+      this._restoreRenderState(renderState);
     }
    } catch(err) {
     // Show error with tip banner
@@ -3170,7 +3528,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div class="err-container">
         <div class="err-card">
           <div class="err-icon">\u26A0\uFE0F</div>
-          <div><strong>Error:</strong> ${err.message}</div>
+          <div><strong>Error:</strong> ${_esc(String((err && err.message) || err))}</div>
           <div class="err-msg">Required entities or sensors are unavailable.</div>
         </div>
         <div class="tip-banner">
@@ -3461,6 +3819,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
   disconnectedCallback() {
     // Clear render scheduling flag to prevent orphaned setTimeout calls
     this._renderScheduled = false;
+    this._unbindServerConnection();
+  }
+
+  connectedCallback() {
+    if (!this._hass) return;
+    this._bindServerConnection(this._hass.connection);
+    this._ensureServerState();
   }
 
   setActiveTab(tabId) {
@@ -3497,7 +3862,10 @@ class HaVacuumWaterMonitorEditor extends HTMLElement {
         if (_s._activeDeviceIdx !== undefined) this._activeDeviceIdx = _s._activeDeviceIdx;
       }
     } catch(e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
-    this._render();
+    const title = this._config.title || 'Vacuum Water Monitor';
+    const field = this.shadowRoot.querySelector('#cf_title');
+    if (!field) this._render();
+    else if (field.value !== title) field.value = title;
   }
   _dispatch() {
     this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true }));
@@ -3523,7 +3891,9 @@ class HaVacuumWaterMonitorEditor extends HTMLElement {
           this._dispatch();
         });
   }
-  connectedCallback() { this._render(); }
+  connectedCallback() {
+    if (!this.shadowRoot.querySelector('#cf_title')) this._render();
+  }
 }
 if (!customElements.get('ha-vacuum-water-monitor-editor')) { customElements.define('ha-vacuum-water-monitor-editor', HaVacuumWaterMonitorEditor); }
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from copy import deepcopy
 from typing import Any
@@ -18,6 +19,47 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+MAX_SETTINGS_BYTES = 512_000
+MAX_STORAGE_BYTES = 1_000_000
+MAX_TANK_STATES = 100
+
+
+def _serialized_bytes(value: Any) -> int:
+    try:
+        encoded = json.dumps(
+            value,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except (OverflowError, RecursionError, TypeError, ValueError) as err:
+        raise ValueError("stored state must be bounded JSON data") from err
+    return len(encoded)
+
+
+def _validate_data_budget(
+    current: dict[str, Any], candidate: dict[str, Any]
+) -> None:
+    """Bound cumulative storage while permitting legacy size-reducing writes."""
+    current_settings_size = _serialized_bytes(current.get("settings") or {})
+    candidate_settings_size = _serialized_bytes(candidate.get("settings") or {})
+    if (
+        candidate_settings_size > MAX_SETTINGS_BYTES
+        and candidate_settings_size > current_settings_size
+    ):
+        raise ValueError("settings exceed the cumulative storage budget")
+
+    current_tanks = current.get("tank_states") or {}
+    candidate_tanks = candidate.get("tank_states") or {}
+    if not isinstance(candidate_tanks, dict):
+        raise ValueError("tank_states must be an object")
+    if len(candidate_tanks) > MAX_TANK_STATES and len(candidate_tanks) > len(current_tanks):
+        raise ValueError("too many tank states")
+
+    current_size = _serialized_bytes(current)
+    candidate_size = _serialized_bytes(candidate)
+    if candidate_size > MAX_STORAGE_BYTES and candidate_size > current_size:
+        raise ValueError("stored state exceeds the cumulative budget")
 
 
 def _default_state() -> dict[str, Any]:
@@ -92,9 +134,12 @@ class VacuumWaterStorage:
                     _LOGGER.warning("Refusing empty-list settings patch for %s", key)
                     continue
                 clean[str(key)] = deepcopy(value)
-            settings.update(clean)
-            await self._store.async_save(data)
-            return deepcopy(settings)
+            candidate = deepcopy(data)
+            candidate["settings"].update(clean)
+            _validate_data_budget(data, candidate)
+            await self._store.async_save(candidate)
+            self._data = candidate
+            return deepcopy(candidate["settings"])
 
     async def async_replace_settings_key(self, key: str, value: Any) -> None:
         """Replace one settings key, bypassing the empty-list guard.
@@ -104,8 +149,11 @@ class VacuumWaterStorage:
         """
         async with self._lock:
             data = await self._ensure_loaded_locked()
-            data["settings"][str(key)] = deepcopy(value)
-            await self._store.async_save(data)
+            candidate = deepcopy(data)
+            candidate["settings"][str(key)] = deepcopy(value)
+            _validate_data_budget(data, candidate)
+            await self._store.async_save(candidate)
+            self._data = candidate
 
     async def async_get_tank_state(self, vacuum_entity: str) -> dict[str, Any]:
         """Return one vacuum tank state."""
@@ -122,17 +170,25 @@ class VacuumWaterStorage:
             raise ValueError("vacuum_entity is required")
         async with self._lock:
             data = await self._ensure_loaded_locked()
-            data["tank_states"][vacuum_entity] = deepcopy(tank_state)
-            await self._store.async_save(data)
+            candidate = deepcopy(data)
+            candidate["tank_states"][vacuum_entity] = deepcopy(tank_state)
+            _validate_data_budget(data, candidate)
+            await self._store.async_save(candidate)
+            self._data = candidate
 
     async def async_set_tank_states(
         self, tank_states: dict[str, dict[str, Any]]
     ) -> None:
         """Persist all supplied tank states."""
+        if not isinstance(tank_states, dict):
+            raise ValueError("tank_states must be an object")
         async with self._lock:
             data = await self._ensure_loaded_locked()
-            data["tank_states"].update(deepcopy(tank_states))
-            await self._store.async_save(data)
+            candidate = deepcopy(data)
+            candidate["tank_states"].update(deepcopy(tank_states))
+            _validate_data_budget(data, candidate)
+            await self._store.async_save(candidate)
+            self._data = candidate
 
     async def async_reset_tank(
         self, vacuum_entity: str, when_iso: str, when_ts: int
@@ -145,8 +201,11 @@ class VacuumWaterStorage:
             state["used_ml"] = 0
             state["last_reset_iso"] = when_iso
             state["last_reset_ts"] = when_ts
-            data["tank_states"][vacuum_entity] = state
-            await self._store.async_save(data)
+            candidate = deepcopy(data)
+            candidate["tank_states"][vacuum_entity] = state
+            _validate_data_budget(data, candidate)
+            await self._store.async_save(candidate)
+            self._data = candidate
             return deepcopy(state)
 
     async def _ensure_loaded_locked(self) -> dict[str, Any]:

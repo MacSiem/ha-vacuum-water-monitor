@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Fix (#8): form fields no longer lose focus or discard their draft values when Home Assistant updates `hass` or when a visible Store event refreshes the card.
+- Fix: server state hydration now runs once, with an integration-owned subscription that works for non-admin users and reconnect catch-up snapshots, eliminating repeated WebSocket reads and full shadow-DOM rebuilds without leaving missed changes stale.
+- Fix: the visual card editor keeps its title input mounted during `config-changed` round trips.
+- Fix: custom calibration Save/Clear no longer call a missing method; saved values are safely pre-filled per vacuum and tank capacities override profile defaults while explicit YAML remains authoritative.
+- Fix: Options changes now notify cards immediately and become the default for newly UI-created cards, while explicit card YAML remains authoritative.
+- Security: validate Store-backed form structures at the WebSocket boundary and escape stored text rendered by the card.
+
 ## 5.1.11 (2026-07-18)
 
 - Fix: threshold changes made in the integration Options now apply immediately. The options flow saved them, but nothing re-read them, so they previously only took effect after a Home Assistant restart.

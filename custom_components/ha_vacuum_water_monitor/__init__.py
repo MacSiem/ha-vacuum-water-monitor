@@ -85,7 +85,12 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
         if key in entry.options
     }
     if option_patch:
-        await storage.async_set_settings(option_patch)
+        settings = await storage.async_set_settings(option_patch)
+        payload = {"settings": settings}
+        async_dispatcher_send(
+            hass, signal_vacuum_water_updated(entry.entry_id), payload
+        )
+        hass.bus.async_fire(EVENT_STATE_CHANGED, payload)
         _LOGGER.debug("Applied updated options: %s", sorted(option_patch))
 
 

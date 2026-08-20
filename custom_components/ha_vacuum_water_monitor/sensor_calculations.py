@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import math
 import re
+from datetime import datetime, timezone
 from typing import Any
 
 MILLISECONDS_PER_DAY = 86_400_000
@@ -64,14 +65,28 @@ def build_vacuum_devices(
 
     devices: dict[str, dict[str, Any]] = {}
 
-    for key in ("configured_devices", "user_devices"):
+    # UI-added devices are defaults. Explicit card/YAML configuration wins for
+    # duplicate entities so frontend display, accounting, and HA sensors agree.
+    for key in ("user_devices", "configured_devices"):
         for item in settings.get(key) or []:
             if not isinstance(item, dict):
                 continue
             vacuum_entity = item.get("vacuum_entity")
             if not vacuum_entity:
                 continue
-            devices[str(vacuum_entity)] = _normalize_device(str(vacuum_entity), item)
+            entity = str(vacuum_entity)
+            # Keep UI-only per-device fields (for example reset_door_sensor)
+            # while letting explicit configured/YAML keys win on conflicts.
+            merged = {**devices.get(entity, {}), **item}
+            if (
+                key == "configured_devices"
+                and "water_total_ml" in item
+                and "water_total_source" not in item
+            ):
+                # Do not inherit a stale profile marker for legacy configured
+                # records that predate explicit capacity provenance.
+                merged.pop("water_total_source", None)
+            devices[entity] = _normalize_device(entity, merged)
 
     for vacuum_entity in tank_states:
         if not vacuum_entity:
@@ -189,7 +204,10 @@ def parse_refill_datetime(tank_state: dict[str, Any] | None) -> datetime | None:
     raw_ts = _optional_number(tank_state.get("last_reset_ts"))
     if raw_ts and raw_ts > 0:
         seconds = raw_ts / 1000 if raw_ts > 10_000_000_000 else raw_ts
-        return datetime.fromtimestamp(seconds, tz=timezone.utc)
+        try:
+            return datetime.fromtimestamp(seconds, tz=timezone.utc)
+        except (OSError, OverflowError, ValueError):
+            return None
     return None
 
 
@@ -214,15 +232,20 @@ def next_maintenance_due(
         days_since = int((now_ms - last_done_ms) // MILLISECONDS_PER_DAY)
         days_left = int(interval_days) - days_since
         due_at_ms = int(last_done_ms + int(interval_days) * MILLISECONDS_PER_DAY)
+        try:
+            last_done_at = _datetime_from_ms(int(last_done_ms)).isoformat()
+            due_at = _datetime_from_ms(due_at_ms).isoformat()
+        except (OSError, OverflowError, ValueError):
+            continue
         candidate = {
             "index": index,
             "name": str(item.get("name") or "Maintenance item"),
             "icon": item.get("icon"),
             "interval_days": int(interval_days),
             "last_done_ms": int(last_done_ms),
-            "last_done_at": _datetime_from_ms(int(last_done_ms)).isoformat(),
+            "last_done_at": last_done_at,
             "due_at_ms": due_at_ms,
-            "due_at": _datetime_from_ms(due_at_ms).isoformat(),
+            "due_at": due_at,
             "days_since": days_since,
             "days_left": days_left,
             "days_overdue": abs(days_left) if days_left < 0 else 0,
@@ -247,19 +270,45 @@ def _water_capacity_ml(
     device: dict[str, Any], settings: dict[str, Any]
 ) -> float | None:
     direct = _optional_number(device.get("water_total_ml"))
-    if direct and direct > 0:
+    # Capacities explicitly written in YAML remain authoritative. A capacity
+    # merged from a built-in profile is a default and may be corrected by a
+    # per-device custom calibration from the card.
+    if direct and direct > 0 and device.get("water_total_source") == "config":
         return direct
+    if direct and direct > 0 and not device.get("water_total_source"):
+        # Older persisted configured_devices predate the provenance marker.
+        # Preserve their explicit capacity unless it is exactly the known
+        # built-in model default, which remains safe for calibration to override.
+        model_default = _model_tank_ml(device)
+        if model_default is None or abs(direct - model_default) > 1e-9:
+            return direct
 
     custom = settings.get("custom_calibration")
     if isinstance(custom, dict):
-        profile_key = device.get("brand_profile") or "default"
-        for key in (profile_key, "default"):
+        # New card versions store calibration per vacuum entity so two unknown
+        # robots do not share one global tank size. Profile/default keys remain
+        # fallbacks for existing installations.
+        keys = (
+            device.get("vacuum_entity"),
+            device.get("brand_profile"),
+            _model_key(device),
+            "default",
+        )
+        seen: set[str] = set()
+        for raw_key in keys:
+            if not isinstance(raw_key, str) or not raw_key or raw_key in seen:
+                continue
+            seen.add(raw_key)
+            key = raw_key
             value = custom.get(key)
             if not isinstance(value, dict):
                 continue
             tank_ml = _optional_number(value.get("tank_ml"))
             if tank_ml and tank_ml > 0:
                 return tank_ml
+
+    if direct and direct > 0:
+        return direct
 
     # Model database fallback: capacity known from the vacuum model without any
     # manual calibration, mirroring the card's auto-detected brand_profile.
@@ -268,12 +317,18 @@ def _water_capacity_ml(
 
 def _model_tank_ml(device: dict[str, Any]) -> float | None:
     """Default tank capacity (ml) resolved from the vacuum model database."""
+    key = _model_key(device)
+    tank_ml = DEFAULT_TANK_ML.get(key) if key else None
+    return float(tank_ml) if tank_ml and tank_ml > 0 else None
+
+
+def _model_key(device: dict[str, Any]) -> str | None:
+    """Resolve the same known-model key used by the frontend card."""
     key = device.get("brand_profile")
     if not (isinstance(key, str) and key in DEFAULT_TANK_ML):
         entity = str(device.get("vacuum_entity") or "").strip().lower()
         key = entity[len("vacuum.") :] if entity.startswith("vacuum.") else ""
-    tank_ml = DEFAULT_TANK_ML.get(key)
-    return float(tank_ml) if tank_ml and tank_ml > 0 else None
+    return key if key in DEFAULT_TANK_ML else None
 
 
 def _number(value: Any, default: float) -> float:
@@ -285,9 +340,10 @@ def _optional_number(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
     try:
-        return float(value)
+        number = float(value)
     except (TypeError, ValueError):
         return None
+    return number if math.isfinite(number) else None
 
 
 def _format_number(value: float) -> int | float:

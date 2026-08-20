@@ -7,6 +7,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
+from .sensor_calculations import build_vacuum_devices
 from .storage import VacuumWaterStorage
 
 MOP_WASH_STATES = {
@@ -201,22 +202,9 @@ def list_vacuums(hass: HomeAssistant) -> list[dict[str, Any]]:
 def _devices_to_tick(
     hass: HomeAssistant, settings: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    devices: dict[str, dict[str, Any]] = {}
-    for item in settings.get("configured_devices") or []:
-        if isinstance(item, dict) and item.get("vacuum_entity"):
-            devices[item["vacuum_entity"]] = dict(item)
-    for item in settings.get("user_devices") or []:
-        if isinstance(item, dict) and item.get("vacuum_entity"):
-            devices[item["vacuum_entity"]] = dict(item)
-    for vacuum in list_vacuums(hass):
-        devices.setdefault(
-            vacuum["entity_id"],
-            {
-                "vacuum_entity": vacuum["entity_id"],
-                "name": vacuum["name"],
-            },
-        )
-    return list(devices.values())
+    # Share sensor calculation precedence: user-added defaults first, explicit
+    # configured/YAML values last, then live discovery only for missing robots.
+    return build_vacuum_devices(settings, {}, list_vacuums(hass))
 
 
 def _has_user_priv_helpers(
