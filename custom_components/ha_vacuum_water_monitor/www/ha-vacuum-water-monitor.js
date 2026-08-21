@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.1.9 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.1.12 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -2028,7 +2028,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     // Refill button resets the integration's HA Store state.
     const refillBtn = (cfg.show_refill_button !== false)
-      ? `<button class="refill-btn" data-vacuum="${device.vacuum_entity || ''}">\uD83D\uDCA7 Refilled</button>` : '';
+      ? `<button class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">\uD83D\uDCA7 Refilled</button>` : '';
 
     const alertBanner = (data.waterEmpty || data.waterShortage)
       ? `<div class="alert-banner">\u26A0\uFE0F Water shortage! Please refill now.</div>`
@@ -2115,11 +2115,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const sensors = this._getDoorSensors();
 
     const buttonOpts = buttons.map(b =>
-      `<option value="${b.id}" ${rc.buttonEntity === b.id ? 'selected' : ''}>${b.name}</option>`
+      `<option value="${_esc(b.id)}" ${rc.buttonEntity === b.id ? 'selected' : ''}>${_esc(this._sanitize(b.name))}</option>`
     ).join('');
 
     const sensorOpts = sensors.map(s =>
-      `<option value="${s.id}" ${rc.sensorEntity === s.id ? 'selected' : ''}>${s.name} (${s.state})</option>`
+      `<option value="${_esc(s.id)}" ${rc.sensorEntity === s.id ? 'selected' : ''}>${_esc(this._sanitize(s.name))} (${_esc(this._sanitize(s.state))})</option>`
     ).join('');
 
     const methodStyle = 'margin-bottom:10px;padding:12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)';
@@ -2293,7 +2293,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         color = '#6b7280';
       }
       return `<div class="custom-maint-row" data-idx="${idx}">
-        <span class="con-label">${item.icon || '\uD83D\uDD27'} ${_esc(this._sanitize(item.name))}</span>
+        <span class="con-label">${_esc(this._sanitize(item.icon || '\uD83D\uDD27'))} ${_esc(this._sanitize(item.name))}</span>
         <span class="con-val" style="color:${color}">${statusText}</span>
         <button class="maint-done-btn" data-idx="${idx}" title="Mark as done today">\u2705</button>
         <button class="maint-del-btn" data-idx="${idx}" title="Delete">\uD83D\uDDD1\uFE0F</button>
@@ -2479,7 +2479,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const status = this._getStatus(data, this._config);
       const pct = data.percentRemaining !== null ? Math.round(data.percentRemaining) : null;
       return `<div class="stats-row">
-        <span class="stats-device">${device.icon || '\uD83E\uDDA4'} ${_esc(this._sanitize(device.name || 'Vacuum'))}</span>
+        <span class="stats-device">${_esc(this._sanitize(device.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</span>
         <span class="stats-status" style="color:${status.color}">${status.icon} ${status.label}</span>
         <span class="stats-pct" style="color:${status.color}">${pct !== null ? pct + '%' : '--'}</span>
       </div>`;
@@ -2717,16 +2717,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const discoveredHtml = undiscovered.length > 0 ? `
       <div class="section-block">
         <div class="section-title">\uD83D\uDD0E Discovered vacuums (not configured)</div>
-        ${undiscovered.map(v => `<div class="disc-row" style="cursor:pointer" data-entity="${v.entity_id}">
+        ${undiscovered.map(v => `<div class="disc-row" style="cursor:pointer" data-entity="${_esc(v.entity_id)}">
           <span class="disc-name">\uD83E\uDDA4 ${_esc(this._sanitize(v.name))}</span>
-          <span class="disc-id">${v.entity_id}</span>
-          <span class="disc-state" style="color:${v.state === 'cleaning' ? '#22c55e' : '#6b7280'}">${v.state}</span>
-          ${v.battery ? `<span class="disc-bat">\uD83D\uDD0B ${v.battery}%</span>` : ''}
-          <button class="maint-add-btn disc-add-btn" data-entity="${v.entity_id}" style="padding:3px 10px;font-size:11px">+ Add</button>
+          <span class="disc-id">${_esc(v.entity_id)}</span>
+          <span class="disc-state" style="color:${v.state === 'cleaning' ? '#22c55e' : '#6b7280'}">${_esc(this._sanitize(v.state))}</span>
+          ${v.battery ? `<span class="disc-bat">\uD83D\uDD0B ${_esc(v.battery)}%</span>` : ''}
+          <button class="maint-add-btn disc-add-btn" data-entity="${_esc(v.entity_id)}" style="padding:3px 10px;font-size:11px">+ Add</button>
         </div>`).join('')}
       </div>` : '';
 
-    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 Manually added</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${ud.icon || '\uD83E\uDDA4'} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="Remove">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
+    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 Manually added</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(this._sanitize(ud.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="Remove">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
 
     return `
       <div class="tab-content">
@@ -2782,10 +2782,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const sensors = this._getDoorSensors();
 
     const buttonOpts = buttons.map(b =>
-      `<option value="${b.id}" ${rc.buttonEntity === b.id ? 'selected' : ''}>${b.name}</option>`
+      `<option value="${_esc(b.id)}" ${rc.buttonEntity === b.id ? 'selected' : ''}>${_esc(this._sanitize(b.name))}</option>`
     ).join('');
     const sensorOpts = sensors.map(s =>
-      `<option value="${s.id}" ${rc.sensorEntity === s.id ? 'selected' : ''}>${s.name} (${s.state})</option>`
+      `<option value="${_esc(s.id)}" ${rc.sensorEntity === s.id ? 'selected' : ''}>${_esc(this._sanitize(s.name))} (${_esc(this._sanitize(s.state))})</option>`
     ).join('');
 
     const statusOk = '<span style="color:#22c55e;font-size:11px;font-weight:600">\u2705 Configured</span>';
@@ -2851,7 +2851,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   _buildDeviceTabs(devices) {
     if (devices.length <= 1) return '';
     return `<div class="device-tabs">
-      ${devices.map((d, i) => `<button class="dtab ${i === this._activeDeviceIdx ? 'dtab-active' : ''}" data-didx="${i}">${d.icon || '\uD83E\uDDA4'} ${_esc(this._sanitize(d.name || 'Device ' + (i+1)))}</button>`).join('')}
+      ${devices.map((d, i) => `<button class="dtab ${i === this._activeDeviceIdx ? 'dtab-active' : ''}" data-didx="${i}">${_esc(this._sanitize(d.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(d.name || 'Device ' + (i+1)))}</button>`).join('')}
     </div>`;
   }
 
@@ -2883,7 +2883,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     const deviceHeader = devices.length > 0 ? `
       <div class="device-header">
-        <div class="device-name">${device.icon || '\uD83E\uDDA4'} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
+        <div class="device-name">${_esc(this._sanitize(device.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
         ${data.vacState !== undefined ? `<div class="status-badge" style="background:${status.color}20;color:${status.color};border:1px solid ${status.color}40">${status.icon} ${status.label}</div>` : ''}
       </div>` : '';
 
@@ -3170,7 +3170,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div class="err-container">
         <div class="err-card">
           <div class="err-icon">\u26A0\uFE0F</div>
-          <div><strong>Error:</strong> ${err.message}</div>
+          <div><strong>Error:</strong> ${_esc(this._sanitize(err.message || 'Unknown error'))}</div>
           <div class="err-msg">Required entities or sensors are unavailable.</div>
         </div>
         <div class="tip-banner">
