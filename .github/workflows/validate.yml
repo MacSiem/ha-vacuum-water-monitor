@@ -8,6 +8,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Python compile and unit tests
+        run: |
+          python -m compileall -q custom_components tests
+          python -m tests
       - name: JS syntax (node --check)
         run: |
           fail=0
@@ -15,6 +22,8 @@ jobs:
             node --check "$f" || { echo "SYNTAX FAIL: $f"; fail=1; }
           done
           exit $fail
+      - name: Distributed card copies are identical
+        run: cmp -s ha-vacuum-water-monitor.js custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js
       - name: Theming invariant (no OS prefers-color-scheme)
         run: |
           if grep -rln "@media (prefers-color-scheme" --include='*.js' .; then
@@ -33,6 +42,5 @@ jobs:
           echo "a11y check done"
       - name: Runtime smoke (jsdom render)
         run: |
-          npm init -y >/dev/null 2>&1
-          npm install jsdom >/dev/null 2>&1
-          node .github/smoke.cjs
+          npm ci --ignore-scripts
+          npm run test:smoke

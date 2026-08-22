@@ -22,6 +22,8 @@ DEFAULT_TANK_ML: dict[str, float] = {
     "roborock_s9_maxv": 4000,
     "roborock_q_revo": 5000,
     "roborock_q_revo_maxv": 4000,
+    "roborock_qrevo_5ae": 4000,
+    "roborock_qrevo_curv_2_flow": 4000,
     "roborock_q7_max": 350,
     "roborock_q7": 300,
     "dreame_x40_ultra": 4500,
@@ -43,6 +45,26 @@ DEFAULT_TANK_ML: dict[str, float] = {
     "samsung_jet_bot_combo": 4000,
     "xiaomi_x20_max": 4000,
     "xiaomi_x20_pro": 4000,
+    "xiaomi_h50": 4000,
+    "xiaomi_h50_pro": 4000,
+    "tapo_rv50_pro_omni": 5000,
+}
+
+# Manufacturer/app identifiers do not always match the human product name.
+# Keep aliases separate from capacities so a reported model can be added
+# without duplicating or silently diverging from the canonical value.
+MODEL_ALIASES: dict[str, str] = {
+    "a170": "roborock_qrevo_5ae",
+    "roborock_vacuum_a170": "roborock_qrevo_5ae",
+    "roborock_q_revo_5ae": "roborock_qrevo_5ae",
+    "a245": "roborock_qrevo_curv_2_flow",
+    "roborock_vacuum_a245": "roborock_qrevo_curv_2_flow",
+    "roborock_qrevo_curv_2_flowx": "roborock_qrevo_curv_2_flow",
+    "roborock_q_revo_curv_2_flow": "roborock_qrevo_curv_2_flow",
+    "roborock_q_revo_curv_2_flowx": "roborock_qrevo_curv_2_flow",
+    "xiaomi_robot_vacuum_h50": "xiaomi_h50",
+    "xiaomi_robot_vacuum_h50_pro": "xiaomi_h50_pro",
+    "tapo_rv50_pro": "tapo_rv50_pro_omni",
 }
 
 
@@ -172,6 +194,39 @@ def estimate_water_state(
     }
 
 
+def apply_custom_calibration(
+    device: dict[str, Any] | None,
+    settings: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Merge stored per-device usage calibration into an effective device.
+
+    Explicit device configuration remains authoritative. The returned copy is
+    safe for the accounting tick to mutate without changing Store settings.
+    """
+    effective = dict(device) if isinstance(device, dict) else {}
+    settings = settings if isinstance(settings, dict) else {}
+    custom = _matching_custom_calibration(effective, settings)
+    if not custom:
+        return effective
+
+    water_per_m2 = custom.get("water_per_m2")
+    if "usage_ml_per_m2" not in effective and isinstance(water_per_m2, dict):
+        valid_usage = {
+            str(mode): value
+            for mode, raw in water_per_m2.items()
+            if str(mode).strip()
+            and (value := _optional_number(raw)) is not None
+            and value > 0
+        }
+        if valid_usage:
+            effective["usage_ml_per_m2"] = valid_usage
+
+    wash_volume = _optional_number(custom.get("mop_wash_ml"))
+    if "wash_volume_ml" not in effective and wash_volume and wash_volume > 0:
+        effective["wash_volume_ml"] = wash_volume
+    return effective
+
+
 def parse_refill_datetime(tank_state: dict[str, Any] | None) -> datetime | None:
     """Parse the Store refill timestamp as an aware UTC datetime."""
     tank_state = tank_state if isinstance(tank_state, dict) else {}
@@ -250,16 +305,11 @@ def _water_capacity_ml(
     if direct and direct > 0:
         return direct
 
-    custom = settings.get("custom_calibration")
-    if isinstance(custom, dict):
-        profile_key = device.get("brand_profile") or "default"
-        for key in (profile_key, "default"):
-            value = custom.get(key)
-            if not isinstance(value, dict):
-                continue
-            tank_ml = _optional_number(value.get("tank_ml"))
-            if tank_ml and tank_ml > 0:
-                return tank_ml
+    custom = _matching_custom_calibration(device, settings)
+    if custom:
+        tank_ml = _optional_number(custom.get("tank_ml"))
+        if tank_ml and tank_ml > 0:
+            return tank_ml
 
     # Model database fallback: capacity known from the vacuum model without any
     # manual calibration, mirroring the card's auto-detected brand_profile.
@@ -268,12 +318,55 @@ def _water_capacity_ml(
 
 def _model_tank_ml(device: dict[str, Any]) -> float | None:
     """Default tank capacity (ml) resolved from the vacuum model database."""
-    key = device.get("brand_profile")
-    if not (isinstance(key, str) and key in DEFAULT_TANK_ML):
-        entity = str(device.get("vacuum_entity") or "").strip().lower()
-        key = entity[len("vacuum.") :] if entity.startswith("vacuum.") else ""
+    key = _resolve_model_key(device)
     tank_ml = DEFAULT_TANK_ML.get(key)
     return float(tank_ml) if tank_ml and tank_ml > 0 else None
+
+
+def _custom_calibration_keys(device: dict[str, Any]) -> tuple[str, ...]:
+    """Return custom calibration keys from most to least device-specific."""
+    entity = str(device.get("vacuum_entity") or "").strip().lower()
+    profile = device.get("brand_profile")
+    resolved = _resolve_model_key(device)
+    candidates = [
+        f"entity:{entity}" if entity else "",
+        str(profile) if isinstance(profile, str) else "",
+        resolved or "",
+        "default",
+    ]
+    return tuple(dict.fromkeys(key for key in candidates if key))
+
+
+def _matching_custom_calibration(
+    device: dict[str, Any], settings: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Return the most specific valid custom calibration for a device."""
+    custom = settings.get("custom_calibration")
+    if not isinstance(custom, dict):
+        return None
+    for key in _custom_calibration_keys(device):
+        value = custom.get(key)
+        if isinstance(value, dict):
+            return value
+    return None
+
+
+def _resolve_model_key(device: dict[str, Any]) -> str:
+    """Resolve canonical model key from HA profile or entity identifiers."""
+    candidates: list[str] = []
+    profile = device.get("brand_profile")
+    if isinstance(profile, str):
+        candidates.append(profile)
+    entity = str(device.get("vacuum_entity") or "").strip().lower()
+    if entity.startswith("vacuum."):
+        candidates.append(entity[len("vacuum.") :])
+
+    for candidate in candidates:
+        normalized = re.sub(r"[^a-z0-9]+", "_", candidate.lower()).strip("_")
+        canonical = MODEL_ALIASES.get(normalized, normalized)
+        if canonical in DEFAULT_TANK_ML:
+            return canonical
+    return ""
 
 
 def _number(value: Any, default: float) -> float:

@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.1.12 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.1.13 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -201,7 +201,50 @@ const CALIBRATION_DATA = {
     avg_area_per_charge: 240,
     mop_type: 'Dual rotating 200rpm',
     notes: '4L/3.5L dock. ReactiveAI 2.0. 30 levels. Rotating mops.',
-  },  'roborock_q7_max': {
+  },
+  'roborock_qrevo_5ae': {
+    label: 'Roborock Qrevo 5AE',
+    tank_ml: 4000,
+    dock_clean_tank_ml: 4000,
+    dock_dirty_tank_ml: 3500,
+    robot_tank_ml: 80,
+    robot_clean_tank_ml: 80,
+    water_per_m2: {},
+    avg_area_per_charge: null,
+    mop_type: 'Dual rotating mop pads',
+    mop_max_rpm: 200,
+    mop_lift_max_mm: 10,
+    water_flow_levels_count: 30,
+    mop_wash_stages: 3,
+    drying_temp_c: 45,
+    source_urls: [
+      'https://www.roborock.sg/products/roborock-qrevo-5ae-white-certified-refurbished',
+      'https://my.roborock.com/pages/roborock-qrevo-5ae',
+    ],
+    data_quality: 'manufacturer_specifications',
+    notes: 'Manufacturer specifications. Numeric ml/m² and wash-cycle volume are not published, so they remain unset.',
+  },
+  'roborock_qrevo_curv_2_flow': {
+    label: 'Roborock Qrevo Curv 2 Flow / FlowX',
+    tank_ml: 4000,
+    dock_clean_tank_ml: 4000,
+    robot_dirty_tank_ml: 100,
+    water_per_m2: {},
+    avg_area_per_charge: null,
+    mop_type: 'SpiraFlow self-cleaning roller mop',
+    mop_max_rpm: 220,
+    mop_lift_max_mm: 15,
+    mop_pressure_max_n: 15,
+    continuous_fresh_water: true,
+    source_urls: [
+      'https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq',
+      'https://global.roborock.com/pages/roborock-qrevo-curv-2-flow',
+      'https://help.roborock.com/en-CA/product/qrevo-curv-2-flow-message?category=troubleshooting-1-1-1',
+    ],
+    data_quality: 'manufacturer_specifications',
+    notes: 'Manufacturer specifications; clean dock tank is published as approximately 4L. Numeric ml/m² and wash-cycle volume are not published.',
+  },
+  'roborock_q7_max': {
     label: 'Roborock Q7 Max / Q7 Max+',
     tank_ml: 350,
     robot_tank_ml: 350,
@@ -450,6 +493,67 @@ const CALIBRATION_DATA = {
     mop_type: 'Rotating dual pads, hot wash',
     notes: '4L dock. 3 humidity levels. 120m² mopping.',
   },
+  'xiaomi_h50': {
+    label: 'Xiaomi Robot Vacuum H50',
+    tank_ml: 4000,
+    dock_clean_tank_ml: 4000,
+    dock_dirty_tank_ml: 4000,
+    water_per_m2: {},
+    tested_max_area_per_fill_m2: 240,
+    avg_area_per_charge: null,
+    mop_type: 'Dual rotating mop pads',
+    mop_max_rpm: 180,
+    mop_lift_max_mm: 10,
+    water_flow_levels_count: 3,
+    source_urls: ['https://www.mi.com/global/product/xiaomi-robot-vacuum-h50/'],
+    data_quality: 'manufacturer_specifications',
+    notes: 'Manufacturer specifications. 240m² is published coverage per full clean-water tank, not an ml/m² dosing rate.',
+  },
+  'xiaomi_h50_pro': {
+    label: 'Xiaomi Robot Vacuum H50 Pro',
+    tank_ml: 4000,
+    dock_clean_tank_ml: 4000,
+    dock_dirty_tank_ml: 4000,
+    water_per_m2: {},
+    tested_max_area_per_fill_m2: 240,
+    avg_area_per_charge: null,
+    mop_type: 'Dual rotating mop pads',
+    mop_max_rpm: 180,
+    mop_lift_max_mm: 10,
+    mop_wash_pre_task_ml: 180,
+    mop_wash_mid_task_ml: 120,
+    mop_wash_interval_m2_options: [5, 8, 10],
+    mop_wash_interval_m2_default: 8,
+    mop_wash_interval_min_options: [5, 8, 10],
+    mop_wash_interval_min_default: 8,
+    mop_wash_frequency_levels: 3,
+    mop_cleaning_preferences: 2,
+    source_urls: [
+      'https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/',
+      'https://www.mi.com/global/support/faq/details/KA-673648/',
+    ],
+    data_quality: 'manufacturer_specifications',
+    notes: 'Manufacturer specifications. 180ml is pre-task washing and 120ml is mid-task washing; final-wash volume is not published, so no generic automatic wash volume is set.',
+  },
+  'tapo_rv50_pro_omni': {
+    label: 'Tapo RV50 Pro Omni',
+    tank_ml: 5000,
+    dock_clean_tank_ml: 5000,
+    dock_dirty_tank_ml: 4000,
+    robot_tank_ml: 95,
+    robot_clean_tank_ml: 95,
+    water_per_m2: {},
+    avg_area_per_charge: null,
+    mop_type: 'DeepEdge dual spinning mops',
+    water_flow_levels_count: 3,
+    mop_wash_temp_c: 60,
+    drying_temp_c: 50,
+    smart_dirt_detection: true,
+    auto_detergent: true,
+    source_urls: ['https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/'],
+    data_quality: 'manufacturer_specifications',
+    notes: 'Manufacturer specifications. Numeric ml/m² and wash-cycle volume are not published, so they remain unset.',
+  },
   'generic': {
     label: 'Generic / Nieznany model',
     tank_ml: 300,    robot_tank_ml: 300,
@@ -460,6 +564,56 @@ const CALIBRATION_DATA = {
     mop_type: 'Standard',
     notes: 'Default estimates - adjust for your model.',
   },
+};
+
+// Published, model-specific facts are kept separate from estimated ml/m²
+// values. This avoids treating conditional manufacturer maxima (for example
+// "up to 240 m² per fill") as measured water-dosing rates.
+function _calibrationFacts(model) {
+  if (!model) return [];
+  const facts = [];
+  const number = (value) => Number(value).toLocaleString('en-US');
+  const add = (value, label) => {
+    if (value !== undefined && value !== null) facts.push(`${number(value)} ${label}`);
+  };
+  add(model.dock_clean_tank_ml, 'ml clean dock');
+  add(model.dock_dirty_tank_ml, 'ml dirty dock');
+  add(model.robot_clean_tank_ml, 'ml robot');
+  add(model.robot_dirty_tank_ml, 'ml robot dirty');
+  if (model.tested_max_area_per_fill_m2) facts.push(`up to ${number(model.tested_max_area_per_fill_m2)} m²/fill (manufacturer test)`);
+  if (model.mop_max_rpm) facts.push(`${number(model.mop_max_rpm)} rpm max`);
+  if (model.mop_lift_max_mm) facts.push(`${number(model.mop_lift_max_mm)} mm lift max`);
+  if (model.mop_pressure_max_n) facts.push(`${number(model.mop_pressure_max_n)} N pressure max`);
+  if (model.water_flow_levels_count) facts.push(`${number(model.water_flow_levels_count)} water levels`);
+  if (model.mop_wash_stages) facts.push(`${number(model.mop_wash_stages)}-stage mop wash`);
+  if (model.continuous_fresh_water) facts.push('continuous fresh-water delivery');
+  if (model.mop_wash_pre_task_ml) facts.push(`${number(model.mop_wash_pre_task_ml)} ml pre-task`);
+  if (model.mop_wash_mid_task_ml) facts.push(`${number(model.mop_wash_mid_task_ml)} ml mid-task`);
+  if (model.mop_wash_interval_m2_options) facts.push(`wash interval: ${model.mop_wash_interval_m2_options.join(' / ')} m² (default ${model.mop_wash_interval_m2_default} m²)`);
+  if (model.mop_wash_interval_min_options) facts.push(`wash interval: ${model.mop_wash_interval_min_options.join(' / ')} min (default ${model.mop_wash_interval_min_default} min)`);
+  if (model.mop_wash_frequency_levels) facts.push(`${number(model.mop_wash_frequency_levels)} wash-frequency levels`);
+  if (model.mop_cleaning_preferences) facts.push(`${number(model.mop_cleaning_preferences)} mop-cleaning preferences`);
+  if (model.mop_wash_temp_c) facts.push(`${number(model.mop_wash_temp_c)}°C wash`);
+  if (model.drying_temp_c) facts.push(`${number(model.drying_temp_c)}°C drying air`);
+  if (model.smart_dirt_detection) facts.push('smart dirt detection');
+  if (model.auto_detergent) facts.push('automatic detergent dosing');
+  return facts;
+}
+
+// Vendor/app model identifiers are not stable human product names. Resolve
+// them through a canonical alias table instead of duplicating capacities.
+const MODEL_ALIASES = {
+  'a170': 'roborock_qrevo_5ae',
+  'roborock_vacuum_a170': 'roborock_qrevo_5ae',
+  'roborock_q_revo_5ae': 'roborock_qrevo_5ae',
+  'a245': 'roborock_qrevo_curv_2_flow',
+  'roborock_vacuum_a245': 'roborock_qrevo_curv_2_flow',
+  'roborock_qrevo_curv_2_flowx': 'roborock_qrevo_curv_2_flow',
+  'roborock_q_revo_curv_2_flow': 'roborock_qrevo_curv_2_flow',
+  'roborock_q_revo_curv_2_flowx': 'roborock_qrevo_curv_2_flow',
+  'xiaomi_robot_vacuum_h50': 'xiaomi_h50',
+  'xiaomi_robot_vacuum_h50_pro': 'xiaomi_h50_pro',
+  'tapo_rv50_pro': 'tapo_rv50_pro_omni',
 };
 
 
@@ -1229,7 +1383,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         setTimeout(() => {
           this._renderScheduled = false;
           this._lastHassSig = this._hassSignature(this._hass);
-          this._render();
+          this._render({ preserveDraft: true });
           this._lastRenderTime = Date.now();
         }, 10000 - (now - this._lastRenderTime));
       }
@@ -1237,7 +1391,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     this._firstRender = false;
     this._lastHassSig = sig;
-    this._render();
+    this._render({ preserveDraft: true });
     this._lastRenderTime = now;
   }
 
@@ -1249,6 +1403,49 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (id.startsWith('vacuum.')) s += id + '=' + st[id].state + ';';
     }
     return s;
+  }
+
+  _captureDraftState() {
+    const sr = this.shadowRoot;
+    const active = sr && sr.activeElement;
+    const activeEditable = active && active.matches?.('input, select, textarea') ? active : null;
+    const calibrationExpanded = sr.getElementById('vwm-custom-calibration-body')?.style.display === 'block';
+    if (!activeEditable && !calibrationExpanded) return null;
+    const controls = [...sr.querySelectorAll('input, select, textarea')];
+    const activeIndex = activeEditable ? controls.indexOf(activeEditable) : -1;
+    return {
+      controls: controls.map((control, index) => ({
+        index,
+        id: control.id || '',
+        value: control.value,
+        checked: !!control.checked,
+      })),
+      activeIndex,
+      activeId: activeEditable?.id || '',
+      selectionStart: typeof activeEditable?.selectionStart === 'number' ? activeEditable.selectionStart : null,
+      selectionEnd: typeof activeEditable?.selectionEnd === 'number' ? activeEditable.selectionEnd : null,
+      calibrationExpanded,
+    };
+  }
+
+  _restoreDraftState(draft) {
+    if (!draft) return;
+    const sr = this.shadowRoot;
+    const controls = [...sr.querySelectorAll('input, select, textarea')];
+    for (const saved of draft.controls) {
+      const control = saved.id ? sr.getElementById(saved.id) : controls[saved.index];
+      if (!control) continue;
+      control.value = saved.value;
+      if ('checked' in control) control.checked = saved.checked;
+    }
+    const expanded = sr.getElementById('vwm-custom-calibration-body');
+    if (expanded && draft.calibrationExpanded) expanded.style.display = 'block';
+    const active = draft.activeId ? sr.getElementById(draft.activeId) : (draft.activeIndex >= 0 ? controls[draft.activeIndex] : null);
+    if (!active) return;
+    active.focus();
+    if (draft.selectionStart !== null && typeof active.setSelectionRange === 'function') {
+      try { active.setSelectionRange(draft.selectionStart, draft.selectionEnd); } catch (e) {}
+    }
   }
 
   get _t() {
@@ -1373,7 +1570,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._subscribeServerEvents();
         this._serverReady = true;
         this._lastHtml = '';
-        this._render();
+        this._render({ preserveDraft: true });
       } catch (err) {
         console.error('[ha-vacuum-water-monitor] server state load failed:', err);
       } finally {
@@ -1398,7 +1595,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         };
       }
       this._lastHtml = '';
-      this._render();
+      this._render({ preserveDraft: true });
     }, VWM_EVENT).then((unsub) => { this._serverUnsub = unsub; }).catch((err) => {
       console.debug('[ha-vacuum-water-monitor] event subscription failed:', err);
     });
@@ -1410,21 +1607,24 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._userDevices = Array.isArray(settings.user_devices) ? [...settings.user_devices] : [];
     this._refillConfig = settings.refill_config && typeof settings.refill_config === 'object' ? { ...settings.refill_config } : {};
     const custom = settings.custom_calibration || {};
-    this._customCalib = custom[this._config?.brand_profile || 'default'] || null;
+    const activeDevice = this._getDevices?.()[this._activeDeviceIdx] || null;
+    this._customCalib = this._customCalibrationFor(activeDevice, custom);
     if (settings.warning_threshold && this._config.warning_threshold == null) this._config.warning_threshold = settings.warning_threshold;
     if (settings.critical_threshold && this._config.critical_threshold == null) this._config.critical_threshold = settings.critical_threshold;
   }
 
   async _saveServerSettings(patch) {
-    if (!this._hass) return;
+    if (!this._hass) return { ok: false, error: new Error('Home Assistant is unavailable') };
     try {
       const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch });
       if (result && result.settings) {
         this._serverState.settings = result.settings;
         this._applyServerSettings();
       }
+      return { ok: true, settings: (result && result.settings) || this._serverState.settings };
     } catch (err) {
       console.error('[ha-vacuum-water-monitor] settings save failed:', err);
+      return { ok: false, error: err };
     }
   }
 
@@ -1738,22 +1938,56 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return state && state.attributes ? state.attributes[attr] : null;
   }
 
+  _normaliseModelKey(value) {
+    return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+
   _resolveProfileKey(device) {
     // Auto-resolve the model profile from brand_profile or the vacuum entity id,
     // so a known model (e.g. vacuum.roborock_s8_maxv_ultra) gets its real tank
     // capacity OOTB without the user manually picking a Brand Profile.
     if (!device) return null;
     const bp = device.brand_profile;
-    if (bp && CALIBRATION_DATA[bp]) return bp;
+    if (bp) {
+      const normalized = this._normaliseModelKey(bp);
+      const canonical = MODEL_ALIASES[normalized] || normalized;
+      if (CALIBRATION_DATA[canonical]) return canonical;
+    }
     const ent = String(device.vacuum_entity || '').toLowerCase();
     if (ent.startsWith('vacuum.')) {
-      const cand = ent.slice(7);
-      if (CALIBRATION_DATA[cand]) return cand;
+      const normalized = this._normaliseModelKey(ent.slice(7));
+      const canonical = MODEL_ALIASES[normalized] || normalized;
+      if (CALIBRATION_DATA[canonical]) return canonical;
     }
     if (typeof BRAND_PROFILES !== 'undefined') {
       for (const k in BRAND_PROFILES) {
         if (BRAND_PROFILES[k].vacuum_entity && BRAND_PROFILES[k].vacuum_entity === device.vacuum_entity) return k;
       }
+    }
+    return null;
+  }
+
+  _customCalibrationKey(device = null) {
+    const active = device || this._getDevices()[this._activeDeviceIdx] || null;
+    const entity = String(active?.vacuum_entity || '').trim().toLowerCase();
+    if (entity) return `entity:${entity}`;
+    return this._resolveProfileKey(active) || active?.brand_profile || this._config?.brand_profile || 'default';
+  }
+
+  _customCalibrationFor(device, customMap = null) {
+    const custom = customMap || this._serverState?.settings?.custom_calibration || {};
+    if (!custom || typeof custom !== 'object') return null;
+    const entity = String(device?.vacuum_entity || '').trim().toLowerCase();
+    const profile = device?.brand_profile;
+    const resolved = this._resolveProfileKey(device);
+    const keys = [
+      entity ? `entity:${entity}` : '',
+      profile || '',
+      resolved || '',
+      'default',
+    ];
+    for (const key of [...new Set(keys.filter(Boolean))]) {
+      if (custom[key] && typeof custom[key] === 'object') return custom[key];
     }
     return null;
   }
@@ -1845,10 +2079,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _calcDeviceData(device) {
-    // Derive total water capacity: explicit config > calibration data > 0
+    // Derive total water capacity: explicit config > device-scoped custom
+    // calibration > verified model database > unknown.
     const profileKey = this._resolveProfileKey(device);
     const calib = profileKey ? (CALIBRATION_DATA[profileKey] || null) : null;
-    const totalMl = device.water_total_ml || (calib ? calib.tank_ml : 0);
+    const customCalib = this._customCalibrationFor(device);
+    const totalMl = device.water_total_ml || customCalib?.tank_ml || (calib ? calib.tank_ml : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
 
     // The integration state machine populates usedMl when no live water sensor exists.
@@ -2056,18 +2292,22 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const profileKey = (device && this._resolveProfileKey(device)) || cfg.brand_profile || 'generic';
     const calib = typeof CALIBRATION_DATA !== 'undefined' ? CALIBRATION_DATA[profileKey] || CALIBRATION_DATA['generic'] : null;
     if (calib) {
-      const levels = Object.entries(calib.water_per_m2).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${k}:</b> ${v} ml/m²</span>`).join('');
-      const estArea = data.totalMl > 0 ? Math.round(data.totalMl / (calib.water_per_m2.medium || 10)) : calib.avg_area_per_charge;
+      const usage = calib.water_per_m2 || {};
+      const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${k}:</b> ${v} ml/m²</span>`).join('');
+      const referenceUsage = usage.medium || Object.values(usage)[0] || null;
+      const estAreaPerTank = referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / referenceUsage) : null;
+      const facts = _calibrationFacts(calib);
       calibHtml = `
         <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
           <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 Calibration: ${calib.label}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
             <div>🪣 Tank: <b>${calib.tank_ml} ml</b></div>
             <div>🧹 Mop: <b>${calib.mop_type}</b></div>
-            <div>📏 Est. area/charge: <b>~${calib.avg_area_per_charge} m²</b></div>
-            <div>📏 Est. area/tank: <b>~${estArea} m²</b> (medium)</div>
+            ${calib.avg_area_per_charge ? `<div>📏 Est. area/charge: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
+            ${estAreaPerTank ? `<div>📏 Est. area/tank: <b>~${estAreaPerTank} m²</b></div>` : ''}
           </div>
-          <div style="margin-top:10px;font-size:12px;"><b>Water usage per m²:</b> ${levels}</div>
+          ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
+          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>Estimated water usage per m²:</b> ${levels}</div>` : '<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">Water-usage estimates are not published for this model; add a measured custom calibration if available.</div>'}
           ${calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + calib.notes + '</div>' : ''}
         </div>`;
     }
@@ -2214,6 +2454,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // ── TAB: MAINTENANCE ───────────────────────────────────────────────────────
 
   _buildMaintenanceTab(device, data) {
+    const customCalibration = this._customCalibrationFor(device) || {};
+    const savedModeRows = Object.entries(customCalibration.water_per_m2 || {});
+    const calibrationModeRows = [
+      ...savedModeRows,
+      ...Array.from({ length: Math.max(0, 3 - savedModeRows.length) }, () => ['', '']),
+    ].map(([name, value]) => `
+      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
+        <input type="text" value="${_esc(String(name))}" placeholder="e.g. standard" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name">
+        <input type="number" min="0.1" step="0.1" value="${_esc(value === '' ? '' : String(value))}" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val">
+      </div>`).join('');
     // Known default max lifespans (hours) per consumable type.
     // These match Roborock factory defaults; other brands vary but are similar order-of-magnitude.
     // The HA sensor may expose a `max` attribute — we prefer that when available.
@@ -2326,58 +2576,48 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div class="section-title" style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
             \u2699\uFE0F Custom calibration values <span style="font-size:10px;color:var(--bento-text-muted);font-weight:400">(click to expand)</span>
           </div>
-          <div style="display:none;margin-top:8px">
+          <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
             <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
-              If your robot is not on the list or you want to correct values — enter your own data. They will be saved in browser memory.
+              If your robot is not on the list or you want to correct values — enter your own data. They are saved per device in Home Assistant Store.
             </div>
             <div id="vwm-custom-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 Dock tank (ml)
-                <input type="number" id="vwm-custom-tank" placeholder="e.g. 3000" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                <input type="number" id="vwm-custom-tank" min="1" step="1" value="${_esc(String(customCalibration.tank_ml || ''))}" placeholder="e.g. 3000" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 Robot tank (ml)
-                <input type="number" id="vwm-custom-robot-tank" placeholder="e.g. 350" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                <input type="number" id="vwm-custom-robot-tank" min="1" step="1" value="${_esc(String(customCalibration.robot_tank_ml || ''))}" placeholder="e.g. 350" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 Mop washing (ml/cycle)
-                <input type="number" id="vwm-custom-wash" placeholder="e.g. 150" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                <input type="number" id="vwm-custom-wash" min="1" step="1" value="${_esc(String(customCalibration.mop_wash_ml || ''))}" placeholder="e.g. 150" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
-                Coverage / charge (m\u00B2)                <input type="number" id="vwm-custom-area" placeholder="e.g. 250" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                Coverage / charge (m\u00B2)                <input type="number" id="vwm-custom-area" min="1" step="1" value="${_esc(String(customCalibration.avg_area_per_charge || ''))}" placeholder="e.g. 250" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
             </div>
             <div style="margin-top:10px">
               <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:6px">Mopping modes — mode name and ml/m\u00B2 usage:</div>
               <div id="vwm-custom-modes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">
-                <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
-                  <input type="text" placeholder="np. low" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name">
-                  <input type="number" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val">
-                </div>
-                <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
-                  <input type="text" placeholder="np. medium" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name">
-                  <input type="number" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val">
-                </div>
-                <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
-                  <input type="text" placeholder="np. high" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name">
-                  <input type="number" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val">
-                </div>
+                ${calibrationModeRows}
               </div>
               <div style="margin-top:6px;text-align:right">
                 <button onclick="this.getRootNode().host._addCustomMode()" style="padding:4px 10px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:10px;cursor:pointer">+ Add mode</button>
               </div>
             </div>
             <div style="margin-top:12px;display:flex;gap:8px">
-              <button onclick="this.getRootNode().host._saveCustomCalibration()" style="flex:1;padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:600;font-size:12px;cursor:pointer">\uD83D\uDCBE Save</button>
+              <button id="vwm-custom-save" onclick="this.getRootNode().host._saveCustomCalibration()" style="flex:1;padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:600;font-size:12px;cursor:pointer">\uD83D\uDCBE Save</button>
               <button onclick="this.getRootNode().host._clearCustomCalibration()" style="padding:8px 16px;border:1px solid var(--bento-border);border-radius:8px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:12px;cursor:pointer">\uD83D\uDDD1 Clear</button>
             </div>
+            <div id="vwm-custom-status" role="status" aria-live="polite" style="min-height:18px;margin-top:6px;font-size:11px;color:var(--bento-text-secondary)"></div>
           </div>
         </div>
         <div class="section-block" style="text-align:center;padding:16px">
           <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:8px">
             Missing your robot or have more accurate data?
           </div>
-          <a href="https://github.com/madmax/ha-tools/issues/new?title=Calibration+data+for+[MODEL]&body=Model:%0ATank+ml:%0AWater+per+m2:%0AMop+wash+ml:%0ASource:%0A" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:8px;background:#24292e;color:white;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer">
+          <a href="https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new?title=Calibration+data+for+[MODEL]&body=Model:%0ATank+ml:%0AWater+per+m2:%0AMop+wash+ml:%0ASource:%0A" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:8px;background:#24292e;color:white;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
             Report data or correction on GitHub
           </a>
@@ -2521,49 +2761,90 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // ── TAB: DATABASE ─────────────────────────────────────────────────────────
 
 
-  _saveCustomCalibration() {
+  async _saveCustomCalibration() {
     const shadow = this.shadowRoot;
+    const status = shadow.getElementById('vwm-custom-status');
+    const saveButton = shadow.getElementById('vwm-custom-save');
     const tank = shadow.getElementById('vwm-custom-tank')?.value;
-    const robotTank = shadow.getElementById('vwm-custom-robot-tank')?.value;    const wash = shadow.getElementById('vwm-custom-wash')?.value;
+    const robotTank = shadow.getElementById('vwm-custom-robot-tank')?.value;
+    const wash = shadow.getElementById('vwm-custom-wash')?.value;
     const area = shadow.getElementById('vwm-custom-area')?.value;
     const modeNames = shadow.querySelectorAll('.vwm-mode-name');
     const modeVals = shadow.querySelectorAll('.vwm-mode-val');
     const modes = {};
-    modeNames.forEach((n, i) => {
-      const name = n.value?.trim();
-      const val = parseFloat(modeVals[i]?.value);
-      if (name && !isNaN(val)) modes[name] = val;
-    });
     const custom = {};
-    if (tank) custom.tank_ml = parseInt(tank);
-    if (robotTank) custom.robot_tank_ml = parseInt(robotTank);
-    if (wash) custom.mop_wash_ml = parseInt(wash);
-    if (area) custom.avg_area_per_charge = parseInt(area);
+    const addPositiveInteger = (raw, key, label) => {
+      if (raw === '' || raw == null) return;
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value <= 0) throw new Error(`${label} must be greater than zero`);
+      custom[key] = Math.round(value);
+    };
+    try {
+      addPositiveInteger(tank, 'tank_ml', 'Dock tank');
+      addPositiveInteger(robotTank, 'robot_tank_ml', 'Robot tank');
+      addPositiveInteger(wash, 'mop_wash_ml', 'Mop wash');
+      addPositiveInteger(area, 'avg_area_per_charge', 'Coverage');
+      modeNames.forEach((nameInput, i) => {
+        const name = nameInput.value?.trim();
+        const raw = modeVals[i]?.value?.trim();
+        if (!name && !raw) return;
+        const value = Number(raw);
+        if (!name || !Number.isFinite(value) || value <= 0) {
+          throw new Error('Each mopping mode needs a name and a value greater than zero');
+        }
+        modes[name] = value;
+      });
+    } catch (err) {
+      if (status) { status.textContent = `Could not save: ${err.message}`; status.style.color = '#ef4444'; }
+      return false;
+    }
     if (Object.keys(modes).length > 0) {
       custom.water_per_m2 = modes;
       custom.mop_modes = modes;
     }
-    if (Object.keys(custom).length === 0) return;
-    const key = this._config?.brand_profile || 'default';
+    if (Object.keys(custom).length === 0) {
+      if (status) { status.textContent = 'Enter at least one calibration value.'; status.style.color = '#ef4444'; }
+      return false;
+    }
+    const activeDevice = this._getDevices()[this._activeDeviceIdx] || null;
+    const key = this._customCalibrationKey(activeDevice);
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
     all[key] = custom;
+    if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Saving…'; }
+    if (status) { status.textContent = 'Saving to Home Assistant…'; status.style.color = 'var(--bento-text-secondary)'; }
+    const result = await this._saveServerSettings({ custom_calibration: all });
+    const currentSaveButton = shadow.getElementById('vwm-custom-save');
+    const currentStatus = shadow.getElementById('vwm-custom-status');
+    if (currentSaveButton) { currentSaveButton.disabled = false; currentSaveButton.textContent = '\uD83D\uDCBE Save'; }
+    if (!result.ok) {
+      if (currentStatus) { currentStatus.textContent = 'Could not save calibration. Please try again.'; currentStatus.style.color = '#ef4444'; }
+      return false;
+    }
     this._customCalib = custom;
-    this._serverState.settings = { ...(this._serverState.settings || {}), custom_calibration: all };
-    this._saveServerSettings({ custom_calibration: all });
-    this._lastHtml = '';
-    this._updateContent();
-    const btn = shadow.querySelector('[onclick*="saveCustom"]');
-    if (btn) { const orig = btn.textContent; btn.textContent = '\u2705 Zapisano!'; setTimeout(() => btn.textContent = orig, 2000); }
+    if (currentStatus) { currentStatus.textContent = '\u2705 Saved in Home Assistant for this device.'; currentStatus.style.color = '#22c55e'; }
+    return true;
   }
 
-  _clearCustomCalibration() {    const key = this._config?.brand_profile || 'default';
+  async _clearCustomCalibration() {
+    const status = this.shadowRoot.getElementById('vwm-custom-status');
+    const activeDevice = this._getDevices()[this._activeDeviceIdx] || null;
+    const key = this._customCalibrationKey(activeDevice);
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
     delete all[key];
+    const result = await this._saveServerSettings({ custom_calibration: all });
+    const currentStatus = this.shadowRoot.getElementById('vwm-custom-status') || status;
+    if (!result.ok) {
+      if (currentStatus) { currentStatus.textContent = 'Could not clear calibration. Please try again.'; currentStatus.style.color = '#ef4444'; }
+      return false;
+    }
     this._customCalib = null;
-    this._serverState.settings = { ...(this._serverState.settings || {}), custom_calibration: all };
-    this._saveServerSettings({ custom_calibration: all });
     this._lastHtml = '';
-    this._updateContent();
+    this._render({ preserveDraft: false });
+    const refreshedBody = this.shadowRoot.getElementById('vwm-custom-calibration-body');
+    const refreshedStatus = this.shadowRoot.getElementById('vwm-custom-status');
+    if (refreshedBody) refreshedBody.style.display = 'block';
+    if (refreshedStatus) { refreshedStatus.textContent = '\u2705 Custom calibration cleared.'; refreshedStatus.style.color = '#22c55e'; }
+    return true;
   }
 
   _loadCustomCalibration() {
@@ -2580,6 +2861,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
   _buildDatabaseTab() {
     const models = Object.entries(CALIBRATION_DATA);
+    const activeDevice = this._getDevices()[this._activeDeviceIdx] || null;
+    const configuredProfile = this._normaliseModelKey(this._config.brand_profile);
+    const configuredCanonical = MODEL_ALIASES[configuredProfile] || configuredProfile;
+    const activeProfileKey = this._resolveProfileKey(activeDevice)
+      || (CALIBRATION_DATA[configuredCanonical] ? configuredCanonical : null);
     const cellSt = 'padding:6px 8px;font-size:11px;border-bottom:1px solid var(--vwm-border,#e5e7eb);vertical-align:top';
     const headSt = cellSt + ';font-weight:700;color:var(--vwm-text-secondary,#6b7280);background:var(--vwm-surface,#f3f4f6);position:sticky;top:0;z-index:1';
     const numSt = 'text-align:center;font-weight:600';
@@ -2593,7 +2879,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     };
 
     const rows = models.map(([key, m]) => {
-      const levels = Object.entries(m.water_per_m2);
+      const levels = Object.entries(m.water_per_m2 || {});
+      const publishedFacts = _calibrationFacts(m);
       const levelTags = levels.map(([mode, val]) => {
         const estArea = Math.round(m.tank_ml / val);
         return `<span style="${tagSt};${levelColor(val)}" title="${mode}: ${val} ml/m\u00B2 \u2192 ~${estArea} m\u00B2/tank">${mode}: ${val}</span>`;
@@ -2605,7 +2892,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         return `<span style="${tagSt};background:var(--vwm-overlay-light,rgba(0,0,0,0.04));color:var(--vwm-text-secondary,#6b7280)">${mode}: ~${area} m\u00B2</span>`;
       }).join(' ');
 
-      const isActive = this._config.brand_profile === key;
+      const isActive = activeProfileKey === key;
       const rowBg = isActive ? 'background:rgba(59,130,246,0.06)' : '';
 
       return `<tr style="${rowBg}">
@@ -2613,40 +2900,45 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div style="font-weight:600;font-size:12px">${m.label}${isActive ? ' <span style="color:#3b82f6;font-size:10px">\u2705 aktywny</span>' : ''}</div>
           <div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${m.mop_type}</div>
         </td>
-        <td style="${cellSt};${numSt}">${m.tank_ml} ml</td>
-        <td style="${cellSt}">${levelTags}</td>
-        <td style="${cellSt}">${areaEstimates}</td>
-        <td style="${cellSt};${numSt}">${m.avg_area_per_charge} m\u00B2</td>
-        <td style="${cellSt};font-size:10px;color:var(--vwm-text-secondary,#6b7280);max-width:140px">${m.notes || ''}${m.mop_wash_ml ? ' | Wash: ' + m.mop_wash_ml + 'ml/cycle' : ''}</td>
+        <td style="${cellSt};${numSt}">${Number(m.tank_ml).toLocaleString('en-US')} ml</td>
+        <td style="${cellSt}">${levelTags || '<span style="color:var(--vwm-text-muted,#9ca3af)">not measured</span>'}</td>
+        <td style="${cellSt}">${areaEstimates || '—'}</td>
+        <td style="${cellSt};${numSt}">${m.avg_area_per_charge ? m.avg_area_per_charge + ' m\u00B2' : '—'}</td>
+        <td style="${cellSt};font-size:10px;color:var(--vwm-text-secondary,#6b7280);max-width:220px">
+          ${publishedFacts.length ? `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px">${publishedFacts.map(fact => `<span style="${tagSt};background:rgba(59,130,246,0.08);color:var(--vwm-text-secondary,#6b7280)">${_esc(fact)}</span>`).join('')}</div>` : ''}
+          ${m.notes || ''}${m.mop_wash_ml ? ' | Estimated wash: ' + m.mop_wash_ml + 'ml/cycle' : ''}
+        </td>
       </tr>`;
     }).join('');
 
     // Summary card for active profile
     let activeCard = '';
-    const profileKey = this._config.brand_profile;
-    const active = profileKey ? CALIBRATION_DATA[profileKey] : null;
+    const active = activeProfileKey ? CALIBRATION_DATA[activeProfileKey] : null;
     if (active) {
-      const levels = Object.entries(active.water_per_m2);
+      const levels = Object.entries(active.water_per_m2 || {});
+      const publishedFacts = _calibrationFacts(active);
+      const sourceLinks = (active.source_urls || []).map((url, index) => `<a href="${_esc(url)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6">manufacturer source${active.source_urls.length > 1 ? ' ' + (index + 1) : ''}</a>`).join(' · ');
       activeCard = `
         <div style="margin-bottom:14px;padding:14px;background:rgba(59,130,246,0.06);border:1.5px solid rgba(59,130,246,0.2);border-radius:12px">
           <div style="font-weight:700;font-size:14px;margin-bottom:8px">\uD83E\uDDA4 ${active.label} <span style="font-size:11px;color:#3b82f6;font-weight:500">(aktywny profil)</span></div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
-              <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${active.tank_ml}</div>
-              <div style="font-size:10px;color:var(--bento-text-muted)">ml zbiornik</div>
+              <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${Number(active.tank_ml).toLocaleString('en-US')}</div>
+              <div style="font-size:10px;color:var(--bento-text-muted)">ml clean-water capacity</div>
             </div>
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
-              <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${active.avg_area_per_charge}</div>
-              <div style="font-size:10px;color:var(--bento-text-muted)">m\u00B2 / charge</div>
+              <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${active.tested_max_area_per_fill_m2 || active.avg_area_per_charge || '—'}</div>
+              <div style="font-size:10px;color:var(--bento-text-muted)">${active.tested_max_area_per_fill_m2 ? 'm\u00B2 / fill (tested max)' : 'm\u00B2 / charge'}</div>
             </div>
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
               <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${levels.length}</div>
               <div style="font-size:10px;color:var(--bento-text-muted)">tryb\u00F3w mopu</div>
             </div>
           </div>
+          ${publishedFacts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">${publishedFacts.map(fact => `<span style="${tagSt};background:rgba(59,130,246,0.08);color:var(--vwm-text-secondary,#6b7280)">${_esc(fact)}</span>`).join('')}</div>` : ''}
           <div style="font-size:12px;font-weight:600;margin-bottom:6px">Zu\u017Cycie wody wg trybu:</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px">
-            ${levels.map(([mode, val]) => {
+            ${levels.length ? levels.map(([mode, val]) => {
               const area = Math.round(active.tank_ml / val);
               const pct = Math.round((val / Math.max(...levels.map(l => l[1]))) * 100);
               return `<div style="padding:8px;background:var(--vwm-bg,#fff);border-radius:8px;border:1px solid var(--vwm-border,#e5e7eb)">
@@ -2655,11 +2947,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
                 <div style="margin:4px 0;height:4px;background:rgba(59,130,246,0.12);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;border-radius:2px;background:${val <= 8 ? '#22c55e' : val <= 14 ? '#3b82f6' : val <= 18 ? '#f59e0b' : '#ef4444'}"></div></div>
                 <div style="font-size:10px;color:var(--bento-text-muted)">\u2248 ${area} m\u00B2 / zbiornik</div>
               </div>`;
-            }).join('')}
+            }).join('') : '<div style="font-size:11px;color:var(--bento-text-secondary)">No manufacturer usage-rate data. Add a measured custom calibration for this device.</div>'}
           </div>
           ${active.mop_type ? `<div style="margin-top:8px;font-size:11px;color:var(--bento-text-secondary)">\uD83E\uDDF9 ${active.mop_type}</div>` : ''}
           ${active.notes ? `<div style="margin-top:4px;font-size:11px;color:var(--bento-text-muted);font-style:italic">\uD83D\uDCA1 ${active.notes}</div>` : ''}
           ${active.mop_wash_ml ? `<div style="margin-top:4px;font-size:11px;color:var(--bento-text-secondary)">\uD83D\uDEBF Mop wash in dock: ${active.mop_wash_ml}ml/cycle${active.mop_wash_modes ? ' (' + Object.entries(active.mop_wash_modes).map(([k,v]) => k + ': ' + v + 'ml').join(', ') + ')' : ''}</div>` : ''}
+          ${sourceLinks ? `<div style="margin-top:6px;font-size:10px">Verified from ${sourceLinks} · ${_esc(active.data_quality || 'manufacturer data')}</div>` : ''}
         </div>`;
     }
 
@@ -2696,7 +2989,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
             <div style="display:flex;align-items:center;gap:6px"><span style="${tagSt};${levelColor(22)}">max/deep</span> Deep cleaning</div>
           </div>
           <div style="margin-top:10px;font-size:11px;color:var(--bento-text-secondary);line-height:1.5">
-            <strong>Tank</strong> — capacity of robot's built-in tank (not dock). Robots with auto-refill (Dreame, Ecovacs) have small tanks (~80 ml) because they refill automatically from dock (3–4L).<br>
+            <strong>Tank</strong> — tracked clean-water capacity: dock tank for auto-refill models, otherwise the robot's built-in tank. Published robot and dirty-water capacities are shown separately in the model facts.<br>
             <strong>Coverage / tank</strong> — estimated area the robot cleans on one full tank in given mode.<br>
             <strong>Coverage / charge</strong> — max area on one battery charge (regardless of water).
           </div>
@@ -2857,7 +3150,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   // ── MAIN RENDER ───────────────────────────────────────────────────────────
 
-  _render() {
+  _render({ preserveDraft = false } = {}) {
+    const draft = preserveDraft ? this._captureDraftState() : null;
     if (!this._hass) return;
    try {
     const devices = this._getDevices();
@@ -3152,6 +3446,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       this.shadowRoot.innerHTML = _newHtml;
       this._lastHtml = _newHtml;
       this._attachListeners(devices, device);
+      this._restoreDraftState(draft);
     }
    } catch(err) {
     // Show error with tip banner

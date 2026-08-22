@@ -20,6 +20,7 @@ spec.loader.exec_module(sensor_calculations)
 
 build_vacuum_devices = sensor_calculations.build_vacuum_devices
 estimate_water_state = sensor_calculations.estimate_water_state
+apply_custom_calibration = sensor_calculations.apply_custom_calibration
 filter_active_devices = sensor_calculations.filter_active_devices
 next_maintenance_due = sensor_calculations.next_maintenance_due
 parse_refill_datetime = sensor_calculations.parse_refill_datetime
@@ -90,6 +91,81 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(estimate["total_ml"], 4500)
         self.assertEqual(estimate["remaining_ml"], 3600)
         self.assertEqual(estimate["remaining_percent"], 80)
+
+    def test_estimate_water_state_resolves_reported_roborock_model_aliases(self) -> None:
+        cases = (
+            ({"vacuum_entity": "vacuum.a170"}, 4000),
+            (
+                {
+                    "vacuum_entity": "vacuum.living_room",
+                    "brand_profile": "roborock.vacuum.a170",
+                },
+                4000,
+            ),
+            ({"vacuum_entity": "vacuum.a245"}, 4000),
+        )
+
+        for device, expected_capacity in cases:
+            with self.subTest(device=device):
+                estimate = estimate_water_state(device, {"used_ml": 0}, {})
+                self.assertEqual(estimate["total_ml"], expected_capacity)
+
+    def test_estimate_water_state_resolves_verified_new_model_capacities(self) -> None:
+        cases = (
+            ("vacuum.xiaomi_h50", 4000),
+            ("vacuum.xiaomi_robot_vacuum_h50_pro", 4000),
+            ("vacuum.tapo_rv50_pro_omni", 5000),
+        )
+
+        for entity_id, expected_capacity in cases:
+            with self.subTest(entity_id=entity_id):
+                estimate = estimate_water_state(
+                    {"vacuum_entity": entity_id}, {"used_ml": 0}, {}
+                )
+                self.assertEqual(estimate["total_ml"], expected_capacity)
+
+    def test_estimate_water_state_uses_entity_scoped_custom_calibration(self) -> None:
+        estimate = estimate_water_state(
+            {"vacuum_entity": "vacuum.living_room"},
+            {"used_ml": 200},
+            {
+                "custom_calibration": {
+                    "entity:vacuum.living_room": {"tank_ml": 4200}
+                }
+            },
+        )
+
+        self.assertEqual(estimate["total_ml"], 4200)
+        self.assertEqual(estimate["remaining_ml"], 4000)
+
+    def test_apply_custom_calibration_feeds_water_accounting(self) -> None:
+        device = {
+            "vacuum_entity": "vacuum.living_room",
+            "usage_ml_per_m2": {"standard": 7},
+        }
+        settings = {
+            "custom_calibration": {
+                "entity:vacuum.living_room": {
+                    "water_per_m2": {"standard": 5, "deep": 9},
+                    "mop_wash_ml": 175,
+                }
+            }
+        }
+
+        effective = apply_custom_calibration(device, settings)
+
+        self.assertEqual(effective["usage_ml_per_m2"], {"standard": 7})
+        self.assertEqual(effective["wash_volume_ml"], 175)
+        self.assertNotIn("wash_volume_ml", device)
+
+        custom_only = apply_custom_calibration(
+            {"vacuum_entity": "vacuum.living_room"}, settings
+        )
+        self.assertEqual(
+            custom_only["usage_ml_per_m2"], {"standard": 5, "deep": 9}
+        )
+        self.assertEqual(custom_only["wash_volume_ml"], 175)
+
 
     def test_estimate_water_state_unknown_model_stays_unknown(self) -> None:
         estimate = estimate_water_state(

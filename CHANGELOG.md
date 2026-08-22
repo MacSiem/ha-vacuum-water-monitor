@@ -1,5 +1,16 @@
 # Changelog
 
+## 5.1.13 (2026-08-22)
+
+- Added manufacturer-sourced profiles and model aliases for Roborock Qrevo 5AE (`a170`), Qrevo Curv 2 Flow/FlowX (`a245`), Xiaomi H50/H50 Pro, and Tapo RV50 Pro Omni.
+- Expanded the model database to distinguish clean/dirty dock tanks, clean/dirty robot tanks, tested maximum area per fill, water-flow levels, mop speed/lift/pressure, and model-specific wash/drying facts.
+- Kept unpublished ml/m² and generic wash-cycle values unset. Xiaomi's published H50 Pro 180 ml pre-task and 120 ml mid-task values are shown separately and are not misused as one automatic accounting rate.
+- Fixed custom calibration editing: drafts, focus, caret position and expanded state now survive Home Assistant/Store refreshes; saves are device-scoped, awaited, and show success or failure.
+- Fixed server-side accounting to apply saved per-device ml/m² and mop-wash calibration.
+- Fixed one physical mop-wash sequence being counted more than once when a vacuum transitions between internal wash statuses.
+- Added Python accounting tests, model/profile render smoke coverage, pinned frontend test dependencies, and a CI invariant that both distributed card copies stay identical.
+- Documented primary manufacturer sources and data-quality rules in `docs/model-capacity-sources.md`.
+
 ## 5.1.12 (2026-08-21)
 
 - Security: escape configured and persisted device/maintenance icons at every HTML render boundary. The same sweep also escapes Home Assistant entity names, states, IDs, and error messages when they are interpolated into card markup.

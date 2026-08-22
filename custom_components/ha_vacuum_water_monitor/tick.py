@@ -7,6 +7,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
+from .sensor_calculations import apply_custom_calibration
 from .storage import VacuumWaterStorage
 
 MOP_WASH_STATES = {
@@ -127,7 +128,7 @@ def tick_device(
 
     if (
         state.get("last_status") is not None
-        and curr_status != state.get("last_status")
+        and state.get("last_status") not in MOP_WASH_STATES
         and curr_status in MOP_WASH_STATES
     ):
         state["used_ml"] = round(_number(state.get("used_ml"), 0) + wash_volume)
@@ -216,7 +217,7 @@ def _devices_to_tick(
                 "name": vacuum["name"],
             },
         )
-    return list(devices.values())
+    return [apply_custom_calibration(device, settings) for device in devices.values()]
 
 
 def _has_user_priv_helpers(
