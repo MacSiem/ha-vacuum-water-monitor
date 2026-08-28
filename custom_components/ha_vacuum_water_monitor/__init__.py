@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-import os
 from datetime import timedelta
+from pathlib import Path
 
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
@@ -162,17 +162,16 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     if bucket.get(DATA_FRONTEND_REGISTERED):
         return
 
-    card_path = os.path.join(
-        os.path.dirname(__file__), _CARD_PACKAGE_DIR, _CARD_FILENAME
-    )
-    if not os.path.isfile(card_path):
+    card_dir = Path(__file__).parent / _CARD_PACKAGE_DIR
+    card_path = card_dir / _CARD_FILENAME
+    if not await hass.async_add_executor_job(card_path.is_file):
         _LOGGER.error("Bundled card file missing at %s", card_path)
         return
 
     await hass.http.async_register_static_paths(
         [
             StaticPathConfig(
-                f"/{DOMAIN}", os.path.dirname(card_path), cache_headers=False
+                f"/{DOMAIN}", str(card_dir), cache_headers=False
             )
         ]
     )

@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.1.14 (2026-08-28)
+
+- Isolation: Bento CSS is component-local in both frontend copies and cannot be captured from `window.HAToolsBentoCSS` by load order.
+- Compatibility: raised the Home Assistant floor to 2024.7 for the static-path API used by the bundled-card registration.
+- Performance: moved the bundled-card filesystem stat off the Home Assistant event loop.
+- Security: removed the legacy global injector, which traversed and modified unrelated custom-card shadow DOMs.
+- UX: restored the donate footer within this card's own shadow root.
+
 ## 5.1.13 (2026-08-22)
 
 - Added manufacturer-sourced profiles and model aliases for Roborock Qrevo 5AE (`a170`), Qrevo Curv 2 Flow/FlowX (`a245`), Xiaomi H50/H50 Pro, and Tapo RV50 Pro Omni.
