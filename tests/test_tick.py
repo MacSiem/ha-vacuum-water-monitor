@@ -135,6 +135,125 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         self.assertEqual(restarted["used_ml"], 133)
         self.assertEqual(restarted["last_accounting_reason"], "wash_already_active")
 
+    def test_transient_status_does_not_end_persisted_wash_sequence(self):
+        rate = {"wash_volume_ml": 150}
+
+        def step(state, status):
+            hass = _Hass(
+                {
+                    "vacuum.test": _State("docked", {"status": status}),
+                    "sensor.status": _State(status),
+                }
+            )
+            return tick.tick_device(
+                hass,
+                {
+                    "vacuum_entity": "vacuum.test",
+                    "status_sensor": "sensor.status",
+                    **rate,
+                },
+                state,
+            )[0]
+
+        first = step({"used_ml": 0, "last_status": "docked"}, "washing_the_mop")
+        transient = step(first, "unavailable")
+        unknown = step(transient, "unknown")
+        empty = step(unknown, "")
+        resumed = step(empty, "washing_the_mop")
+        exited = step(resumed, "cleaning")
+        next_wash = step(exited, "washing_the_mop")
+
+        self.assertEqual(first["used_ml"], 150)
+        self.assertEqual(transient["used_ml"], 150)
+        self.assertEqual(unknown["used_ml"], 150)
+        self.assertEqual(empty["used_ml"], 150)
+        self.assertEqual(resumed["used_ml"], 150)
+        self.assertEqual(next_wash["used_ml"], 300)
+
+    def test_legacy_wash_status_without_latch_does_not_charge_after_restart(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked", {"status": "washing_the_mop"}),
+                    "sensor.status": _State("washing_the_mop"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "status_sensor": "sensor.status",
+                "wash_volume_ml": 150,
+            },
+            {
+                "used_ml": 150,
+                "last_status": "washing_the_mop",
+                "wash_sequence_active": False,
+            },
+        )
+
+        self.assertEqual(state["used_ml"], 150)
+        self.assertTrue(state["wash_sequence_active"])
+
+    def test_missing_configured_status_signal_keeps_wash_latch_active(self):
+        state, _dirty = tick.tick_device(
+            _Hass({"vacuum.test": _State("docked", {"status": "docked"})}),
+            {
+                "vacuum_entity": "vacuum.test",
+                "status_sensor": "sensor.missing_status",
+                "wash_volume_ml": 150,
+            },
+            {
+                "used_ml": 150,
+                "last_status": "washing_the_mop",
+                "wash_sequence_active": True,
+            },
+        )
+
+        self.assertTrue(state["wash_sequence_active"])
+        self.assertEqual(state["used_ml"], 150)
+
+    def test_literal_tenth_square_meter_doses_but_smaller_delta_does_not(self):
+        device = {
+            "vacuum_entity": "vacuum.test",
+            "area_sensor": "sensor.area",
+            "usage_ml_per_m2": {"default": 5},
+        }
+
+        at_threshold, _dirty = tick.tick_device(
+            _Hass({"vacuum.test": _State("cleaning"), "sensor.area": _State("10.1")}),
+            device,
+            {"used_ml": 10, "last_area": 10.0, "last_status": "cleaning"},
+        )
+        below_threshold, _dirty = tick.tick_device(
+            _Hass({"vacuum.test": _State("cleaning"), "sensor.area": _State("10.099")}),
+            device,
+            {"used_ml": 10, "last_area": 10.0, "last_status": "cleaning"},
+        )
+
+        self.assertEqual(at_threshold["used_ml"], 10.5)
+        self.assertEqual(below_threshold["used_ml"], 10)
+        self.assertEqual(below_threshold["last_accounting_reason"], "area_delta_below_minimum")
+
+    def test_tick_device_returns_new_state_without_mutating_caller_state(self):
+        original = {"used_ml": 10, "last_status": "docked", "last_area": None}
+        result, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked", {"status": "washing_the_mop"}),
+                    "sensor.status": _State("washing_the_mop"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "status_sensor": "sensor.status",
+                "wash_volume_ml": 150,
+            },
+            original,
+        )
+
+        self.assertIsNot(result, original)
+        self.assertEqual(original, {"used_ml": 10, "last_status": "docked", "last_area": None})
+        self.assertEqual(result["used_ml"], 160)
+
     def test_area_without_explicit_rate_never_consumes_water(self):
         hass = _Hass(
             {

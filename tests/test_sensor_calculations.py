@@ -231,6 +231,30 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(effective["wash_volume_ml"], 175)
         self.assertEqual(estimate["total_ml"], 4200)
 
+    def test_entity_alias_calibration_overrides_canonical_default_layer(self) -> None:
+        effective = apply_custom_calibration(
+            {"vacuum_entity": "vacuum.living_room"},
+            {
+                "custom_calibration": {
+                    "default": {
+                        "usage_ml_per_m2": {"standard": 4},
+                        "wash_volume_ml": 150,
+                        "tracked_capacity_ml": 3000,
+                    },
+                    "entity:vacuum.living_room": {
+                        "water_per_m2": {"standard": 9},
+                        "mop_wash_ml": 175,
+                        "tank_ml": 4200,
+                    },
+                }
+            },
+        )
+
+        self.assertEqual(effective["usage_ml_per_m2"], {"standard": 9})
+        self.assertEqual(effective["wash_volume_ml"], 175)
+        self.assertEqual(effective["tracked_capacity_ml"], 4200)
+        self.assertEqual(effective["accounting_evidence"], "user_calibration")
+
     def test_entity_calibration_overrides_profile_rates_discovered_for_that_entity(self) -> None:
         discovered = build_vacuum_devices(
             {},

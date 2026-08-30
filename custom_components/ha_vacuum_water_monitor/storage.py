@@ -172,6 +172,7 @@ class VacuumWaterStorage:
             "last_dock_err": None,
             "last_door": None,
             "last_reset_ts": 0,
+            "wash_sequence_active": False,
             "area_gap": False,
             "last_accounting_source": None,
             "last_accounting_rate_ml": None,

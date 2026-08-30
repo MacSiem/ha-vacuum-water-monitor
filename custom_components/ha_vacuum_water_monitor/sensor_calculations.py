@@ -391,12 +391,39 @@ def _merged_custom_calibration(device: dict[str, Any], settings: dict[str, Any])
         value = custom.get(key)
         if not isinstance(value, dict):
             continue
-        for name, raw in value.items():
+        for name, raw in _normalize_calibration_layer(value).items():
             if isinstance(raw, dict) and isinstance(merged.get(name), dict):
                 merged[name] = {**merged[name], **raw}
             else:
                 merged[name] = raw
     return merged
+
+
+def _normalize_calibration_layer(layer: dict[str, Any]) -> dict[str, Any]:
+    """Normalize legacy aliases before applying this layer's precedence."""
+    normalized = dict(layer)
+
+    usage: dict[str, Any] = {}
+    for key in ("water_per_m2", "usage_ml_per_m2"):
+        value = layer.get(key)
+        if isinstance(value, dict):
+            usage.update(value)
+    if usage:
+        normalized["usage_ml_per_m2"] = usage
+    normalized.pop("water_per_m2", None)
+
+    for canonical, legacy in (
+        ("wash_volume_ml", "mop_wash_ml"),
+        ("tracked_capacity_ml", "tank_ml"),
+    ):
+        canonical_value = _positive_optional(layer.get(canonical))
+        legacy_value = _positive_optional(layer.get(legacy))
+        if canonical_value is not None or legacy_value is not None:
+            normalized[canonical] = (
+                canonical_value if canonical_value is not None else legacy_value
+            )
+        normalized.pop(legacy, None)
+    return normalized
 
 
 def _resolve_model_key(device: dict[str, Any]) -> str:

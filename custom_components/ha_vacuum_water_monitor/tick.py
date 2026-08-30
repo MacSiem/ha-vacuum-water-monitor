@@ -60,6 +60,7 @@ def tick_device(
     hass: HomeAssistant, device: dict[str, Any], state: dict[str, Any]
 ) -> tuple[dict[str, Any], bool]:
     """Translate one v4 `_tickWaterState` pass into Python."""
+    state = dict(state)
     vacuum_entity = device.get("vacuum_entity")
     vac = hass.states.get(vacuum_entity) if vacuum_entity else None
     if vac is None:
@@ -68,11 +69,10 @@ def tick_device(
     dirty = False
     status_sensor = device.get("status_sensor")
     status_state = hass.states.get(status_sensor) if status_sensor else None
-    curr_status = (
-        status_state.state
-        if status_state is not None
-        else vac.attributes.get("status") or vac.state
-    )
+    if status_sensor:
+        curr_status = status_state.state if status_state is not None else None
+    else:
+        curr_status = vac.attributes.get("status") or vac.state
 
     curr_area = _float_or_none(_state_value(hass, device.get("area_sensor")))
     curr_dock_err = _state_value(hass, device.get("dock_error_sensor"))
@@ -102,8 +102,11 @@ def tick_device(
     evidence = device.get("accounting_evidence")
 
     previous_status = state.get("last_status")
+    wash_active = bool(state.get("wash_sequence_active")) or (
+        previous_status in MOP_WASH_STATES
+    )
     if curr_status in MOP_WASH_STATES:
-        if previous_status in MOP_WASH_STATES:
+        if wash_active:
             dirty |= _record_accounting(
                 state, "wash", wash_volume, evidence, "wash_already_active"
             )
@@ -117,6 +120,13 @@ def tick_device(
             state["used_ml"] = round(_number(state.get("used_ml"), 0) + wash_volume, 2)
             dirty = True
             dirty |= _record_accounting(state, "wash", wash_volume, evidence, None)
+        if not state.get("wash_sequence_active"):
+            state["wash_sequence_active"] = True
+            dirty = True
+    elif not _is_transient_status(curr_status):
+        if state.get("wash_sequence_active"):
+            state["wash_sequence_active"] = False
+            dirty = True
 
     last_area = _float_or_none(state.get("last_area"))
     if curr_area is None:
@@ -139,7 +149,9 @@ def tick_device(
             dirty |= _record_accounting(state, "area", None, evidence, "area_reset")
         elif delta > ceiling:
             dirty |= _record_accounting(state, "area", None, evidence, "area_anomaly")
-        elif delta < AREA_MIN_DELTA:
+        elif delta < AREA_MIN_DELTA and not math.isclose(
+            delta, AREA_MIN_DELTA, rel_tol=0, abs_tol=1e-9
+        ):
             dirty |= _record_accounting(state, "area", None, evidence, "area_delta_below_minimum")
         elif not (vac_state == "cleaning" or curr_status == "cleaning"):
             dirty |= _record_accounting(state, "area", None, evidence, "not_cleaning")
@@ -259,6 +271,13 @@ def _normalized_signal(value: Any) -> str | None:
         return None
     normalized = value.strip().lower()
     return normalized if normalized and normalized not in {"unknown", "unavailable"} else None
+
+
+def _is_transient_status(value: Any) -> bool:
+    return not isinstance(value, str) or not value.strip() or value.strip().lower() in {
+        "unknown",
+        "unavailable",
+    }
 
 
 def _mapping_number(value: Any, key: str | None) -> float | None:
