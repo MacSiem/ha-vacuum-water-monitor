@@ -631,6 +631,43 @@ async function smokeFinalFixContracts(target) {
       throw new Error('status-unavailable accounting reason rendered as ready');
     }
 
+    const legacyLocked = el._withBackendDescriptor(el._decorateLegacyProfile({
+      vacuum_entity: 'vacuum.a170',
+      brand_profile: 'roborock_s8_maxv_ultra',
+      profile_locked: true,
+    }));
+    if (el._calcDeviceData(legacyLocked).totalMl !== 3000) {
+      throw new Error('legacy profile lock without provenance did not control frontend capacity');
+    }
+
+    const falseySignals = el._withBackendDescriptor({
+      vacuum_entity: 'vacuum.a170',
+      status_sensor: '',
+      area_sensor: null,
+      config_provenance: { authored_fields: ['vacuum_entity', 'status_sensor', 'area_sensor'] },
+      __vwmExplicitKeys: ['vacuum_entity', 'status_sensor', 'area_sensor'],
+      __vwmGeneratedKeys: [],
+    });
+    if (falseySignals.status_sensor !== '' || falseySignals.area_sensor !== null) {
+      throw new Error('authored falsey direct signal opt-out was overwritten by registry');
+    }
+    if (falseySignals.signals?.status_sensor || falseySignals.signals?.area_sensor) {
+      throw new Error('authored falsey direct signal opt-out remained in effective signals');
+    }
+
+    el._userDevices = [{
+      vacuum_entity: 'vacuum.a170',
+      config_provenance: { authored_fields: ['vacuum_entity'] },
+    }];
+    el._upsertUserDevicePatch(el._userDevices[0], { reset_door_sensor: 'binary_sensor.refill_door' });
+    if (!el._userDevices[0].config_provenance?.authored_fields?.includes('reset_door_sensor')) {
+      throw new Error('user-device patch did not add reset door to authored provenance');
+    }
+    el._upsertUserDevicePatch(el._userDevices[0], { reset_door_sensor: null });
+    if (!el._userDevices[0].config_provenance?.authored_fields?.includes('reset_door_sensor')) {
+      throw new Error('null user-device opt-out lost authored provenance');
+    }
+
     for (const entity of ['vacuum.numeric', 'vacuum.object']) {
       const device = el._getDevices().find(d => d.vacuum_entity === entity);
       const html = el._buildMaintenanceTab(device, el._calcDeviceData(device));

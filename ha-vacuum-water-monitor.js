@@ -1520,15 +1520,28 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!entityId) return;
     const idx = this._userDevices.findIndex(d => d.vacuum_entity === entityId);
     if (idx >= 0) {
-      this._userDevices[idx] = { ...this._userDevices[idx], ...patch };
+      const current = this._userDevices[idx];
+      const authored = new Set([
+        ...this._legacyFieldProvenance(current).explicit,
+        'vacuum_entity',
+        ...Object.keys(patch || {}),
+      ]);
+      this._userDevices[idx] = this._withAuthoredProvenance(
+        { ...current, ...patch },
+        [...authored]
+      );
     } else {
-      this._userDevices.push({
+      const created = {
         vacuum_entity: entityId,
         name: device.name || entityId,
         icon: device.icon || '\uD83E\uDD16',
         brand_profile: device.brand_profile || null,
         ...patch,
-      });
+      };
+      this._userDevices.push(this._withAuthoredProvenance(
+        created,
+        ['vacuum_entity', 'name', 'icon', 'brand_profile', ...Object.keys(patch || {})]
+      ));
     }
     this._saveUserDevices();
   }
@@ -1801,8 +1814,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const generated = new Set();
     for (const [key, value] of Object.entries(source)) {
       if (['config_provenance', '__vwmExplicitKeys', '__vwmGeneratedKeys'].includes(key)) continue;
-      if (key === 'signals') explicit.add(key);
-      else if (key === 'brand_profile' || key === 'profile_locked') generated.add(key);
+      if (key === 'signals' || key === 'profile_locked') explicit.add(key);
+      else if (key === 'brand_profile') (source.profile_locked ? explicit : generated).add(key);
       else if (Object.prototype.hasOwnProperty.call(migrationDefaults, key) && JSON.stringify(value) === JSON.stringify(migrationDefaults[key])) generated.add(key);
       else explicit.add(key);
     }
@@ -1860,7 +1873,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const effectiveSignals = { ...signals };
       for (const role of ['status_sensor', 'area_sensor', 'mop_mode_entity', 'mop_intensity_entity']) {
         const entity = signals[role];
-        if (explicit.has(role) && merged[role]) effectiveSignals[role] = merged[role];
+        if (explicit.has(role)) {
+          if (merged[role]) effectiveSignals[role] = merged[role];
+          else delete effectiveSignals[role];
+        }
         else if (entity) merged[role] = entity;
       }
       merged.signals = effectiveSignals;
@@ -1960,7 +1976,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'accounting_evidence','evidence','profile_locked','profile_override','locked_profile',
       'area_anomaly_ceiling_m2',
     ];
-    keys.forEach(k => { if (this._config[k] != null) single[k] = this._config[k]; });
+    const authoredSingle = this._authoredConfigKeys || new Set();
+    keys.forEach(k => { if (authoredSingle.has(k)) single[k] = this._config[k]; });
     if (Object.keys(single).length === 0) {
       const serverDevices = (this._userDevices && this._userDevices.length)
         ? this._userDevices
@@ -2015,7 +2032,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
       .map(key => Number(device[key])).find(value => Number.isFinite(value) && value > 0);
     const descriptor = this._backendDescriptor(device);
     const backendCapacity = descriptor ? Number(descriptor.tracked_capacity_ml) : null;
-    const totalMl = configuredCapacity || customCalib.tracked_capacity_ml || (Number.isFinite(backendCapacity) && backendCapacity > 0 ? backendCapacity : null) || (calib ? calib.tank_ml : 0);
+    const profileCapacity = calib ? Number(calib.tank_ml) : null;
+    const lockedProfile = Boolean(device.profile_locked) && explicit.has('profile_locked');
+    const resolvedCapacity = lockedProfile
+      ? (Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : null)
+      : (Number.isFinite(backendCapacity) && backendCapacity > 0 ? backendCapacity : null);
+    const totalMl = configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || (Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
     const legacyResetTs = Number(tankState.last_reset_ts);

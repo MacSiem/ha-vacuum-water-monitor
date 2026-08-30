@@ -515,6 +515,71 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(device["signals"], {})
         self.assertNotIn("area_sensor", device)
 
+    def test_legacy_profile_lock_without_provenance_remains_authored(self) -> None:
+        devices = build_vacuum_devices(
+            {
+                "user_devices": [
+                    {
+                        "vacuum_entity": "vacuum.a170",
+                        "brand_profile": "roborock_s8_maxv_ultra",
+                        "profile_locked": True,
+                    }
+                ]
+            },
+            {},
+            [
+                {
+                    "entity_id": "vacuum.a170",
+                    "profile_key": "roborock_qrevo_5ae",
+                    "tracked_capacity_ml": 4000,
+                    "signals": {"status_sensor": "sensor.registry_status"},
+                }
+            ],
+        )
+
+        device = devices[0]
+        self.assertTrue(device["profile_locked"])
+        self.assertIn("profile_locked", device["_explicit_fields"])
+        self.assertEqual(device["profile_key"], "roborock_s8_maxv_ultra")
+        self.assertEqual(estimate_water_state(device, {"used_ml": 0, "initialized": True}, {})["total_ml"], 3000)
+
+    def test_authored_falsey_direct_signal_role_blocks_registry_value(self) -> None:
+        devices = build_vacuum_devices(
+            {
+                "user_devices": [
+                    {
+                        "vacuum_entity": "vacuum.a170",
+                        "status_sensor": "",
+                        "area_sensor": None,
+                        "config_provenance": {
+                            "authored_fields": [
+                                "vacuum_entity",
+                                "status_sensor",
+                                "area_sensor",
+                            ]
+                        },
+                    }
+                ]
+            },
+            {},
+            [
+                {
+                    "entity_id": "vacuum.a170",
+                    "profile_key": "roborock_qrevo_5ae",
+                    "signals": {
+                        "status_sensor": "sensor.registry_status",
+                        "area_sensor": "sensor.registry_area",
+                    },
+                }
+            ],
+        )
+
+        device = devices[0]
+        self.assertEqual(device["status_sensor"], "")
+        self.assertIsNone(device["area_sensor"])
+        self.assertNotIn("status_sensor", device.get("signals", {}))
+        self.assertNotIn("area_sensor", device.get("signals", {}))
+
     def test_vacuum_slug_is_stable_for_entity_ids(self) -> None:
         self.assertEqual(vacuum_slug("vacuum.Roborock S8 MaxV"), "vacuum_roborock_s8_maxv")
 

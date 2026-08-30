@@ -457,13 +457,22 @@ def _merge_discovery(device: dict[str, Any], descriptor: dict[str, Any]) -> None
         else:
             effective_signals = dict(signals)
             for key in _DIRECT_SIGNAL_FIELDS:
-                if key in explicit_fields and device.get(key):
-                    effective_signals[key] = device[key]
+                if key in explicit_fields:
+                    if device.get(key):
+                        effective_signals[key] = device[key]
+                    else:
+                        effective_signals.pop(key, None)
                 elif key in signals and signals[key]:
                     device[key] = signals[key]
             device["signals"] = effective_signals
 
     locked = bool(device.get("profile_locked")) and "profile_locked" in explicit_fields
+    if locked:
+        locked_profile = resolve_profile(device)
+        for key in _PROFILE_DESCRIPTOR_FIELDS:
+            value = locked_profile.get(key)
+            if value is not None and key not in explicit_fields:
+                device[key] = value
     for key, value in descriptor.items():
         if key in {"entity_id", "vacuum_entity", "signals", "name"}:
             continue
@@ -600,10 +609,10 @@ def _configuration_field_provenance(
     for key, value in device.items():
         if key == "config_provenance":
             continue
-        if key == "signals":
+        if key in {"signals", "profile_locked"}:
             explicit.add(key)
-        elif key in {"brand_profile", "profile_locked"}:
-            generated.add(key)
+        elif key == "brand_profile":
+            (explicit if device.get("profile_locked") else generated).add(key)
         elif key in defaults and value == defaults[key]:
             generated.add(key)
         else:
