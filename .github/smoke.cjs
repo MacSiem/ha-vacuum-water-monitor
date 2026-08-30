@@ -307,6 +307,134 @@ async function smokeDraftAndCalibration(target) {
   }
 }
 
+async function smokeBackendDescriptorsAndTruthfulAccounting(target) {
+  const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+    runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/'
+  });
+  const { window } = dom;
+  let settings = {
+    user_devices: [
+      { vacuum_entity: 'vacuum.opaque_xiaomi', name: 'Kitchen Xiaomi' },
+      { vacuum_entity: 'vacuum.a170', name: 'Qrevo' },
+      { vacuum_entity: 'vacuum.a245', name: 'FlowX' },
+      { vacuum_entity: 'vacuum.tapo_matter', name: 'Tapo Matter' }
+    ],
+    custom_calibration: {
+      'entity:vacuum.a170': { tank_ml: 4100, water_per_m2: { measured: 5.5 }, preserve_me: 'keep' },
+      'entity:vacuum.unrelated': { tank_ml: 2222 }
+    }
+  };
+  const descriptors = [
+    {
+      entity_id: 'vacuum.opaque_xiaomi', name: 'Kitchen Xiaomi', profile_key: 'xiaomi_h50',
+      profile_source: 'model_id', profile_confidence: 'high', capability: 'manual_only',
+      evidence: 'manufacturer_specifications', tracked_reservoir: 'dock_clean', tracked_capacity_ml: 4000,
+      reservoirs_ml: { dock_clean: 4000, dock_dirty: 4000, robot_clean: null, robot_dirty: null }, signals: {}
+    },
+    {
+      entity_id: 'vacuum.a170', name: 'Qrevo', profile_key: 'roborock_qrevo_5ae',
+      profile_source: 'model_id', profile_confidence: 'high', capability: 'manual_only',
+      evidence: 'manufacturer_specifications', tracked_reservoir: 'dock_clean', tracked_capacity_ml: 4000,
+      reservoirs_ml: { dock_clean: 4000, dock_dirty: 3500, robot_clean: 80, robot_dirty: null },
+      signals: { status_sensor: 'sensor.a170_status', area_sensor: 'sensor.a170_area' }
+    },
+    {
+      entity_id: 'vacuum.a245', name: 'FlowX', profile_key: 'roborock_qrevo_curv_2_flow',
+      profile_source: 'model_id', profile_confidence: 'high', capability: 'manual_only',
+      evidence: 'manufacturer_specifications', tracked_reservoir: 'dock_clean', tracked_capacity_ml: 4000,
+      reservoirs_ml: { dock_clean: 4000, dock_dirty: null, robot_clean: null, robot_dirty: 100 },
+      signals: { status_sensor: 'sensor.a245_status', area_sensor: 'sensor.a245_area' }
+    },
+    {
+      entity_id: 'vacuum.tapo_matter', name: 'Tapo Matter', profile_key: 'tapo_rv50_pro_omni',
+      profile_source: 'model_id', profile_confidence: 'high', capability: 'manual_only',
+      evidence: 'manufacturer_specifications', tracked_reservoir: 'dock_clean', tracked_capacity_ml: 5000,
+      reservoirs_ml: { dock_clean: 5000, dock_dirty: 4000, robot_clean: 95, robot_dirty: null }, signals: {}
+    }
+  ];
+  let tankStates = {
+    'vacuum.opaque_xiaomi': { used_ml: 0, initialized: false, last_accounting_reason: 'missing_area_rate' },
+    'vacuum.a170': { used_ml: 0, initialized: true, last_reset_iso: '2026-08-30T10:00:00+00:00' },
+    'vacuum.a245': { used_ml: 150, initialized: true, last_reset_iso: '2026-08-30T10:00:00+00:00' },
+    'vacuum.tapo_matter': { used_ml: 0, initialized: false, last_accounting_reason: 'missing_area_rate' }
+  };
+  try {
+    stub(window);
+    window.eval(fs.readFileSync(target.file, 'utf8'));
+    const el = window.document.createElement(target.tag);
+    const hass = mockHass({
+      states: {
+        'vacuum.opaque_xiaomi': { entity_id: 'vacuum.opaque_xiaomi', state: 'docked', attributes: {} },
+        'vacuum.a170': { entity_id: 'vacuum.a170', state: 'docked', attributes: {} },
+        'vacuum.a245': { entity_id: 'vacuum.a245', state: 'docked', attributes: {} },
+        'vacuum.tapo_matter': { entity_id: 'vacuum.tapo_matter', state: 'docked', attributes: {} },
+        'sensor.a170_status': { entity_id: 'sensor.a170_status', state: 'washing_the_mop', attributes: {} },
+        'sensor.a170_area': { entity_id: 'sensor.a170_area', state: '12.4', attributes: {} },
+        'sensor.a245_status': { entity_id: 'sensor.a245_status', state: 'cleaning', attributes: {} },
+        'sensor.a245_area': { entity_id: 'sensor.a245_area', state: '4.2', attributes: {} }
+      },
+      callWS: async (message) => {
+        if (message.type.endsWith('/get_state')) return { settings, tank_states: tankStates };
+        if (message.type.endsWith('/list_vacuums')) return { vacuums: descriptors };
+        if (message.type.endsWith('/set_settings')) {
+          settings = { ...settings, ...(message.patch || {}) };
+          return { settings };
+        }
+        return {};
+      }
+    });
+    el.setConfig({ type: 'custom:' + target.tag });
+    window.document.body.appendChild(el);
+    el.hass = hass;
+    await el._ensureServerState();
+    await delay(0);
+
+    const devices = el._getDevices();
+    const opaque = devices.find(d => d.vacuum_entity === 'vacuum.opaque_xiaomi');
+    const a170 = devices.find(d => d.vacuum_entity === 'vacuum.a170');
+    const a245 = devices.find(d => d.vacuum_entity === 'vacuum.a245');
+    const tapo = devices.find(d => d.vacuum_entity === 'vacuum.tapo_matter');
+    if (el._calcDeviceData(opaque).totalMl !== 4000) throw new Error('opaque Xiaomi descriptor capacity was not used');
+    if (a170.profile_key !== 'roborock_qrevo_5ae' || a170.status_sensor !== 'sensor.a170_status' || a170.area_sensor !== 'sensor.a170_area') {
+      throw new Error('a170 backend profile or same-device signals were not used');
+    }
+    if (a245.profile_key !== 'roborock_qrevo_curv_2_flow' || a245.status_sensor !== 'sensor.a245_status' || a245.area_sensor !== 'sensor.a245_area') {
+      throw new Error('a245 backend profile or same-device signals were not used');
+    }
+    const uninitialized = el._calcDeviceData(opaque);
+    if (uninitialized.usedMl !== null || uninitialized.percentRemaining !== null) {
+      throw new Error('uninitialized tank fabricated a full 0-used/100-percent state');
+    }
+    const uninitializedHtml = el._buildWaterTab(opaque, uninitialized);
+    if (!/needs a refill baseline/i.test(uninitializedHtml)) throw new Error('uninitialized tank has no refill-baseline explanation');
+    const initialized = el._calcDeviceData(a170);
+    if (initialized.usedMl !== 0 || initialized.percentRemaining !== 100) {
+      throw new Error('valid post-refill zero-used/full state was not retained');
+    }
+    const tapoHtml = el._buildWaterTab(tapo, el._calcDeviceData(tapo));
+    if (!/manual-only/i.test(tapoHtml) || !/calibration.*manual refill/i.test(tapoHtml)) {
+      throw new Error('Tapo Matter manual-only limitation is not visible');
+    }
+    const diagnostics = el._buildWaterTab(a170, initialized);
+    for (const expected of ['roborock_qrevo_5ae', 'dock_clean', 'sensor.a170_status', 'sensor.a170_area', '4,100 ml']) {
+      if (!diagnostics.includes(expected)) throw new Error(`backend diagnostics missing ${expected}`);
+    }
+
+    el._activeDeviceIdx = devices.findIndex(d => d.vacuum_entity === 'vacuum.a170');
+    el._activeTab = 'maintenance'; el._lastHtml = ''; el._render();
+    el.shadowRoot.getElementById('vwm-custom-calibration-body').style.display = 'block';
+    el.shadowRoot.getElementById('vwm-custom-tank').value = '4200';
+    const saved = await el._saveCustomCalibration();
+    if (!saved) throw new Error('calibration merge fixture could not save');
+    const merged = settings.custom_calibration['entity:vacuum.a170'];
+    if (merged.tank_ml !== 4200 || merged.preserve_me !== 'keep' || settings.custom_calibration['entity:vacuum.unrelated']?.tank_ml !== 2222) {
+      throw new Error('calibration save replaced fields or another device instead of merging');
+    }
+  } finally {
+    window.close();
+  }
+}
+
 (async () => {
   const files = listCardFiles();
   const targets = [];
@@ -358,6 +486,14 @@ async function smokeDraftAndCalibration(target) {
       pass++;
     } catch (e) {
       fail.push(`${t.tag} draft/calibration (${path.basename(t.file)}) -> ${(e && e.message) ? e.message : String(e)}`);
+    }
+  }
+  for (const t of targets.filter(t => t.tag === 'ha-vacuum-water-monitor')) {
+    try {
+      await smokeBackendDescriptorsAndTruthfulAccounting(t);
+      pass++;
+    } catch (e) {
+      fail.push(`${t.tag} backend-descriptors/accounting (${path.basename(t.file)}) -> ${(e && e.message) ? e.message : String(e)}`);
     }
   }
   console.log(`smoke: ${targets.length} element(s) | PASS ${pass} | FAIL ${fail.length}`);

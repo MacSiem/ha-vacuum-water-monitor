@@ -11,23 +11,25 @@ it as sensors plus a bundled dashboard card.
 
 ## How it works
 
-**Short version: it works automatically.** After you install the integration and add the
-card, there is nothing you have to configure — you only press **💧 Refilled** whenever you
-fill the tank, so the integration knows when to start counting from 100%.
+**Short version: the card reports an estimate, never a measured tank level.** After you
+install the integration and add the card, press **💧 Refilled** while the tracked reservoir
+is full. Until that refill baseline exists, remaining water and water used intentionally
+stay **unknown** rather than displaying a fabricated 100% full tank.
 
 What happens under the hood:
 
 1. **Auto-discovery.** The integration finds every `vacuum.*` entity in your Home Assistant
    and creates a device with water sensors for each robot. No YAML, no entity picking.
-2. **Water accounting runs server-side, every 60 seconds.** Two signals add water usage:
+2. **Water accounting runs server-side, every 60 seconds when supported.** Two signals add water usage:
    - **Mop-wash events** — when your vacuum reports a mop-washing state (e.g. Roborock's
      `washing_the_mop`), a fixed wash volume is added (default 150 mL, configurable).
    - **Cleaned area** — while the vacuum is cleaning with the mop enabled, usage is added
      per m² of newly cleaned area (rate depends on mop mode and intensity).
-3. **Tank capacity comes from a built-in model database** (Roborock, Dreame, Ecovacs,
-   iRobot, Narwal, Eufy, Xiaomi, Samsung and more). If your model is unknown, the sensor
-   shows "unknown capacity" instead of a misleading percentage — you can set the capacity
-   yourself in the card's ⚙️ Settings tab.
+3. **Tank capacity and signals come from the Home Assistant device descriptor.** The
+   integration resolves the canonical model profile from registry identifiers and only
+   discovers status/area/mop signals belonging to that same device. If capacity is
+   unknown, the sensor shows "unknown capacity" instead of a misleading percentage — you
+   can set it in the card's ⚙️ Settings tab.
 4. **Refills.** Press **Refilled** in the card after filling the tank. Optionally the
    counter can auto-reset when a configured tank-door sensor closes or a dock
    `water_empty` error clears.
@@ -46,6 +48,15 @@ What happens under the hood:
 > **Estimates, not measurements.** Robot vacuums don't report actual water level, so the
 > numbers are calculated estimates. Calibration data comes from manufacturer specs and
 > community measurements; you can tune everything per vacuum in the card settings.
+
+### Manual-only models and the refill baseline
+
+Some models expose a trustworthy clean-water capacity but no published usable rate or
+telemetry for water consumption. They are labelled **Manual-only** in the card. For those
+models, add your measured calibration if available and press **Refilled** after filling the
+tank; the card does not invent a default Matter/vendor usage rate. The Diagnostics section
+shows the resolved profile, tracked reservoir, signal roles and accounting reason so a
+report can be made without exposing unique device identifiers.
 
 ## Screenshots
 
@@ -81,8 +92,9 @@ Add the card to any dashboard:
 type: custom:ha-vacuum-water-monitor
 ```
 
-That's it. The card lists every discovered vacuum. When the tank is full, press
-**💧 Refilled** once to set the baseline.
+That's it. The card lists every discovered vacuum. When the tracked reservoir is full,
+press **💧 Refilled** once to set the baseline. Before that, water remaining and used are
+unknown by design.
 
 > **Tip:** add the card (or press Refilled) when the tank is actually full, so tracking is
 > accurate from the start.

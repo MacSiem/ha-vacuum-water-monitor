@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.1.14 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.2.0 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -1731,6 +1731,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _resolveProfileKey(device) {
+    // The integration resolves profiles from the HA device registry. That
+    // descriptor is authoritative; the legacy browser catalog below exists
+    // only for older integrations that do not return profile_key yet.
+    if (device?.profile_key) return String(device.profile_key);
     // Auto-resolve the model profile from brand_profile or the vacuum entity id,
     // so a known model (e.g. vacuum.roborock_s8_maxv_ultra) gets its real tank
     // capacity OOTB without the user manually picking a Brand Profile.
@@ -1753,6 +1757,26 @@ class HAVacuumWaterMonitor extends HTMLElement {
       }
     }
     return null;
+  }
+
+  _backendDescriptor(device) {
+    const entity = String(device?.vacuum_entity || '').trim();
+    if (!entity) return null;
+    return (this._discoveredVacuums || []).find(item => item?.entity_id === entity) || null;
+  }
+
+  _withBackendDescriptor(device) {
+    const descriptor = this._backendDescriptor(device);
+    if (!descriptor) return device || {};
+    const signals = descriptor.signals && typeof descriptor.signals === 'object' ? descriptor.signals : {};
+    // Deliberately let server-resolved profile metadata and same-device signal
+    // roles win. User YAML still supplies optional non-discovery hooks.
+    return {
+      ...(device || {}),
+      ...descriptor,
+      vacuum_entity: descriptor.entity_id || device?.vacuum_entity,
+      ...signals,
+    };
   }
 
   _customCalibrationKey(device = null) {
@@ -1785,9 +1809,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return this._config.devices.map(d => {
         // Apply brand profile if each device specifies one
         if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-          return { ...BRAND_PROFILES[d.brand_profile], ...d };
+          return this._withBackendDescriptor({ ...BRAND_PROFILES[d.brand_profile], ...d });
         }
-        return d;
+        return this._withBackendDescriptor(d);
       });
     }
     // Single device mode
@@ -1812,9 +1836,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
           }));
       return serverDevices.map(d => {
         if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-          return { ...BRAND_PROFILES[d.brand_profile], ...d };
+          return this._withBackendDescriptor({ ...BRAND_PROFILES[d.brand_profile], ...d });
         }
-        return d;
+        return this._withBackendDescriptor(d);
       });
     }
     single.name = single.device_name || this._config.device_name || 'Vacuum';
@@ -1825,7 +1849,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       }
       return d;
     });
-    return [single, ...userDevs];
+    return [single, ...userDevs].map(d => this._withBackendDescriptor(d));
   }
 
   // Auto-discover vacuum entities from HA states. See plugin commit 6f6444a
@@ -1867,25 +1891,33 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _calcDeviceData(device) {
-    // Derive total water capacity: explicit config > device-scoped custom
-    // calibration > verified model database > unknown.
+    device = this._withBackendDescriptor(device);
+    // The descriptor is authoritative when available. The old client catalog
+    // is retained strictly as a fallback for pre-5.2 integration responses.
     const profileKey = this._resolveProfileKey(device);
     const calib = profileKey ? (CALIBRATION_DATA[profileKey] || null) : null;
     const customCalib = this._customCalibrationFor(device);
-    const totalMl = device.water_total_ml || customCalib?.tank_ml || (calib ? calib.tank_ml : 0);
+    const customCapacity = customCalib?.tracked_capacity_ml || customCalib?.tank_ml;
+    const totalMl = device.water_total_ml || customCapacity || device.tracked_capacity_ml || (calib ? calib.tank_ml : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
+    const tankState = this._loadWaterState(device);
+    const initialized = Boolean(tankState.initialized || tankState.last_reset_iso);
+    const stateReason = initialized ? (tankState.last_accounting_reason || null) : 'awaiting_refill';
 
     // The integration state machine populates usedMl when no live water sensor exists.
     const configMissing = false; // standalone mode works out of the box — never flag as misconfigured
 
-    if (totalMl > 0) {
+    // A fresh Store record defaults used_ml to zero. Treating that default as a
+    // refill would falsely manufacture a 100% tank. Only show accounting after
+    // an explicit/manual refill baseline has initialized the state.
+    if (totalMl > 0 && initialized) {
       const waterSensorRaw = this._getStateValue(device.water_sensor);
       if (waterSensorRaw !== null && waterSensorRaw !== 'unavailable' && waterSensorRaw !== 'unknown') {
         remainingL = parseFloat(waterSensorRaw);
         usedMl = totalMl - (remainingL * 1000);
         percentRemaining = Math.max(0, Math.min(100, (remainingL * 1000 / totalMl) * 100));
       } else {
-        const jsUsed = this._getEffectiveUsedMl(device);
+        const jsUsed = tankState.used_ml;
         if (jsUsed !== null && jsUsed !== undefined) {
           usedMl = jsUsed;
           remainingL = (totalMl - usedMl) / 1000;
@@ -1938,6 +1970,18 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     return {
       totalMl, remainingL, percentRemaining, usedMl,
+      initialized, stateReason,
+      profileKey: device.profile_key || profileKey || null,
+      profileSource: device.profile_source || (device.profile_key ? 'backend' : 'legacy_client_fallback'),
+      profileConfidence: device.profile_confidence || null,
+      capability: device.capability || 'unknown',
+      evidence: device.evidence || null,
+      accountingEvidence: tankState.last_accounting_evidence || device.accounting_evidence || null,
+      accountingSource: tankState.last_accounting_source || null,
+      accountingRate: tankState.last_accounting_rate_ml ?? null,
+      reservoirsMl: device.reservoirs_ml && typeof device.reservoirs_ml === 'object' ? device.reservoirs_ml : {},
+      trackedReservoir: device.tracked_reservoir || null,
+      signals: device.signals && typeof device.signals === 'object' ? device.signals : {},
       waterEmpty, isCleaning, filterDays, sessionMl, lastReset, vacState, charge,
       mainBrushH, sideBrushH, filterH, sensorH, dockBrushH, dockStrainerH,
       dockCleanWaterFull, dockDirtyWaterFull, waterShortage, mopAttached, mopDrying,
@@ -2071,6 +2115,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
         </div>`
       : '';
 
+    const accountingHtml = this._buildAccountingGuidance(data);
+    const diagnosticsHtml = this._buildDiagnostics(data);
+
     const dockHtml = (cfg.show_dock_status !== false) ? this._buildDockSection(device, data) : '';
     // Q1/Q2: Calibration info based on brand profile
     let calibHtml = '';
@@ -2111,6 +2158,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div class="tab-content">
         ${alertBanner}
         ${configMissingBanner}
+        ${accountingHtml}
         ${noWaterTracking ? `<div class="no-water-note">\uD83D\uDCCC This device doesn't track water levels</div>` : `
         <div class="device-body">
           <div class="gauge-wrap">
@@ -2126,8 +2174,48 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ${refillBtn ? `<div class="refill-wrap">${refillBtn}</div>` : ''}`}
         ${noWaterTracking && data.charge !== null ? `<div class="details">${this._buildBatteryBar(data.charge)}</div>` : ''}
         ${dockHtml}
+        ${diagnosticsHtml}
         ${calibHtml}
       </div>`;
+  }
+
+  _buildAccountingGuidance(data) {
+    const box = (title, text, color = '#64748b') => `<div style="padding:10px 12px;margin-bottom:12px;border:1px solid ${color};border-radius:8px;font-size:12px;line-height:1.45;color:var(--bento-text,#1a1a2e)"><b>${title}</b> ${text}</div>`;
+    if (!data.initialized) {
+      const capability = data.capability === 'manual_only'
+        ? ' Manual-only: add calibration and use manual refill to maintain the estimate.'
+        : '';
+      return box('Needs a refill baseline.', `Water remaining and used are unknown until you press Refilled with a full tracked reservoir.${capability}`, '#f59e0b');
+    }
+    if (data.capability === 'manual_only') {
+      return box('Manual-only.', 'This model has capacity data but no published automatic usage telemetry. Add calibration and use manual refill to maintain the estimate.', '#f59e0b');
+    }
+    if (data.stateReason === 'missing_area_rate' || data.stateReason === 'missing_wash_rate') {
+      return box('Missing rate.', 'Automatic estimate is paused until an applicable measured calibration rate is available.', '#f59e0b');
+    }
+    if (data.stateReason === 'area_unavailable' || data.stateReason === 'area_gap') {
+      return box('Unavailable signal.', 'Automatic estimate is waiting for a usable same-device area signal.', '#f59e0b');
+    }
+    if (data.capability === 'automatic_estimate') {
+      return box('Automatic estimate.', 'Usage is estimated from the discovered same-device signals and configured rates.', '#22c55e');
+    }
+    return box('Accounting status unknown.', 'No authoritative usage capability was supplied by the integration.', '#64748b');
+  }
+
+  _buildDiagnostics(data) {
+    const rows = [];
+    if (data.profileKey) rows.push(['Profile', data.profileKey]);
+    if (data.profileSource || data.profileConfidence) rows.push(['Resolution', [data.profileSource, data.profileConfidence].filter(Boolean).join(' / ')]);
+    if (data.trackedReservoir || data.totalMl) rows.push(['Tracked reservoir', `${data.trackedReservoir || 'unknown'}${data.totalMl ? ` (${Number(data.totalMl).toLocaleString('en-US')} ml)` : ''}`]);
+    for (const [key, value] of Object.entries(data.reservoirsMl || {})) {
+      if (value != null) rows.push([key, `${Number(value).toLocaleString('en-US')} ml`]);
+    }
+    for (const [role, entity] of Object.entries(data.signals || {})) {
+      if (entity) rows.push([role, entity]);
+    }
+    if (data.accountingSource || data.stateReason || data.accountingEvidence) rows.push(['Accounting', [data.accountingSource, data.stateReason, data.accountingEvidence].filter(Boolean).join(' / ')]);
+    if (!rows.length) return '';
+    return `<details style="margin-top:14px;font-size:11px;color:var(--bento-text-secondary,#64748b)"><summary style="cursor:pointer;font-weight:600">Diagnostics</summary><div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin-top:8px">${rows.map(([label, value]) => `<span>${_esc(label)}</span><span>${_esc(value)}</span>`).join('')}</div></details>`;
   }
 
 
@@ -2243,6 +2331,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _buildMaintenanceTab(device, data) {
     const customCalibration = this._customCalibrationFor(device) || {};
+    const reservoirRows = Object.entries(data.reservoirsMl || {})
+      .filter(([, value]) => value != null)
+      .map(([name, value]) => `<span>${_esc(name)}: <b>${_esc(Number(value).toLocaleString('en-US'))} ml</b></span>`)
+      .join(' · ');
+    const effectiveCalibration = `<div style="margin:0 0 12px;padding:10px 12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:8px;font-size:11px;line-height:1.5"><b>Effective tracked capacity:</b> ${data.totalMl ? `${_esc(Number(data.totalMl).toLocaleString('en-US'))} ml` : 'unknown'}${data.trackedReservoir ? ` (${_esc(data.trackedReservoir)})` : ''}<br><b>Estimate evidence:</b> ${_esc(data.accountingEvidence || data.evidence || 'not available')}<br>${reservoirRows ? `<b>Distinct reservoirs:</b> ${reservoirRows}` : ''}</div>`;
     const savedModeRows = Object.entries(customCalibration.water_per_m2 || {});
     const calibrationModeRows = [
       ...savedModeRows,
@@ -2365,6 +2458,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
             \u2699\uFE0F Custom calibration values <span style="font-size:10px;color:var(--bento-text-muted);font-weight:400">(click to expand)</span>
           </div>
           <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
+            ${effectiveCalibration}
             <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
               If your robot is not on the list or you want to correct values — enter your own data. They are saved per device in Home Assistant Store.
             </div>
@@ -2597,7 +2691,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const activeDevice = this._getDevices()[this._activeDeviceIdx] || null;
     const key = this._customCalibrationKey(activeDevice);
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
-    all[key] = custom;
+    const existing = all[key] && typeof all[key] === 'object' ? all[key] : {};
+    // Preserve fields the current form does not edit (and every other device)
+    // while applying this device's calibration changes.
+    all[key] = {
+      ...existing,
+      ...custom,
+      ...(custom.water_per_m2 ? {
+        water_per_m2: { ...(existing.water_per_m2 || {}), ...custom.water_per_m2 },
+        mop_modes: { ...(existing.mop_modes || {}), ...(custom.mop_modes || {}) },
+      } : {}),
+    };
     if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Saving…'; }
     if (status) { status.textContent = 'Saving to Home Assistant…'; status.style.color = 'var(--bento-text-secondary)'; }
     const result = await this._saveServerSettings({ custom_calibration: all });

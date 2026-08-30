@@ -4,6 +4,14 @@ Only manufacturer-published clean-water capacities are added as automatic
 defaults. Usage rates remain unset when the manufacturer does not publish them;
 users can add measured, device-scoped values through the card.
 
+At runtime, the backend resolves the profile from the Home Assistant device registry and
+returns its canonical `profile_key`, source/confidence, tracked reservoir/capacity,
+distinct reservoirs, capability, evidence and only same-device signal roles. The card
+uses those fields as authoritative. Its older browser catalog is a compatibility fallback
+only when an older backend response has no descriptor. Capacity alone never authorizes an
+automatic usage estimate: `manual_only` profiles require a measured calibration/manual
+refill baseline and must not receive invented Matter or default telemetry.
+
 Other published facts are stored with explicit semantics. In particular,
 laboratory maximum area per fill is not treated as average coverage or converted
 to ml/m², and pre-task/mid-task wash volumes are not treated as a universal

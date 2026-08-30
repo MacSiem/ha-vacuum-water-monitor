@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.2.0 (2026-08-30)
+
+- Fixed model detection to use the Home Assistant registry descriptor (model ID, model and catalog identifiers) instead of guessing from display names or manufacturer. The descriptor now supplies the canonical profile, capacity, reservoirs, confidence, evidence and same-device signal roles to the card.
+- Fixed truthful tank initialization: before an explicit refill baseline, remaining water and used water are shown as unknown instead of fabricated `0 used / 100%` values. A real post-refill `0 / 100%` state remains valid.
+- Added card diagnostics for profile resolution, tracked and distinct reservoirs, discovered raw status/area roles and accounting reason/evidence. Calibration saves now merge only the active device record.
+- Models such as Tapo Matter with published capacity but no published usage telemetry are labelled manual-only and prompt for calibration/manual refill; no default or invented automatic telemetry is claimed.
+
 ## 5.1.14 (2026-08-28)
 
 - Isolation: Bento CSS is component-local in both frontend copies and cannot be captured from `window.HAToolsBentoCSS` by load order.
