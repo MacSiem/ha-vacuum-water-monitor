@@ -45,7 +45,7 @@ async def _ws_list_vacuums(
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Return HA-known vacuum entities."""
+    """Return enriched HA vacuum descriptors."""
     connection.send_result(msg["id"], {"vacuums": list_vacuums(hass)})
 
 

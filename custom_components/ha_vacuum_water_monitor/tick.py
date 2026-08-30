@@ -182,42 +182,19 @@ def tick_device(
 
 
 def list_vacuums(hass: HomeAssistant) -> list[dict[str, Any]]:
-    """Return HA-known vacuum entities for the card."""
-    vacuums = []
-    for entity_id in sorted(hass.states.async_entity_ids("vacuum")):
-        state = hass.states.get(entity_id)
-        if state is None:
-            continue
-        vacuums.append(
-            {
-                "entity_id": entity_id,
-                "name": state.attributes.get("friendly_name") or entity_id,
-                "state": state.state,
-                "battery": state.attributes.get("battery_level"),
-            }
-        )
-    return vacuums
+    """Return enriched, registry-backed vacuum descriptors for the card."""
+    from .discovery import descriptors_from_hass
+
+    return descriptors_from_hass(hass)
 
 
 def _devices_to_tick(
     hass: HomeAssistant, settings: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    devices: dict[str, dict[str, Any]] = {}
-    for item in settings.get("configured_devices") or []:
-        if isinstance(item, dict) and item.get("vacuum_entity"):
-            devices[item["vacuum_entity"]] = dict(item)
-    for item in settings.get("user_devices") or []:
-        if isinstance(item, dict) and item.get("vacuum_entity"):
-            devices[item["vacuum_entity"]] = dict(item)
-    for vacuum in list_vacuums(hass):
-        devices.setdefault(
-            vacuum["entity_id"],
-            {
-                "vacuum_entity": vacuum["entity_id"],
-                "name": vacuum["name"],
-            },
-        )
-    return [apply_custom_calibration(device, settings) for device in devices.values()]
+    from .sensor_calculations import build_vacuum_devices
+
+    devices = build_vacuum_devices(settings, {}, list_vacuums(hass))
+    return [apply_custom_calibration(device, settings) for device in devices]
 
 
 def _has_user_priv_helpers(

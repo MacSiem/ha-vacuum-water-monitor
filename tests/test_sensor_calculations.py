@@ -124,6 +124,18 @@ class VacuumSensorCalculationTests(unittest.TestCase):
                 )
                 self.assertEqual(estimate["total_ml"], expected_capacity)
 
+    def test_estimate_water_state_uses_discovered_model_before_entity_alias(self) -> None:
+        estimate = estimate_water_state(
+            {
+                "vacuum_entity": "vacuum.opaque_matter_device",
+                "model": "Xiaomi Robot Vacuum H50 Pro",
+            },
+            {"used_ml": 0},
+            {},
+        )
+
+        self.assertEqual(estimate["total_ml"], 4000)
+
     def test_estimate_water_state_uses_entity_scoped_custom_calibration(self) -> None:
         estimate = estimate_water_state(
             {"vacuum_entity": "vacuum.living_room"},

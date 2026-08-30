@@ -3,69 +3,23 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import importlib.util
+from pathlib import Path
 import re
 from typing import Any
 
+try:
+    from .profiles import resolve_profile
+except ImportError:  # Supports this module's existing direct-file pure tests.
+    _profile_spec = importlib.util.spec_from_file_location(
+        "vwm_standalone_profiles", Path(__file__).with_name("profiles.py")
+    )
+    assert _profile_spec and _profile_spec.loader
+    _profile_module = importlib.util.module_from_spec(_profile_spec)
+    _profile_spec.loader.exec_module(_profile_module)
+    resolve_profile = _profile_module.resolve_profile
+
 MILLISECONDS_PER_DAY = 86_400_000
-
-# Default tank capacity (ml) per known vacuum model, ported from the card's
-# CALIBRATION_DATA so the sensor knows capacity from the device model WITHOUT
-# any manual calibration. The key matches the auto-detected brand_profile and
-# the vacuum entity_id slug (e.g. vacuum.roborock_s8_maxv_ultra). The generic
-# profile is intentionally excluded: an unrecognised model stays "unknown"
-# instead of reporting a misleading percentage, mirroring the card's water calc.
-DEFAULT_TANK_ML: dict[str, float] = {
-    "roborock_s8_maxv_ultra": 3000,
-    "roborock_s8_pro_ultra": 3500,
-    "roborock_s7_maxv_ultra": 3000,
-    "roborock_s7_maxv": 200,
-    "roborock_s9_maxv": 4000,
-    "roborock_q_revo": 5000,
-    "roborock_q_revo_maxv": 4000,
-    "roborock_qrevo_5ae": 4000,
-    "roborock_qrevo_curv_2_flow": 4000,
-    "roborock_q7_max": 350,
-    "roborock_q7": 300,
-    "dreame_x40_ultra": 4500,
-    "dreame_x30_ultra": 4500,
-    "dreame_l20_ultra": 4500,
-    "dreame_l10s_ultra": 2500,
-    "dreame_l10s_pro_ultra": 4500,
-    "dreame_d10_plus": 150,
-    "ecovacs_x2_omni": 4000,
-    "ecovacs_t20_omni": 4000,
-    "ecovacs_t30_omni": 4000,
-    "ecovacs_n20_plus": 220,
-    "irobot_combo_j9": 3000,
-    "irobot_combo_j7": 210,
-    "irobot_combo_essential": 200,
-    "narwal_freo_x_ultra": 5000,
-    "narwal_freo_x_plus": 280,
-    "eufy_x10_pro_omni": 3000,
-    "samsung_jet_bot_combo": 4000,
-    "xiaomi_x20_max": 4000,
-    "xiaomi_x20_pro": 4000,
-    "xiaomi_h50": 4000,
-    "xiaomi_h50_pro": 4000,
-    "tapo_rv50_pro_omni": 5000,
-}
-
-# Manufacturer/app identifiers do not always match the human product name.
-# Keep aliases separate from capacities so a reported model can be added
-# without duplicating or silently diverging from the canonical value.
-MODEL_ALIASES: dict[str, str] = {
-    "a170": "roborock_qrevo_5ae",
-    "roborock_vacuum_a170": "roborock_qrevo_5ae",
-    "roborock_q_revo_5ae": "roborock_qrevo_5ae",
-    "a245": "roborock_qrevo_curv_2_flow",
-    "roborock_vacuum_a245": "roborock_qrevo_curv_2_flow",
-    "roborock_qrevo_curv_2_flowx": "roborock_qrevo_curv_2_flow",
-    "roborock_q_revo_curv_2_flow": "roborock_qrevo_curv_2_flow",
-    "roborock_q_revo_curv_2_flowx": "roborock_qrevo_curv_2_flow",
-    "xiaomi_robot_vacuum_h50": "xiaomi_h50",
-    "xiaomi_robot_vacuum_h50_pro": "xiaomi_h50_pro",
-    "tapo_rv50_pro": "tapo_rv50_pro_omni",
-}
 
 
 def vacuum_slug(vacuum_entity: str) -> str:
@@ -109,16 +63,9 @@ def build_vacuum_devices(
         vacuum_entity = item.get("entity_id") or item.get("vacuum_entity")
         if not vacuum_entity:
             continue
-        devices.setdefault(
-            str(vacuum_entity),
-            _normalize_device(
-                str(vacuum_entity),
-                {
-                    "vacuum_entity": vacuum_entity,
-                    "name": item.get("name"),
-                },
-            ),
-        )
+        entity = str(vacuum_entity)
+        devices.setdefault(entity, _normalize_device(entity, {"vacuum_entity": entity}))
+        _merge_discovery(devices[entity], item)
 
     # Backfill display names from live discovery: entries seeded from
     # tank_states or configured_devices may carry no name and fall back to the
@@ -318,8 +265,7 @@ def _water_capacity_ml(
 
 def _model_tank_ml(device: dict[str, Any]) -> float | None:
     """Default tank capacity (ml) resolved from the vacuum model database."""
-    key = _resolve_model_key(device)
-    tank_ml = DEFAULT_TANK_ML.get(key)
+    tank_ml = resolve_profile(device).get("tracked_capacity_ml")
     return float(tank_ml) if tank_ml and tank_ml > 0 else None
 
 
@@ -352,21 +298,26 @@ def _matching_custom_calibration(
 
 
 def _resolve_model_key(device: dict[str, Any]) -> str:
-    """Resolve canonical model key from HA profile or entity identifiers."""
-    candidates: list[str] = []
-    profile = device.get("brand_profile")
-    if isinstance(profile, str):
-        candidates.append(profile)
-    entity = str(device.get("vacuum_entity") or "").strip().lower()
-    if entity.startswith("vacuum."):
-        candidates.append(entity[len("vacuum.") :])
+    """Resolve the canonical backend profile key for calibration lookup."""
+    return str(resolve_profile(device).get("profile_key") or "")
 
-    for candidate in candidates:
-        normalized = re.sub(r"[^a-z0-9]+", "_", candidate.lower()).strip("_")
-        canonical = MODEL_ALIASES.get(normalized, normalized)
-        if canonical in DEFAULT_TANK_ML:
-            return canonical
-    return ""
+
+def _merge_discovery(device: dict[str, Any], descriptor: dict[str, Any]) -> None:
+    """Add descriptor metadata while keeping every explicit user field authoritative."""
+    signals = descriptor.get("signals")
+    if isinstance(signals, dict):
+        for key, value in signals.items():
+            if value and not device.get(key):
+                device[key] = value
+        if not device.get("signals"):
+            device["signals"] = dict(signals)
+    for key, value in descriptor.items():
+        if key in {"entity_id", "vacuum_entity", "signals", "name"}:
+            continue
+        if value is not None and key not in device:
+            device[key] = value
+    if descriptor.get("name") and (not device.get("name") or device["name"] == device["vacuum_entity"]):
+        device["name"] = str(descriptor["name"])
 
 
 def _number(value: Any, default: float) -> float:
