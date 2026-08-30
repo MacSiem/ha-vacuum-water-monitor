@@ -253,8 +253,8 @@ async function smokeDraftAndCalibration(target) {
     const saveCall = calls.find(call => call.type.endsWith('/set_settings') && call.patch?.custom_calibration);
     if (!saveCall) throw new Error('calibration was not sent to HA Store');
     const scoped = saveCall.patch.custom_calibration['entity:vacuum.a170'];
-    if (!scoped || scoped.tank_ml !== 4123) throw new Error('calibration was not scoped to the active device');
-    if (scoped.mop_wash_ml !== 175 || scoped.water_per_m2?.standard !== 5.5) {
+    if (!scoped || scoped.tracked_capacity_ml !== 4123) throw new Error('calibration was not scoped to the active device');
+    if (scoped.wash_volume_ml !== 175 || scoped.usage_ml_per_m2?.standard !== 5.5) {
       throw new Error('usage calibration was not saved for water accounting');
     }
     const calculated = el._calcDeviceData({ vacuum_entity: 'vacuum.a170' });
@@ -427,12 +427,134 @@ async function smokeBackendDescriptorsAndTruthfulAccounting(target) {
     const saved = await el._saveCustomCalibration();
     if (!saved) throw new Error('calibration merge fixture could not save');
     const merged = settings.custom_calibration['entity:vacuum.a170'];
-    if (merged.tank_ml !== 4200 || merged.preserve_me !== 'keep' || settings.custom_calibration['entity:vacuum.unrelated']?.tank_ml !== 2222) {
+    if (merged.tracked_capacity_ml !== 4200 || merged.preserve_me !== 'keep' || settings.custom_calibration['entity:vacuum.unrelated']?.tank_ml !== 2222) {
       throw new Error('calibration save replaced fields or another device instead of merging');
     }
   } finally {
     window.close();
   }
+}
+
+async function smokeRoundOneDescriptorContracts(target) {
+  const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+    runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/'
+  });
+  const { window } = dom;
+  const calls = [];
+  let settings = {
+    custom_calibration: {
+      default: { tank_ml: 3000, water_per_m2: { default: 1 }, mop_wash_ml: 100 },
+      roborock_qrevo_5ae: { tracked_capacity_ml: 3500, usage_ml_per_m2: { profile: 2 }, wash_volume_ml: 150 },
+      'entity:vacuum.a170': { tank_ml: 4200, water_per_m2: { entity: 3 }, mop_wash_ml: 175, preserve_me: 'keep' },
+      'entity:vacuum.other': { tracked_capacity_ml: 2222 }
+    }
+  };
+  const descriptors = [
+    { entity_id: 'vacuum.a170', profile_key: 'roborock_qrevo_5ae', profile_source: 'model_id', profile_confidence: 'high', capability: 'manual_only', evidence: 'manufacturer_specifications', tracked_reservoir: 'dock_clean', tracked_capacity_ml: 4000, reservoirs_ml: { dock_clean: 4000, dock_dirty: 3500 }, signals: { status_sensor: 'sensor.a170_status', area_sensor: 'sensor.a170_area' } },
+    { entity_id: 'vacuum.a245', profile_key: 'roborock_qrevo_curv_2_flow', profile_source: 'model_id', profile_confidence: 'high', capability: 'manual_only', evidence: 'manufacturer_specifications', tracked_reservoir: 'dock_clean', tracked_capacity_ml: 4000, reservoirs_ml: { dock_clean: 4000, robot_dirty: 100 }, signals: { status_sensor: 'sensor.a245_status', area_sensor: 'sensor.a245_area' } },
+    { entity_id: 'vacuum.paused', profile_key: 'roborock_s8_maxv_ultra', profile_source: 'model_id', profile_confidence: 'high', capability: 'automatic_estimate', evidence: 'maintainer_estimate', tracked_reservoir: 'legacy_tank', tracked_capacity_ml: 3000, reservoirs_ml: {}, signals: {} },
+    { entity_id: 'vacuum.conflict', profile_key: 'roborock_s7_maxv', profile_source: 'model_id', profile_confidence: 'high', capability: 'manual_only', evidence: 'manufacturer_specifications', tracked_reservoir: 'dock_clean', tracked_capacity_ml: 4000, reservoirs_ml: { dock_clean: 4000 }, signals: {} },
+    { entity_id: 'vacuum.yaml_capacity', profile_key: 'roborock_qrevo_5ae', profile_source: 'model_id', profile_confidence: 'high', capability: 'manual_only', evidence: 'manufacturer_specifications', tracked_reservoir: 'dock_clean', tracked_capacity_ml: 4000, reservoirs_ml: { dock_clean: 4000 }, signals: { status_sensor: 'sensor.backend_must_not_override' } },
+    { entity_id: 'vacuum.hostile', profile_key: '<img data-vwm-descriptor-xss>', profile_source: '<b>source</b>', profile_confidence: 'high', capability: 'unknown', evidence: '<script>evidence</script>', tracked_reservoir: '<i>reservoir</i>', tracked_capacity_ml: 1000, reservoirs_ml: { '<svg data-vwm-descriptor-xss>': '1000' }, signals: { status_sensor: '<img data-vwm-descriptor-xss>' } }
+  ];
+  const tank_states = {
+    'vacuum.a170': { initialized: true, used_ml: 40, last_reset_iso: '2026-08-30T10:00:00+00:00', last_accounting_source: 'area', last_accounting_rate_ml: 6, last_accounting_evidence: 'user_calibration', last_accounting_reason: null },
+    'vacuum.a245': { initialized: true, used_ml: 20, last_reset_iso: '2026-08-30T10:00:00+00:00' },
+    'vacuum.paused': { initialized: true, used_ml: 20, last_reset_iso: '2026-08-30T10:00:00+00:00', last_accounting_source: 'area', last_accounting_reason: 'missing_area_rate' },
+    'vacuum.hostile': { initialized: true, used_ml: 1, last_reset_iso: '2026-08-30T10:00:00+00:00' }
+  };
+  try {
+    stub(window);
+    window.eval(fs.readFileSync(target.file, 'utf8'));
+    const el = window.document.createElement(target.tag);
+    const hass = mockHass({
+      states: {
+        'vacuum.a170': { entity_id: 'vacuum.a170', state: 'docked', attributes: {} },
+        'vacuum.a245': { entity_id: 'vacuum.a245', state: 'docked', attributes: {} },
+        'vacuum.paused': { entity_id: 'vacuum.paused', state: 'docked', attributes: {} },
+        'vacuum.conflict': { entity_id: 'vacuum.conflict', state: 'docked', attributes: {} },
+        'vacuum.hostile': { entity_id: 'vacuum.hostile', state: 'docked', attributes: {} },
+        'vacuum.native_one': { entity_id: 'vacuum.native_one', state: 'docked', attributes: {} },
+        'vacuum.matter_two': { entity_id: 'vacuum.matter_two', state: 'docked', attributes: {} },
+        'sensor.a170_status': { entity_id: 'sensor.a170_status', state: 'washing_the_mop', attributes: {} },
+        'sensor.a170_area': { entity_id: 'sensor.a170_area', state: '12', attributes: {} },
+        'sensor.a245_status': { entity_id: 'sensor.a245_status', state: 'cleaning', attributes: {} },
+        'sensor.a245_area': { entity_id: 'sensor.a245_area', state: '8', attributes: {} }
+      },
+      entities: {
+        'vacuum.native_one': { platform: 'roborock', device_id: 'native' },
+        'vacuum.matter_two': { platform: 'matter', device_id: 'matter' }
+      },
+      devices: { native: { manufacturer: 'Roborock' }, matter: { manufacturer: 'Roborock' } },
+      callWS: async (message) => {
+        calls.push(message);
+        if (message.type.endsWith('/get_state')) return { settings, tank_states };
+        if (message.type.endsWith('/list_vacuums')) return { vacuums: descriptors };
+        if (message.type.endsWith('/set_settings')) { settings = { ...settings, ...(message.patch || {}) }; return { settings }; }
+        return {};
+      }
+    });
+    el.setConfig({ type: 'custom:' + target.tag, devices: [
+      { vacuum_entity: 'vacuum.a170', brand_profile: 'roborock_s8_maxv_ultra' },
+      { vacuum_entity: 'vacuum.a245' },
+      { vacuum_entity: 'vacuum.paused' },
+      { vacuum_entity: 'vacuum.conflict' },
+      { vacuum_entity: 'vacuum.hostile' },
+      { vacuum_entity: 'vacuum.yaml_capacity', water_total_ml: 4300, signals: {} }
+    ] });
+    window.document.body.appendChild(el); el.hass = hass;
+    await el._ensureServerState(); await delay(0);
+
+    const devices = el._getDevices();
+    const a170 = devices.find(d => d.vacuum_entity === 'vacuum.a170');
+    const a245 = devices.find(d => d.vacuum_entity === 'vacuum.a245');
+    const paused = devices.find(d => d.vacuum_entity === 'vacuum.paused');
+    const conflict = devices.find(d => d.vacuum_entity === 'vacuum.conflict');
+    const hostile = devices.find(d => d.vacuum_entity === 'vacuum.hostile');
+    const yaml = devices.find(d => d.vacuum_entity === 'vacuum.yaml_capacity');
+    const a170Data = el._calcDeviceData(a170);
+    if (a170Data.totalMl !== 4200) throw new Error('effective default/profile/entity calibration did not win in rendered capacity');
+    el._activeDeviceIdx = devices.indexOf(a170); el._activeTab = 'water'; el._lastHtml = ''; el._render();
+    const a170Dom = el.shadowRoot.textContent;
+    if (!a170Dom.includes('Measured calibration active') || a170Dom.includes('Add calibration')) throw new Error('active measured manual accounting guidance is inaccurate');
+    if (!a170Dom.includes('sensor.a170_status') || !a170Dom.includes('4,200 ml')) throw new Error('a170 diagnostics are not rendered');
+    const legacyConflict = el._withExplicitKeys({ vacuum_entity: 'vacuum.conflict', water_total_ml: 4100 }, []);
+    const calibrationBeforeConflict = el._serverState.settings.custom_calibration;
+    el._serverState.settings.custom_calibration = {};
+    const conflictData = el._calcDeviceData(legacyConflict);
+    const conflictHtml = el._buildWaterTab(conflict, conflictData);
+    el._serverState.settings.custom_calibration = calibrationBeforeConflict;
+    if (conflictData.totalMl !== 4000 || !conflictHtml.includes('4.0 L') || conflictHtml.includes('4.1 L')) throw new Error(`backend descriptor capacity did not override legacy client profile capacity (${conflictData.totalMl})`);
+    el._activeDeviceIdx = devices.indexOf(a245); el._lastHtml = ''; el._render();
+    if (!el.shadowRoot.textContent.includes('sensor.a245_status') || !el.shadowRoot.textContent.includes('sensor.a245_area')) throw new Error('a245 raw same-device signals are not rendered');
+    el._activeDeviceIdx = devices.indexOf(paused); el._lastHtml = ''; el._render();
+    if (!/Missing rate/.test(el.shadowRoot.textContent) || /Active automatic estimate/.test(el.shadowRoot.textContent)) throw new Error('paused automatic accounting guidance is inaccurate');
+    el._activeDeviceIdx = devices.indexOf(hostile); el._lastHtml = ''; el._render();
+    if (el.shadowRoot.querySelector('[data-vwm-descriptor-xss]') || !el.shadowRoot.textContent.includes('<img data-vwm-descriptor-xss>')) throw new Error('hostile descriptor diagnostics were not escaped');
+    const discoveredBeforeFallback = el._discoveredVacuums;
+    el._discoveredVacuums = [];
+    if (el._autoDiscoverVacuums().filter(d => d.entity_id === 'vacuum.native_one' || d.entity_id === 'vacuum.matter_two').length !== 2) throw new Error('old-backend fallback deduplicated separate same-manufacturer vacuums');
+    el._discoveredVacuums = discoveredBeforeFallback;
+
+    el._activeDeviceIdx = devices.indexOf(a170); el._activeTab = 'maintenance'; el._lastHtml = ''; el._render();
+    el.shadowRoot.getElementById('vwm-custom-calibration-body').style.display = 'block';
+    if (!/Effective dock clean capacity/.test(el.shadowRoot.textContent) || !el.shadowRoot.textContent.includes('4,200 ml')) throw new Error('calibration UI does not render effective tracked reservoir capacity');
+    el.shadowRoot.getElementById('vwm-custom-tank').value = '4300';
+    el.shadowRoot.getElementById('vwm-custom-wash').value = '220';
+    el.shadowRoot.querySelector('.vwm-mode-name').value = 'measured';
+    el.shadowRoot.querySelector('.vwm-mode-val').value = '6';
+    if (!await el._saveCustomCalibration()) throw new Error('canonical calibration save failed');
+    const patch = calls.filter(call => call.type.endsWith('/set_settings')).at(-1).patch.custom_calibration;
+    const saved = patch['entity:vacuum.a170'];
+    if (saved.tracked_capacity_ml !== 4300 || saved.wash_volume_ml !== 220 || saved.usage_ml_per_m2?.measured !== 6 || 'tank_ml' in saved || 'mop_wash_ml' in saved || 'water_per_m2' in saved || saved.preserve_me !== 'keep' || patch['entity:vacuum.other']?.tracked_capacity_ml !== 2222) throw new Error('calibration patch did not use canonical merged selected-record keys');
+    if (el._calcDeviceData(yaml).totalMl !== 4300 || yaml.signals.status_sensor) throw new Error('explicit YAML capacity or empty signals opt-out lost precedence');
+    el._discoveredVacuums = [];
+    const calibrationBeforeOldBackend = el._serverState.settings.custom_calibration;
+    el._serverState.settings.custom_calibration = {};
+    const oldBackendHtml = el._buildWaterTab({ vacuum_entity: 'vacuum.a170' }, el._calcDeviceData({ vacuum_entity: 'vacuum.a170' }));
+    el._serverState.settings.custom_calibration = calibrationBeforeOldBackend;
+    if (!oldBackendHtml.includes('4.0 L')) throw new Error('old-backend model fallback is not rendered');
+  } finally { window.close(); }
 }
 
 (async () => {
@@ -478,6 +600,14 @@ async function smokeBackendDescriptorsAndTruthfulAccounting(target) {
       pass++;
     } catch (e) {
       fail.push(`${t.tag} hostile-icon-boundaries (${path.basename(t.file)}) -> ${(e && e.message) ? e.message : String(e)}`);
+    }
+  }
+  for (const t of targets.filter(t => t.tag === 'ha-vacuum-water-monitor')) {
+    try {
+      await smokeRoundOneDescriptorContracts(t);
+      pass++;
+    } catch (e) {
+      fail.push(`${t.tag} round-one-contracts (${path.basename(t.file)}) -> ${(e && e.message) ? e.message : String(e)}`);
     }
   }
   for (const t of targets.filter(t => t.tag === 'ha-vacuum-water-monitor')) {

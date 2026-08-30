@@ -22,8 +22,8 @@ Branch: `fix/model-signal-detector-v5.2`
 - The custom-calibration form now shows effective tracked capacity, evidence and distinct
   reservoirs. Saving merges the active record (including rate mappings) while preserving
   its unedited fields and all other device records.
-- The root card was mechanically synchronized to the bundled `www` card; the copies have
-  the same SHA-256: `433a52f5753658a735c59f42f9ef91ef88429972eec48723f1976c9208d98086`.
+- The root card was mechanically synchronized to the bundled `www` card; after fix round 1
+  the copies have the same SHA-256: `0683ef8ff2b9063e28ac63a2f4be303928b2f76b78a4ccbfe9112dabf6cf834c`.
 - Release surfaces now identify 5.2.0: card header, integration manifest, Python constant,
   validation package/lock and frontend registration test. README, changelog and model
   capacity source documentation cover estimate-only semantics, the refill baseline,
@@ -96,3 +96,65 @@ expected refusal message for an empty-list settings patch while all 56 tests pas
   metadata validation and the integration registration tests passed; no external mutation
   was performed.
 - No push, tag, release, GitHub comment or private-HA deployment was performed.
+
+## Fix round 1 — review follow-up
+
+### Implementation
+
+- Replaced the card's single-record calibration lookup with backend-aligned layers:
+  `default → resolved profile → entity`. Every layer normalizes legacy aliases before
+  merging (`tank_ml`/`tracked_capacity_ml`, `water_per_m2`/`usage_ml_per_m2`, and
+  `mop_wash_ml`/`wash_volume_ml`); mapping values merge additively per layer.
+- Calibration writes now normalize the selected record, remove those legacy aliases, and
+  send canonical `tracked_capacity_ml`, `usage_ml_per_m2`, and `wash_volume_ml` fields.
+  Unedited selected-record fields and all other device records remain intact.
+- Added device-origin tracking. Explicit YAML/user capacity, direct signal fields and an
+  explicit `signals: {}` opt-out retain precedence. Registry descriptors only supersede
+  unmarked legacy client-profile expansion/defaults.
+- Removed manufacturer-only native/Matter dedup from the old-backend fallback. Without a
+  shared stable physical identity, each `vacuum.*` entity remains visible.
+- Accounting guidance now uses initialized/source/rate/evidence/reason. A manual-only
+  model actively consuming via user calibration says **Measured calibration active**;
+  paused automatic accounting says missing/unavailable instead of active.
+- Diagnostics and calibration-reservoir formatting safely coerce non-numeric/non-string
+  descriptor values and escape every interpolated value. The calibration label names the
+  actual tracked reservoir instead of always calling it a dock tank.
+- README now states HA 2024.7+, makes automatic accounting conditional on real same-device
+  signals and resolved model/user rates, and removes generic default-water-rate promises.
+- Captured the intentional empty-list guard warning inside its own unit test so the full
+  Python suite output is clean without hiding the behavior.
+
+### Behavior-specific RED → GREEN evidence
+
+1. Added `smokeRoundOneDescriptorContracts` for layered default/profile/entity calibration,
+   canonical WS payloads, active measured manual accounting, paused automatic accounting,
+   `a245` raw roles, descriptor-vs-legacy capacity conflict, YAML capacity/empty-signals
+   precedence, old-backend same-manufacturer entities, fallback rendering, and hostile
+   descriptor diagnostics.
+2. RED command: `npm run test:smoke`.
+   Result: exit 1; both card copies failed with
+   `effective default/profile/entity calibration did not win in rendered capacity`.
+3. Implemented canonical layered calibration, origin-aware descriptor merge, truthful
+   guidance, fallback behavior and canonical save normalization. Intermediate smoke runs
+   exposed and corrected the test's old-fallback fixture ordering and legacy expectations.
+4. GREEN command: `npm run test:smoke`.
+   Result: exit 0; `smoke: 2 element(s) | PASS 10 | FAIL 0`.
+5. Full Python run after warning capture: `python3 -m tests`.
+   Result: exit 0; 56 tests pass without the former `Refusing empty-list settings patch`
+   log line.
+
+### Fix round 1 verification (final evidence)
+
+| Command | Result |
+| --- | --- |
+| `npm ci --ignore-scripts --loglevel=error` | exit 0; 39 packages audited, 0 vulnerabilities; no deprecation warning |
+| `python3 -m compileall -q custom_components tests && python3 -m tests` | exit 0; 56 tests passed; no empty-list guard warning |
+| `npm run --silent test:smoke` | exit 0; clean output: `smoke: 2 element(s) | PASS 10 | FAIL 0` |
+| `node --check` for both distributed cards | exit 0 |
+| `cmp -s` root/package card copies | exit 0; byte-identical |
+| JSON parse of package/lock, HACS, manifest and model catalog | exit 0; `json: valid` |
+| `git diff --check` | exit 0 |
+| targeted secret/signing-material scan | exit 0; no matches |
+| local HA/HACS metadata assertion | exit 0; `release-metadata: valid` |
+
+No push, tag, publication, GitHub comment or deployment occurred in this round.

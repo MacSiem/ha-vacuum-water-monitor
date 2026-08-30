@@ -1765,18 +1765,37 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return (this._discoveredVacuums || []).find(item => item?.entity_id === entity) || null;
   }
 
+  _explicitDeviceKeys(device) {
+    return new Set(Array.isArray(device?.__vwmExplicitKeys) ? device.__vwmExplicitKeys : []);
+  }
+
+  _withExplicitKeys(device, keys = []) {
+    return { ...(device || {}), __vwmExplicitKeys: [...new Set(keys)] };
+  }
+
   _withBackendDescriptor(device) {
     const descriptor = this._backendDescriptor(device);
     if (!descriptor) return device || {};
+    const explicit = this._explicitDeviceKeys(device);
     const signals = descriptor.signals && typeof descriptor.signals === 'object' ? descriptor.signals : {};
-    // Deliberately let server-resolved profile metadata and same-device signal
-    // roles win. User YAML still supplies optional non-discovery hooks.
-    return {
-      ...(device || {}),
-      ...descriptor,
-      vacuum_entity: descriptor.entity_id || device?.vacuum_entity,
-      ...signals,
-    };
+    const merged = { ...(device || {}), vacuum_entity: descriptor.entity_id || device?.vacuum_entity };
+    // Match backend merge semantics: an authored `signals: {}` is an opt-out,
+    // and every authored YAML field wins over discovery. Unmarked legacy card
+    // profile defaults are not authored configuration and can be superseded.
+    if (!explicit.has('signals')) {
+      const effectiveSignals = { ...signals };
+      for (const [role, entity] of Object.entries(signals)) {
+        if (entity && !explicit.has(role)) merged[role] = entity;
+        else if (explicit.has(role) && merged[role]) effectiveSignals[role] = merged[role];
+      }
+      merged.signals = effectiveSignals;
+    }
+    for (const [key, value] of Object.entries(descriptor)) {
+      if (key === 'entity_id' || key === 'vacuum_entity' || key === 'signals' || key === 'name') continue;
+      if (value != null && !explicit.has(key)) merged[key] = value;
+    }
+    if (descriptor.name && (!merged.name || merged.name === merged.vacuum_entity)) merged.name = descriptor.name;
+    return merged;
   }
 
   _customCalibrationKey(device = null) {
@@ -1804,14 +1823,53 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return null;
   }
 
+  _normaliseCalibrationLayer(layer) {
+    const source = layer && typeof layer === 'object' ? layer : {};
+    const normalized = { ...source };
+    const usage = {};
+    for (const key of ['water_per_m2', 'usage_ml_per_m2']) {
+      if (source[key] && typeof source[key] === 'object') Object.assign(usage, source[key]);
+    }
+    if (Object.keys(usage).length) normalized.usage_ml_per_m2 = usage;
+    delete normalized.water_per_m2;
+    for (const [canonical, legacy] of [['wash_volume_ml', 'mop_wash_ml'], ['tracked_capacity_ml', 'tank_ml']]) {
+      const canonicalValue = Number(source[canonical]);
+      const legacyValue = Number(source[legacy]);
+      if (Number.isFinite(canonicalValue) && canonicalValue > 0) normalized[canonical] = canonicalValue;
+      else if (Number.isFinite(legacyValue) && legacyValue > 0) normalized[canonical] = legacyValue;
+      else delete normalized[canonical];
+      delete normalized[legacy];
+    }
+    return normalized;
+  }
+
+  _effectiveCustomCalibration(device, customMap = null) {
+    const custom = customMap || this._serverState?.settings?.custom_calibration || {};
+    if (!custom || typeof custom !== 'object') return {};
+    const entity = String(device?.vacuum_entity || '').trim().toLowerCase();
+    const profile = device?.profile_key || this._resolveProfileKey(device);
+    const keys = ['default', profile, entity ? `entity:${entity}` : ''].filter(Boolean);
+    const merged = {};
+    for (const key of keys) {
+      const layer = custom[key];
+      if (!layer || typeof layer !== 'object') continue;
+      for (const [name, value] of Object.entries(this._normaliseCalibrationLayer(layer))) {
+        merged[name] = value && typeof value === 'object' && !Array.isArray(value) && merged[name] && typeof merged[name] === 'object'
+          ? { ...merged[name], ...value }
+          : value;
+      }
+    }
+    return merged;
+  }
+
   _getDevices() {
     if (this._config.devices && Array.isArray(this._config.devices)) {
       return this._config.devices.map(d => {
         // Apply brand profile if each device specifies one
         if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-          return this._withBackendDescriptor({ ...BRAND_PROFILES[d.brand_profile], ...d });
+          return this._withBackendDescriptor(this._withExplicitKeys({ ...BRAND_PROFILES[d.brand_profile], ...d }, Object.keys(d)));
         }
-        return this._withBackendDescriptor(d);
+        return this._withBackendDescriptor(this._withExplicitKeys(d, Object.keys(d)));
       });
     }
     // Single device mode
@@ -1836,52 +1894,31 @@ class HAVacuumWaterMonitor extends HTMLElement {
           }));
       return serverDevices.map(d => {
         if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-          return this._withBackendDescriptor({ ...BRAND_PROFILES[d.brand_profile], ...d });
+          return this._withBackendDescriptor(this._withExplicitKeys({ ...BRAND_PROFILES[d.brand_profile], ...d }, Object.keys(d)));
         }
-        return this._withBackendDescriptor(d);
+        return this._withBackendDescriptor(this._withExplicitKeys(d, Object.keys(d)));
       });
     }
     single.name = single.device_name || this._config.device_name || 'Vacuum';
     // Merge config single device + user-added devices
     const userDevs = (this._userDevices || []).filter(ud => ud.vacuum_entity !== single.vacuum_entity).map(d => {
       if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-        return { ...BRAND_PROFILES[d.brand_profile], ...d };
+        return this._withExplicitKeys({ ...BRAND_PROFILES[d.brand_profile], ...d }, Object.keys(d));
       }
-      return d;
+      return this._withExplicitKeys(d, Object.keys(d));
     });
-    return [single, ...userDevs].map(d => this._withBackendDescriptor(d));
+    return [this._withExplicitKeys(single, Object.keys(single)), ...userDevs].map(d => this._withBackendDescriptor(d));
   }
 
-  // Auto-discover vacuum entities from HA states. See plugin commit 6f6444a
-  // (Matter dedup) for the heuristic — when one robot is exposed via both the
-  // native vendor integration and a Matter bridge, prefer the native entity.
+  // Old backends return no stable physical-device identity. Keep every vacuum
+  // entity in that fallback instead of guessing that a shared manufacturer
+  // means the native/Matter entities are one physical robot.
   _autoDiscoverVacuums() {
     if (this._discoveredVacuums && this._discoveredVacuums.length) return this._discoveredVacuums;
     if (!this._hass) return [];
     const all = Object.values(this._hass.states)
       .filter(s => s.entity_id.startsWith('vacuum.'));
-    const entityReg = this._hass.entities || {};
-    const deviceReg = this._hass.devices || {};
-    const meta = all.map(s => {
-      const ent = entityReg[s.entity_id];
-      const dev = ent?.device_id ? deviceReg[ent.device_id] : null;
-      return {
-        entity_id: s.entity_id,
-        platform: ent?.platform || null,
-        manufacturer: dev?.manufacturer || null,
-      };
-    });
-    const isDuplicate = (m) => {
-      if (m.platform !== 'matter' || !m.manufacturer) return false;
-      return meta.some(other =>
-        other.entity_id !== m.entity_id &&
-        other.manufacturer === m.manufacturer &&
-        other.platform &&
-        other.platform !== 'matter'
-      );
-    };
     return all
-      .filter(s => !isDuplicate(meta.find(m => m.entity_id === s.entity_id)))
       .map(s => ({
         entity_id: s.entity_id,
         name: (s.attributes && s.attributes.friendly_name) || s.entity_id,
@@ -1896,9 +1933,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // is retained strictly as a fallback for pre-5.2 integration responses.
     const profileKey = this._resolveProfileKey(device);
     const calib = profileKey ? (CALIBRATION_DATA[profileKey] || null) : null;
-    const customCalib = this._customCalibrationFor(device);
-    const customCapacity = customCalib?.tracked_capacity_ml || customCalib?.tank_ml;
-    const totalMl = device.water_total_ml || customCapacity || device.tracked_capacity_ml || (calib ? calib.tank_ml : 0);
+    const customCalib = this._effectiveCustomCalibration(device);
+    const explicit = this._explicitDeviceKeys(device);
+    const configuredCapacity = ['water_total_ml', 'tracked_capacity_ml', 'tank_ml']
+      .filter(key => explicit.has(key))
+      .map(key => Number(device[key])).find(value => Number.isFinite(value) && value > 0);
+    const descriptor = this._backendDescriptor(device);
+    const backendCapacity = descriptor ? Number(descriptor.tracked_capacity_ml) : null;
+    const totalMl = configuredCapacity || customCalib.tracked_capacity_ml || (Number.isFinite(backendCapacity) && backendCapacity > 0 ? backendCapacity : null) || (calib ? calib.tank_ml : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
     const initialized = Boolean(tankState.initialized || tankState.last_reset_iso);
@@ -1976,7 +2018,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       profileConfidence: device.profile_confidence || null,
       capability: device.capability || 'unknown',
       evidence: device.evidence || null,
-      accountingEvidence: tankState.last_accounting_evidence || device.accounting_evidence || null,
+      accountingEvidence: tankState.last_accounting_evidence || ((customCalib.usage_ml_per_m2 || customCalib.wash_volume_ml) ? 'user_calibration' : device.accounting_evidence || null),
       accountingSource: tankState.last_accounting_source || null,
       accountingRate: tankState.last_accounting_rate_ml ?? null,
       reservoirsMl: device.reservoirs_ml && typeof device.reservoirs_ml === 'object' ? device.reservoirs_ml : {},
@@ -2187,17 +2229,21 @@ class HAVacuumWaterMonitor extends HTMLElement {
         : '';
       return box('Needs a refill baseline.', `Water remaining and used are unknown until you press Refilled with a full tracked reservoir.${capability}`, '#f59e0b');
     }
-    if (data.capability === 'manual_only') {
-      return box('Manual-only.', 'This model has capacity data but no published automatic usage telemetry. Add calibration and use manual refill to maintain the estimate.', '#f59e0b');
-    }
     if (data.stateReason === 'missing_area_rate' || data.stateReason === 'missing_wash_rate') {
       return box('Missing rate.', 'Automatic estimate is paused until an applicable measured calibration rate is available.', '#f59e0b');
     }
     if (data.stateReason === 'area_unavailable' || data.stateReason === 'area_gap') {
       return box('Unavailable signal.', 'Automatic estimate is waiting for a usable same-device area signal.', '#f59e0b');
     }
+    const active = Boolean(data.accountingSource && Number.isFinite(Number(data.accountingRate)) && Number(data.accountingRate) > 0 && !data.stateReason);
+    if (data.capability === 'manual_only' && active && data.accountingEvidence === 'user_calibration') {
+      return box('Measured calibration active.', 'This manual-only model is currently accounting from your measured calibration and same-device signal.', '#22c55e');
+    }
+    if (data.capability === 'manual_only') {
+      return box('Manual-only.', 'This model has capacity data but no published automatic usage telemetry. Add calibration and use manual refill to maintain the estimate.', '#f59e0b');
+    }
     if (data.capability === 'automatic_estimate') {
-      return box('Automatic estimate.', 'Usage is estimated from the discovered same-device signals and configured rates.', '#22c55e');
+      return box(active ? 'Active automatic estimate.' : 'Automatic estimate ready.', active ? 'Usage is currently estimated from the discovered same-device signals and configured rates.' : 'Accounting will begin only when a usable same-device signal and applicable rate are available.', '#22c55e');
     }
     return box('Accounting status unknown.', 'No authoritative usage capability was supplied by the integration.', '#64748b');
   }
@@ -2206,16 +2252,22 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const rows = [];
     if (data.profileKey) rows.push(['Profile', data.profileKey]);
     if (data.profileSource || data.profileConfidence) rows.push(['Resolution', [data.profileSource, data.profileConfidence].filter(Boolean).join(' / ')]);
-    if (data.trackedReservoir || data.totalMl) rows.push(['Tracked reservoir', `${data.trackedReservoir || 'unknown'}${data.totalMl ? ` (${Number(data.totalMl).toLocaleString('en-US')} ml)` : ''}`]);
+    if (data.trackedReservoir || data.totalMl) rows.push(['Tracked reservoir', `${data.trackedReservoir || 'unknown'}${data.totalMl ? ` (${this._formatMl(data.totalMl)})` : ''}`]);
     for (const [key, value] of Object.entries(data.reservoirsMl || {})) {
-      if (value != null) rows.push([key, `${Number(value).toLocaleString('en-US')} ml`]);
+      if (value != null) rows.push([key, this._formatMl(value)]);
     }
     for (const [role, entity] of Object.entries(data.signals || {})) {
       if (entity) rows.push([role, entity]);
     }
-    if (data.accountingSource || data.stateReason || data.accountingEvidence) rows.push(['Accounting', [data.accountingSource, data.stateReason, data.accountingEvidence].filter(Boolean).join(' / ')]);
+    if (data.accountingSource || data.stateReason || data.accountingEvidence) rows.push(['Accounting', [data.accountingSource, data.accountingRate != null ? `rate ${data.accountingRate}` : null, data.stateReason, data.accountingEvidence].filter(Boolean).join(' / ')]);
     if (!rows.length) return '';
     return `<details style="margin-top:14px;font-size:11px;color:var(--bento-text-secondary,#64748b)"><summary style="cursor:pointer;font-weight:600">Diagnostics</summary><div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin-top:8px">${rows.map(([label, value]) => `<span>${_esc(label)}</span><span>${_esc(value)}</span>`).join('')}</div></details>`;
+  }
+
+  _formatMl(value) {
+    let numeric = NaN;
+    try { numeric = Number(value); } catch (err) {}
+    return Number.isFinite(numeric) ? `${numeric.toLocaleString('en-US')} ml` : `${_asText(value)} ml`;
   }
 
 
@@ -2331,12 +2383,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _buildMaintenanceTab(device, data) {
     const customCalibration = this._customCalibrationFor(device) || {};
+    const effectiveCalibrationData = this._effectiveCustomCalibration(device);
     const reservoirRows = Object.entries(data.reservoirsMl || {})
       .filter(([, value]) => value != null)
-      .map(([name, value]) => `<span>${_esc(name)}: <b>${_esc(Number(value).toLocaleString('en-US'))} ml</b></span>`)
+      .map(([name, value]) => `<span>${_esc(name)}: <b>${_esc(this._formatMl(value))}</b></span>`)
       .join(' · ');
-    const effectiveCalibration = `<div style="margin:0 0 12px;padding:10px 12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:8px;font-size:11px;line-height:1.5"><b>Effective tracked capacity:</b> ${data.totalMl ? `${_esc(Number(data.totalMl).toLocaleString('en-US'))} ml` : 'unknown'}${data.trackedReservoir ? ` (${_esc(data.trackedReservoir)})` : ''}<br><b>Estimate evidence:</b> ${_esc(data.accountingEvidence || data.evidence || 'not available')}<br>${reservoirRows ? `<b>Distinct reservoirs:</b> ${reservoirRows}` : ''}</div>`;
-    const savedModeRows = Object.entries(customCalibration.water_per_m2 || {});
+    const reservoirLabel = data.trackedReservoir ? `${data.trackedReservoir.replace(/_/g, ' ')} capacity` : 'Tracked reservoir capacity';
+    const effectiveCalibration = `<div style="margin:0 0 12px;padding:10px 12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:8px;font-size:11px;line-height:1.5"><b>Effective ${_esc(reservoirLabel)}:</b> ${data.totalMl ? _esc(this._formatMl(data.totalMl)) : 'unknown'}${data.trackedReservoir ? ` (${_esc(data.trackedReservoir)})` : ''}<br><b>Effective calibration layers:</b> default → resolved profile → device (${_esc(effectiveCalibrationData.tracked_capacity_ml || 'no device capacity override')})<br><b>Estimate evidence:</b> ${_esc(data.accountingEvidence || data.evidence || 'not available')}<br>${reservoirRows ? `<b>Distinct reservoirs:</b> ${reservoirRows}` : ''}</div>`;
+    const savedModeRows = Object.entries(customCalibration.usage_ml_per_m2 || customCalibration.water_per_m2 || {});
     const calibrationModeRows = [
       ...savedModeRows,
       ...Array.from({ length: Math.max(0, 3 - savedModeRows.length) }, () => ['', '']),
@@ -2464,8 +2518,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
             </div>
             <div id="vwm-custom-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
               <label style="font-size:11px;color:var(--bento-text-secondary)">
-                Dock tank (ml)
-                <input type="number" id="vwm-custom-tank" min="1" step="1" value="${_esc(String(customCalibration.tank_ml || ''))}" placeholder="e.g. 3000" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                ${_esc(reservoirLabel)} (ml)
+                <input type="number" id="vwm-custom-tank" min="1" step="1" value="${_esc(String(customCalibration.tracked_capacity_ml || customCalibration.tank_ml || ''))}" placeholder="e.g. 3000" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 Robot tank (ml)
@@ -2473,7 +2527,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 Mop washing (ml/cycle)
-                <input type="number" id="vwm-custom-wash" min="1" step="1" value="${_esc(String(customCalibration.mop_wash_ml || ''))}" placeholder="e.g. 150" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+                <input type="number" id="vwm-custom-wash" min="1" step="1" value="${_esc(String(customCalibration.wash_volume_ml || customCalibration.mop_wash_ml || ''))}" placeholder="e.g. 150" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 Coverage / charge (m\u00B2)                <input type="number" id="vwm-custom-area" min="1" step="1" value="${_esc(String(customCalibration.avg_area_per_charge || ''))}" placeholder="e.g. 250" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
@@ -2662,9 +2716,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       custom[key] = Math.round(value);
     };
     try {
-      addPositiveInteger(tank, 'tank_ml', 'Dock tank');
+      addPositiveInteger(tank, 'tracked_capacity_ml', 'Tracked reservoir');
       addPositiveInteger(robotTank, 'robot_tank_ml', 'Robot tank');
-      addPositiveInteger(wash, 'mop_wash_ml', 'Mop wash');
+      addPositiveInteger(wash, 'wash_volume_ml', 'Mop wash');
       addPositiveInteger(area, 'avg_area_per_charge', 'Coverage');
       modeNames.forEach((nameInput, i) => {
         const name = nameInput.value?.trim();
@@ -2681,8 +2735,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return false;
     }
     if (Object.keys(modes).length > 0) {
-      custom.water_per_m2 = modes;
-      custom.mop_modes = modes;
+      custom.usage_ml_per_m2 = modes;
     }
     if (Object.keys(custom).length === 0) {
       if (status) { status.textContent = 'Enter at least one calibration value.'; status.style.color = '#ef4444'; }
@@ -2691,15 +2744,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const activeDevice = this._getDevices()[this._activeDeviceIdx] || null;
     const key = this._customCalibrationKey(activeDevice);
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
-    const existing = all[key] && typeof all[key] === 'object' ? all[key] : {};
+    const existing = this._normaliseCalibrationLayer(all[key]);
     // Preserve fields the current form does not edit (and every other device)
     // while applying this device's calibration changes.
     all[key] = {
       ...existing,
       ...custom,
-      ...(custom.water_per_m2 ? {
-        water_per_m2: { ...(existing.water_per_m2 || {}), ...custom.water_per_m2 },
-        mop_modes: { ...(existing.mop_modes || {}), ...(custom.mop_modes || {}) },
+      ...(custom.usage_ml_per_m2 ? {
+        usage_ml_per_m2: { ...(existing.usage_ml_per_m2 || {}), ...custom.usage_ml_per_m2 },
       } : {}),
     };
     if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Saving…'; }

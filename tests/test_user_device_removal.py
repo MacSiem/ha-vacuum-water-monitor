@@ -13,6 +13,7 @@ import importlib.util
 import sys
 import types
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 PKG_DIR = Path(__file__).resolve().parents[1] / "custom_components" / "ha_vacuum_water_monitor"
@@ -83,7 +84,11 @@ class UserDeviceRemovalTest(unittest.TestCase):
             await st.async_set_settings({"user_devices": []})
             return await st.async_get_settings()
 
-        s = asyncio.run(scenario())
+        # The warning is intentional behavior, not test output. Capture it so
+        # the full suite stays clean while this test still proves the guard.
+        with patch.object(storage._LOGGER, "warning") as warning:
+            s = asyncio.run(scenario())
+        warning.assert_called_once()
         self.assertEqual(s["user_devices"], [{"vacuum_entity": "vacuum.a"}])
 
     def test_replace_key_persists_empty(self):

@@ -7,7 +7,7 @@ reminders — without any extra hardware. The integration estimates water usage 
 your vacuum already reports to Home Assistant (state changes and cleaned area) and exposes
 it as sensors plus a bundled dashboard card.
 
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/github/v/release/MacSiem/ha-vacuum-water-monitor)](https://github.com/MacSiem/ha-vacuum-water-monitor/releases)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.7+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/github/v/release/MacSiem/ha-vacuum-water-monitor)](https://github.com/MacSiem/ha-vacuum-water-monitor/releases)
 
 ## How it works
 
@@ -20,11 +20,10 @@ What happens under the hood:
 
 1. **Auto-discovery.** The integration finds every `vacuum.*` entity in your Home Assistant
    and creates a device with water sensors for each robot. No YAML, no entity picking.
-2. **Water accounting runs server-side, every 60 seconds when supported.** Two signals add water usage:
-   - **Mop-wash events** — when your vacuum reports a mop-washing state (e.g. Roborock's
-     `washing_the_mop`), a fixed wash volume is added (default 150 mL, configurable).
-   - **Cleaned area** — while the vacuum is cleaning with the mop enabled, usage is added
-     per m² of newly cleaned area (rate depends on mop mode and intensity).
+2. **Water accounting runs server-side every 60 seconds only when supported.** It requires
+   real, same-device status/area signals plus an applicable explicit model or user-calibrated
+   rate. Mop-wash events and cleaned-area deltas are counted only when their respective
+   signal and rate are available; there is no generic default wash volume.
 3. **Tank capacity and signals come from the Home Assistant device descriptor.** The
    integration resolves the canonical model profile from registry identifiers and only
    discovers status/area/mop signals belonging to that same device. If capacity is
@@ -41,7 +40,7 @@ What happens under the hood:
 | Automatic | Manual (optional) |
 |---|---|
 | Discovering vacuums | Pressing **Refilled** after you fill the tank |
-| Water usage estimation (wash events + area) | Calibrating tank size for unknown models |
+| Water usage estimation when same-device signals and a model/user rate exist | Calibrating tank size for unknown/manual-only models |
 | Tank capacity for known models | Wiring extra sensors (dock errors, tank door) |
 | Sensors + card registration | Maintenance schedule entries |
 
@@ -170,9 +169,9 @@ These optional keys let you wire additional entities into the water accounting
 
 | Option | Example | What it does |
 |---|---|---|
-| `status_sensor` | `sensor.roborock_..._status` | Dedicated status entity used instead of the vacuum's `status` attribute (or its state). Drives mop-wash detection — every transition into a washing state adds one wash volume (default 150 mL) — and the "cleaning" check for area-based dosing. |
-| `mop_mode_entity` | `select.roborock_..._mop_mode` | Current mop mode (`fast` / `standard` / `deep`). Selects the per-m² usage rate (defaults: 4 / 6 / 9 mL/m²). Mode `off` disables area-based dosing entirely; `unavailable` or unset falls back to `standard`. |
-| `mop_intensity_entity` | `select.roborock_..._mop_intensity` | Current mop intensity / water level. Multiplies the usage rate (defaults: `low` ×0.8, `medium` ×1.0, `high` ×1.2, `max` ×1.3). Falls back to `medium` when unset or `unavailable`. |
+| `status_sensor` | `sensor.roborock_..._status` | Dedicated status entity used instead of the vacuum's `status` attribute (or its state). Drives mop-wash detection only when the resolved model or user calibration provides a wash volume, and the "cleaning" check for area-based dosing. |
+| `mop_mode_entity` | `select.roborock_..._mop_mode` | Current mop mode (`fast` / `standard` / `deep`). Selects a resolved per-m² model/user calibration rate. Mode `off` disables area-based dosing entirely; an unavailable mode cannot manufacture a rate. |
+| `mop_intensity_entity` | `select.roborock_..._mop_intensity` | Current mop intensity / water level. Applies only when the resolved model/user calibration provides an intensity factor; unavailable data does not manufacture one. |
 | `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. An `on` → `off` transition counts as "tank refilled" and resets the used-water counter automatically (60 s debounce between auto-resets). |
 
 ### Advanced — bring your own counter
