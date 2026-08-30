@@ -9,7 +9,7 @@ import re
 from typing import Any
 
 try:
-    from .profiles import resolve_profile
+    from .profiles import legacy_profile_defaults, resolve_profile
 except ImportError:  # Supports this module's existing direct-file pure tests.
     _profile_spec = importlib.util.spec_from_file_location(
         "vwm_standalone_profiles", Path(__file__).with_name("profiles.py")
@@ -18,6 +18,7 @@ except ImportError:  # Supports this module's existing direct-file pure tests.
     _profile_module = importlib.util.module_from_spec(_profile_spec)
     _profile_spec.loader.exec_module(_profile_module)
     resolve_profile = _profile_module.resolve_profile
+    legacy_profile_defaults = _profile_module.legacy_profile_defaults
 
 MILLISECONDS_PER_DAY = 86_400_000
 
@@ -313,7 +314,11 @@ def next_maintenance_due(
 
 def _normalize_device(vacuum_entity: str, item: dict[str, Any]) -> dict[str, Any]:
     device = dict(item)
-    device["_explicit_fields"] = tuple(device)
+    explicit, generated = _configuration_field_provenance(device)
+    device["_explicit_fields"] = tuple(sorted(explicit))
+    device["_generated_fields"] = tuple(sorted(generated))
+    if "profile_locked" in generated:
+        device.pop("profile_locked", None)
     device["vacuum_entity"] = vacuum_entity
     if not device.get("name"):
         device["name"] = device.get("device_name") or device.get("label") or vacuum_entity
@@ -356,12 +361,15 @@ def _model_tank_ml(device: dict[str, Any]) -> float | None:
 def _custom_calibration_keys(device: dict[str, Any]) -> tuple[str, ...]:
     """Return custom calibration keys from most to least device-specific."""
     entity = str(device.get("vacuum_entity") or "").strip().lower()
-    profile = device.get("brand_profile")
     resolved = _resolve_model_key(device)
+    selected_profile = resolved or (
+        str(device.get("brand_profile"))
+        if isinstance(device.get("brand_profile"), str)
+        else ""
+    )
     candidates = [
         f"entity:{entity}" if entity else "",
-        str(profile) if isinstance(profile, str) else "",
-        resolved or "",
+        selected_profile,
         "default",
     ]
     return tuple(dict.fromkeys(key for key in candidates if key))
@@ -433,22 +441,35 @@ def _resolve_model_key(device: dict[str, Any]) -> str:
 
 def _merge_discovery(device: dict[str, Any], descriptor: dict[str, Any]) -> None:
     """Add descriptor metadata while keeping every explicit user field authoritative."""
+    explicit_fields = _explicit_fields(device)
+    generated_fields = _generated_fields(device)
+    for key in generated_fields:
+        if key in _BEHAVIOR_BINDING_FIELDS:
+            device.pop(key, None)
+
     signals = descriptor.get("signals")
     if isinstance(signals, dict):
-        if "signals" in device:
+        if "signals" in explicit_fields:
             explicit_signals = device["signals"]
             if isinstance(explicit_signals, dict):
                 for key, value in explicit_signals.items():
                     device.setdefault(key, value)
         else:
-            for key, value in signals.items():
-                if value and key not in device:
-                    device[key] = value
-            device["signals"] = dict(signals)
+            effective_signals = dict(signals)
+            for key in _DIRECT_SIGNAL_FIELDS:
+                if key in explicit_fields and device.get(key):
+                    effective_signals[key] = device[key]
+                elif key in signals and signals[key]:
+                    device[key] = signals[key]
+            device["signals"] = effective_signals
+
+    locked = bool(device.get("profile_locked")) and "profile_locked" in explicit_fields
     for key, value in descriptor.items():
         if key in {"entity_id", "vacuum_entity", "signals", "name"}:
             continue
-        if value is not None and key not in device:
+        if locked and key in _PROFILE_DESCRIPTOR_FIELDS:
+            continue
+        if value is not None and key not in explicit_fields:
             device[key] = value
     if descriptor.get("name") and (not device.get("name") or device["name"] == device["vacuum_entity"]):
         device["name"] = str(descriptor["name"])
@@ -489,6 +510,105 @@ def _explicit_fields(device: dict[str, Any]) -> set[str]:
     if not isinstance(fields, (list, tuple, set, frozenset)):
         return set()
     return {str(field) for field in fields}
+
+
+def _generated_fields(device: dict[str, Any]) -> set[str]:
+    fields = device.get("_generated_fields")
+    if not isinstance(fields, (list, tuple, set, frozenset)):
+        return set()
+    return {str(field) for field in fields}
+
+
+_DIRECT_SIGNAL_FIELDS = {
+    "status_sensor",
+    "area_sensor",
+    "mop_mode_entity",
+    "mop_intensity_entity",
+}
+_BEHAVIOR_BINDING_FIELDS = _DIRECT_SIGNAL_FIELDS | {
+    "water_total_ml",
+    "tracked_capacity_ml",
+    "tank_ml",
+    "tracked_reservoir",
+    "signals",
+    "usage_ml_per_m2",
+    "water_per_m2",
+    "intensity_factor",
+    "wash_volume_ml",
+    "mop_wash_ml",
+    "accounting_evidence",
+    "evidence",
+    "profile_locked",
+    "profile_override",
+    "locked_profile",
+    "brand_profile",
+    "dock_error_sensor",
+    "water_sensor",
+    "water_used_sensor",
+    "water_used_input",
+    "dock_clean_water_sensor",
+    "dock_dirty_water_sensor",
+    "water_shortage_sensor",
+    "reset_door_sensor",
+    "filter_sensor",
+    "last_session_sensor",
+    "last_reset_entity",
+    "main_brush_sensor",
+    "side_brush_sensor",
+    "filter_time_sensor",
+    "sensor_dirty_sensor",
+    "dock_brush_sensor",
+    "dock_strainer_sensor",
+    "mop_attached_sensor",
+    "mop_drying_sensor",
+    "duration_sensor",
+    "last_clean_start",
+    "last_clean_end",
+    "charge_sensor",
+}
+_PROFILE_DESCRIPTOR_FIELDS = {
+    "profile_key",
+    "profile_source",
+    "profile_confidence",
+    "capability",
+    "evidence",
+    "tracked_reservoir",
+    "tracked_capacity_ml",
+    "reservoirs_ml",
+    "usage_ml_per_m2",
+    "wash_volume_ml",
+    "accounting_evidence",
+}
+
+
+def _configuration_field_provenance(
+    device: dict[str, Any],
+) -> tuple[set[str], set[str]]:
+    provenance = device.get("config_provenance")
+    if isinstance(provenance, dict) and isinstance(
+        provenance.get("authored_fields"), list
+    ):
+        authored = {str(key) for key in provenance["authored_fields"]}
+        return authored, set(device) - authored - {"config_provenance"}
+
+    defaults = legacy_profile_defaults(device.get("brand_profile"))
+    if not defaults:
+        return set(device) - {"config_provenance"}, set()
+
+    explicit: set[str] = set()
+    generated: set[str] = set()
+    for key, value in device.items():
+        if key == "config_provenance":
+            continue
+        if key == "signals":
+            explicit.add(key)
+        elif key in {"brand_profile", "profile_locked"}:
+            generated.add(key)
+        elif key in defaults and value == defaults[key]:
+            generated.add(key)
+        else:
+            explicit.add(key)
+    return explicit, generated
 
 
 def _format_number(value: float) -> int | float:

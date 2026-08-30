@@ -78,6 +78,22 @@ class ModelProfileTests(unittest.TestCase):
         self.assertIsNone(resolved["wash_volume_ml"])
         self.assertEqual(resolved["usage_ml_per_m2"], {})
 
+    def test_generic_profile_is_legacy_catalog_only_and_never_supplies_accounting(self) -> None:
+        profiles = _load_profiles()
+        self.assertIsNotNone(profiles, "profiles module must exist")
+        assert profiles is not None
+
+        resolved = profiles.resolve_profile({"brand_profile": "generic"})
+
+        self.assertEqual(resolved["profile_key"], "generic")
+        self.assertEqual(resolved["capability"], "manual_only")
+        self.assertEqual(resolved["usage_ml_per_m2"], {})
+        self.assertIsNone(resolved["wash_volume_ml"])
+        self.assertIsNone(resolved["tracked_capacity_ml"])
+        self.assertEqual(
+            profiles.CATALOG["generic"]["legacy_calibration"]["tank_ml"], 300
+        )
+
     def test_invalid_catalog_record_fails_closed(self) -> None:
         profiles = _load_profiles()
         self.assertIsNotNone(profiles, "profiles module must exist")

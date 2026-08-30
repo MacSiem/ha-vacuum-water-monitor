@@ -1824,16 +1824,12 @@
       "tracked_capacity_ml": 300,
       "legacy_robot_tank_ml": 300,
       "accounting": {
-        "usage_ml_per_m2": {
-          "low": 3,
-          "medium": 6,
-          "high": 10
-        },
+        "usage_ml_per_m2": {},
         "wash_volume_ml": null,
-        "evidence": "maintainer_estimate"
+        "evidence": "not_published"
       },
-      "capability": "automatic_estimate",
-      "evidence": "maintainer_estimate",
+      "capability": "manual_only",
+      "evidence": "legacy_catalog_only",
       "sources": [],
       "legacy_calibration": {
         "label": "Generic / Nieznany model",

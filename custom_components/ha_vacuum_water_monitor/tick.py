@@ -130,13 +130,18 @@ def tick_device(
 
     last_area = _float_or_none(state.get("last_area"))
     if curr_area is None:
-        if last_area is not None:
+        if device.get("area_sensor"):
             if not state.get("area_gap"):
                 state["area_gap"] = True
                 dirty = True
             dirty |= _record_accounting(state, "area", None, evidence, "area_unavailable")
     elif last_area is None:
-        dirty |= _record_accounting(state, "area", None, evidence, "area_baseline_initialized")
+        if state.get("area_gap"):
+            state["area_gap"] = False
+            dirty = True
+            dirty |= _record_accounting(state, "area", None, evidence, "area_gap")
+        else:
+            dirty |= _record_accounting(state, "area", None, evidence, "area_baseline_initialized")
     elif state.get("area_gap"):
         if state.get("area_gap"):
             state["area_gap"] = False
@@ -166,6 +171,14 @@ def tick_device(
             state["used_ml"] = round(_number(state.get("used_ml"), 0) + added, 2)
             dirty = True
             dirty |= _record_accounting(state, "area", usage_per_m2, evidence, None)
+
+    # A configured status signal that is temporarily absent/unavailable is the
+    # most actionable diagnostic for this pass, even when an area baseline was
+    # also initialized.  Recording this last keeps the UI from claiming ready.
+    if status_sensor and _is_transient_status(curr_status):
+        dirty |= _record_accounting(
+            state, "wash", None, evidence, "status_unavailable"
+        )
 
     now_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
     cooldown_ok = (

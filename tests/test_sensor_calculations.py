@@ -287,6 +287,29 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(effective["tracked_capacity_ml"], 4200)
         self.assertEqual(effective["accounting_evidence"], "user_calibration")
 
+    def test_registry_profile_skips_different_unlocked_legacy_calibration_layer(self) -> None:
+        effective = apply_custom_calibration(
+            {
+                "vacuum_entity": "vacuum.a170",
+                "profile_key": "roborock_qrevo_5ae",
+                "brand_profile": "roborock_s8_maxv_ultra",
+                "profile_locked": False,
+            },
+            {
+                "custom_calibration": {
+                    "default": {"usage_ml_per_m2": {"standard": 1}},
+                    "roborock_qrevo_5ae": {
+                        "usage_ml_per_m2": {"standard": 2}
+                    },
+                    "roborock_s8_maxv_ultra": {
+                        "usage_ml_per_m2": {"standard": 9}
+                    },
+                }
+            },
+        )
+
+        self.assertEqual(effective["usage_ml_per_m2"]["standard"], 2)
+
     def test_explicit_yaml_rate_keeps_precedence_even_when_it_matches_profile(self) -> None:
         device = build_vacuum_devices(
             {
@@ -390,6 +413,107 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(by_entity["vacuum.roborock"]["water_total_ml"], 3500)
         self.assertEqual(by_entity["vacuum.legacy"]["name"], "vacuum.legacy")
         self.assertEqual(by_entity["vacuum.discovered"]["name"], "Discovered")
+
+    def test_legacy_expanded_store_defaults_are_generated_and_registry_replaceable(self) -> None:
+        devices = build_vacuum_devices(
+            {
+                "user_devices": [
+                    {
+                        "vacuum_entity": "vacuum.a170",
+                        "brand_profile": "roborock_s8_maxv_ultra",
+                        "water_total_ml": 3000,
+                        "area_sensor": "sensor.roborock_s8_maxv_ultra_cleaning_area",
+                        "mop_mode_entity": "select.roborock_s8_maxv_ultra_mop_mode",
+                    }
+                ]
+            },
+            {},
+            [
+                {
+                    "entity_id": "vacuum.a170",
+                    "profile_key": "roborock_qrevo_5ae",
+                    "profile_source": "model_id",
+                    "tracked_capacity_ml": 4000,
+                    "signals": {
+                        "area_sensor": "sensor.a170_area",
+                        "mop_mode_entity": "select.a170_mop_mode",
+                    },
+                }
+            ],
+        )
+
+        device = devices[0]
+        self.assertEqual(device["profile_key"], "roborock_qrevo_5ae")
+        self.assertEqual(device["tracked_capacity_ml"], 4000)
+        self.assertNotIn("water_total_ml", device)
+        self.assertEqual(device["area_sensor"], "sensor.a170_area")
+        self.assertEqual(device["mop_mode_entity"], "select.a170_mop_mode")
+        self.assertNotIn("area_sensor", device["_explicit_fields"])
+
+    def test_divergent_legacy_store_value_remains_explicit(self) -> None:
+        devices = build_vacuum_devices(
+            {
+                "user_devices": [
+                    {
+                        "vacuum_entity": "vacuum.a170",
+                        "brand_profile": "roborock_s8_maxv_ultra",
+                        "water_total_ml": 3100,
+                        "area_sensor": "sensor.user_selected_area",
+                    }
+                ]
+            },
+            {},
+            [
+                {
+                    "entity_id": "vacuum.a170",
+                    "profile_key": "roborock_qrevo_5ae",
+                    "tracked_capacity_ml": 4000,
+                    "signals": {"area_sensor": "sensor.a170_area"},
+                }
+            ],
+        )
+
+        device = devices[0]
+        self.assertEqual(device["water_total_ml"], 3100)
+        self.assertEqual(device["area_sensor"], "sensor.user_selected_area")
+        self.assertIn("water_total_ml", device["_explicit_fields"])
+        self.assertIn("area_sensor", device["_explicit_fields"])
+
+    def test_authored_provenance_preserves_even_profile_matching_yaml_values(self) -> None:
+        devices = build_vacuum_devices(
+            {
+                "configured_devices": [
+                    {
+                        "vacuum_entity": "vacuum.a170",
+                        "brand_profile": "roborock_s8_maxv_ultra",
+                        "water_total_ml": 3000,
+                        "signals": {},
+                        "config_provenance": {
+                            "authored_fields": [
+                                "vacuum_entity",
+                                "brand_profile",
+                                "water_total_ml",
+                                "signals",
+                            ]
+                        },
+                    }
+                ]
+            },
+            {},
+            [
+                {
+                    "entity_id": "vacuum.a170",
+                    "profile_key": "roborock_qrevo_5ae",
+                    "tracked_capacity_ml": 4000,
+                    "signals": {"area_sensor": "sensor.a170_area"},
+                }
+            ],
+        )
+
+        device = devices[0]
+        self.assertEqual(device["water_total_ml"], 3000)
+        self.assertEqual(device["signals"], {})
+        self.assertNotIn("area_sensor", device)
 
     def test_vacuum_slug_is_stable_for_entity_ids(self) -> None:
         self.assertEqual(vacuum_slug("vacuum.Roborock S8 MaxV"), "vacuum_roborock_s8_maxv")

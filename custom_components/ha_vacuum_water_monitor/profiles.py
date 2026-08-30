@@ -17,6 +17,68 @@ _CATALOG_PATH = Path(__file__).with_name("model_profiles.json")
 _RESERVOIRS = {"dock_clean", "dock_dirty", "robot_clean", "robot_dirty"}
 _TRACKED_RESERVOIRS = _RESERVOIRS | {"legacy_tank"}
 
+# Exact values written by the pre-5.2 card when it expanded BRAND_PROFILES into
+# HA Store.  This is migration data, not another resolver: it is used only to
+# distinguish generated legacy values from genuinely divergent authored ones.
+_LEGACY_CARD_PROFILE_DEFAULTS: dict[str, dict[str, Any]] = {
+    "roborock_s8_maxv_ultra": {
+        "label": "Roborock S8 MaxV Ultra",
+        "icon": "🦤",
+        "water_total_ml": 3000,
+        "vacuum_entity": "vacuum.roborock_s8_maxv_ultra",
+        "dock_error_sensor": "sensor.roborock_s8_maxv_ultra_dock_error",
+        "main_brush_sensor": "sensor.roborock_s8_maxv_ultra_main_brush_time_left",
+        "side_brush_sensor": "sensor.roborock_s8_maxv_ultra_side_brush_time_left",
+        "filter_time_sensor": "sensor.roborock_s8_maxv_ultra_filter_time_left",
+        "sensor_dirty_sensor": "sensor.roborock_s8_maxv_ultra_sensor_time_left",
+        "dock_brush_sensor": "sensor.roborock_s8_maxv_ultra_dock_maintenance_brush_time_left",
+        "dock_strainer_sensor": "sensor.roborock_s8_maxv_ultra_dock_strainer_time_left",
+        "dock_clean_water_sensor": "binary_sensor.roborock_s8_maxv_ultra_dock_clean_water_box",
+        "dock_dirty_water_sensor": "binary_sensor.roborock_s8_maxv_ultra_dock_dirty_water_box",
+        "water_shortage_sensor": "binary_sensor.roborock_s8_maxv_ultra_water_shortage",
+        "mop_attached_sensor": "binary_sensor.roborock_s8_maxv_ultra_mop_attached",
+        "mop_drying_sensor": "binary_sensor.roborock_s8_maxv_ultra_mop_drying",
+        "area_sensor": "sensor.roborock_s8_maxv_ultra_cleaning_area",
+        "duration_sensor": "sensor.roborock_s8_maxv_ultra_cleaning_time",
+        "last_clean_start": "sensor.roborock_s8_maxv_ultra_last_clean_begin",
+        "last_clean_end": "sensor.roborock_s8_maxv_ultra_last_clean_end",
+        "charge_sensor": "sensor.roborock_s8_maxv_ultra_battery",
+        "mop_mode_entity": "select.roborock_s8_maxv_ultra_mop_mode",
+        "mop_intensity_entity": "select.roborock_s8_maxv_ultra_mop_intensity",
+    },
+    "roborock_q7": {
+        "label": "Roborock Q7",
+        "icon": "🦤",
+        "water_total_ml": 200,
+        "vacuum_entity": "vacuum.roborock_q7",
+        "main_brush_sensor": "sensor.roborock_q7_main_brush_time_left",
+        "side_brush_sensor": "sensor.roborock_q7_side_brush_time_left",
+        "filter_time_sensor": "sensor.roborock_q7_filter_time_left",
+        "charge_sensor": "sensor.roborock_q7_battery",
+    },
+    "dreame_l20_ultra": {
+        "label": "Dreame L20 Ultra",
+        "icon": "🤖",
+        "water_total_ml": 4000,
+        "vacuum_entity": "vacuum.dreame_l20_ultra",
+        "charge_sensor": "sensor.dreame_l20_ultra_battery",
+    },
+    "irobot_j7": {
+        "label": "iRobot j7+",
+        "icon": "🦤",
+        "water_total_ml": 0,
+        "vacuum_entity": "vacuum.irobot_j7",
+        "charge_sensor": "sensor.irobot_j7_battery_level",
+    },
+    "ecovacs": {
+        "label": "Ecovacs (generic)",
+        "icon": "🤖",
+        "water_total_ml": 240,
+        "vacuum_entity": "vacuum.ecovacs",
+    },
+    "generic": {"label": "Generic Vacuum", "icon": "🦤", "water_total_ml": 0},
+}
+
 
 def normalize_identifier(value: Any) -> str:
     """Normalize an HA/vendor identifier without relying on display labels."""
@@ -128,6 +190,7 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
         ("model_id", "high", (device.get("model_id"),)),
         ("model", "high", (device.get("model"),)),
         ("catalog_identifier", "medium", _identifier_values(device)),
+        ("resolved_profile", "high", (device.get("profile_key"),)),
         ("legacy_brand_profile", "medium", (device.get("brand_profile"),)),
         ("entity_alias", "low", (device.get("entity_id"), device.get("vacuum_entity"))),
     ):
@@ -177,6 +240,21 @@ def _first_profile(indexes: dict[str, str], *values: Any) -> str | None:
 
 
 def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) -> dict[str, Any]:
+    if key == "generic":
+        return {
+            "profile_key": key,
+            "profile_source": source,
+            "profile_confidence": confidence,
+            "capability": "manual_only",
+            "evidence": record["evidence"],
+            "sources": list(record["sources"]),
+            "tracked_reservoir": None,
+            "tracked_capacity_ml": None,
+            "reservoirs_ml": {},
+            "usage_ml_per_m2": {},
+            "wash_volume_ml": None,
+            "accounting_evidence": "not_published",
+        }
     accounting = record["accounting"]
     return {
         "profile_key": key,
@@ -196,6 +274,27 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
 
 def _positive_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
+
+
+def legacy_profile_defaults(profile_key: Any) -> dict[str, Any]:
+    """Return exact pre-5.2 card expansion defaults for migration only."""
+    normalized = normalize_identifier(profile_key)
+    defaults = deepcopy(_LEGACY_CARD_PROFILE_DEFAULTS.get(normalized, {}))
+    canonical = _catalog_indexes(CATALOG).get(normalized)
+    if canonical:
+        record = CATALOG[canonical]
+        accounting = record["accounting"]
+        legacy = record["legacy_calibration"]
+        defaults.setdefault("tracked_capacity_ml", record["tracked_capacity_ml"])
+        defaults.setdefault("tracked_reservoir", record["tracked_reservoir"])
+        defaults.setdefault("usage_ml_per_m2", accounting["usage_ml_per_m2"])
+        defaults.setdefault("water_per_m2", legacy.get("water_per_m2", {}))
+        defaults.setdefault("intensity_factor", legacy.get("intensity_factors", {}))
+        defaults.setdefault("wash_volume_ml", accounting.get("wash_volume_ml"))
+        defaults.setdefault("mop_wash_ml", legacy.get("mop_wash_ml"))
+        defaults.setdefault("accounting_evidence", accounting.get("evidence"))
+        defaults.setdefault("evidence", record.get("evidence"))
+    return defaults
 
 
 CATALOG = load_catalog()

@@ -557,6 +557,96 @@ async function smokeRoundOneDescriptorContracts(target) {
   } finally { window.close(); }
 }
 
+async function smokeFinalFixContracts(target) {
+  const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+    runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/'
+  });
+  const { window } = dom;
+  const calls = [];
+  const descriptors = [
+    { entity_id: 'vacuum.a170', name: 'Qrevo', profile_key: 'roborock_qrevo_5ae', profile_source: 'model_id', capability: 'manual_only', tracked_reservoir: 'dock_clean', tracked_capacity_ml: 4000, signals: { area_sensor: 'sensor.a170_area' } },
+    { entity_id: 'vacuum.numeric', name: 'Numeric', profile_key: 'generic', capability: 'manual_only', tracked_reservoir: 17, tracked_capacity_ml: 1000, signals: {} },
+    { entity_id: 'vacuum.object', name: 'Object', profile_key: 'generic', capability: 'manual_only', tracked_reservoir: { hostile: '<img data-vwm-reservoir-xss>' }, tracked_capacity_ml: 1000, signals: {} }
+  ];
+  const settings = {
+    user_devices: [
+      { vacuum_entity: 'vacuum.numeric', name: 'Numeric' },
+      { vacuum_entity: 'vacuum.object', name: 'Object' }
+    ]
+  };
+  try {
+    stub(window);
+    window.eval(fs.readFileSync(target.file, 'utf8'));
+    const el = window.document.createElement(target.tag);
+    const hass = mockHass({
+      states: {
+        'vacuum.a170': { entity_id: 'vacuum.a170', state: 'docked', attributes: {} },
+        'vacuum.numeric': { entity_id: 'vacuum.numeric', state: 'docked', attributes: {} },
+        'vacuum.object': { entity_id: 'vacuum.object', state: 'docked', attributes: {} }
+      },
+      callWS: async (message) => {
+        calls.push(message);
+        if (message.type.endsWith('/get_state')) return {
+          settings,
+          tank_states: {
+            'vacuum.a170': { used_ml: 0, last_reset_ts: 1788084000000, last_accounting_reason: 'status_unavailable' },
+            'vacuum.numeric': { used_ml: 0, last_reset_ts: 1788084000000 },
+            'vacuum.object': { used_ml: 0, last_reset_ts: 1788084000000 }
+          }
+        };
+        if (message.type.endsWith('/list_vacuums')) return { vacuums: descriptors };
+        if (message.type.endsWith('/set_settings')) return { settings: { ...settings, ...(message.patch || {}) } };
+        return {};
+      }
+    });
+    el.setConfig({
+      type: 'custom:' + target.tag,
+      vacuum_entity: 'vacuum.a170',
+      brand_profile: 'roborock_s8_maxv_ultra',
+      water_total_ml: 3100,
+      signals: {},
+      status_sensor: 'sensor.user_status',
+      usage_ml_per_m2: { measured: 7 },
+      wash_volume_ml: 123,
+      accounting_evidence: 'user_measurement',
+      tracked_reservoir: 'robot_clean',
+      profile_locked: true
+    });
+    window.document.body.appendChild(el); el.hass = hass;
+    await el._ensureServerState(); await delay(0);
+
+    const configuredCall = calls.find(call => call.type.endsWith('/set_settings') && call.patch?.configured_devices);
+    if (!configuredCall) throw new Error('single-device YAML was not persisted');
+    const stored = configuredCall.patch.configured_devices[0];
+    if (stored.dock_error_sensor || stored.main_brush_sensor) throw new Error('single-device YAML persisted legacy profile expansion');
+    for (const key of ['water_total_ml', 'signals', 'status_sensor', 'usage_ml_per_m2', 'wash_volume_ml', 'accounting_evidence', 'tracked_reservoir', 'profile_locked', 'brand_profile']) {
+      if (!stored.config_provenance?.authored_fields?.includes(key)) throw new Error(`authored provenance omitted ${key}`);
+    }
+
+    const timestampOnly = el._calcDeviceData(el._getDevices().find(d => d.vacuum_entity === 'vacuum.a170'));
+    if (!timestampOnly.initialized || timestampOnly.usedMl !== 0 || timestampOnly.percentRemaining !== 100 || !timestampOnly.lastReset) {
+      throw new Error('finite positive timestamp-only Store state was not initialized');
+    }
+    if (!/Unavailable signal/i.test(el._buildAccountingGuidance(timestampOnly))) {
+      throw new Error('status-unavailable accounting reason rendered as ready');
+    }
+
+    for (const entity of ['vacuum.numeric', 'vacuum.object']) {
+      const device = el._getDevices().find(d => d.vacuum_entity === entity);
+      const html = el._buildMaintenanceTab(device, el._calcDeviceData(device));
+      if (!html.includes('Tracked reservoir') && !html.includes('Effective')) throw new Error(`${entity} diagnostics did not render`);
+      const holder = window.document.createElement('div'); holder.innerHTML = html;
+      if (holder.querySelector('[data-vwm-reservoir-xss]')) throw new Error(`${entity} hostile reservoir created markup`);
+    }
+
+    el._userDevices = [];
+    if (!el._addUserDevice('vacuum.numeric')) throw new Error('manual device add failed');
+    const added = el._userDevices[0];
+    if (added.water_total_ml || added.area_sensor || added.dock_error_sensor) throw new Error('manual device add persisted a legacy profile expansion');
+    if (!added.config_provenance?.authored_fields?.includes('vacuum_entity')) throw new Error('manual device add omitted provenance');
+  } finally { window.close(); }
+}
+
 (async () => {
   const files = listCardFiles();
   const targets = [];
@@ -624,6 +714,14 @@ async function smokeRoundOneDescriptorContracts(target) {
       pass++;
     } catch (e) {
       fail.push(`${t.tag} backend-descriptors/accounting (${path.basename(t.file)}) -> ${(e && e.message) ? e.message : String(e)}`);
+    }
+  }
+  for (const t of targets.filter(t => t.tag === 'ha-vacuum-water-monitor')) {
+    try {
+      await smokeFinalFixContracts(t);
+      pass++;
+    } catch (e) {
+      fail.push(`${t.tag} final-fix-contracts (${path.basename(t.file)}) -> ${(e && e.message) ? e.message : String(e)}`);
     }
   }
   console.log(`smoke: ${targets.length} element(s) | PASS ${pass} | FAIL ${fail.length}`);

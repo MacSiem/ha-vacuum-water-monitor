@@ -210,6 +210,41 @@ class WaterAccountingTransitionTests(unittest.TestCase):
 
         self.assertTrue(state["wash_sequence_active"])
         self.assertEqual(state["used_ml"], 150)
+        self.assertEqual(state["last_accounting_reason"], "status_unavailable")
+
+    def test_missing_configured_area_signal_records_reason_before_baseline(self):
+        state, dirty = tick.tick_device(
+            _Hass({"vacuum.test": _State("cleaning")}),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.missing_area",
+                "usage_ml_per_m2": {"default": 5},
+            },
+            {"used_ml": 0, "last_area": None, "last_status": "cleaning"},
+        )
+
+        self.assertTrue(dirty)
+        self.assertTrue(state["area_gap"])
+        self.assertEqual(state["last_accounting_reason"], "area_unavailable")
+
+    def test_generic_device_without_user_rate_never_consumes(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.area": _State("12"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.area",
+                "brand_profile": "generic",
+            },
+            {"used_ml": 10, "last_area": 10, "last_status": "cleaning"},
+        )
+
+        self.assertEqual(state["used_ml"], 10)
+        self.assertEqual(state["last_accounting_reason"], "missing_area_rate")
 
     def test_literal_tenth_square_meter_doses_but_smaller_delta_does_not(self):
         device = {

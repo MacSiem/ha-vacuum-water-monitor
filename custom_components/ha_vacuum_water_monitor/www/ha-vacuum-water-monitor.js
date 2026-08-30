@@ -1285,15 +1285,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
   setConfig(config) {
     if (!config) throw new Error('Configuration required');
 
-    // Apply brand profile if specified
-    let profile = {};
-    if (config.brand_profile && BRAND_PROFILES[config.brand_profile]) {
-      profile = { ...BRAND_PROFILES[config.brand_profile] };
-      // Profile defaults must never invent an entity id — only the user's
-      // explicit config or live discovery may name a vacuum_entity. A leaked
-      // profile default used to create a ghost "Vacuum" device (issue #1).
-      delete profile.vacuum_entity;
-    }
+    this._authoredConfigKeys = new Set(Object.keys(config));
+    const authoredDevices = Array.isArray(config.devices)
+      ? config.devices.map(device => this._withAuthoredProvenance(device, Object.keys(device || {})))
+      : config.devices;
 
     this._config = {
       title: config.title || 'Vacuum Monitor',
@@ -1308,9 +1303,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       show_history: config.show_history !== false,
       show_stats: config.show_stats !== false,
       default_tab: config.default_tab || 'water',
-      // Merge profile + explicit config (explicit wins)
-      ...profile,
       ...config,
+      ...(Array.isArray(authoredDevices) ? { devices: authoredDevices } : {}),
     };
 
     this._activeTab = this._config.default_tab || 'water';
@@ -1421,12 +1415,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
   _configuredDevicesFromConfig() {
     if (!this._config) return [];
     if (this._config.devices && Array.isArray(this._config.devices)) {
-      return this._config.devices.map(d => {
-        if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-          return { ...BRAND_PROFILES[d.brand_profile], ...d };
-        }
-        return d;
-      });
+      return this._config.devices.map(d => this._withAuthoredProvenance(
+        d,
+        d?.config_provenance?.authored_fields || Object.keys(d || {}).filter(key => key !== 'config_provenance')
+      ));
     }
     const single = {};
     const keys = [
@@ -1438,12 +1430,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'mop_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor',
       'last_clean_start','last_clean_end','charge_sensor','status_sensor',
       'reset_door_sensor','mop_mode_entity','mop_intensity_entity','usage_ml_per_m2',
-      'intensity_factor','wash_volume_ml','icon',
+      'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
+      'brand_profile','tracked_capacity_ml','tank_ml','tracked_reservoir','signals',
+      'accounting_evidence','evidence','profile_locked','profile_override','locked_profile',
+      'area_anomaly_ceiling_m2',
     ];
-    keys.forEach(k => { if (this._config[k] != null) single[k] = this._config[k]; });
+    const authored = this._authoredConfigKeys || new Set();
+    keys.forEach(k => { if (authored.has(k)) single[k] = this._config[k]; });
     if (!Object.keys(single).length || !single.vacuum_entity) return [];
-    single.name = single.device_name || this._config.device_name || 'Vacuum';
-    return [single];
+    return [this._withAuthoredProvenance(single, [...authored].filter(key => key in single))];
   }
 
   static getStubConfig() {
@@ -1480,27 +1475,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (this._userDevices.find(d => d.vacuum_entity === entityId)) return false;
     const state = this._hass && this._hass.states[entityId];
     const name = (state && state.attributes && state.attributes.friendly_name) || entityId;
-    // Try to match a brand profile. v5.0.4: fuzzy match by model suffix so
-    // renamed entities (e.g. `vacuum.s8_maxv_ultra`, `vacuum.salon_q_revo`)
-    // still pick up the right defaults. We override `vacuum_entity` after the
-    // spread so the merged profile reflects the user's actual entity_id.
-    let profile = {};
-    for (const [key, bp] of Object.entries(BRAND_PROFILES)) {
-      if (!bp.vacuum_entity) continue;
-      if (entityId === bp.vacuum_entity) { profile = { ...bp, brand_profile: key }; break; }
-      const modelSuffix = bp.vacuum_entity.replace(/^vacuum\./, '');
-      if (modelSuffix && (entityId.endsWith('_' + modelSuffix) || entityId.endsWith('.' + modelSuffix))) {
-        profile = { ...bp, brand_profile: key };
-        break;
-      }
-    }
-    this._userDevices.push({
+    const descriptor = this._backendDescriptor({ vacuum_entity: entityId });
+    this._userDevices.push(this._withAuthoredProvenance({
       vacuum_entity: entityId,
-      name: profile.label || name,
-      icon: profile.icon || '\uD83E\uDD16',
-      ...profile,
-      vacuum_entity: entityId, // ensure user's actual entity_id wins over profile default
-    });
+      name: descriptor?.name || name,
+      icon: '\uD83E\uDD16',
+    }, ['vacuum_entity']));
     this._saveUserDevices();
     return true;
   }
@@ -1612,7 +1592,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _getEffectiveLastReset(device) {
     const state = this._loadWaterState(device);
-    return state.last_reset_iso;
+    if (state.last_reset_iso) return state.last_reset_iso;
+    const raw = Number(state.last_reset_ts);
+    if (!Number.isFinite(raw) || raw <= 0) return null;
+    return raw > 10000000000 ? raw : raw * 1000;
   }
 
   // Auto-add discovered vacuums that aren't yet in user devices (fresh HACS install UX)
@@ -1734,6 +1717,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // The integration resolves profiles from the HA device registry. That
     // descriptor is authoritative; the legacy browser catalog below exists
     // only for older integrations that do not return profile_key yet.
+    const authored = this._explicitDeviceKeys(device);
+    if (device?.profile_locked && authored.has('profile_locked')) {
+      const locked = device.profile_override || device.locked_profile || device.brand_profile;
+      const normalized = this._normaliseModelKey(locked);
+      const canonical = MODEL_ALIASES[normalized] || normalized;
+      if (CALIBRATION_DATA[canonical]) return canonical;
+    }
     if (device?.profile_key) return String(device.profile_key);
     // Auto-resolve the model profile from brand_profile or the vacuum entity id,
     // so a known model (e.g. vacuum.roborock_s8_maxv_ultra) gets its real tank
@@ -1769,29 +1759,117 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return new Set(Array.isArray(device?.__vwmExplicitKeys) ? device.__vwmExplicitKeys : []);
   }
 
-  _withExplicitKeys(device, keys = []) {
-    return { ...(device || {}), __vwmExplicitKeys: [...new Set(keys)] };
+  _generatedDeviceKeys(device) {
+    return new Set(Array.isArray(device?.__vwmGeneratedKeys) ? device.__vwmGeneratedKeys : []);
+  }
+
+  _withAuthoredProvenance(device, keys) {
+    const source = device && typeof device === 'object' ? { ...device } : {};
+    delete source.__vwmExplicitKeys;
+    delete source.__vwmGeneratedKeys;
+    return {
+      ...source,
+      config_provenance: { authored_fields: [...new Set((keys || []).map(String))] },
+    };
+  }
+
+  _legacyFieldProvenance(device) {
+    const source = device && typeof device === 'object' ? device : {};
+    const provenance = source.config_provenance;
+    if (provenance && Array.isArray(provenance.authored_fields)) {
+      const explicit = new Set(provenance.authored_fields.map(String));
+      return { explicit, generated: new Set(Object.keys(source).filter(key => key !== 'config_provenance' && !explicit.has(key))) };
+    }
+    const profile = BRAND_PROFILES[source.brand_profile];
+    if (!profile) {
+      return { explicit: new Set(Object.keys(source).filter(key => !['config_provenance', '__vwmExplicitKeys', '__vwmGeneratedKeys'].includes(key))), generated: new Set() };
+    }
+    const normalizedProfile = this._normaliseModelKey(source.brand_profile);
+    const canonicalProfile = MODEL_ALIASES[normalizedProfile] || normalizedProfile;
+    const calibration = CALIBRATION_DATA[canonicalProfile] || {};
+    const migrationDefaults = {
+      ...profile,
+      tracked_capacity_ml: calibration.tank_ml,
+      tank_ml: calibration.tank_ml,
+      usage_ml_per_m2: calibration.mop_modes,
+      water_per_m2: calibration.water_per_m2,
+      intensity_factor: calibration.intensity_factors,
+      wash_volume_ml: calibration.mop_wash_ml,
+      mop_wash_ml: calibration.mop_wash_ml,
+    };
+    const explicit = new Set();
+    const generated = new Set();
+    for (const [key, value] of Object.entries(source)) {
+      if (['config_provenance', '__vwmExplicitKeys', '__vwmGeneratedKeys'].includes(key)) continue;
+      if (key === 'signals') explicit.add(key);
+      else if (key === 'brand_profile' || key === 'profile_locked') generated.add(key);
+      else if (Object.prototype.hasOwnProperty.call(migrationDefaults, key) && JSON.stringify(value) === JSON.stringify(migrationDefaults[key])) generated.add(key);
+      else explicit.add(key);
+    }
+    return { explicit, generated };
+  }
+
+  _withExplicitKeys(device, keys = null) {
+    const source = { ...(device || {}) };
+    const inferred = this._legacyFieldProvenance(source);
+    const explicit = keys === null ? inferred.explicit : new Set(keys);
+    const generated = keys === null
+      ? inferred.generated
+      : new Set(Object.keys(source).filter(key => !explicit.has(key) && !['config_provenance', '__vwmExplicitKeys', '__vwmGeneratedKeys'].includes(key)));
+    return { ...source, __vwmExplicitKeys: [...explicit], __vwmGeneratedKeys: [...generated] };
+  }
+
+  _decorateLegacyProfile(device) {
+    const source = device && typeof device === 'object' ? device : {};
+    const provenance = this._legacyFieldProvenance(source);
+    const profile = BRAND_PROFILES[source.brand_profile];
+    const decorated = profile ? { ...profile, ...source } : { ...source };
+    return {
+      ...decorated,
+      __vwmExplicitKeys: [...provenance.explicit],
+      __vwmGeneratedKeys: [...new Set([
+        ...provenance.generated,
+        ...Object.keys(profile || {}).filter(key => !provenance.explicit.has(key)),
+      ])],
+    };
   }
 
   _withBackendDescriptor(device) {
     const descriptor = this._backendDescriptor(device);
     if (!descriptor) return device || {};
     const explicit = this._explicitDeviceKeys(device);
+    const generated = this._generatedDeviceKeys(device);
     const signals = descriptor.signals && typeof descriptor.signals === 'object' ? descriptor.signals : {};
     const merged = { ...(device || {}), vacuum_entity: descriptor.entity_id || device?.vacuum_entity };
+    const bindingFields = new Set([
+      'water_total_ml','tracked_capacity_ml','tank_ml','tracked_reservoir','signals',
+      'status_sensor','area_sensor','mop_mode_entity','mop_intensity_entity',
+      'usage_ml_per_m2','water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml',
+      'accounting_evidence','evidence','profile_locked','profile_override','locked_profile','brand_profile',
+      'dock_error_sensor','water_sensor','water_used_sensor','water_used_input',
+      'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','reset_door_sensor',
+      'filter_sensor','last_session_sensor','last_reset_entity','main_brush_sensor','side_brush_sensor',
+      'filter_time_sensor','sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
+      'mop_attached_sensor','mop_drying_sensor','duration_sensor','last_clean_start','last_clean_end','charge_sensor',
+    ]);
+    for (const key of generated) if (bindingFields.has(key)) delete merged[key];
     // Match backend merge semantics: an authored `signals: {}` is an opt-out,
     // and every authored YAML field wins over discovery. Unmarked legacy card
     // profile defaults are not authored configuration and can be superseded.
     if (!explicit.has('signals')) {
       const effectiveSignals = { ...signals };
-      for (const [role, entity] of Object.entries(signals)) {
-        if (entity && !explicit.has(role)) merged[role] = entity;
-        else if (explicit.has(role) && merged[role]) effectiveSignals[role] = merged[role];
+      for (const role of ['status_sensor', 'area_sensor', 'mop_mode_entity', 'mop_intensity_entity']) {
+        const entity = signals[role];
+        if (explicit.has(role) && merged[role]) effectiveSignals[role] = merged[role];
+        else if (entity) merged[role] = entity;
       }
       merged.signals = effectiveSignals;
     }
+    const locked = Boolean(merged.profile_locked) && explicit.has('profile_locked');
+    const profileFields = new Set(['profile_key','profile_source','profile_confidence','capability','evidence','tracked_reservoir','tracked_capacity_ml','reservoirs_ml','usage_ml_per_m2','wash_volume_ml','accounting_evidence']);
     for (const [key, value] of Object.entries(descriptor)) {
       if (key === 'entity_id' || key === 'vacuum_entity' || key === 'signals' || key === 'name') continue;
+      if (locked && profileFields.has(key)) continue;
       if (value != null && !explicit.has(key)) merged[key] = value;
     }
     if (descriptor.name && (!merged.name || merged.name === merged.vacuum_entity)) merged.name = descriptor.name;
@@ -1864,13 +1942,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _getDevices() {
     if (this._config.devices && Array.isArray(this._config.devices)) {
-      return this._config.devices.map(d => {
-        // Apply brand profile if each device specifies one
-        if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-          return this._withBackendDescriptor(this._withExplicitKeys({ ...BRAND_PROFILES[d.brand_profile], ...d }, Object.keys(d)));
-        }
-        return this._withBackendDescriptor(this._withExplicitKeys(d, Object.keys(d)));
-      });
+      return this._config.devices.map(d => this._withBackendDescriptor(this._decorateLegacyProfile(d)));
     }
     // Single device mode
     const single = {};
@@ -1881,7 +1953,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor',
       'mop_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor',
-      'last_clean_start','last_clean_end','charge_sensor','icon',
+      'last_clean_start','last_clean_end','charge_sensor','status_sensor',
+      'reset_door_sensor','mop_mode_entity','mop_intensity_entity','usage_ml_per_m2',
+      'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
+      'brand_profile','tracked_capacity_ml','tank_ml','tracked_reservoir','signals',
+      'accounting_evidence','evidence','profile_locked','profile_override','locked_profile',
+      'area_anomaly_ceiling_m2',
     ];
     keys.forEach(k => { if (this._config[k] != null) single[k] = this._config[k]; });
     if (Object.keys(single).length === 0) {
@@ -1893,21 +1970,19 @@ class HAVacuumWaterMonitor extends HTMLElement {
             icon: '\uD83E\uDD16',
           }));
       return serverDevices.map(d => {
-        if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-          return this._withBackendDescriptor(this._withExplicitKeys({ ...BRAND_PROFILES[d.brand_profile], ...d }, Object.keys(d)));
-        }
-        return this._withBackendDescriptor(this._withExplicitKeys(d, Object.keys(d)));
+        return this._withBackendDescriptor(this._decorateLegacyProfile(d));
       });
     }
     single.name = single.device_name || this._config.device_name || 'Vacuum';
     // Merge config single device + user-added devices
     const userDevs = (this._userDevices || []).filter(ud => ud.vacuum_entity !== single.vacuum_entity).map(d => {
-      if (d.brand_profile && BRAND_PROFILES[d.brand_profile]) {
-        return this._withExplicitKeys({ ...BRAND_PROFILES[d.brand_profile], ...d }, Object.keys(d));
-      }
-      return this._withExplicitKeys(d, Object.keys(d));
+      return this._decorateLegacyProfile(d);
     });
-    return [this._withExplicitKeys(single, Object.keys(single)), ...userDevs].map(d => this._withBackendDescriptor(d));
+    const singleProvenance = this._withAuthoredProvenance(
+      single,
+      [...(this._authoredConfigKeys || [])].filter(key => key in single)
+    );
+    return [this._decorateLegacyProfile(singleProvenance), ...userDevs].map(d => this._withBackendDescriptor(d));
   }
 
   // Old backends return no stable physical-device identity. Keep every vacuum
@@ -1943,7 +2018,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const totalMl = configuredCapacity || customCalib.tracked_capacity_ml || (Number.isFinite(backendCapacity) && backendCapacity > 0 ? backendCapacity : null) || (calib ? calib.tank_ml : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
-    const initialized = Boolean(tankState.initialized || tankState.last_reset_iso);
+    const legacyResetTs = Number(tankState.last_reset_ts);
+    const initialized = Boolean(
+      tankState.initialized
+      || tankState.last_reset_iso
+      || (Number.isFinite(legacyResetTs) && legacyResetTs > 0)
+    );
     const stateReason = initialized ? (tankState.last_accounting_reason || null) : 'awaiting_refill';
 
     // The integration state machine populates usedMl when no live water sensor exists.
@@ -2232,8 +2312,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.stateReason === 'missing_area_rate' || data.stateReason === 'missing_wash_rate') {
       return box('Missing rate.', 'Automatic estimate is paused until an applicable measured calibration rate is available.', '#f59e0b');
     }
-    if (data.stateReason === 'area_unavailable' || data.stateReason === 'area_gap') {
-      return box('Unavailable signal.', 'Automatic estimate is waiting for a usable same-device area signal.', '#f59e0b');
+    if (data.stateReason === 'area_unavailable' || data.stateReason === 'area_gap' || data.stateReason === 'status_unavailable') {
+      return box('Unavailable signal.', 'Automatic estimate is waiting for a usable configured same-device status or area signal.', '#f59e0b');
     }
     const active = Boolean(data.accountingSource && Number.isFinite(Number(data.accountingRate)) && Number(data.accountingRate) > 0 && !data.stateReason);
     if (data.capability === 'manual_only' && active && data.accountingEvidence === 'user_calibration') {
@@ -2388,7 +2468,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       .filter(([, value]) => value != null)
       .map(([name, value]) => `<span>${_esc(name)}: <b>${_esc(this._formatMl(value))}</b></span>`)
       .join(' · ');
-    const reservoirLabel = data.trackedReservoir ? `${data.trackedReservoir.replace(/_/g, ' ')} capacity` : 'Tracked reservoir capacity';
+    const reservoirLabel = data.trackedReservoir ? `${_asText(data.trackedReservoir).replace(/_/g, ' ')} capacity` : 'Tracked reservoir capacity';
     const effectiveCalibration = `<div style="margin:0 0 12px;padding:10px 12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:8px;font-size:11px;line-height:1.5"><b>Effective ${_esc(reservoirLabel)}:</b> ${data.totalMl ? _esc(this._formatMl(data.totalMl)) : 'unknown'}${data.trackedReservoir ? ` (${_esc(data.trackedReservoir)})` : ''}<br><b>Effective calibration layers:</b> default → resolved profile → device (${_esc(effectiveCalibrationData.tracked_capacity_ml || 'no device capacity override')})<br><b>Estimate evidence:</b> ${_esc(data.accountingEvidence || data.evidence || 'not available')}<br>${reservoirRows ? `<b>Distinct reservoirs:</b> ${reservoirRows}` : ''}</div>`;
     const savedModeRows = Object.entries(customCalibration.usage_ml_per_m2 || customCalibration.water_per_m2 || {});
     const calibrationModeRows = [
