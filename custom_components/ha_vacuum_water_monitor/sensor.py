@@ -218,6 +218,7 @@ class WaterRemainingSensor(VacuumStoreSensor):
             "used_ml": estimate["used_ml"],
             "remaining_ml": estimate["remaining_ml"],
             "last_refill": tank_state.get("last_reset_iso"),
+            **_water_state_attributes(estimate, tank_state),
             "warning_threshold": settings.get("warning_threshold"),
             "critical_threshold": settings.get("critical_threshold"),
         }
@@ -243,6 +244,7 @@ class WaterUsedSensor(VacuumStoreSensor):
             "remaining_ml": estimate["remaining_ml"],
             "remaining_percent": estimate["remaining_percent"],
             "last_refill": tank_state.get("last_reset_iso"),
+            **_water_state_attributes(estimate, tank_state),
         }
 
 
@@ -315,3 +317,21 @@ class NextMaintenanceDueSensor(VacuumStoreSensor):
 
 def _storage(hass: HomeAssistant) -> VacuumWaterStorage:
     return hass.data[DOMAIN][DATA_STORAGE]
+
+
+def _water_state_attributes(
+    estimate: dict[str, Any], tank_state: dict[str, Any]
+) -> dict[str, Any]:
+    """Expose initialization, profile and last-accounting diagnostics."""
+    return {
+        "initialized": estimate["initialized"],
+        "state_reason": estimate["state_reason"],
+        "capability": estimate["capability"],
+        "profile_key": estimate["profile_key"],
+        "profile_source": estimate["profile_source"],
+        "profile_confidence": estimate["profile_confidence"],
+        "accounting_evidence": estimate["accounting_evidence"],
+        "last_accounting_source": tank_state.get("last_accounting_source"),
+        "last_accounting_rate_ml": tank_state.get("last_accounting_rate_ml"),
+        "last_accounting_reason": tank_state.get("last_accounting_reason"),
+    }

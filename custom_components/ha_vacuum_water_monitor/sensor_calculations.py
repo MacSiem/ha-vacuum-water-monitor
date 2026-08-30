@@ -119,8 +119,29 @@ def estimate_water_state(
     tank_state = tank_state if isinstance(tank_state, dict) else {}
     settings = settings if isinstance(settings, dict) else {}
 
-    used_ml = max(0, _number(tank_state.get("used_ml"), 0))
+    profile = resolve_profile(device)
+    initialized = bool(tank_state.get("initialized")) or parse_refill_datetime(tank_state) is not None
     total_ml = _water_capacity_ml(device, settings)
+    metadata = {
+        "initialized": initialized,
+        "state_reason": None,
+        "capability": device.get("capability") or profile["capability"],
+        "profile_key": device.get("profile_key") or profile["profile_key"],
+        "profile_source": device.get("profile_source") or profile["profile_source"],
+        "profile_confidence": device.get("profile_confidence") or profile["profile_confidence"],
+        "accounting_evidence": tank_state.get("last_accounting_evidence") or device.get("accounting_evidence") or profile["accounting_evidence"],
+    }
+    if not initialized:
+        return {
+            "source": "uninitialized",
+            "total_ml": _format_number(total_ml) if total_ml is not None else None,
+            "used_ml": None,
+            "remaining_ml": None,
+            "remaining_percent": None,
+            **{**metadata, "state_reason": "awaiting_refill"},
+        }
+
+    used_ml = max(0, _number(tank_state.get("used_ml"), 0))
     if total_ml is None:
         return {
             "source": "unknown_capacity",
@@ -128,6 +149,7 @@ def estimate_water_state(
             "used_ml": _format_number(used_ml),
             "remaining_ml": None,
             "remaining_percent": None,
+            **{**metadata, "state_reason": "unknown_capacity"},
         }
 
     remaining_ml = max(0, total_ml - used_ml)
@@ -138,6 +160,7 @@ def estimate_water_state(
         "used_ml": _format_number(used_ml),
         "remaining_ml": _format_number(remaining_ml),
         "remaining_percent": _format_number(round(percent, 1)),
+        **metadata,
     }
 
 
@@ -152,25 +175,76 @@ def apply_custom_calibration(
     """
     effective = dict(device) if isinstance(device, dict) else {}
     settings = settings if isinstance(settings, dict) else {}
-    custom = _matching_custom_calibration(effective, settings)
-    if not custom:
-        return effective
+    profile = resolve_profile(effective)
+    for key in ("profile_key", "profile_source", "profile_confidence", "capability", "evidence"):
+        if profile.get(key) is not None:
+            effective.setdefault(key, profile[key])
 
-    water_per_m2 = custom.get("water_per_m2")
-    if "usage_ml_per_m2" not in effective and isinstance(water_per_m2, dict):
-        valid_usage = {
-            str(mode): value
-            for mode, raw in water_per_m2.items()
-            if str(mode).strip()
-            and (value := _optional_number(raw)) is not None
-            and value > 0
+    calibration = _merged_custom_calibration(effective, settings)
+    profile_usage = _valid_rate_mapping(profile.get("usage_ml_per_m2"))
+    custom_usage = _valid_rate_mapping(
+        calibration.get("usage_ml_per_m2", calibration.get("water_per_m2"))
+    )
+    discovered_usage = _valid_rate_mapping(effective.get("usage_ml_per_m2"))
+    explicit_fields = _explicit_fields(effective)
+    explicit_usage = (
+        discovered_usage
+        if "usage_ml_per_m2" in explicit_fields
+        else {} if explicit_fields else (
+            {} if discovered_usage == profile_usage else discovered_usage
+        )
+    )
+    merged_usage = {**profile_usage, **custom_usage, **explicit_usage}
+    if merged_usage:
+        effective["usage_ml_per_m2"] = merged_usage
+
+    for key in ("intensity_factor",):
+        merged_mapping = {
+            **_valid_rate_mapping(calibration.get(key)),
+            **_valid_rate_mapping(effective.get(key)),
         }
-        if valid_usage:
-            effective["usage_ml_per_m2"] = valid_usage
+        if merged_mapping:
+            effective[key] = merged_mapping
 
-    wash_volume = _optional_number(custom.get("mop_wash_ml"))
-    if "wash_volume_ml" not in effective and wash_volume and wash_volume > 0:
+    profile_wash = _positive_optional(profile.get("wash_volume_ml"))
+    custom_wash = _positive_optional(
+        calibration.get("wash_volume_ml", calibration.get("mop_wash_ml"))
+    )
+    discovered_wash = _positive_optional(effective.get("wash_volume_ml"))
+    explicit_wash = (
+        discovered_wash
+        if "wash_volume_ml" in explicit_fields
+        else None if explicit_fields or discovered_wash == profile_wash else discovered_wash
+    )
+    wash_volume = explicit_wash or custom_wash or profile_wash
+    if wash_volume is not None:
         effective["wash_volume_ml"] = wash_volume
+
+    capacity = _positive_optional(
+        calibration.get("tracked_capacity_ml", calibration.get("tank_ml"))
+    )
+    profile_capacity = _positive_optional(profile.get("tracked_capacity_ml"))
+    discovered_capacity = _positive_optional(effective.get("tracked_capacity_ml"))
+    if capacity is not None and (
+        "tracked_capacity_ml" not in explicit_fields
+        and (discovered_capacity is None or discovered_capacity == profile_capacity)
+    ):
+        effective["tracked_capacity_ml"] = capacity
+    legacy_robot = _positive_optional(
+        effective.get("legacy_robot_tank_ml", effective.get("robot_tank_ml"))
+    ) or _positive_optional(calibration.get("robot_tank_ml"))
+    if legacy_robot is not None:
+        effective["legacy_robot_tank_ml"] = legacy_robot
+    profile_evidence = profile.get("accounting_evidence")
+    discovery_evidence = effective.get("accounting_evidence")
+    if explicit_usage or explicit_wash:
+        if discovery_evidence is None or discovery_evidence == profile_evidence:
+            effective["accounting_evidence"] = "explicit_user_configuration"
+    elif custom_usage or custom_wash:
+        if discovery_evidence is None or discovery_evidence == profile_evidence:
+            effective["accounting_evidence"] = "user_calibration"
+    elif profile_evidence is not None:
+        effective.setdefault("accounting_evidence", profile_evidence)
     return effective
 
 
@@ -239,6 +313,7 @@ def next_maintenance_due(
 
 def _normalize_device(vacuum_entity: str, item: dict[str, Any]) -> dict[str, Any]:
     device = dict(item)
+    device["_explicit_fields"] = tuple(device)
     device["vacuum_entity"] = vacuum_entity
     if not device.get("name"):
         device["name"] = device.get("device_name") or device.get("label") or vacuum_entity
@@ -252,11 +327,20 @@ def _water_capacity_ml(
     if direct and direct > 0:
         return direct
 
-    custom = _matching_custom_calibration(device, settings)
+    custom = _merged_custom_calibration(device, settings)
+    tracked = _optional_number(device.get("tracked_capacity_ml"))
+    profile_capacity = _model_tank_ml(device)
+    explicit_fields = _explicit_fields(device)
     if custom:
-        tank_ml = _optional_number(custom.get("tank_ml"))
-        if tank_ml and tank_ml > 0:
+        tank_ml = _optional_number(custom.get("tracked_capacity_ml", custom.get("tank_ml")))
+        if tank_ml and tank_ml > 0 and (
+            "tracked_capacity_ml" not in explicit_fields
+            and (not tracked or tracked == profile_capacity)
+        ):
             return tank_ml
+
+    if tracked and tracked > 0:
+        return tracked
 
     # Model database fallback: capacity known from the vacuum model without any
     # manual calibration, mirroring the card's auto-detected brand_profile.
@@ -295,6 +379,24 @@ def _matching_custom_calibration(
         if isinstance(value, dict):
             return value
     return None
+
+
+def _merged_custom_calibration(device: dict[str, Any], settings: dict[str, Any]) -> dict[str, Any]:
+    """Merge default/profile/entity calibration layers without cross-device leakage."""
+    custom = settings.get("custom_calibration")
+    if not isinstance(custom, dict):
+        return {}
+    merged: dict[str, Any] = {}
+    for key in reversed(_custom_calibration_keys(device)):
+        value = custom.get(key)
+        if not isinstance(value, dict):
+            continue
+        for name, raw in value.items():
+            if isinstance(raw, dict) and isinstance(merged.get(name), dict):
+                merged[name] = {**merged[name], **raw}
+            else:
+                merged[name] = raw
+    return merged
 
 
 def _resolve_model_key(device: dict[str, Any]) -> str:
@@ -337,6 +439,29 @@ def _optional_number(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _positive_optional(value: Any) -> float | None:
+    parsed = _optional_number(value)
+    return parsed if parsed is not None and parsed > 0 else None
+
+
+def _valid_rate_mapping(value: Any) -> dict[str, float]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        str(key): parsed
+        for key, raw in value.items()
+        if str(key).strip() and (parsed := _positive_optional(raw)) is not None
+    }
+
+
+def _explicit_fields(device: dict[str, Any]) -> set[str]:
+    """Return fields supplied by settings rather than merged discovery data."""
+    fields = device.get("_explicit_fields")
+    if not isinstance(fields, (list, tuple, set, frozenset)):
+        return set()
+    return {str(field) for field in fields}
 
 
 def _format_number(value: float) -> int | float:

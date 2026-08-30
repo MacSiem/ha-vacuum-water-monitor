@@ -113,6 +113,22 @@ class UserDeviceRemovalTest(unittest.TestCase):
         s = asyncio.run(scenario())
         self.assertEqual(s["user_devices"], [])
 
+    def test_refill_reset_initializes_a_legacy_tank_record(self):
+        async def scenario():
+            st = storage.VacuumWaterStorage(None)
+            await st.async_load()
+            await st.async_set_tank_state(
+                "vacuum.legacy", {"used_ml": 85, "last_status": "docked"}
+            )
+            return await st.async_reset_tank(
+                "vacuum.legacy", "2026-08-30T10:00:00+00:00", 1788084000000
+            )
+
+        state = asyncio.run(scenario())
+        self.assertTrue(state["initialized"])
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(state["last_status"], "docked")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import math
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -20,18 +21,8 @@ MOP_WASH_STATES = {
     "zoned_clean_mop_cleaning",
 }
 
-DEFAULT_USAGE_PER_M2 = {"fast": 4, "standard": 6, "deep": 9}
-DEFAULT_INTENSITY_FACTOR = {
-    "low": 0.8,
-    "medium": 1.0,
-    "high": 1.2,
-    "max": 1.3,
-    "custom": 1.0,
-    "smart_mode": 1.0,
-    "custom_water_flow": 1.0,
-}
-DEFAULT_WASH_VOLUME_ML = 150
 AREA_MIN_DELTA = 0.1
+DEFAULT_AREA_ANOMALY_CEILING_M2 = 25
 RESET_COOLDOWN_SEC = 60
 
 
@@ -102,47 +93,67 @@ def tick_device(
         if device.get("mop_intensity_entity")
         else None
     )
-    mop_mode = (
-        mop_mode_raw
-        if mop_mode_raw and mop_mode_raw not in {"off", "unavailable"}
-        else "standard"
-    )
-    mop_intensity = (
-        mop_intensity_raw
-        if mop_intensity_raw and mop_intensity_raw != "unavailable"
-        else "medium"
-    )
-    mop_off = mop_mode_raw == "off"
+    mop_mode = _normalized_signal(mop_mode_raw)
+    mop_intensity = _normalized_signal(mop_intensity_raw)
+    mop_off = mop_mode == "off"
+    usage_per_m2 = _mapping_number(device.get("usage_ml_per_m2"), mop_mode)
+    intensity_factor = _mapping_number(device.get("intensity_factor"), mop_intensity)
+    wash_volume = _positive_number(device.get("wash_volume_ml"))
+    evidence = device.get("accounting_evidence")
 
-    usage_per_m2 = _mapping_number(
-        device.get("usage_ml_per_m2"),
-        mop_mode,
-        DEFAULT_USAGE_PER_M2.get(mop_mode, 6),
-    )
-    intensity_factor = _mapping_number(
-        device.get("intensity_factor"),
-        mop_intensity,
-        DEFAULT_INTENSITY_FACTOR.get(mop_intensity, 1.0),
-    )
-    wash_volume = _number(device.get("wash_volume_ml"), DEFAULT_WASH_VOLUME_ML)
-
-    if (
-        state.get("last_status") is not None
-        and state.get("last_status") not in MOP_WASH_STATES
-        and curr_status in MOP_WASH_STATES
-    ):
-        state["used_ml"] = round(_number(state.get("used_ml"), 0) + wash_volume)
-        dirty = True
+    previous_status = state.get("last_status")
+    if curr_status in MOP_WASH_STATES:
+        if previous_status in MOP_WASH_STATES:
+            dirty |= _record_accounting(
+                state, "wash", wash_volume, evidence, "wash_already_active"
+            )
+        elif previous_status is None:
+            dirty |= _record_accounting(
+                state, "wash", wash_volume, evidence, "wash_initial_observation"
+            )
+        elif wash_volume is None:
+            dirty |= _record_accounting(state, "wash", None, evidence, "missing_wash_rate")
+        else:
+            state["used_ml"] = round(_number(state.get("used_ml"), 0) + wash_volume, 2)
+            dirty = True
+            dirty |= _record_accounting(state, "wash", wash_volume, evidence, None)
 
     last_area = _float_or_none(state.get("last_area"))
-    if last_area is not None and curr_area is not None and curr_area > last_area:
-        delta = curr_area - last_area
-        is_cleaning = vac_state == "cleaning" or curr_status == "cleaning"
-        can_dose = not mop_off and is_cleaning and delta >= AREA_MIN_DELTA
-        if can_dose:
-            added = delta * usage_per_m2 * intensity_factor
-            state["used_ml"] = round(_number(state.get("used_ml"), 0) + added)
+    if curr_area is None:
+        if last_area is not None:
+            if not state.get("area_gap"):
+                state["area_gap"] = True
+                dirty = True
+            dirty |= _record_accounting(state, "area", None, evidence, "area_unavailable")
+    elif last_area is None:
+        dirty |= _record_accounting(state, "area", None, evidence, "area_baseline_initialized")
+    elif state.get("area_gap"):
+        if state.get("area_gap"):
+            state["area_gap"] = False
             dirty = True
+        dirty |= _record_accounting(state, "area", None, evidence, "area_gap")
+    else:
+        delta = curr_area - last_area
+        ceiling = _positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2
+        if delta < 0:
+            dirty |= _record_accounting(state, "area", None, evidence, "area_reset")
+        elif delta > ceiling:
+            dirty |= _record_accounting(state, "area", None, evidence, "area_anomaly")
+        elif delta < AREA_MIN_DELTA:
+            dirty |= _record_accounting(state, "area", None, evidence, "area_delta_below_minimum")
+        elif not (vac_state == "cleaning" or curr_status == "cleaning"):
+            dirty |= _record_accounting(state, "area", None, evidence, "not_cleaning")
+        elif mop_off:
+            dirty |= _record_accounting(state, "area", None, evidence, "mop_off")
+        elif usage_per_m2 is None:
+            dirty |= _record_accounting(state, "area", None, evidence, "missing_area_rate")
+        elif isinstance(device.get("intensity_factor"), dict) and intensity_factor is None:
+            dirty |= _record_accounting(state, "area", None, evidence, "missing_intensity_factor")
+        else:
+            added = delta * usage_per_m2 * (intensity_factor if intensity_factor is not None else 1)
+            state["used_ml"] = round(_number(state.get("used_ml"), 0) + added, 2)
+            dirty = True
+            dirty |= _record_accounting(state, "area", usage_per_m2, evidence, None)
 
     now_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
     cooldown_ok = (
@@ -161,9 +172,11 @@ def tick_device(
 
     if do_reset and cooldown_ok:
         state["used_ml"] = 0
+        state["initialized"] = True
         state["last_reset_iso"] = datetime.now(timezone.utc).isoformat()
         state["last_reset_ts"] = now_ts
         dirty = True
+        dirty |= _record_accounting(state, "refill", None, evidence, "refill_detected")
 
     if state.get("last_status") != curr_status:
         state["last_status"] = curr_status
@@ -223,9 +236,10 @@ def _state_value(hass: HomeAssistant, entity_id: str | None) -> str | None:
 
 def _float_or_none(value: Any) -> float | None:
     try:
-        return float(value)
+        parsed = float(value)
     except (TypeError, ValueError):
         return None
+    return parsed if math.isfinite(parsed) else None
 
 
 def _number(value: Any, default: float) -> float:
@@ -235,7 +249,46 @@ def _number(value: Any, default: float) -> float:
         return default
 
 
-def _mapping_number(value: Any, key: str, default: float) -> float:
-    if isinstance(value, dict):
-        return _number(value.get(key), default)
-    return default
+def _positive_number(value: Any) -> float | None:
+    parsed = _float_or_none(value)
+    return parsed if parsed is not None and parsed > 0 else None
+
+
+def _normalized_signal(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().lower()
+    return normalized if normalized and normalized not in {"unknown", "unavailable"} else None
+
+
+def _mapping_number(value: Any, key: str | None) -> float | None:
+    """Read a rate only from an explicit mapping and its declared fallback."""
+    if not isinstance(value, dict):
+        return None
+    if key is not None:
+        direct = _positive_number(value.get(key))
+        if direct is not None:
+            return direct
+    return _positive_number(value.get("default"))
+
+
+def _record_accounting(
+    state: dict[str, Any],
+    source: str,
+    rate: float | None,
+    evidence: Any,
+    reason: str | None,
+) -> bool:
+    """Persist the last accounting decision for diagnostics and sensor attrs."""
+    payload = {
+        "last_accounting_source": source,
+        "last_accounting_rate_ml": rate,
+        "last_accounting_evidence": evidence,
+        "last_accounting_reason": reason,
+    }
+    changed = False
+    for key, value in payload.items():
+        if state.get(key) != value:
+            state[key] = value
+            changed = True
+    return changed

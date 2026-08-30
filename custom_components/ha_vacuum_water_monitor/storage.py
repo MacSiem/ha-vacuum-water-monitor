@@ -143,6 +143,7 @@ class VacuumWaterStorage:
             state = self.default_tank_state()
             state.update(data["tank_states"].get(vacuum_entity) or {})
             state["used_ml"] = 0
+            state["initialized"] = True
             state["last_reset_iso"] = when_iso
             state["last_reset_ts"] = when_ts
             data["tank_states"][vacuum_entity] = state
@@ -161,15 +162,21 @@ class VacuumWaterStorage:
 
     @staticmethod
     def default_tank_state() -> dict[str, Any]:
-        """Return the v4-compatible tank state shape."""
+        """Return the additive v5 state shape while accepting v4 records."""
         return {
             "used_ml": 0,
+            "initialized": False,
             "last_reset_iso": None,
             "last_status": None,
             "last_area": None,
             "last_dock_err": None,
             "last_door": None,
             "last_reset_ts": 0,
+            "area_gap": False,
+            "last_accounting_source": None,
+            "last_accounting_rate_ml": None,
+            "last_accounting_evidence": None,
+            "last_accounting_reason": None,
         }
 
     @classmethod
