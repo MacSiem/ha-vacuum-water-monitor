@@ -1,37 +1,1863 @@
 {
   "profiles": {
-    "roborock_s8_maxv_ultra": {"identifiers": ["roborock_s8_maxv_ultra", "Roborock S8 MaxV Ultra"], "reservoirs_ml": {"dock_clean": 3000, "dock_dirty": null, "robot_clean": 350, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 3000, "accounting": {"usage_ml_per_m2": {"fast": 4, "standard": 6, "deep": 9}, "wash_volume_ml": 150, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "roborock_s8_pro_ultra": {"identifiers": ["roborock_s8_pro_ultra", "Roborock S8 Pro Ultra"], "reservoirs_ml": {"dock_clean": 3500, "dock_dirty": null, "robot_clean": 200, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 3500, "accounting": {"usage_ml_per_m2": {"light": 3.8, "balanced": 5.6, "deep": 8.4}, "wash_volume_ml": 140, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "roborock_s7_maxv_ultra": {"identifiers": ["roborock_s7_maxv_ultra", "Roborock S7 MaxV Ultra"], "reservoirs_ml": {"dock_clean": 3000, "dock_dirty": null, "robot_clean": 200, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 3000, "accounting": {"usage_ml_per_m2": {"mild": 3.5, "moderate": 5.3, "intense": 7.9}, "wash_volume_ml": 130, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "roborock_s7_maxv": {"identifiers": ["roborock_s7_maxv", "Roborock S7 MaxV"], "reservoirs_ml": {"dock_clean": null, "dock_dirty": null, "robot_clean": 200, "robot_dirty": null}, "tracked_reservoir": "robot_clean", "tracked_capacity_ml": 200, "accounting": {"usage_ml_per_m2": {"mild": 3.5, "moderate": 5.3, "intense": 7.9}, "wash_volume_ml": null, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "roborock_s9_maxv": {"identifiers": ["roborock_s9_maxv", "Roborock S9 MaxV"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": null, "robot_clean": 100, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {"fast": 4, "standard": 6, "deep": 9}, "wash_volume_ml": 160, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "roborock_q_revo": {"identifiers": ["roborock_q_revo", "Roborock Q Revo"], "reservoirs_ml": {"dock_clean": 5000, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 5000, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7, "high": 11}, "wash_volume_ml": 160, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "roborock_q_revo_maxv": {"identifiers": ["roborock_q_revo_maxv", "Roborock Q Revo MaxV"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7, "high": 11}, "wash_volume_ml": 160, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "roborock_qrevo_5ae": {"identifiers": ["roborock_qrevo_5ae", "roborock_q_revo_5ae", "a170", "roborock_vacuum_a170", "Roborock Qrevo 5AE"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": 3500, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {}, "wash_volume_ml": null, "evidence": "not_published"}, "capability": "manual_only", "evidence": "manufacturer_specifications", "sources": ["https://www.roborock.sg/products/roborock-qrevo-5ae-white-certified-refurbished", "https://my.roborock.com/pages/roborock-qrevo-5ae"]},
-    "roborock_qrevo_curv_2_flow": {"identifiers": ["roborock_qrevo_curv_2_flow", "roborock_qrevo_curv_2_flowx", "roborock_q_revo_curv_2_flow", "roborock_q_revo_curv_2_flowx", "a245", "roborock_vacuum_a245", "Roborock Qrevo Curv 2 Flow", "Roborock Qrevo Curv 2 FlowX"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": null, "robot_clean": null, "robot_dirty": 100}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {}, "wash_volume_ml": null, "evidence": "not_published"}, "capability": "manual_only", "evidence": "manufacturer_specifications", "sources": ["https://global.roborock.com/pages/roborock-qrevo-curv-2-flow"]},
-    "roborock_q7_max": {"identifiers": ["roborock_q7_max", "Roborock Q7 Max"], "reservoirs_ml": {"dock_clean": null, "dock_dirty": null, "robot_clean": 350, "robot_dirty": null}, "tracked_reservoir": "robot_clean", "tracked_capacity_ml": 350, "accounting": {"usage_ml_per_m2": {"low": 2.5, "medium": 4.5, "high": 7}, "wash_volume_ml": null, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "roborock_q7": {"identifiers": ["roborock_q7", "Roborock Q7"], "reservoirs_ml": {"dock_clean": null, "dock_dirty": null, "robot_clean": 300, "robot_dirty": null}, "tracked_reservoir": "robot_clean", "tracked_capacity_ml": 300, "accounting": {"usage_ml_per_m2": {"low": 2.5, "medium": 4.5, "high": 7}, "wash_volume_ml": null, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "dreame_x40_ultra": {"identifiers": ["dreame_x40_ultra", "Dreame X40 Ultra"], "reservoirs_ml": {"dock_clean": 4500, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4500, "accounting": {"usage_ml_per_m2": {"low": 4.5, "medium": 8, "high": 12, "deep": 16}, "wash_volume_ml": 170, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "dreame_x30_ultra": {"identifiers": ["dreame_x30_ultra", "Dreame X30 Ultra"], "reservoirs_ml": {"dock_clean": 4500, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4500, "accounting": {"usage_ml_per_m2": {"low": 4.5, "medium": 8, "high": 12, "deep": 16}, "wash_volume_ml": 150, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "dreame_l20_ultra": {"identifiers": ["dreame_l20_ultra", "Dreame L20 Ultra"], "reservoirs_ml": {"dock_clean": 4500, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4500, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7.5, "high": 11.5, "deep": 15}, "wash_volume_ml": 160, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "dreame_l10s_ultra": {"identifiers": ["dreame_l10s_ultra", "Dreame L10s Ultra"], "reservoirs_ml": {"dock_clean": 2500, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 2500, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7, "high": 11}, "wash_volume_ml": 140, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "dreame_l10s_pro_ultra": {"identifiers": ["dreame_l10s_pro_ultra", "Dreame L10s Pro Ultra"], "reservoirs_ml": {"dock_clean": 4500, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4500, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7.5, "high": 11.5}, "wash_volume_ml": 150, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "dreame_d10_plus": {"identifiers": ["dreame_d10_plus", "Dreame D10 Plus"], "reservoirs_ml": {"dock_clean": null, "dock_dirty": null, "robot_clean": 150, "robot_dirty": null}, "tracked_reservoir": "robot_clean", "tracked_capacity_ml": 150, "accounting": {"usage_ml_per_m2": {"low": 3, "medium": 5, "high": 8}, "wash_volume_ml": null, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "ecovacs_x2_omni": {"identifiers": ["ecovacs_x2_omni", "Ecovacs X2 Omni"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7.5, "high": 11.5, "deep": 15}, "wash_volume_ml": 160, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "ecovacs_t20_omni": {"identifiers": ["ecovacs_t20_omni", "Ecovacs T20 Omni"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7.5, "high": 11.5, "deep": 15}, "wash_volume_ml": 160, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "ecovacs_t30_omni": {"identifiers": ["ecovacs_t30_omni", "Ecovacs T30 Omni", "Ecovacs Deebot T30S Omni"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": null, "robot_clean": 55, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {"low": 4.5, "medium": 8, "high": 12.5, "deep": 16}, "wash_volume_ml": 170, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "ecovacs_n20_plus": {"identifiers": ["ecovacs_n20_plus", "Ecovacs N20 Plus"], "reservoirs_ml": {"dock_clean": null, "dock_dirty": null, "robot_clean": 220, "robot_dirty": null}, "tracked_reservoir": "robot_clean", "tracked_capacity_ml": 220, "accounting": {"usage_ml_per_m2": {"low": 2, "medium": 3.5, "high": 5.5}, "wash_volume_ml": null, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "irobot_combo_j9": {"identifiers": ["irobot_combo_j9", "iRobot Roomba Combo j9"], "reservoirs_ml": {"dock_clean": 3000, "dock_dirty": null, "robot_clean": 210, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 3000, "accounting": {"usage_ml_per_m2": {"low": 2, "medium": 4, "high": 7}, "wash_volume_ml": null, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "irobot_combo_j7": {"identifiers": ["irobot_combo_j7", "iRobot Roomba Combo j7"], "reservoirs_ml": {"dock_clean": null, "dock_dirty": null, "robot_clean": 210, "robot_dirty": null}, "tracked_reservoir": "robot_clean", "tracked_capacity_ml": 210, "accounting": {"usage_ml_per_m2": {"low": 2, "medium": 4, "high": 7}, "wash_volume_ml": null, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "irobot_combo_essential": {"identifiers": ["irobot_combo_essential", "iRobot Roomba Combo Essential"], "reservoirs_ml": {"dock_clean": null, "dock_dirty": null, "robot_clean": 200, "robot_dirty": null}, "tracked_reservoir": "robot_clean", "tracked_capacity_ml": 200, "accounting": {"usage_ml_per_m2": {"low": 1.5, "medium": 3, "high": 5}, "wash_volume_ml": null, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "narwal_freo_x_ultra": {"identifiers": ["narwal_freo_x_ultra", "Narwal Freo X Ultra"], "reservoirs_ml": {"dock_clean": 5000, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 5000, "accounting": {"usage_ml_per_m2": {"low": 5, "medium": 9, "high": 14}, "wash_volume_ml": 210, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "narwal_freo_x_plus": {"identifiers": ["narwal_freo_x_plus", "Narwal Freo X Plus"], "reservoirs_ml": {"dock_clean": null, "dock_dirty": null, "robot_clean": 280, "robot_dirty": null}, "tracked_reservoir": "robot_clean", "tracked_capacity_ml": 280, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7, "high": 11}, "wash_volume_ml": null, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "eufy_x10_pro_omni": {"identifiers": ["eufy_x10_pro_omni", "Eufy X10 Pro Omni"], "reservoirs_ml": {"dock_clean": 3000, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 3000, "accounting": {"usage_ml_per_m2": {"low": 3.5, "medium": 6.5, "high": 10}, "wash_volume_ml": 140, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "samsung_jet_bot_combo": {"identifiers": ["samsung_jet_bot_combo", "Samsung Jet Bot Combo"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": null, "robot_clean": 100, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7, "high": 11}, "wash_volume_ml": 160, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "xiaomi_x20_max": {"identifiers": ["xiaomi_x20_max", "Xiaomi Robot Vacuum X20 Max"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {"low": 4, "medium": 7, "high": 11}, "wash_volume_ml": 150, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "xiaomi_x20_pro": {"identifiers": ["xiaomi_x20_pro", "Xiaomi Robot Vacuum X20 Pro"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": null, "robot_clean": 80, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {"low": 3.5, "medium": 6.5, "high": 10}, "wash_volume_ml": 140, "evidence": "maintainer_estimate"}, "capability": "automatic_estimate", "evidence": "maintainer_estimate", "sources": []},
-    "xiaomi_h50": {"identifiers": ["xiaomi_h50", "xiaomi_robot_vacuum_h50", "Xiaomi Robot Vacuum H50"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": 4000, "robot_clean": null, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {}, "wash_volume_ml": null, "evidence": "not_published"}, "capability": "manual_only", "evidence": "manufacturer_specifications", "sources": ["https://www.mi.com/global/product/xiaomi-robot-vacuum-h50/"]},
-    "xiaomi_h50_pro": {"identifiers": ["xiaomi_h50_pro", "xiaomi_robot_vacuum_h50_pro", "Xiaomi Robot Vacuum H50 Pro"], "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": 4000, "robot_clean": null, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 4000, "accounting": {"usage_ml_per_m2": {}, "wash_volume_ml": null, "evidence": "not_published"}, "capability": "manual_only", "evidence": "manufacturer_specifications", "sources": ["https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/"]},
-    "tapo_rv50_pro_omni": {"identifiers": ["tapo_rv50_pro_omni", "tapo_rv50_pro", "RV50 Pro Omni", "RV50 Pro Omni (1797)", "1797"], "reservoirs_ml": {"dock_clean": 5000, "dock_dirty": 4000, "robot_clean": 95, "robot_dirty": null}, "tracked_reservoir": "dock_clean", "tracked_capacity_ml": 5000, "accounting": {"usage_ml_per_m2": {}, "wash_volume_ml": null, "evidence": "not_published"}, "capability": "manual_only", "evidence": "manufacturer_specifications", "sources": ["https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/"]}
+    "roborock_s8_maxv_ultra": {
+      "identifiers": [
+        "roborock_s8_maxv_ultra",
+        "Roborock S8 MaxV Ultra"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 3000,
+      "legacy_robot_tank_ml": 350,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "fast": 4,
+          "standard": 6,
+          "deep": 9
+        },
+        "wash_volume_ml": 150,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Roborock S8 MaxV Ultra",
+        "tank_ml": 3000,
+        "robot_tank_ml": 350,
+        "water_per_m2": {
+          "fast/low": 3.2,
+          "fast/med": 4,
+          "std/low": 4.8,
+          "std/med": 6,
+          "std/high": 7.2,
+          "deep/med": 9,
+          "deep/high": 10.8,
+          "deep/max": 11.7
+        },
+        "mop_wash_ml": 150,
+        "mop_wash_modes": {
+          "quick": 100,
+          "standard": 150,
+          "deep": 200
+        },
+        "mop_modes": {
+          "fast": 4,
+          "standard": 6,
+          "deep": 9
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2,
+          "max": 1.3
+        },
+        "avg_area_per_charge": 250,
+        "mop_type": "VibraRise 3.0 dual spinning",
+        "notes": "3L dock, 350ml robot tank. Mop wash ~150ml/cycle. Auto-refill from dock. Data from HA sensors."
+      }
+    },
+    "roborock_s8_pro_ultra": {
+      "identifiers": [
+        "roborock_s8_pro_ultra",
+        "Roborock S8 Pro Ultra"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 3500,
+      "legacy_robot_tank_ml": 200,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "light": 3.8,
+          "balanced": 5.6,
+          "deep": 8.4
+        },
+        "wash_volume_ml": 140,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Roborock S8 Pro Ultra",
+        "tank_ml": 3500,
+        "robot_tank_ml": 200,
+        "water_per_m2": {
+          "light/low": 3,
+          "light/med": 3.8,
+          "balanced/low": 4.5,
+          "balanced/med": 5.6,
+          "balanced/high": 6.7,
+          "deep/med": 8.4,
+          "deep/high": 10.1,
+          "deep/max": 10.9
+        },
+        "mop_wash_ml": 140,
+        "mop_wash_modes": {
+          "quick": 90,
+          "standard": 140,
+          "deep": 190
+        },
+        "mop_modes": {
+          "light": 3.8,
+          "balanced": 5.6,
+          "deep": 8.4
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2,
+          "max": 1.3
+        },
+        "avg_area_per_charge": 240,
+        "mop_type": "VibraRise 2.0 sonic 3000rpm",
+        "notes": "3.5L/3L dock. 80°C wash. 200ml robot tank. Estimates based on S8 MaxV ratios."
+      }
+    },
+    "roborock_s7_maxv_ultra": {
+      "identifiers": [
+        "roborock_s7_maxv_ultra",
+        "Roborock S7 MaxV Ultra"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 3000,
+      "legacy_robot_tank_ml": 200,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "mild": 3.5,
+          "moderate": 5.3,
+          "intense": 7.9
+        },
+        "wash_volume_ml": 130,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Roborock S7 MaxV Ultra",
+        "tank_ml": 3000,
+        "robot_tank_ml": 200,
+        "water_per_m2": {
+          "mild/low": 2.8,
+          "mild/med": 3.5,
+          "moderate/low": 4.2,
+          "moderate/med": 5.3,
+          "moderate/high": 6.3,
+          "intense/med": 7.9,
+          "intense/high": 9.5
+        },
+        "mop_wash_ml": 130,
+        "mop_wash_modes": {
+          "quick": 80,
+          "standard": 130,
+          "deep": 180
+        },
+        "mop_modes": {
+          "mild": 3.5,
+          "moderate": 5.3,
+          "intense": 7.9
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 200,
+        "mop_type": "VibraRise sonic 3000rpm",
+        "notes": "3L/2.3L dock. Sonic mop vibration, 5mm mop lift."
+      }
+    },
+    "roborock_s7_maxv": {
+      "identifiers": [
+        "roborock_s7_maxv",
+        "Roborock S7 MaxV"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 200,
+      "legacy_robot_tank_ml": 200,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "mild": 3.5,
+          "moderate": 5.3,
+          "intense": 7.9
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Roborock S7 MaxV (bez stacji)",
+        "tank_ml": 200,
+        "robot_tank_ml": 200,
+        "water_per_m2": {
+          "mild": 3.5,
+          "moderate": 5.3,
+          "intense": 7.9
+        },
+        "mop_modes": {
+          "mild": 3.5,
+          "moderate": 5.3,
+          "intense": 7.9
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 200,
+        "mop_type": "VibraRise sonic 3000rpm",
+        "notes": "No dock - 200ml robot tank only. Manual refill."
+      }
+    },
+    "roborock_s9_maxv": {
+      "identifiers": [
+        "roborock_s9_maxv",
+        "Roborock S9 MaxV"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 100,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "fast": 4,
+          "standard": 6,
+          "deep": 9
+        },
+        "wash_volume_ml": 160,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Roborock S9 MaxV Ultra",
+        "tank_ml": 4000,
+        "robot_tank_ml": 100,
+        "water_per_m2": {
+          "fast/low": 3.2,
+          "fast/med": 4,
+          "std/low": 4.8,
+          "std/med": 6,
+          "std/high": 7.2,
+          "deep/med": 9,
+          "deep/high": 10.8,
+          "deep/max": 11.7
+        },
+        "mop_wash_ml": 160,
+        "mop_wash_modes": {
+          "quick": 100,
+          "standard": 160,
+          "deep": 220
+        },
+        "mop_modes": {
+          "fast": 4,
+          "standard": 6,
+          "deep": 9
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2,
+          "max": 1.3
+        },
+        "avg_area_per_charge": 280,
+        "mop_type": "VibraRise 4.0 sonic 4000rpm",
+        "notes": "4L dock. 4000/min vibration. 22000Pa suction. 18mm mop lift. Values extrapolated from S8 MaxV."
+      }
+    },
+    "roborock_q_revo": {
+      "identifiers": [
+        "roborock_q_revo",
+        "Roborock Q Revo"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 5000,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "wash_volume_ml": 160,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Roborock Q Revo",
+        "tank_ml": 5000,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "mop_wash_ml": 160,
+        "mop_wash_modes": {
+          "quick": 110,
+          "standard": 160,
+          "deep": 220
+        },
+        "mop_modes": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 230,
+        "mop_type": "Dual rotating 200rpm",
+        "notes": "5L/4.2L dock. 30 flow levels. 45°C drying. Rotating mops use more water."
+      }
+    },
+    "roborock_q_revo_maxv": {
+      "identifiers": [
+        "roborock_q_revo_maxv",
+        "Roborock Q Revo MaxV"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "wash_volume_ml": 160,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Roborock Q Revo MaxV",
+        "tank_ml": 4000,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "mop_wash_ml": 160,
+        "mop_wash_modes": {
+          "quick": 110,
+          "standard": 160,
+          "deep": 220
+        },
+        "mop_modes": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 240,
+        "mop_type": "Dual rotating 200rpm",
+        "notes": "4L/3.5L dock. ReactiveAI 2.0. 30 levels. Rotating mops."
+      }
+    },
+    "roborock_qrevo_5ae": {
+      "identifiers": [
+        "roborock_qrevo_5ae",
+        "roborock_q_revo_5ae",
+        "a170",
+        "roborock_vacuum_a170",
+        "Roborock Qrevo 5AE"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
+        "robot_clean": 80,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {},
+        "wash_volume_ml": null,
+        "evidence": "not_published"
+      },
+      "capability": "manual_only",
+      "evidence": "manufacturer_specifications",
+      "sources": [
+        "https://www.roborock.sg/products/roborock-qrevo-5ae-white-certified-refurbished",
+        "https://my.roborock.com/pages/roborock-qrevo-5ae"
+      ],
+      "legacy_calibration": {
+        "label": "Roborock Qrevo 5AE",
+        "tank_ml": 4000,
+        "dock_clean_tank_ml": 4000,
+        "dock_dirty_tank_ml": 3500,
+        "robot_tank_ml": 80,
+        "robot_clean_tank_ml": 80,
+        "water_per_m2": {},
+        "avg_area_per_charge": null,
+        "mop_type": "Dual rotating mop pads",
+        "mop_max_rpm": 200,
+        "mop_lift_max_mm": 10,
+        "water_flow_levels_count": 30,
+        "mop_wash_stages": 3,
+        "drying_temp_c": 45,
+        "source_urls": [
+          "https://www.roborock.sg/products/roborock-qrevo-5ae-white-certified-refurbished",
+          "https://my.roborock.com/pages/roborock-qrevo-5ae"
+        ],
+        "data_quality": "manufacturer_specifications",
+        "notes": "Manufacturer specifications. Numeric ml/m² and wash-cycle volume are not published, so they remain unset."
+      }
+    },
+    "roborock_qrevo_curv_2_flow": {
+      "identifiers": [
+        "roborock_qrevo_curv_2_flow",
+        "roborock_qrevo_curv_2_flowx",
+        "roborock_q_revo_curv_2_flow",
+        "roborock_q_revo_curv_2_flowx",
+        "a245",
+        "roborock_vacuum_a245",
+        "Roborock Qrevo Curv 2 Flow",
+        "Roborock Qrevo Curv 2 FlowX"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": 100
+      },
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": null,
+      "accounting": {
+        "usage_ml_per_m2": {},
+        "wash_volume_ml": null,
+        "evidence": "not_published"
+      },
+      "capability": "manual_only",
+      "evidence": "manufacturer_specifications",
+      "sources": [
+        "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq",
+        "https://global.roborock.com/pages/roborock-qrevo-curv-2-flow",
+        "https://help.roborock.com/en-CA/product/qrevo-curv-2-flow-message?category=troubleshooting-1-1-1"
+      ],
+      "legacy_calibration": {
+        "label": "Roborock Qrevo Curv 2 Flow / FlowX",
+        "tank_ml": 4000,
+        "dock_clean_tank_ml": 4000,
+        "robot_dirty_tank_ml": 100,
+        "water_per_m2": {},
+        "avg_area_per_charge": null,
+        "mop_type": "SpiraFlow self-cleaning roller mop",
+        "mop_max_rpm": 220,
+        "mop_lift_max_mm": 15,
+        "mop_pressure_max_n": 15,
+        "continuous_fresh_water": true,
+        "source_urls": [
+          "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq",
+          "https://global.roborock.com/pages/roborock-qrevo-curv-2-flow",
+          "https://help.roborock.com/en-CA/product/qrevo-curv-2-flow-message?category=troubleshooting-1-1-1"
+        ],
+        "data_quality": "manufacturer_specifications",
+        "notes": "Manufacturer specifications; clean dock tank is published as approximately 4L. Numeric ml/m² and wash-cycle volume are not published."
+      }
+    },
+    "roborock_q7_max": {
+      "identifiers": [
+        "roborock_q7_max",
+        "Roborock Q7 Max"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 350,
+      "legacy_robot_tank_ml": 350,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 2.5,
+          "medium": 4.5,
+          "high": 7
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Roborock Q7 Max / Q7 Max+",
+        "tank_ml": 350,
+        "robot_tank_ml": 350,
+        "water_per_m2": {
+          "low": 2.5,
+          "medium": 4.5,
+          "high": 7
+        },
+        "mop_modes": {
+          "low": 2.5,
+          "medium": 4.5,
+          "high": 7
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 180,
+        "mop_type": "Gravity mop pad 300g",
+        "notes": "350ml tank, no water dock. 30 levels. Passive mop - less water."
+      }
+    },
+    "roborock_q7": {
+      "identifiers": [
+        "roborock_q7",
+        "Roborock Q7"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 300,
+      "legacy_robot_tank_ml": 300,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 2.5,
+          "medium": 4.5,
+          "high": 7
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Roborock Q7",
+        "tank_ml": 300,
+        "robot_tank_ml": 300,
+        "water_per_m2": {
+          "low": 2.5,
+          "medium": 4.5,
+          "high": 7
+        },
+        "mop_modes": {
+          "low": 2.5,
+          "medium": 4.5,
+          "high": 7
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 180,
+        "mop_type": "Gravity mop pad",
+        "notes": "300ml tank. Passive mop, low water usage."
+      }
+    },
+    "dreame_x40_ultra": {
+      "identifiers": [
+        "dreame_x40_ultra",
+        "Dreame X40 Ultra"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4500,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12,
+          "deep": 16
+        },
+        "wash_volume_ml": 170,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Dreame X40 Ultra",
+        "tank_ml": 4500,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12,
+          "deep": 16
+        },
+        "mop_wash_ml": 170,
+        "mop_wash_modes": {
+          "quick": 110,
+          "standard": 170,
+          "deep": 230
+        },
+        "mop_modes": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12,
+          "deep": 16
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 280,
+        "mop_type": "MopExtend rotating dual pads",
+        "notes": "4.5L/4L dock. 70°C wash. 32 humidity levels. Extending edge mop."
+      }
+    },
+    "dreame_x30_ultra": {
+      "identifiers": [
+        "dreame_x30_ultra",
+        "Dreame X30 Ultra"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4500,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12,
+          "deep": 16
+        },
+        "wash_volume_ml": 150,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Dreame X30 Ultra",
+        "tank_ml": 4500,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12,
+          "deep": 16
+        },
+        "mop_wash_ml": 150,
+        "mop_wash_modes": {
+          "quick": 100,
+          "standard": 150,
+          "deep": 200
+        },
+        "mop_modes": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12,
+          "deep": 16
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 243,
+        "mop_type": "MopExtend RoboSwing rotating dual pads",
+        "notes": "4.5L/4L dock. 60°C wash. 40mm mop. ~130ml/100sqft per Smart Home Hookup."
+      }
+    },
+    "dreame_l20_ultra": {
+      "identifiers": [
+        "dreame_l20_ultra",
+        "Dreame L20 Ultra"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4500,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12,
+          "deep": 16
+        },
+        "wash_volume_ml": 160,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Dreame L20 Ultra",
+        "tank_ml": 4500,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12,
+          "deep": 16
+        },
+        "mop_wash_ml": 160,
+        "mop_wash_modes": {
+          "quick": 100,
+          "standard": 160,
+          "deep": 210
+        },
+        "mop_modes": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12,
+          "deep": 16
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 300,
+        "mop_type": "MopExtend rotating dual pads",
+        "notes": "4.5L/4L dock. Hot-air drying. Extending mop. 300m²/charge."
+      }
+    },
+    "dreame_l10s_ultra": {
+      "identifiers": [
+        "dreame_l10s_ultra",
+        "Dreame L10s Ultra"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 2500,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11
+        },
+        "wash_volume_ml": 140,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Dreame L10s Ultra",
+        "tank_ml": 2500,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11
+        },
+        "mop_wash_ml": 140,
+        "mop_wash_modes": {
+          "quick": 90,
+          "standard": 140,
+          "deep": 190
+        },
+        "mop_modes": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 210,
+        "mop_type": "Dual rotating 180rpm",
+        "notes": "2.5L/2.4L dock. >250ml/100sqft per Smart Home Hookup. Rotating mops 180rpm."
+      }
+    },
+    "dreame_l10s_pro_ultra": {
+      "identifiers": [
+        "dreame_l10s_pro_ultra",
+        "Dreame L10s Pro Ultra"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4500,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11
+        },
+        "wash_volume_ml": 150,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Dreame L10s Pro Ultra",
+        "tank_ml": 4500,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11
+        },
+        "mop_wash_ml": 150,
+        "mop_wash_modes": {
+          "quick": 100,
+          "standard": 150,
+          "deep": 200
+        },
+        "mop_modes": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 230,
+        "mop_type": "Dual rotating pads",
+        "notes": "4.5L/4L dock. 58°C wash. Improved L10s Ultra."
+      }
+    },
+    "dreame_d10_plus": {
+      "identifiers": [
+        "dreame_d10_plus",
+        "Dreame D10 Plus"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 150,
+      "legacy_robot_tank_ml": 150,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 2,
+          "medium": 4,
+          "high": 6
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Dreame D10 Plus",
+        "tank_ml": 150,
+        "robot_tank_ml": 150,
+        "water_per_m2": {
+          "low": 2,
+          "medium": 4,
+          "high": 6
+        },
+        "mop_modes": {
+          "low": 2,
+          "medium": 4,
+          "high": 6
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 120,
+        "mop_type": "Single rotating pad",
+        "notes": "Budget. 150ml, no water dock. 3 levels. 6000Pa suction."
+      }
+    },
+    "ecovacs_x2_omni": {
+      "identifiers": [
+        "ecovacs_x2_omni",
+        "Ecovacs X2 Omni"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 180,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12.5
+        },
+        "wash_volume_ml": 170,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Ecovacs Deebot X2 Omni",
+        "tank_ml": 4000,
+        "robot_tank_ml": 180,
+        "water_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12.5
+        },
+        "mop_wash_ml": 170,
+        "mop_wash_modes": {
+          "quick": 110,
+          "standard": 170,
+          "deep": 230
+        },
+        "mop_modes": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12.5
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 260,
+        "mop_type": "OZMO Turbo 2.0 rotating 180rpm",
+        "notes": "4L/3.5L dock. 55°C wash. Square design. 6N pressure. ~400ml/100sqft max per TSHHU."
+      }
+    },
+    "ecovacs_t20_omni": {
+      "identifiers": [
+        "ecovacs_t20_omni",
+        "Ecovacs T20 Omni"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 180,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11.5,
+          "deep": 15
+        },
+        "wash_volume_ml": 160,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Ecovacs Deebot T20 Omni",
+        "tank_ml": 4000,
+        "robot_tank_ml": 180,
+        "water_per_m2": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11.5,
+          "deep": 15
+        },
+        "mop_wash_ml": 160,
+        "mop_wash_modes": {
+          "quick": 100,
+          "standard": 160,
+          "deep": 210
+        },
+        "mop_modes": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11.5,
+          "deep": 15
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 240,
+        "mop_type": "OZMO Turbo spinning 180rpm",
+        "notes": "4L/4L dock. 60°C wash. 4 modes."
+      }
+    },
+    "ecovacs_t30_omni": {
+      "identifiers": [
+        "ecovacs_t30_omni",
+        "Ecovacs T30 Omni",
+        "Ecovacs Deebot T30S Omni"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 55,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12.5,
+          "deep": 16
+        },
+        "wash_volume_ml": 170,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Ecovacs Deebot T30S Omni",
+        "tank_ml": 4000,
+        "robot_tank_ml": 55,
+        "water_per_m2": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12.5,
+          "deep": 16
+        },
+        "mop_wash_ml": 170,
+        "mop_wash_modes": {
+          "quick": 110,
+          "standard": 170,
+          "deep": 230
+        },
+        "mop_modes": {
+          "low": 4.5,
+          "medium": 8,
+          "high": 12.5,
+          "deep": 16
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 250,
+        "mop_type": "Dual spin mops 180rpm",
+        "notes": "4L/4L dock. 70°C wash. 55ml robot continuous refill. Auto-detergent."
+      }
+    },
+    "ecovacs_n20_plus": {
+      "identifiers": [
+        "ecovacs_n20_plus",
+        "Ecovacs N20 Plus"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 220,
+      "legacy_robot_tank_ml": 220,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 2,
+          "medium": 3.5,
+          "high": 5.5
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Ecovacs Deebot N20 Plus",
+        "tank_ml": 220,
+        "robot_tank_ml": 220,
+        "water_per_m2": {
+          "low": 2,
+          "medium": 3.5,
+          "high": 5.5
+        },
+        "mop_modes": {
+          "low": 2,
+          "medium": 3.5,
+          "high": 5.5
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 120,
+        "mop_type": "OZMO fixed pad (no lift)",
+        "notes": "Budget. 220ml, no mop wash. Manual removal for carpets."
+      }
+    },
+    "irobot_combo_j9": {
+      "identifiers": [
+        "irobot_combo_j9",
+        "iRobot Roomba Combo j9"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 3000,
+      "legacy_robot_tank_ml": 210,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 2,
+          "medium": 4,
+          "high": 7
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "iRobot Roomba Combo j9+",
+        "tank_ml": 3000,
+        "robot_tank_ml": 210,
+        "water_per_m2": {
+          "low": 2,
+          "medium": 4,
+          "high": 7
+        },
+        "mop_modes": {
+          "low": 2,
+          "medium": 4,
+          "high": 7
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 150,
+        "mop_type": "SmartScrub retractable microfiber",
+        "notes": "3L auto-refill dock. Mop lifts up. D.R.I. carpets. 3 levels."
+      }
+    },
+    "irobot_combo_j7": {
+      "identifiers": [
+        "irobot_combo_j7",
+        "iRobot Roomba Combo j7"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 210,
+      "legacy_robot_tank_ml": 210,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 2,
+          "medium": 4,
+          "high": 7
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "iRobot Roomba Combo j7+",
+        "tank_ml": 210,
+        "robot_tank_ml": 210,
+        "water_per_m2": {
+          "low": 2,
+          "medium": 4,
+          "high": 7
+        },
+        "mop_modes": {
+          "low": 2,
+          "medium": 4,
+          "high": 7
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 140,
+        "mop_type": "Retractable microfiber pad",
+        "notes": "210ml tank. Mop lifts up. Electronic pump. Bona support."
+      }
+    },
+    "irobot_combo_essential": {
+      "identifiers": [
+        "irobot_combo_essential",
+        "iRobot Roomba Combo Essential"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 200,
+      "legacy_robot_tank_ml": 200,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 1.5,
+          "medium": 3,
+          "high": 5
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "iRobot Roomba Combo Essential",
+        "tank_ml": 200,
+        "robot_tank_ml": 200,
+        "water_per_m2": {
+          "low": 1.5,
+          "medium": 3,
+          "high": 5
+        },
+        "mop_modes": {
+          "low": 1.5,
+          "medium": 3,
+          "high": 5
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 46,
+        "mop_type": "Fixed microfiber pad (drag)",
+        "notes": "Budget. 200ml, no mop lift. ~46m²/tank. 3 levels."
+      }
+    },
+    "narwal_freo_x_ultra": {
+      "identifiers": [
+        "narwal_freo_x_ultra",
+        "Narwal Freo X Ultra"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 5000,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 5,
+          "medium": 9,
+          "high": 14
+        },
+        "wash_volume_ml": 210,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Narwal Freo X Ultra",
+        "tank_ml": 5000,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 5,
+          "medium": 9,
+          "high": 14
+        },
+        "mop_wash_ml": 210,
+        "mop_wash_modes": {
+          "quick": 140,
+          "standard": 210,
+          "deep": 280
+        },
+        "mop_modes": {
+          "low": 5,
+          "medium": 9,
+          "high": 14
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 250,
+        "mop_type": "Dual rotating pads",
+        "notes": "5L/4.5L dock. ~210ml/mop wash per TSHHU. Highest water usage in class."
+      }
+    },
+    "narwal_freo_x_plus": {
+      "identifiers": [
+        "narwal_freo_x_plus",
+        "Narwal Freo X Plus"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 280,
+      "legacy_robot_tank_ml": 280,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Narwal Freo X Plus",
+        "tank_ml": 280,
+        "robot_tank_ml": 280,
+        "water_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "mop_modes": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 200,
+        "mop_type": "Dual rotating pads",
+        "notes": "Compact base, no dock wash. 280ml tank. 450m² range."
+      }
+    },
+    "eufy_x10_pro_omni": {
+      "identifiers": [
+        "eufy_x10_pro_omni",
+        "Eufy X10 Pro Omni"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 3000,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 3.5,
+          "medium": 6.5,
+          "high": 10
+        },
+        "wash_volume_ml": 140,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Eufy X10 Pro Omni",
+        "tank_ml": 3000,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 3.5,
+          "medium": 6.5,
+          "high": 10
+        },
+        "mop_wash_ml": 140,
+        "mop_wash_modes": {
+          "quick": 90,
+          "standard": 140,
+          "deep": 190
+        },
+        "mop_modes": {
+          "low": 3.5,
+          "medium": 6.5,
+          "high": 10
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 180,
+        "mop_type": "MopMaster 2.0 pentagon dual 180rpm",
+        "notes": "3L dock. 1kg pressure. 45°C drying. 188ml/100sqft max per TSHHU."
+      }
+    },
+    "samsung_jet_bot_combo": {
+      "identifiers": [
+        "samsung_jet_bot_combo",
+        "Samsung Jet Bot Combo"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 100,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "wash_volume_ml": 160,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Samsung Jet Bot Combo AI",
+        "tank_ml": 4000,
+        "robot_tank_ml": 100,
+        "water_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "mop_wash_ml": 160,
+        "mop_wash_modes": {
+          "quick": 100,
+          "standard": 160,
+          "deep": 210
+        },
+        "mop_modes": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 200,
+        "mop_type": "Dual spin mops",
+        "notes": "4L/3.6L dock. Auto-steam 70°C+. Samsung AI."
+      }
+    },
+    "xiaomi_x20_max": {
+      "identifiers": [
+        "xiaomi_x20_max",
+        "Xiaomi Robot Vacuum X20 Max"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "wash_volume_ml": 150,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Xiaomi Robot Vacuum X20 Max",
+        "tank_ml": 4000,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "mop_wash_ml": 150,
+        "mop_wash_modes": {
+          "quick": 100,
+          "standard": 150,
+          "deep": 200
+        },
+        "mop_modes": {
+          "low": 4,
+          "medium": 7,
+          "high": 11
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 200,
+        "mop_type": "Rotating dual pads, hot wash",
+        "notes": "4L/3.8L dock. Hot water. 2 output levels. 200m²."
+      }
+    },
+    "xiaomi_x20_pro": {
+      "identifiers": [
+        "xiaomi_x20_pro",
+        "Xiaomi Robot Vacuum X20 Pro"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 80,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 3.5,
+          "medium": 6.5,
+          "high": 10
+        },
+        "wash_volume_ml": 140,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Xiaomi Robot Vacuum X20 Pro",
+        "tank_ml": 4000,
+        "robot_tank_ml": 80,
+        "water_per_m2": {
+          "low": 3.5,
+          "medium": 6.5,
+          "high": 10
+        },
+        "mop_wash_ml": 140,
+        "mop_wash_modes": {
+          "quick": 90,
+          "standard": 140,
+          "deep": 190
+        },
+        "mop_modes": {
+          "low": 3.5,
+          "medium": 6.5,
+          "high": 10
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 120,
+        "mop_type": "Rotating dual pads, hot wash",
+        "notes": "4L dock. 3 humidity levels. 120m² mopping."
+      }
+    },
+    "xiaomi_h50": {
+      "identifiers": [
+        "xiaomi_h50",
+        "xiaomi_robot_vacuum_h50",
+        "Xiaomi Robot Vacuum H50"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": null,
+      "accounting": {
+        "usage_ml_per_m2": {},
+        "wash_volume_ml": null,
+        "evidence": "not_published"
+      },
+      "capability": "manual_only",
+      "evidence": "manufacturer_specifications",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50/"
+      ],
+      "legacy_calibration": {
+        "label": "Xiaomi Robot Vacuum H50",
+        "tank_ml": 4000,
+        "dock_clean_tank_ml": 4000,
+        "dock_dirty_tank_ml": 4000,
+        "water_per_m2": {},
+        "tested_max_area_per_fill_m2": 240,
+        "avg_area_per_charge": null,
+        "mop_type": "Dual rotating mop pads",
+        "mop_max_rpm": 180,
+        "mop_lift_max_mm": 10,
+        "water_flow_levels_count": 3,
+        "source_urls": [
+          "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50/"
+        ],
+        "data_quality": "manufacturer_specifications",
+        "notes": "Manufacturer specifications. 240m² is published coverage per full clean-water tank, not an ml/m² dosing rate."
+      }
+    },
+    "xiaomi_h50_pro": {
+      "identifiers": [
+        "xiaomi_h50_pro",
+        "xiaomi_robot_vacuum_h50_pro",
+        "Xiaomi Robot Vacuum H50 Pro"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": null,
+      "accounting": {
+        "usage_ml_per_m2": {},
+        "wash_volume_ml": null,
+        "evidence": "not_published"
+      },
+      "capability": "manual_only",
+      "evidence": "manufacturer_specifications",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
+        "https://www.mi.com/global/support/faq/details/KA-673648/"
+      ],
+      "legacy_calibration": {
+        "label": "Xiaomi Robot Vacuum H50 Pro",
+        "tank_ml": 4000,
+        "dock_clean_tank_ml": 4000,
+        "dock_dirty_tank_ml": 4000,
+        "water_per_m2": {},
+        "tested_max_area_per_fill_m2": 240,
+        "avg_area_per_charge": null,
+        "mop_type": "Dual rotating mop pads",
+        "mop_max_rpm": 180,
+        "mop_lift_max_mm": 10,
+        "mop_wash_pre_task_ml": 180,
+        "mop_wash_mid_task_ml": 120,
+        "mop_wash_interval_m2_options": [
+          5,
+          8,
+          10
+        ],
+        "mop_wash_interval_m2_default": 8,
+        "mop_wash_interval_min_options": [
+          5,
+          8,
+          10
+        ],
+        "mop_wash_interval_min_default": 8,
+        "mop_wash_frequency_levels": 3,
+        "mop_cleaning_preferences": 2,
+        "source_urls": [
+          "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
+          "https://www.mi.com/global/support/faq/details/KA-673648/"
+        ],
+        "data_quality": "manufacturer_specifications",
+        "notes": "Manufacturer specifications. 180ml is pre-task washing and 120ml is mid-task washing; final-wash volume is not published, so no generic automatic wash volume is set."
+      }
+    },
+    "tapo_rv50_pro_omni": {
+      "identifiers": [
+        "tapo_rv50_pro_omni",
+        "tapo_rv50_pro",
+        "RV50 Pro Omni",
+        "RV50 Pro Omni (1797)",
+        "1797"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": 5000,
+        "dock_dirty": 4000,
+        "robot_clean": 95,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 5000,
+      "legacy_robot_tank_ml": 95,
+      "accounting": {
+        "usage_ml_per_m2": {},
+        "wash_volume_ml": null,
+        "evidence": "not_published"
+      },
+      "capability": "manual_only",
+      "evidence": "manufacturer_specifications",
+      "sources": [
+        "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/"
+      ],
+      "legacy_calibration": {
+        "label": "Tapo RV50 Pro Omni",
+        "tank_ml": 5000,
+        "dock_clean_tank_ml": 5000,
+        "dock_dirty_tank_ml": 4000,
+        "robot_tank_ml": 95,
+        "robot_clean_tank_ml": 95,
+        "water_per_m2": {},
+        "avg_area_per_charge": null,
+        "mop_type": "DeepEdge dual spinning mops",
+        "water_flow_levels_count": 3,
+        "mop_wash_temp_c": 60,
+        "drying_temp_c": 50,
+        "smart_dirt_detection": true,
+        "auto_detergent": true,
+        "source_urls": [
+          "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/"
+        ],
+        "data_quality": "manufacturer_specifications",
+        "notes": "Manufacturer specifications. Numeric ml/m² and wash-cycle volume are not published, so they remain unset."
+      }
+    },
+    "generic": {
+      "identifiers": [
+        "generic"
+      ],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null
+      },
+      "tracked_reservoir": "legacy_tank",
+      "tracked_capacity_ml": 300,
+      "legacy_robot_tank_ml": 300,
+      "accounting": {
+        "usage_ml_per_m2": {
+          "low": 3,
+          "medium": 6,
+          "high": 10
+        },
+        "wash_volume_ml": null,
+        "evidence": "maintainer_estimate"
+      },
+      "capability": "automatic_estimate",
+      "evidence": "maintainer_estimate",
+      "sources": [],
+      "legacy_calibration": {
+        "label": "Generic / Nieznany model",
+        "tank_ml": 300,
+        "robot_tank_ml": 300,
+        "water_per_m2": {
+          "low": 3,
+          "medium": 6,
+          "high": 10
+        },
+        "mop_modes": {
+          "low": 3,
+          "medium": 6,
+          "high": 10
+        },
+        "intensity_factors": {
+          "low": 0.8,
+          "medium": 1,
+          "high": 1.2
+        },
+        "avg_area_per_charge": 150,
+        "mop_type": "Standard",
+        "notes": "Default estimates - adjust for your model."
+      }
+    }
   }
 }

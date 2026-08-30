@@ -282,6 +282,36 @@ class VacuumSensorCalculationTests(unittest.TestCase):
 
         self.assertEqual(devices[0]["name"], "Salon robot")
 
+    def test_explicit_empty_signal_configuration_disables_discovery(self) -> None:
+        devices = build_vacuum_devices(
+            {
+                "user_devices": [
+                    {
+                        "vacuum_entity": "vacuum.kitchen",
+                        "status_sensor": None,
+                        "area_sensor": "",
+                        "signals": {},
+                    }
+                ]
+            },
+            {},
+            [
+                {
+                    "entity_id": "vacuum.kitchen",
+                    "signals": {
+                        "status_sensor": "sensor.kitchen_status",
+                        "area_sensor": "sensor.kitchen_area",
+                        "mop_mode_entity": "select.kitchen_mop_mode",
+                    },
+                }
+            ],
+        )
+
+        self.assertIsNone(devices[0]["status_sensor"])
+        self.assertEqual(devices[0]["area_sensor"], "")
+        self.assertEqual(devices[0]["signals"], {})
+        self.assertNotIn("mop_mode_entity", devices[0])
+
     def test_filter_active_devices_drops_ghosts(self) -> None:
         """Issue #1: phantom configured entity must not create an HA device."""
         devices = [

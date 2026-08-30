@@ -306,10 +306,15 @@ def _merge_discovery(device: dict[str, Any], descriptor: dict[str, Any]) -> None
     """Add descriptor metadata while keeping every explicit user field authoritative."""
     signals = descriptor.get("signals")
     if isinstance(signals, dict):
-        for key, value in signals.items():
-            if value and not device.get(key):
-                device[key] = value
-        if not device.get("signals"):
+        if "signals" in device:
+            explicit_signals = device["signals"]
+            if isinstance(explicit_signals, dict):
+                for key, value in explicit_signals.items():
+                    device.setdefault(key, value)
+        else:
+            for key, value in signals.items():
+                if value and key not in device:
+                    device[key] = value
             device["signals"] = dict(signals)
     for key, value in descriptor.items():
         if key in {"entity_id", "vacuum_entity", "signals", "name"}:

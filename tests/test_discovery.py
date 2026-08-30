@@ -85,6 +85,7 @@ class VacuumDiscoveryTests(unittest.TestCase):
         devices = [{"id": "dev-1", "manufacturer": "Roborock", "model_id": "a170"}]
         states = {
             "vacuum.kitchen": {"state": "docked", "attributes": {}},
+            "sensor.disabled_status": {"state": "washing_the_mop", "attributes": {}},
             "sensor.area_one": {"state": "3", "attributes": {}},
             "sensor.area_two": {"state": "4", "attributes": {}},
         }
@@ -108,6 +109,55 @@ class VacuumDiscoveryTests(unittest.TestCase):
         self.assertEqual(descriptor["tracked_capacity_ml"], 5000)
         self.assertEqual(descriptor["capability"], "manual_only")
         self.assertEqual(descriptor["signals"], {})
+
+    def test_registry_identifier_pair_resolves_without_model_or_entity_alias(self) -> None:
+        discovery = _load_discovery()
+        self.assertIsNotNone(discovery, "discovery module must exist")
+        assert discovery is not None
+
+        descriptor = discovery.discover_descriptors(
+            [{"entity_id": "vacuum.opaque", "platform": "roborock", "unique_id": "vac-1", "device_id": "dev-1"}],
+            [{"id": "dev-1", "manufacturer": "Roborock", "model": "unhelpful", "identifiers": {("roborock", "a170")}}],
+            {"vacuum.opaque": {"state": "docked", "attributes": {}}},
+        )[0]
+
+        self.assertEqual(descriptor["profile_key"], "roborock_qrevo_5ae")
+        self.assertEqual(descriptor["profile_source"], "catalog_identifier")
+
+    def test_roborock_vendor_translation_key_is_ranked_for_its_platform(self) -> None:
+        discovery = _load_discovery()
+        self.assertIsNotNone(discovery, "discovery module must exist")
+        assert discovery is not None
+        entities = [
+            {"entity_id": "vacuum.kitchen", "platform": "roborock", "unique_id": "vac-1", "device_id": "dev-1"},
+            {"entity_id": "sensor.kitchen_a01_status", "platform": "roborock", "unique_id": "status-1", "device_id": "dev-1", "translation_key": "a01_status"},
+            {"entity_id": "sensor.kitchen_clean_area", "platform": "roborock", "unique_id": "area-1", "device_id": "dev-1", "translation_key": "clean_area"},
+            {"entity_id": "select.kitchen_mop_mode", "platform": "roborock", "unique_id": "mode-1", "device_id": "dev-1", "translation_key": "mop_mode"},
+            {"entity_id": "select.kitchen_water_box_mode", "platform": "roborock", "unique_id": "intensity-1", "device_id": "dev-1", "translation_key": "water_box_mode"},
+            {"entity_id": "sensor.foreign_status", "platform": "other", "unique_id": "status-2", "device_id": "dev-1", "translation_key": "status"},
+        ]
+        descriptor = discovery.discover_descriptors(
+            entities,
+            [{"id": "dev-1", "manufacturer": "Roborock", "model_id": "a170"}],
+            {
+                "vacuum.kitchen": {"state": "docked", "attributes": {}},
+                "sensor.kitchen_a01_status": {"state": "washing_the_mop", "attributes": {}},
+                "sensor.kitchen_clean_area": {"state": "12.3", "attributes": {}},
+                "select.kitchen_mop_mode": {"state": "standard", "attributes": {}},
+                "select.kitchen_water_box_mode": {"state": "medium", "attributes": {}},
+                "sensor.foreign_status": {"state": "cleaning", "attributes": {}},
+            },
+        )[0]
+
+        self.assertEqual(
+            descriptor["signals"],
+            {
+                "status_sensor": "sensor.kitchen_a01_status",
+                "area_sensor": "sensor.kitchen_clean_area",
+                "mop_mode_entity": "select.kitchen_mop_mode",
+                "mop_intensity_entity": "select.kitchen_water_box_mode",
+            },
+        )
 
 
 if __name__ == "__main__":

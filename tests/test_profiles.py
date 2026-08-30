@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import importlib.util
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import types
@@ -109,6 +110,46 @@ class ModelProfileTests(unittest.TestCase):
             path.write_text(json.dumps(invalid), encoding="utf-8")
             with self.assertRaisesRegex(profiles.CatalogValidationError, "tracked_capacity_ml"):
                 profiles.load_catalog(path)
+
+    def test_catalog_preserves_representative_legacy_accounting_and_ambiguity(self) -> None:
+        profiles = _load_profiles()
+        self.assertIsNotNone(profiles, "profiles module must exist")
+        assert profiles is not None
+
+        catalog = profiles.CATALOG
+        self.assertEqual(catalog["ecovacs_x2_omni"]["tracked_capacity_ml"], 4000)
+        self.assertEqual(catalog["ecovacs_x2_omni"]["legacy_robot_tank_ml"], 180)
+        self.assertIsNone(catalog["ecovacs_x2_omni"]["reservoirs_ml"]["robot_clean"])
+        self.assertEqual(catalog["ecovacs_x2_omni"]["accounting"]["usage_ml_per_m2"], {"low": 4.5, "medium": 8, "high": 12.5})
+        self.assertEqual(catalog["ecovacs_x2_omni"]["accounting"]["wash_volume_ml"], 170)
+        self.assertEqual(catalog["dreame_l10s_ultra"]["accounting"]["usage_ml_per_m2"]["medium"], 7.5)
+        self.assertEqual(catalog["dreame_l10s_ultra"]["accounting"]["wash_volume_ml"], 140)
+        self.assertEqual(catalog["dreame_d10_plus"]["accounting"]["usage_ml_per_m2"], {"low": 2, "medium": 4, "high": 6})
+
+    def test_catalog_legacy_payload_matches_executed_card_catalog(self) -> None:
+        profiles = _load_profiles()
+        self.assertIsNotNone(profiles, "profiles module must exist")
+        assert profiles is not None
+        script = """
+const fs = require('fs');
+const source = fs.readFileSync('ha-vacuum-water-monitor.js', 'utf8');
+const match = source.match(/const CALIBRATION_DATA = (\\{[\\s\\S]*?\\n\\});\\n\\n\\/\\/ Published/);
+if (!match) process.exit(2);
+process.stdout.write(JSON.stringify(Function('return (' + match[1] + ')')()));
+"""
+        result = subprocess.run(
+            ["node", "-e", script],
+            cwd=PKG_DIR.parents[1],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        card_catalog = json.loads(result.stdout)
+
+        self.assertEqual(set(profiles.CATALOG), set(card_catalog))
+        for key, legacy in card_catalog.items():
+            with self.subTest(profile=key):
+                self.assertEqual(profiles.CATALOG[key]["legacy_calibration"], legacy)
 
 
 if __name__ == "__main__":

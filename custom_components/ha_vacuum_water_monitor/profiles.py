@@ -15,6 +15,7 @@ class CatalogValidationError(ValueError):
 
 _CATALOG_PATH = Path(__file__).with_name("model_profiles.json")
 _RESERVOIRS = {"dock_clean", "dock_dirty", "robot_clean", "robot_dirty"}
+_TRACKED_RESERVOIRS = _RESERVOIRS | {"legacy_tank"}
 
 
 def normalize_identifier(value: Any) -> str:
@@ -62,14 +63,27 @@ def load_catalog(path: Path | str = _CATALOG_PATH) -> dict[str, dict[str, Any]]:
                     f"Profile {key!r} reservoir {reservoir!r} must be positive or null"
                 )
         tracked_reservoir = record.get("tracked_reservoir")
-        if tracked_reservoir not in _RESERVOIRS:
+        if tracked_reservoir not in _TRACKED_RESERVOIRS:
             raise CatalogValidationError(f"Profile {key!r} has invalid tracked_reservoir")
         tracked_capacity = record.get("tracked_capacity_ml")
         if not _positive_number(tracked_capacity):
             raise CatalogValidationError(f"Profile {key!r} tracked_capacity_ml must be positive")
-        if reservoirs[tracked_reservoir] != tracked_capacity:
+        if (
+            tracked_reservoir in _RESERVOIRS
+            and reservoirs[tracked_reservoir] != tracked_capacity
+        ):
             raise CatalogValidationError(
                 f"Profile {key!r} tracked_capacity_ml must match tracked_reservoir"
+            )
+        legacy = record.get("legacy_calibration")
+        if not isinstance(legacy, dict) or legacy.get("tank_ml") != tracked_capacity:
+            raise CatalogValidationError(
+                f"Profile {key!r} legacy_calibration must preserve tank_ml"
+            )
+        legacy_robot = record.get("legacy_robot_tank_ml")
+        if legacy_robot is not None and not _positive_number(legacy_robot):
+            raise CatalogValidationError(
+                f"Profile {key!r} legacy_robot_tank_ml must be positive or null"
             )
 
         accounting = record.get("accounting")

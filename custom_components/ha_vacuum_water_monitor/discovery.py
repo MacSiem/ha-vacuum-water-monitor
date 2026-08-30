@@ -13,6 +13,14 @@ _ROLE_IDENTIFIERS = {
     "mop_mode_entity": {"mop_mode", "mop_cleaning_mode", "mop_wash_mode"},
     "mop_intensity_entity": {"mop_intensity", "mop_water_level", "water_level", "water_flow"},
 }
+_PLATFORM_ROLE_IDENTIFIERS = {
+    "roborock": {
+        "status_sensor": {"status", "a01_status"},
+        "area_sensor": {"cleaning_area", "clean_area"},
+        "mop_mode_entity": {"mop_mode"},
+        "mop_intensity_entity": {"mop_intensity", "water_box_mode"},
+    }
+}
 
 
 def discover_descriptors(
@@ -81,11 +89,18 @@ def _descriptor(
         "source_id": _source_id(entity_id, _value(vacuum, "unique_id"), device_id),
     }
     descriptor.update(resolve_profile(metadata))
-    descriptor["signals"] = _signals_for_device(device_id, entities, states)
+    descriptor["signals"] = _signals_for_device(
+        device_id, _value(vacuum, "platform"), entities, states
+    )
     return descriptor
 
 
-def _signals_for_device(device_id: Any, entities: list[Any], states: dict[str, Any]) -> dict[str, str]:
+def _signals_for_device(
+    device_id: Any,
+    vacuum_platform: Any,
+    entities: list[Any],
+    states: dict[str, Any],
+) -> dict[str, str]:
     """Resolve roles only among enabled, available siblings of one device."""
     if not device_id:
         return {}
@@ -103,7 +118,7 @@ def _signals_for_device(device_id: Any, entities: list[Any], states: dict[str, A
             entity_id = str(_value(sibling, "entity_id") or "")
             if not entity_id or entity_id.startswith("vacuum."):
                 continue
-            score = _role_score(sibling, exact_identifiers)
+            score = _role_score(sibling, role, exact_identifiers, vacuum_platform)
             if score:
                 ranked.append((score, entity_id))
         if not ranked:
@@ -115,18 +130,28 @@ def _signals_for_device(device_id: Any, entities: list[Any], states: dict[str, A
     return resolved
 
 
-def _role_score(record: Any, exact_identifiers: set[str]) -> int:
+def _role_score(
+    record: Any, role: str, exact_identifiers: set[str], vacuum_platform: Any
+) -> int:
     translation = normalize_identifier(_value(record, "translation_key"))
+    platform = normalize_identifier(_value(record, "platform"))
+    vacuum_platform = normalize_identifier(vacuum_platform)
+    vendor_identifiers = _PLATFORM_ROLE_IDENTIFIERS.get(vacuum_platform, {}).get(
+        role, set()
+    )
+    same_platform = bool(platform and platform == vacuum_platform)
+    if same_platform and translation in vendor_identifiers:
+        return 140
     if translation in exact_identifiers:
-        return 100
+        return 120 if same_platform else 100
     values = (
         normalize_identifier(_value(record, "original_name")),
         normalize_identifier(_value(record, "entity_id")),
     )
     if any(value in exact_identifiers for value in values):
-        return 90
+        return 90 if same_platform else 70
     if any(any(identifier in value for identifier in exact_identifiers) for value in values):
-        return 50
+        return 50 if same_platform else 30
     return 0
 
 
@@ -135,7 +160,14 @@ def _identifiers(device: Any) -> list[str]:
         return []
     identifiers = _value(device, "identifiers")
     if isinstance(identifiers, (set, list, tuple)):
-        return [str(value) for value in identifiers]
+        values: list[str] = []
+        for identifier in identifiers:
+            if isinstance(identifier, (tuple, list)) and len(identifier) == 2:
+                domain, value = identifier
+                values.extend((str(value), f"{domain}_{value}"))
+            else:
+                values.append(str(identifier))
+        return values
     return []
 
 
