@@ -16,6 +16,8 @@ class CatalogValidationError(ValueError):
 _CATALOG_PATH = Path(__file__).with_name("model_profiles.json")
 _RESERVOIRS = {"dock_clean", "dock_dirty", "robot_clean", "robot_dirty"}
 _TRACKED_RESERVOIRS = _RESERVOIRS | {"legacy_tank"}
+_DEFAULT_ESTIMATED_M2_PER_ACTIVE_MINUTE = 0.8
+_DERIVED_TIME_UNCERTAINTY_PERCENT = 65
 
 # Exact values written by the pre-5.2 card when it expanded BRAND_PROFILES into
 # HA Store.  This is migration data, not another resolver: it is used only to
@@ -156,11 +158,35 @@ def load_catalog(path: Path | str = _CATALOG_PATH) -> dict[str, dict[str, Any]]:
         for rate in accounting["usage_ml_per_m2"].values():
             if not _positive_number(rate):
                 raise CatalogValidationError(f"Profile {key!r} has invalid usage rate")
+        minute_rates = accounting.get("usage_ml_per_active_minute", {})
+        if not isinstance(minute_rates, dict) or any(
+            not _positive_number(rate) for rate in minute_rates.values()
+        ):
+            raise CatalogValidationError(
+                f"Profile {key!r} has invalid active-minute usage rate"
+            )
         wash_volume = accounting.get("wash_volume_ml")
         if wash_volume is not None and not _positive_number(wash_volume):
             raise CatalogValidationError(f"Profile {key!r} has invalid wash volume")
-        if accounting.get("evidence") not in {"maintainer_estimate", "not_published"}:
+        if accounting.get("evidence") not in {
+            "maintainer_estimate",
+            "cross_model_estimate",
+            "not_published",
+        }:
             raise CatalogValidationError(f"Profile {key!r} has invalid accounting evidence")
+        uncertainty = accounting.get("uncertainty_percent")
+        if uncertainty is not None and (
+            not _positive_number(uncertainty) or uncertainty > 100
+        ):
+            raise CatalogValidationError(
+                f"Profile {key!r} has invalid uncertainty_percent"
+            )
+        if accounting.get("rate_signal", "mop_mode") not in {
+            "mop_mode",
+            "mop_intensity",
+            "cleaning_mode",
+        }:
+            raise CatalogValidationError(f"Profile {key!r} has invalid rate_signal")
         if record.get("capability") not in {"automatic_estimate", "manual_only"}:
             raise CatalogValidationError(f"Profile {key!r} has invalid capability")
         if not isinstance(record.get("evidence"), str) or not isinstance(
@@ -208,8 +234,10 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
         "tracked_capacity_ml": None,
         "reservoirs_ml": {},
         "usage_ml_per_m2": {},
+        "usage_ml_per_active_minute": {},
         "wash_volume_ml": None,
         "accounting_evidence": None,
+        "uncertainty_percent": None,
     }
 
 
@@ -252,10 +280,27 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
             "tracked_capacity_ml": None,
             "reservoirs_ml": {},
             "usage_ml_per_m2": {},
+            "usage_ml_per_active_minute": {},
             "wash_volume_ml": None,
             "accounting_evidence": "not_published",
+            "uncertainty_percent": None,
         }
     accounting = record["accounting"]
+    area_rates = _with_default_rate(dict(accounting["usage_ml_per_m2"]))
+    minute_rates = dict(accounting.get("usage_ml_per_active_minute", {}))
+    time_accounting_evidence = accounting["evidence"]
+    estimated_speed: float | None = None
+    uncertainty = accounting.get("uncertainty_percent")
+    if area_rates and not minute_rates:
+        estimated_speed = _DEFAULT_ESTIMATED_M2_PER_ACTIVE_MINUTE
+        minute_rates = {
+            mode: round(rate * estimated_speed, 4)
+            for mode, rate in area_rates.items()
+        }
+        time_accounting_evidence = "derived_from_area_rate"
+        uncertainty = max(
+            float(uncertainty or 0), _DERIVED_TIME_UNCERTAINTY_PERCENT
+        )
     return {
         "profile_key": key,
         "profile_source": source,
@@ -266,14 +311,30 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
         "tracked_reservoir": record["tracked_reservoir"],
         "tracked_capacity_ml": record["tracked_capacity_ml"],
         "reservoirs_ml": dict(record["reservoirs_ml"]),
-        "usage_ml_per_m2": dict(accounting["usage_ml_per_m2"]),
+        "usage_ml_per_m2": area_rates,
+        "usage_ml_per_active_minute": minute_rates,
         "wash_volume_ml": accounting["wash_volume_ml"],
         "accounting_evidence": accounting["evidence"],
+        "uncertainty_percent": uncertainty,
+        "rate_signal": accounting.get("rate_signal", "mop_mode"),
+        "time_accounting_evidence": time_accounting_evidence,
+        "estimated_m2_per_active_minute": estimated_speed,
     }
 
 
 def _positive_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
+
+
+def _with_default_rate(rates: dict[str, float]) -> dict[str, float]:
+    """Use the declared middle mode when an integration exposes no mode."""
+    if not rates or "default" in rates:
+        return rates
+    for key in ("medium", "standard", "moderate", "balanced"):
+        if key in rates:
+            return {**rates, "default": rates[key]}
+    ordered = sorted(rates.values())
+    return {**rates, "default": ordered[len(ordered) // 2]}
 
 
 def legacy_profile_defaults(profile_key: Any) -> dict[str, Any]:
@@ -288,6 +349,11 @@ def legacy_profile_defaults(profile_key: Any) -> dict[str, Any]:
         defaults.setdefault("tracked_capacity_ml", record["tracked_capacity_ml"])
         defaults.setdefault("tracked_reservoir", record["tracked_reservoir"])
         defaults.setdefault("usage_ml_per_m2", accounting["usage_ml_per_m2"])
+        defaults.setdefault(
+            "usage_ml_per_active_minute",
+            accounting.get("usage_ml_per_active_minute", {}),
+        )
+        defaults.setdefault("rate_signal", accounting.get("rate_signal", "mop_mode"))
         defaults.setdefault("water_per_m2", legacy.get("water_per_m2", {}))
         defaults.setdefault("intensity_factor", legacy.get("intensity_factors", {}))
         defaults.setdefault("wash_volume_ml", accounting.get("wash_volume_ml"))

@@ -30,6 +30,7 @@ from .sensor_calculations import (
     filter_active_devices,
     next_maintenance_due,
     parse_refill_datetime,
+    setup_guidance,
     vacuum_slug,
 )
 from .storage import VacuumWaterStorage
@@ -259,11 +260,13 @@ class LastRefillSensor(VacuumStoreSensor):
     async def async_update(self) -> None:
         """Update last refill timestamp from Store."""
         _settings, tank_state = await self._store_context()
-        self._attr_native_value = parse_refill_datetime(tank_state)
+        refill_at = parse_refill_datetime(tank_state)
+        self._attr_native_value = refill_at
         self._attr_extra_state_attributes = {
             "vacuum_entity": self.vacuum_entity,
             "last_reset_iso": tank_state.get("last_reset_iso"),
             "last_reset_ts": tank_state.get("last_reset_ts"),
+            **setup_guidance(None if refill_at else "awaiting_refill"),
         }
 
 
@@ -298,6 +301,7 @@ class NextMaintenanceDueSensor(VacuumStoreSensor):
                 "vacuum_entity": self.vacuum_entity,
                 "next_item": None,
                 "scheduled_items": 0,
+                **setup_guidance("maintenance_not_configured"),
             }
             return
 
@@ -330,7 +334,25 @@ def _water_state_attributes(
         "profile_key": estimate["profile_key"],
         "profile_source": estimate["profile_source"],
         "profile_confidence": estimate["profile_confidence"],
+        "integration_adapter": estimate.get("integration_adapter"),
+        "signal_contract_version": estimate.get("signal_contract_version"),
+        "mop_evidence_required": estimate.get("mop_evidence_required", False),
         "accounting_evidence": estimate["accounting_evidence"],
+        "uncertainty_percent": estimate.get("uncertainty_percent"),
+        "calibration_factor": estimate.get("calibration_factor"),
+        "calibration_samples": estimate.get("calibration_samples"),
+        "water_empty_active": bool(tank_state.get("water_empty_active")),
+        **setup_guidance(estimate.get("state_reason")),
+        "water_anchor_source": tank_state.get("water_anchor_source"),
+        "water_anchor_kind": tank_state.get("water_anchor_kind"),
+        "water_anchor_confidence": tank_state.get("water_anchor_confidence"),
+        "last_low_water_ts": tank_state.get("last_low_water_ts"),
+        "last_calibration_predicted_ml": tank_state.get(
+            "last_calibration_predicted_ml"
+        ),
+        "last_calibration_target_ml": tank_state.get(
+            "last_calibration_target_ml"
+        ),
         "last_accounting_source": tank_state.get("last_accounting_source"),
         "last_accounting_rate_ml": tank_state.get("last_accounting_rate_ml"),
         "last_accounting_reason": tank_state.get("last_accounting_reason"),

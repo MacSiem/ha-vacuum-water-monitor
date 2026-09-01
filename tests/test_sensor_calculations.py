@@ -30,6 +30,29 @@ vacuum_slug = sensor_calculations.vacuum_slug
 class VacuumSensorCalculationTests(unittest.TestCase):
     """Verify Store-derived sensor helper behavior."""
 
+    def test_unknown_sensor_states_explain_the_required_setup_action(self) -> None:
+        guidance = getattr(sensor_calculations, "setup_guidance", None)
+        self.assertIsNotNone(
+            guidance,
+            "unknown entity states need machine-readable setup guidance",
+        )
+        assert guidance is not None
+        self.assertEqual(
+            guidance("awaiting_refill"),
+            {
+                "state_reason": "awaiting_refill",
+                "action_required": "press_refilled_with_full_reservoir",
+            },
+        )
+        self.assertEqual(
+            guidance("maintenance_not_configured"),
+            {
+                "state_reason": "maintenance_not_configured",
+                "action_required": "configure_maintenance_schedule",
+            },
+        )
+        self.assertEqual(guidance(None), {})
+
     def test_estimate_water_state_clamps_remaining_percent(self) -> None:
         estimate = estimate_water_state(
             {"vacuum_entity": "vacuum.roborock", "water_total_ml": 3000},
@@ -42,6 +65,23 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(estimate["remaining_ml"], 2550)
         self.assertEqual(estimate["remaining_percent"], 85)
         self.assertEqual(estimate["source"], "stored_estimate")
+
+    def test_estimate_water_state_exposes_signal_contract_diagnostics(self) -> None:
+        estimate = estimate_water_state(
+            {
+                "vacuum_entity": "vacuum.test",
+                "water_total_ml": 1000,
+                "integration_adapter": "dreame_vacuum",
+                "signal_contract_version": 1,
+                "mop_evidence_required": True,
+            },
+            {"used_ml": 100, "last_reset_ts": 1},
+            {},
+        )
+
+        self.assertEqual(estimate["integration_adapter"], "dreame_vacuum")
+        self.assertEqual(estimate["signal_contract_version"], 1)
+        self.assertTrue(estimate["mop_evidence_required"])
 
     def test_estimate_water_state_uses_custom_calibration_capacity(self) -> None:
         estimate = estimate_water_state(
@@ -76,8 +116,8 @@ class VacuumSensorCalculationTests(unittest.TestCase):
             {"custom_calibration": {}},
         )
 
-        self.assertEqual(estimate["total_ml"], 3000)
-        self.assertEqual(estimate["remaining_ml"], 3000)
+        self.assertEqual(estimate["total_ml"], 4000)
+        self.assertEqual(estimate["remaining_ml"], 4000)
         self.assertEqual(estimate["remaining_percent"], 100)
         self.assertEqual(estimate["source"], "stored_estimate")
 
@@ -123,6 +163,45 @@ class VacuumSensorCalculationTests(unittest.TestCase):
                     {"vacuum_entity": entity_id}, {"used_ml": 0, "last_reset_ts": 1}, {}
                 )
                 self.assertEqual(estimate["total_ml"], expected_capacity)
+
+    def test_issue_10_tapo_matter_becomes_known_after_refill_baseline(self) -> None:
+        """The opaque Matter entity must use registry profile data, not its id."""
+        descriptor = {
+            "entity_id": "vacuum.opaque_matter_device",
+            "model": "RV50 Pro Omni (1797)",
+            "model_id": "1797",
+            "profile_key": "tapo_rv50_pro_omni",
+            "profile_source": "model_id",
+            "profile_confidence": "high",
+            "tracked_reservoir": "dock_clean",
+            "tracked_capacity_ml": 5000,
+            "signals": {
+                "status_sensor": "sensor.opaque_operational_state",
+                "cleaning_mode_entity": "select.opaque_clean_mode",
+            },
+        }
+        tank_state = {
+            "used_ml": 0,
+            "initialized": True,
+            "last_reset_iso": "2026-08-31T20:00:00+00:00",
+            "last_reset_ts": 1_788_204_000_000,
+        }
+
+        devices = build_vacuum_devices(
+            {}, {"vacuum.opaque_matter_device": tank_state}, [descriptor]
+        )
+        estimate = estimate_water_state(devices[0], tank_state, {})
+
+        self.assertEqual(devices[0]["profile_key"], "tapo_rv50_pro_omni")
+        self.assertEqual(devices[0]["tracked_capacity_ml"], 5000)
+        self.assertEqual(
+            devices[0]["status_sensor"], "sensor.opaque_operational_state"
+        )
+        self.assertEqual(estimate["source"], "stored_estimate")
+        self.assertEqual(estimate["used_ml"], 0)
+        self.assertEqual(estimate["remaining_ml"], 5000)
+        self.assertEqual(estimate["remaining_percent"], 100)
+        self.assertIsNotNone(parse_refill_datetime(tank_state))
 
     def test_estimate_water_state_uses_discovered_model_before_entity_alias(self) -> None:
         estimate = estimate_water_state(
@@ -178,6 +257,42 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         )
         self.assertEqual(custom_only["wash_volume_ml"], 175)
 
+    def test_profile_area_rates_gain_a_bounded_active_time_fallback(self) -> None:
+        effective = apply_custom_calibration(
+            {
+                "vacuum_entity": "vacuum.braava",
+                "model": "iRobot Roomba Combo j7",
+            },
+            {},
+        )
+
+        self.assertEqual(effective["usage_ml_per_m2"]["default"], 4)
+        self.assertEqual(
+            effective["usage_ml_per_active_minute"],
+            {"low": 1.6, "medium": 3.2, "high": 5.6, "default": 3.2},
+        )
+        self.assertEqual(effective["estimated_m2_per_active_minute"], 0.8)
+        self.assertEqual(effective["time_accounting_evidence"], "derived_from_area_rate")
+        self.assertGreaterEqual(effective["uncertainty_percent"], 65)
+
+    def test_device_calibration_can_tune_the_active_time_area_speed(self) -> None:
+        effective = apply_custom_calibration(
+            {
+                "vacuum_entity": "vacuum.braava",
+                "model": "iRobot Roomba Combo j7",
+            },
+            {
+                "custom_calibration": {
+                    "entity:vacuum.braava": {
+                        "estimated_m2_per_active_minute": 1.0,
+                    }
+                }
+            },
+        )
+
+        self.assertEqual(effective["estimated_m2_per_active_minute"], 1.0)
+        self.assertEqual(effective["usage_ml_per_active_minute"]["default"], 4)
+
 
     def test_estimate_water_state_unknown_model_stays_unknown(self) -> None:
         estimate = estimate_water_state(
@@ -209,6 +324,53 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(after_refill["used_ml"], 0)
         self.assertEqual(after_refill["remaining_percent"], 100)
 
+    def test_low_water_anchor_reports_estimated_reserve_with_learning_metadata(self) -> None:
+        estimate = estimate_water_state(
+            {
+                "model_id": "1797",
+                "vacuum_entity": "vacuum.tapo",
+            },
+            {
+                "used_ml": 4500,
+                "initialized": True,
+                "water_empty_active": True,
+                "water_anchor_kind": "shortage",
+                "water_anchor_confidence": "estimated",
+                "calibration_factor": 1.22,
+                "calibration_samples": 2,
+            },
+            {},
+        )
+
+        self.assertEqual(estimate["source"], "low_water_anchor")
+        self.assertEqual(estimate["used_ml"], 4500)
+        self.assertEqual(estimate["remaining_ml"], 500)
+        self.assertEqual(estimate["remaining_percent"], 10)
+        self.assertEqual(estimate["state_reason"], "water_low")
+        self.assertEqual(estimate["water_anchor_kind"], "shortage")
+        self.assertEqual(estimate["water_anchor_confidence"], "estimated")
+        self.assertEqual(estimate["calibration_factor"], 1.22)
+        self.assertEqual(estimate["calibration_samples"], 2)
+        self.assertEqual(estimate["uncertainty_percent"], 60)
+
+    def test_exact_empty_anchor_reports_zero_remaining(self) -> None:
+        estimate = estimate_water_state(
+            {"model_id": "1797", "vacuum_entity": "vacuum.tapo"},
+            {
+                "used_ml": 5000,
+                "initialized": True,
+                "water_empty_active": True,
+                "water_anchor_kind": "empty",
+                "water_anchor_confidence": "exact",
+            },
+            {},
+        )
+
+        self.assertEqual(estimate["source"], "low_water_anchor")
+        self.assertEqual(estimate["remaining_ml"], 0)
+        self.assertEqual(estimate["remaining_percent"], 0)
+        self.assertEqual(estimate["state_reason"], "water_empty")
+
     def test_custom_calibration_merges_entity_rates_and_tracked_capacity(self) -> None:
         device = {
             "vacuum_entity": "vacuum.living_room",
@@ -220,6 +382,7 @@ class VacuumSensorCalculationTests(unittest.TestCase):
                     "tracked_capacity_ml": 4200,
                     "usage_ml_per_m2": {"deep": 9},
                     "wash_volume_ml": 175,
+                    "low_water_anchor_remaining_percent": 15,
                 }
             }
         }
@@ -229,6 +392,7 @@ class VacuumSensorCalculationTests(unittest.TestCase):
 
         self.assertEqual(effective["usage_ml_per_m2"], {"standard": 7, "deep": 9})
         self.assertEqual(effective["wash_volume_ml"], 175)
+        self.assertEqual(effective["low_water_anchor_remaining_percent"], 15)
         self.assertEqual(estimate["total_ml"], 4200)
 
     def test_entity_alias_calibration_overrides_canonical_default_layer(self) -> None:
@@ -414,6 +578,46 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(by_entity["vacuum.legacy"]["name"], "vacuum.legacy")
         self.assertEqual(by_entity["vacuum.discovered"]["name"], "Discovered")
 
+    def test_discovered_adapter_roles_are_flattened_for_accounting(self) -> None:
+        device = build_vacuum_devices(
+            {},
+            {},
+            [
+                {
+                    "entity_id": "vacuum.adapter_robot",
+                    "integration_adapter": "valetudo",
+                    "signals": {
+                        "cleaning_active_sensor": "binary_sensor.robot_cleaning",
+                        "duration_sensor": "sensor.robot_time",
+                        "water_box_attached_sensor": "binary_sensor.robot_tank",
+                        "dock_dirty_water_sensor": "sensor.robot_wastewater",
+                        "water_error_sensor": "sensor.robot_water_error",
+                        "dock_status_sensor": "sensor.robot_dock_status",
+                        "tank_level_sensor": "sensor.robot_tank_level",
+                        "dock_tank_level_sensor": "sensor.robot_dock_tank_level",
+                    },
+                }
+            ],
+        )[0]
+
+        self.assertEqual(device["integration_adapter"], "valetudo")
+        self.assertEqual(
+            device["cleaning_active_sensor"], "binary_sensor.robot_cleaning"
+        )
+        self.assertEqual(device["duration_sensor"], "sensor.robot_time")
+        self.assertEqual(
+            device["water_box_attached_sensor"], "binary_sensor.robot_tank"
+        )
+        self.assertEqual(
+            device["dock_dirty_water_sensor"], "sensor.robot_wastewater"
+        )
+        self.assertEqual(device["water_error_sensor"], "sensor.robot_water_error")
+        self.assertEqual(device["dock_status_sensor"], "sensor.robot_dock_status")
+        self.assertEqual(device["tank_level_sensor"], "sensor.robot_tank_level")
+        self.assertEqual(
+            device["dock_tank_level_sensor"], "sensor.robot_dock_tank_level"
+        )
+
     def test_legacy_expanded_store_defaults_are_generated_and_registry_replaceable(self) -> None:
         devices = build_vacuum_devices(
             {
@@ -541,7 +745,7 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertTrue(device["profile_locked"])
         self.assertIn("profile_locked", device["_explicit_fields"])
         self.assertEqual(device["profile_key"], "roborock_s8_maxv_ultra")
-        self.assertEqual(estimate_water_state(device, {"used_ml": 0, "initialized": True}, {})["total_ml"], 3000)
+        self.assertEqual(estimate_water_state(device, {"used_ml": 0, "initialized": True}, {})["total_ml"], 4000)
 
     def test_authored_falsey_direct_signal_role_blocks_registry_value(self) -> None:
         devices = build_vacuum_devices(

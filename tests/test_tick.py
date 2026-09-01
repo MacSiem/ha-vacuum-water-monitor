@@ -63,8 +63,11 @@ class _States:
 
 
 class _Hass:
-    def __init__(self, values):
+    def __init__(self, values, *, length_unit="km"):
         self.states = _States(values)
+        self.config = types.SimpleNamespace(
+            units=types.SimpleNamespace(length_unit=length_unit)
+        )
 
 
 def _run(previous_status: str | None, current_status: str, device=None, used_ml=0):
@@ -91,6 +94,740 @@ def _run(previous_status: str | None, current_status: str, device=None, used_ml=
 
 
 class WaterAccountingTransitionTests(unittest.TestCase):
+    def test_matter_vacuum_without_area_sensor_estimates_mopping_by_active_time(self):
+        state, dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.status": _State("running"),
+                    "select.clean_mode": _State("Auto, Vacuum and Mop"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "status_sensor": "sensor.status",
+                "cleaning_mode_entity": "select.clean_mode",
+                "rate_signal": "cleaning_mode",
+                "mop_evidence_required": True,
+                "usage_ml_per_active_minute": {"auto_vacuum_and_mop": 6},
+                "accounting_evidence": "cross_model_estimate",
+            },
+            {
+                "used_ml": 100,
+                "initialized": True,
+                "last_tick_ts": 1_000_000,
+                "last_status": "running",
+            },
+            now_ts=1_060_000,
+        )
+
+        self.assertTrue(dirty)
+        self.assertEqual(state["used_ml"], 106)
+        self.assertEqual(state["last_accounting_source"], "active_time")
+        self.assertEqual(state["last_accounting_evidence"], "cross_model_estimate")
+
+    def test_time_fallback_does_not_count_vacuum_only_mode(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.status": _State("running"),
+                    "select.clean_mode": _State("Auto, Vacuum only"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "status_sensor": "sensor.status",
+                "cleaning_mode_entity": "select.clean_mode",
+                "rate_signal": "cleaning_mode",
+                "mop_evidence_required": True,
+                "usage_ml_per_active_minute": {"auto_vacuum_and_mop": 6},
+            },
+            {"used_ml": 100, "initialized": True, "last_tick_ts": 1_000_000},
+            now_ts=1_060_000,
+        )
+
+        self.assertEqual(state["used_ml"], 100)
+        self.assertEqual(state["last_accounting_reason"], "mop_inactive")
+
+    def test_matter_time_estimate_requires_a_real_clean_mode_signal(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.status": _State("running"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "status_sensor": "sensor.status",
+                "rate_signal": "cleaning_mode",
+                "mop_evidence_required": True,
+                "usage_ml_per_active_minute": {"default": 6},
+            },
+            {
+                "used_ml": 100,
+                "initialized": True,
+                "last_tick_ts": 1_000_000,
+            },
+            now_ts=1_060_000,
+        )
+
+        self.assertEqual(state["used_ml"], 100)
+        self.assertEqual(state["last_accounting_reason"], "mop_inactive")
+
+    def test_duration_sensor_is_preferred_over_wall_clock_when_area_is_absent(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.cleaning_time": _State(
+                        "120", {"unit_of_measurement": "s"}
+                    ),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "duration_sensor": "sensor.cleaning_time",
+                "usage_ml_per_active_minute": {"default": 6},
+            },
+            {
+                "used_ml": 100,
+                "initialized": True,
+                "last_duration_seconds": 60,
+                "last_tick_ts": 1_000_000,
+            },
+            now_ts=1_090_000,
+        )
+
+        self.assertEqual(state["used_ml"], 106)
+        self.assertEqual(state["last_duration_seconds"], 120)
+        self.assertEqual(state["last_accounting_source"], "active_time")
+
+    def test_duration_sensor_with_unknown_explicit_unit_fails_closed(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.cleaning_time": _State(
+                        "120", {"unit_of_measurement": "ticks"}
+                    ),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "duration_sensor": "sensor.cleaning_time",
+                "usage_ml_per_active_minute": {"default": 6},
+            },
+            {
+                "used_ml": 100,
+                "last_duration_seconds": 60,
+                "last_status": "cleaning",
+            },
+        )
+
+        self.assertEqual(state["used_ml"], 100)
+        self.assertEqual(state["last_duration_seconds"], 60)
+
+    def test_valetudo_square_centimetres_are_normalized_before_accounting(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.area": _State(
+                        "20000", {"unit_of_measurement": "cm²"}
+                    ),
+                    "select.mode": _State("vacuum_and_mop"),
+                    "select.water": _State("medium"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.area",
+                "cleaning_mode_entity": "select.mode",
+                "mop_intensity_entity": "select.water",
+                "mop_evidence_required": True,
+                "rate_signal": "mop_intensity",
+                "usage_ml_per_m2": {"medium": 6},
+            },
+            {"used_ml": 100, "initialized": True, "last_area": 1},
+        )
+
+        self.assertEqual(state["last_area"], 2)
+        self.assertEqual(state["used_ml"], 106)
+
+    def test_explicit_unknown_area_unit_fails_closed(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.area": _State(
+                        "20000", {"unit_of_measurement": "vendor_ticks"}
+                    ),
+                    "select.mode": _State("mop"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.area",
+                "cleaning_mode_entity": "select.mode",
+                "mop_evidence_required": True,
+                "usage_ml_per_m2": {"default": 6},
+            },
+            {"used_ml": 100, "initialized": True, "last_area": 1},
+        )
+
+        self.assertEqual(state["used_ml"], 100)
+        self.assertEqual(state["last_accounting_reason"], "area_unavailable")
+
+    def test_known_adapter_without_mop_evidence_does_not_consume(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.area": _State("2", {"unit_of_measurement": "m²"}),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.area",
+                "mop_evidence_required": True,
+                "usage_ml_per_m2": {"default": 6},
+            },
+            {"used_ml": 100, "initialized": True, "last_area": 1},
+        )
+
+        self.assertEqual(state["used_ml"], 100)
+        self.assertEqual(state["last_accounting_reason"], "mop_off")
+
+    def test_roomba_imperial_area_attribute_is_converted_to_square_metres(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State(
+                        "cleaning",
+                        {
+                            "cleaned_area": 21.5278208,
+                            "tank_present": True,
+                            "fan_speed": "Standard-2",
+                        },
+                    ),
+                },
+                length_unit="mi",
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_attribute": "cleaned_area",
+                "area_attribute_unit": "ha_unit_system",
+                "mop_intensity_attribute": "fan_speed",
+                "water_box_attached_attribute": "tank_present",
+                "mop_evidence_required": True,
+                "rate_signal": "mop_intensity",
+                "usage_ml_per_m2": {"medium": 8},
+            },
+            {"used_ml": 100, "initialized": True, "last_area": 1},
+        )
+
+        self.assertAlmostEqual(state["last_area"], 2, places=6)
+        self.assertAlmostEqual(state["used_ml"], 108, places=5)
+
+    def test_roomba_documented_vacuum_attributes_feed_area_and_mode_accounting(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State(
+                        "cleaning",
+                        {
+                            "cleaned_area": 10,
+                            "cleaning_time": 20,
+                            "tank_present": True,
+                            "fan_speed": "Standard-2",
+                        },
+                    ),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_attribute": "cleaned_area",
+                "duration_attribute": "cleaning_time",
+                "duration_attribute_unit": "min",
+                "mop_intensity_attribute": "fan_speed",
+                "water_box_attached_attribute": "tank_present",
+                "rate_signal": "mop_intensity",
+                "usage_ml_per_m2": {"low": 4, "medium": 8, "high": 12},
+            },
+            {
+                "used_ml": 100,
+                "initialized": True,
+                "last_area": 9,
+                "last_duration_seconds": 1140,
+                "last_tick_ts": 1_000_000,
+            },
+            now_ts=1_060_000,
+        )
+
+        self.assertEqual(state["used_ml"], 108)
+        self.assertEqual(state["last_area"], 10)
+        self.assertEqual(state["last_duration_seconds"], 1200)
+        self.assertEqual(state["last_accounting_source"], "area")
+
+    def test_roomba_spray_suffix_selects_rate_independently_of_cleaning_pattern(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State(
+                        "cleaning",
+                        {"cleaned_area": 11, "tank_present": True, "fan_speed": "Deep-3"},
+                    ),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_attribute": "cleaned_area",
+                "mop_intensity_attribute": "fan_speed",
+                "water_box_attached_attribute": "tank_present",
+                "rate_signal": "mop_intensity",
+                "usage_ml_per_m2": {"low": 4, "medium": 8, "high": 12},
+            },
+            {"used_ml": 100, "initialized": True, "last_area": 10},
+        )
+
+        self.assertEqual(state["used_ml"], 112)
+        self.assertEqual(state["last_accounting_rate_ml"], 12)
+
+    def test_ecovacs_station_wash_state_counts_one_wash_cycle(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "sensor.station": _State("washing_mop"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "dock_status_sensor": "sensor.station",
+                "wash_volume_ml": 160,
+            },
+            {"used_ml": 20, "initialized": True, "last_status": "docked"},
+            now_ts=1_060_000,
+        )
+
+        self.assertEqual(state["used_ml"], 180)
+        self.assertTrue(state["wash_sequence_active"])
+        self.assertEqual(state["last_dock_status"], "washing_mop")
+
+    def test_generic_dock_cleaning_state_is_not_a_mop_wash_cycle(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "sensor.station": _State("cleaning"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "dock_status_sensor": "sensor.station",
+                "wash_volume_ml": 160,
+            },
+            {"used_ml": 20, "initialized": True, "last_status": "docked"},
+            now_ts=1_060_000,
+        )
+
+        self.assertEqual(state["used_ml"], 20)
+        self.assertFalse(state.get("wash_sequence_active", False))
+
+    def test_explicit_cleaning_binary_sensor_enables_time_fallback(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("idle"),
+                    "binary_sensor.in_cleaning": _State("on"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "cleaning_active_sensor": "binary_sensor.in_cleaning",
+                "usage_ml_per_active_minute": {"default": 6},
+            },
+            {
+                "used_ml": 100,
+                "initialized": True,
+                "last_tick_ts": 1_000_000,
+            },
+            now_ts=1_060_000,
+        )
+
+        self.assertEqual(state["used_ml"], 106)
+
+    def test_detached_water_box_stops_automatic_mop_accounting(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "binary_sensor.water_box": _State("off"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "water_box_attached_sensor": "binary_sensor.water_box",
+                "usage_ml_per_active_minute": {"default": 6},
+            },
+            {
+                "used_ml": 100,
+                "initialized": True,
+                "last_tick_ts": 1_000_000,
+            },
+            now_ts=1_060_000,
+        )
+
+        self.assertEqual(state["used_ml"], 100)
+        self.assertEqual(state["last_accounting_reason"], "mop_inactive")
+
+    def test_inverted_detached_tank_signal_stops_mop_accounting(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "binary_sensor.tank_detached": _State("on"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "water_box_detached_sensor": "binary_sensor.tank_detached",
+                "usage_ml_per_active_minute": {"default": 6},
+            },
+            {
+                "used_ml": 100,
+                "initialized": True,
+                "last_tick_ts": 1_000_000,
+            },
+            now_ts=1_060_000,
+        )
+
+        self.assertEqual(state["used_ml"], 100)
+        self.assertEqual(state["last_accounting_reason"], "mop_inactive")
+
+    def test_low_water_status_anchors_and_calibrates_the_model_estimate_once(self):
+        device = {
+            "vacuum_entity": "vacuum.test",
+            "water_shortage_sensor": "binary_sensor.shortage",
+            "tracked_capacity_ml": 5000,
+        }
+        initial = {
+            "used_ml": 4000,
+            "initialized": True,
+            "last_tick_ts": 1_000_000,
+            "water_empty_active": False,
+            "calibration_factor": 1.0,
+            "calibration_samples": 0,
+        }
+        candidate, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "binary_sensor.shortage": _State("on"),
+                }
+            ),
+            device,
+            initial,
+            now_ts=1_060_000,
+        )
+        confirmed, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "binary_sensor.shortage": _State("on"),
+                }
+            ),
+            device,
+            candidate,
+            now_ts=1_120_000,
+        )
+        repeated, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "binary_sensor.shortage": _State("on"),
+                }
+            ),
+            device,
+            confirmed,
+            now_ts=1_180_000,
+        )
+
+        self.assertEqual(candidate["used_ml"], 4000)
+        self.assertFalse(candidate["water_empty_active"])
+        self.assertEqual(candidate["calibration_samples"], 0)
+        self.assertEqual(candidate["water_anchor_candidate_source"], "water_shortage")
+        self.assertEqual(confirmed["used_ml"], 4500)
+        self.assertEqual(confirmed["calibration_factor"], 1.125)
+        self.assertEqual(confirmed["calibration_samples"], 1)
+        self.assertEqual(confirmed["water_anchor_kind"], "shortage")
+        self.assertEqual(confirmed["water_anchor_confidence"], "estimated")
+        self.assertEqual(confirmed["last_accounting_reason"], "low_water_calibrated")
+        self.assertEqual(repeated["calibration_samples"], 1)
+        self.assertEqual(repeated["calibration_factor"], 1.125)
+
+    def test_dock_water_shortage_is_debounced_as_a_threshold_not_exact_empty(self):
+        device = {
+            "vacuum_entity": "vacuum.test",
+            "dock_error_sensor": "sensor.dock_error",
+            "tracked_capacity_ml": 5000,
+        }
+        initial = {
+            "used_ml": 4000,
+            "initialized": True,
+            "last_tick_ts": 1_000_000,
+            "water_empty_active": False,
+            "calibration_factor": 1.0,
+            "calibration_samples": 0,
+        }
+        candidate, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "sensor.dock_error": _State("water_shortage"),
+                }
+            ),
+            device,
+            initial,
+            now_ts=1_060_000,
+        )
+        confirmed, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "sensor.dock_error": _State("water_shortage"),
+                }
+            ),
+            device,
+            candidate,
+            now_ts=1_120_000,
+        )
+
+        self.assertEqual(candidate["used_ml"], 4000)
+        self.assertFalse(candidate["water_empty_active"])
+        self.assertEqual(candidate["water_anchor_candidate_source"], "dock_error")
+        self.assertEqual(confirmed["used_ml"], 4500)
+        self.assertEqual(confirmed["water_anchor_kind"], "shortage")
+        self.assertEqual(confirmed["water_anchor_confidence"], "estimated")
+
+    def test_early_low_water_alert_is_rejected_without_rewriting_counter(self):
+        device = {
+            "vacuum_entity": "vacuum.test",
+            "water_shortage_sensor": "binary_sensor.shortage",
+            "tracked_capacity_ml": 5000,
+        }
+        initial = {
+            "used_ml": 100,
+            "initialized": True,
+            "last_tick_ts": 1_000_000,
+            "water_empty_active": False,
+            "calibration_factor": 1.0,
+            "calibration_samples": 0,
+        }
+        candidate, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "binary_sensor.shortage": _State("on"),
+                }
+            ),
+            device,
+            initial,
+            now_ts=1_060_000,
+        )
+        rejected, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "binary_sensor.shortage": _State("on"),
+                }
+            ),
+            device,
+            candidate,
+            now_ts=1_120_000,
+        )
+
+        self.assertEqual(rejected["used_ml"], 100)
+        self.assertFalse(rejected["water_empty_active"])
+        self.assertEqual(rejected["calibration_factor"], 1.0)
+        self.assertEqual(rejected["calibration_samples"], 0)
+        self.assertEqual(
+            rejected["last_accounting_reason"],
+            "low_water_rejected_insufficient_usage",
+        )
+
+    def test_cleared_low_water_status_marks_a_refill_and_keeps_learning(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "binary_sensor.shortage": _State("off"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "water_shortage_sensor": "binary_sensor.shortage",
+                "tracked_capacity_ml": 5000,
+            },
+            {
+                "used_ml": 4500,
+                "initialized": True,
+                "water_empty_active": True,
+                "water_anchor_source": "water_shortage",
+                "water_anchor_kind": "shortage",
+                "calibration_factor": 1.125,
+                "calibration_samples": 1,
+                "last_reset_ts": 0,
+            },
+            now_ts=2_000_000,
+        )
+
+        self.assertEqual(state["used_ml"], 0)
+        self.assertFalse(state["water_empty_active"])
+        self.assertEqual(state["calibration_factor"], 1.125)
+        self.assertEqual(state["calibration_samples"], 1)
+        self.assertEqual(state["last_accounting_reason"], "refill_detected")
+
+    def test_unavailable_low_water_signal_does_not_create_a_false_refill(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "binary_sensor.shortage": _State("unavailable"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "water_shortage_sensor": "binary_sensor.shortage",
+                "tracked_capacity_ml": 5000,
+            },
+            {
+                "used_ml": 4500,
+                "initialized": True,
+                "water_empty_active": True,
+                "water_anchor_source": "water_shortage",
+                "water_anchor_kind": "shortage",
+                "calibration_factor": 1.125,
+                "calibration_samples": 1,
+                "last_reset_ts": 0,
+            },
+            now_ts=2_000_000,
+        )
+
+        self.assertEqual(state["used_ml"], 4500)
+        self.assertTrue(state["water_empty_active"])
+        self.assertEqual(state["calibration_samples"], 1)
+
+    def test_valetudo_exact_empty_state_is_an_anchor_but_missing_is_not(self):
+        device = {
+            "vacuum_entity": "vacuum.test",
+            "dock_clean_water_sensor": "sensor.freshwater",
+            "tracked_capacity_ml": 4000,
+        }
+        initial = {
+            "used_ml": 3200,
+            "initialized": True,
+            "water_empty_active": False,
+            "calibration_factor": 1,
+            "calibration_samples": 0,
+        }
+        missing, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "sensor.freshwater": _State("missing"),
+                }
+            ),
+            device,
+            initial,
+            now_ts=2_000_000,
+        )
+        empty, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "sensor.freshwater": _State("empty"),
+                }
+            ),
+            device,
+            initial,
+            now_ts=2_000_000,
+        )
+
+        self.assertEqual(missing["used_ml"], 3200)
+        self.assertFalse(missing["water_empty_active"])
+        self.assertEqual(missing["calibration_samples"], 0)
+        self.assertEqual(empty["used_ml"], 4000)
+        self.assertTrue(empty["water_empty_active"])
+        self.assertEqual(empty["water_anchor_source"], "dock_clean_water")
+        self.assertEqual(empty["water_anchor_kind"], "empty")
+
+    def test_matter_machine_readable_water_tank_empty_error_is_an_anchor(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("error"),
+                    "sensor.water_error": _State("water_tank_empty"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "water_error_sensor": "sensor.water_error",
+                "tracked_capacity_ml": 5000,
+            },
+            {
+                "used_ml": 4500,
+                "initialized": True,
+                "water_empty_active": False,
+                "calibration_factor": 1,
+                "calibration_samples": 0,
+            },
+            now_ts=2_000_000,
+        )
+
+        self.assertEqual(state["used_ml"], 5000)
+        self.assertTrue(state["water_empty_active"])
+        self.assertEqual(state["water_anchor_source"], "water_error")
+        self.assertEqual(state["water_anchor_kind"], "empty")
+
+    def test_transient_clean_box_empty_does_not_masquerade_as_dock_tank_empty(self):
+        state, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "binary_sensor.clean_box_empty": _State("on"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "dock_clean_water_sensor": "binary_sensor.clean_box_empty",
+                "tracked_capacity_ml": 3000,
+            },
+            {
+                "used_ml": 500,
+                "initialized": True,
+                "water_empty_active": False,
+                "calibration_samples": 0,
+            },
+            now_ts=2_000_000,
+        )
+
+        self.assertEqual(state["used_ml"], 500)
+        self.assertFalse(state["water_empty_active"])
+        self.assertEqual(state["calibration_samples"], 0)
+
+    def test_localized_mop_wash_status_is_normalized_before_transition_accounting(self):
+        result = _run(
+            "docked",
+            "Lavage de la serpillere",
+            {"wash_volume_ml": 160},
+        )
+
+        self.assertEqual(result["used_ml"], 160)
+        self.assertTrue(result["wash_sequence_active"])
+
     def test_wash_sequence_is_counted_only_once(self):
         first = _run("docked", "going_to_wash_the_mop", {"wash_volume_ml": 150})
         second = _run(
@@ -332,6 +1069,169 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         self.assertEqual(result["used_ml"], 23.25)
         self.assertEqual(result["last_accounting_source"], "area")
         self.assertEqual(result["last_accounting_rate_ml"], 5.3)
+
+    def test_profile_rate_axis_uses_mop_intensity_when_declared(self):
+        result, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.area": _State("11"),
+                    "select.mode": _State("standard"),
+                    "select.intensity": _State("high"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.area",
+                "mop_mode_entity": "select.mode",
+                "mop_intensity_entity": "select.intensity",
+                "rate_signal": "mop_intensity",
+                "usage_ml_per_m2": {
+                    "low": 4,
+                    "medium": 7.5,
+                    "high": 11.5,
+                    "default": 7.5,
+                },
+            },
+            {"used_ml": 0, "last_area": 10, "last_status": "cleaning"},
+        )
+
+        self.assertEqual(result["used_ml"], 11.5)
+        self.assertEqual(result["last_accounting_rate_ml"], 11.5)
+
+    def test_five_level_water_control_interpolates_between_profile_bands(self):
+        result, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.area": _State("11"),
+                    "select.intensity": _State("moderate_high"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.area",
+                "mop_intensity_entity": "select.intensity",
+                "rate_signal": "mop_intensity",
+                "usage_ml_per_m2": {"low": 4, "medium": 8, "high": 12},
+            },
+            {"used_ml": 0, "last_area": 10, "last_status": "cleaning"},
+        )
+
+        self.assertEqual(result["used_ml"], 10)
+        self.assertEqual(result["last_accounting_rate_ml"], 10)
+
+    def test_numeric_water_control_uses_its_entity_range_for_rate_band(self):
+        result, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.area": _State("11"),
+                    "number.intensity": _State("80", {"min": 0, "max": 100}),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.area",
+                "mop_intensity_entity": "number.intensity",
+                "rate_signal": "mop_intensity",
+                "usage_ml_per_m2": {"low": 4, "medium": 8, "high": 12},
+            },
+            {"used_ml": 0, "last_area": 10, "last_status": "cleaning"},
+        )
+
+        self.assertEqual(result["used_ml"], 12)
+        self.assertEqual(result["last_accounting_rate_ml"], 12)
+
+    def test_vendor_segment_cleaning_status_counts_area_when_vacuum_state_lags(self):
+        result, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "sensor.status": _State("segment_cleaning"),
+                    "sensor.area": _State("4"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "status_sensor": "sensor.status",
+                "area_sensor": "sensor.area",
+                "usage_ml_per_m2": {"default": 6},
+            },
+            {"used_ml": 0, "last_area": 3, "last_status": "docked"},
+        )
+
+        self.assertEqual(result["used_ml"], 6)
+
+    def test_roborock_segment_mopping_status_counts_area_when_vacuum_state_lags(self):
+        result, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("docked"),
+                    "sensor.status": _State("segment_mopping"),
+                    "sensor.area": _State("4", {"unit_of_measurement": "m²"}),
+                    "select.mode": _State("mop"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "status_sensor": "sensor.status",
+                "area_sensor": "sensor.area",
+                "cleaning_mode_entity": "select.mode",
+                "mop_evidence_required": True,
+                "usage_ml_per_m2": {"default": 6},
+            },
+            {"used_ml": 0, "last_area": 3, "last_status": "docked"},
+        )
+
+        self.assertEqual(result["used_ml"], 6)
+        self.assertIsNone(result.get("last_accounting_reason"))
+
+    def test_dreame_sweeping_mode_never_doses_with_tank_installed(self):
+        result, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.area": _State("4", {"unit_of_measurement": "m²"}),
+                    "select.cleaning_mode": _State("sweeping"),
+                    "sensor.water_tank": _State("installed"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.area",
+                "cleaning_mode_entity": "select.cleaning_mode",
+                "water_box_attached_sensor": "sensor.water_tank",
+                "mop_evidence_required": True,
+                "usage_ml_per_m2": {"default": 6},
+            },
+            {"used_ml": 0, "last_area": 3, "last_status": "cleaning"},
+        )
+
+        self.assertEqual(result["used_ml"], 0)
+        self.assertEqual(result["last_accounting_reason"], "mop_off")
+
+    def test_dreame_mop_installed_enum_is_affirmative_mop_evidence(self):
+        result, _dirty = tick.tick_device(
+            _Hass(
+                {
+                    "vacuum.test": _State("cleaning"),
+                    "sensor.area": _State("4", {"unit_of_measurement": "m²"}),
+                    "sensor.water_tank": _State("mop_installed"),
+                }
+            ),
+            {
+                "vacuum_entity": "vacuum.test",
+                "area_sensor": "sensor.area",
+                "water_box_attached_sensor": "sensor.water_tank",
+                "mop_evidence_required": True,
+                "usage_ml_per_m2": {"default": 6},
+            },
+            {"used_ml": 0, "last_area": 3, "last_status": "cleaning"},
+        )
+
+        self.assertEqual(result["used_ml"], 6)
+        self.assertIsNone(result.get("last_accounting_reason"))
 
     def test_area_reset_decrease_gap_and_anomaly_only_rebaseline(self):
         device = {

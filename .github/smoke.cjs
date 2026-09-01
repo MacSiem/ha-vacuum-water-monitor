@@ -636,7 +636,7 @@ async function smokeFinalFixContracts(target) {
       brand_profile: 'roborock_s8_maxv_ultra',
       profile_locked: true,
     }));
-    if (el._calcDeviceData(legacyLocked).totalMl !== 3000) {
+    if (el._calcDeviceData(legacyLocked).totalMl !== 4000) {
       throw new Error('legacy profile lock without provenance did not control frontend capacity');
     }
 

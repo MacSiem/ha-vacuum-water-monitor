@@ -21,6 +21,21 @@ except ImportError:  # Supports this module's existing direct-file pure tests.
     legacy_profile_defaults = _profile_module.legacy_profile_defaults
 
 MILLISECONDS_PER_DAY = 86_400_000
+DEFAULT_ESTIMATED_M2_PER_ACTIVE_MINUTE = 0.8
+DERIVED_TIME_UNCERTAINTY_PERCENT = 65
+
+
+def setup_guidance(state_reason: Any) -> dict[str, str]:
+    """Return a machine-readable action for an intentional unknown state."""
+    actions = {
+        "awaiting_refill": "press_refilled_with_full_reservoir",
+        "maintenance_not_configured": "configure_maintenance_schedule",
+    }
+    reason = str(state_reason or "")
+    action = actions.get(reason)
+    if action is None:
+        return {}
+    return {"state_reason": reason, "action_required": action}
 
 
 def vacuum_slug(vacuum_entity: str) -> str:
@@ -130,7 +145,19 @@ def estimate_water_state(
         "profile_key": device.get("profile_key") or profile["profile_key"],
         "profile_source": device.get("profile_source") or profile["profile_source"],
         "profile_confidence": device.get("profile_confidence") or profile["profile_confidence"],
+        "integration_adapter": device.get("integration_adapter"),
+        "signal_contract_version": device.get("signal_contract_version"),
+        "mop_evidence_required": bool(device.get("mop_evidence_required")),
         "accounting_evidence": tank_state.get("last_accounting_evidence") or device.get("accounting_evidence") or profile["accounting_evidence"],
+        "uncertainty_percent": device.get("uncertainty_percent")
+        if device.get("uncertainty_percent") is not None
+        else profile.get("uncertainty_percent"),
+        "calibration_factor": _number(tank_state.get("calibration_factor"), 1),
+        "calibration_samples": max(
+            0, int(_number(tank_state.get("calibration_samples"), 0))
+        ),
+        "water_anchor_kind": tank_state.get("water_anchor_kind"),
+        "water_anchor_confidence": tank_state.get("water_anchor_confidence"),
     }
     if not initialized:
         return {
@@ -151,6 +178,24 @@ def estimate_water_state(
             "remaining_ml": None,
             "remaining_percent": None,
             **{**metadata, "state_reason": "unknown_capacity"},
+        }
+
+    if tank_state.get("water_empty_active"):
+        remaining_ml = max(0, total_ml - used_ml)
+        percent = _clamp((remaining_ml / total_ml) * 100, 0, 100)
+        anchor_kind = tank_state.get("water_anchor_kind")
+        return {
+            "source": "low_water_anchor",
+            "total_ml": _format_number(total_ml),
+            "used_ml": _format_number(used_ml),
+            "remaining_ml": _format_number(remaining_ml),
+            "remaining_percent": _format_number(round(percent, 1)),
+            **{
+                **metadata,
+                "state_reason": "water_empty"
+                if anchor_kind == "empty"
+                else "water_low",
+            },
         }
 
     remaining_ml = max(0, total_ml - used_ml)
@@ -177,12 +222,24 @@ def apply_custom_calibration(
     effective = dict(device) if isinstance(device, dict) else {}
     settings = settings if isinstance(settings, dict) else {}
     profile = resolve_profile(effective)
-    for key in ("profile_key", "profile_source", "profile_confidence", "capability", "evidence"):
+    for key in (
+        "profile_key",
+        "profile_source",
+        "profile_confidence",
+        "capability",
+        "evidence",
+        "rate_signal",
+        "uncertainty_percent",
+        "time_accounting_evidence",
+        "estimated_m2_per_active_minute",
+    ):
         if profile.get(key) is not None:
             effective.setdefault(key, profile[key])
 
     calibration = _merged_custom_calibration(effective, settings)
-    profile_usage = _valid_rate_mapping(profile.get("usage_ml_per_m2"))
+    profile_usage = _with_default_rate(
+        _valid_rate_mapping(profile.get("usage_ml_per_m2"))
+    )
     custom_usage = _valid_rate_mapping(
         calibration.get("usage_ml_per_m2", calibration.get("water_per_m2"))
     )
@@ -198,6 +255,54 @@ def apply_custom_calibration(
     merged_usage = {**profile_usage, **custom_usage, **explicit_usage}
     if merged_usage:
         effective["usage_ml_per_m2"] = merged_usage
+
+    profile_time_usage = _valid_rate_mapping(
+        profile.get("usage_ml_per_active_minute")
+    )
+    custom_time_usage = _valid_rate_mapping(
+        calibration.get("usage_ml_per_active_minute")
+    )
+    discovered_time_usage = _valid_rate_mapping(
+        effective.get("usage_ml_per_active_minute")
+    )
+    explicit_time_usage = (
+        discovered_time_usage
+        if "usage_ml_per_active_minute" in explicit_fields
+        else {} if explicit_fields else (
+            {}
+            if discovered_time_usage == profile_time_usage
+            else discovered_time_usage
+        )
+    )
+    merged_time_usage = {
+        **profile_time_usage,
+        **custom_time_usage,
+        **explicit_time_usage,
+    }
+    derive_time_from_area = bool(profile_usage) and not (
+        custom_time_usage or explicit_time_usage
+    ) and (
+        not profile_time_usage
+        or profile.get("time_accounting_evidence") == "derived_from_area_rate"
+    )
+    if derive_time_from_area:
+        estimated_speed = (
+            _positive_optional(calibration.get("estimated_m2_per_active_minute"))
+            or _positive_optional(effective.get("estimated_m2_per_active_minute"))
+            or DEFAULT_ESTIMATED_M2_PER_ACTIVE_MINUTE
+        )
+        effective["usage_ml_per_active_minute"] = {
+            key: round(rate * estimated_speed, 4)
+            for key, rate in merged_usage.items()
+        }
+        effective["estimated_m2_per_active_minute"] = estimated_speed
+        effective["time_accounting_evidence"] = "derived_from_area_rate"
+        effective["uncertainty_percent"] = max(
+            _optional_number(effective.get("uncertainty_percent")) or 0,
+            DERIVED_TIME_UNCERTAINTY_PERCENT,
+        )
+    elif merged_time_usage:
+        effective["usage_ml_per_active_minute"] = merged_time_usage
 
     for key in ("intensity_factor",):
         merged_mapping = {
@@ -236,12 +341,21 @@ def apply_custom_calibration(
     ) or _positive_optional(calibration.get("robot_tank_ml"))
     if legacy_robot is not None:
         effective["legacy_robot_tank_ml"] = legacy_robot
+    low_water_remaining = _optional_number(
+        calibration.get("low_water_anchor_remaining_percent")
+    )
+    if (
+        low_water_remaining is not None
+        and 0 <= low_water_remaining <= 50
+        and "low_water_anchor_remaining_percent" not in explicit_fields
+    ):
+        effective["low_water_anchor_remaining_percent"] = low_water_remaining
     profile_evidence = profile.get("accounting_evidence")
     discovery_evidence = effective.get("accounting_evidence")
-    if explicit_usage or explicit_wash:
+    if explicit_usage or explicit_time_usage or explicit_wash:
         if discovery_evidence is None or discovery_evidence == profile_evidence:
             effective["accounting_evidence"] = "explicit_user_configuration"
-    elif custom_usage or custom_wash:
+    elif custom_usage or custom_time_usage or custom_wash:
         if discovery_evidence is None or discovery_evidence == profile_evidence:
             effective["accounting_evidence"] = "user_calibration"
     elif profile_evidence is not None:
@@ -420,6 +534,12 @@ def _normalize_calibration_layer(layer: dict[str, Any]) -> dict[str, Any]:
         normalized["usage_ml_per_m2"] = usage
     normalized.pop("water_per_m2", None)
 
+    active_minute_usage = _valid_rate_mapping(
+        layer.get("usage_ml_per_active_minute")
+    )
+    if active_minute_usage:
+        normalized["usage_ml_per_active_minute"] = active_minute_usage
+
     for canonical, legacy in (
         ("wash_volume_ml", "mop_wash_ml"),
         ("tracked_capacity_ml", "tank_ml"),
@@ -513,6 +633,17 @@ def _valid_rate_mapping(value: Any) -> dict[str, float]:
     }
 
 
+def _with_default_rate(rates: dict[str, float]) -> dict[str, float]:
+    """Add a deterministic middle-mode fallback to a model profile."""
+    if not rates or "default" in rates:
+        return dict(rates)
+    for key in ("medium", "standard", "moderate", "balanced"):
+        if key in rates:
+            return {**rates, "default": rates[key]}
+    ordered = sorted(rates.values())
+    return {**rates, "default": ordered[len(ordered) // 2]}
+
+
 def _explicit_fields(device: dict[str, Any]) -> set[str]:
     """Return fields supplied by settings rather than merged discovery data."""
     fields = device.get("_explicit_fields")
@@ -530,22 +661,51 @@ def _generated_fields(device: dict[str, Any]) -> set[str]:
 
 _DIRECT_SIGNAL_FIELDS = {
     "status_sensor",
+    "cleaning_active_sensor",
     "area_sensor",
+    "duration_sensor",
     "mop_mode_entity",
     "mop_intensity_entity",
+    "cleaning_mode_entity",
+    "mop_attached_sensor",
+    "water_box_attached_sensor",
+    "water_box_detached_sensor",
+    "water_shortage_sensor",
+    "dock_clean_water_sensor",
+    "dock_dirty_water_sensor",
+    "dock_error_sensor",
+    "dock_status_sensor",
+    "water_error_sensor",
+    "tank_level_sensor",
+    "dock_tank_level_sensor",
 }
 _BEHAVIOR_BINDING_FIELDS = _DIRECT_SIGNAL_FIELDS | {
     "water_total_ml",
     "tracked_capacity_ml",
     "tank_ml",
     "tracked_reservoir",
+    "low_water_anchor_remaining_percent",
+    "area_attribute",
+    "area_attribute_unit",
+    "duration_attribute",
+    "duration_attribute_unit",
+    "mop_intensity_attribute",
+    "water_box_attached_attribute",
+    "tank_semantics_confirmed",
+    "mop_evidence_required",
+    "signal_contract_version",
     "signals",
     "usage_ml_per_m2",
+    "usage_ml_per_active_minute",
+    "rate_signal",
     "water_per_m2",
     "intensity_factor",
     "wash_volume_ml",
     "mop_wash_ml",
     "accounting_evidence",
+    "time_accounting_evidence",
+    "estimated_m2_per_active_minute",
+    "uncertainty_percent",
     "evidence",
     "profile_locked",
     "profile_override",
@@ -585,8 +745,13 @@ _PROFILE_DESCRIPTOR_FIELDS = {
     "tracked_capacity_ml",
     "reservoirs_ml",
     "usage_ml_per_m2",
+    "usage_ml_per_active_minute",
+    "rate_signal",
     "wash_volume_ml",
     "accounting_evidence",
+    "uncertainty_percent",
+    "time_accounting_evidence",
+    "estimated_m2_per_active_minute",
 }
 
 

@@ -1,11 +1,45 @@
 # Changelog
 
+## Unreleased
+
+## 5.3.0 (2026-09-01)
+
+- Added per-integration machine-signal adapters for Roborock, Xiaomi Miio,
+  Ecovacs, Matter RVC, iRobot Roomba/Braava, SmartThings, TP-Link, Dreame Vacuum
+  and Valetudo. Unknown platforms now remain manual-only unless the user maps
+  explicit same-device signals.
+- Corrected integration-specific signal semantics: Valetudo area is normalized
+  from cm², Roomba area follows the HA metric/imperial unit system, Dreame
+  prefers `state` over `status` and preserves exact dynamic entity bindings,
+  and Xiaomi Miio no longer misuses the non-vacuum `water_level` entity.
+- Added a fail-closed mop gate. Vacuum-only/sweeping runs never consume virtual
+  water merely because the vacuum is active or a water tank remains installed;
+  exact Roborock and Dreame mopping states are covered by regression tests.
+- Added area → duration → bounded active-time accounting, mode/intensity-aware
+  rates, model-specific ranged water controls and Braava compound spray tokens.
+- Added debounced low-water calibration with a configurable reserve, bounded
+  learning and rejection of implausibly early alerts; exact empty and missing
+  tank states remain distinct.
+- Tightened station and Matter semantics: dock `water_shortage` now follows the
+  debounced threshold path, generic station `cleaning` cannot count as a mop
+  wash, and Tapo Matter accounting is gated by its real `clean_mode` signal.
+- Improved profile/source diagnostics, uncertainty explanations, calibration
+  controls, dock-state wording, typography and mobile readability.
+- Corrected the S8 MaxV Ultra clean-water profile to the manufacturer-published
+  4 l dock and 100 ml onboard tanks while keeping consumption rates explicitly
+  labelled as estimates.
+- Clarified the two intentional unknown states reported in issue #10: water sensors need
+  a first full-reservoir refill baseline, while maintenance due needs a configured
+  maintenance schedule. The HA entities now expose a machine-readable `state_reason`
+  and `action_required`, and an exact Matter model `1797` post-refill regression test
+  proves that Water remaining, Water used and Last refill become known after reset.
+
 ## 5.2.0 (2026-08-30)
 
 - Fixed model detection to use the Home Assistant registry descriptor (model ID, model and catalog identifiers) instead of guessing from display names or manufacturer. The descriptor now supplies the canonical profile, capacity, reservoirs, confidence, evidence and same-device signal roles to the card.
 - Fixed truthful tank initialization: before an explicit refill baseline, remaining water and used water are shown as unknown instead of fabricated `0 used / 100%` values. A real post-refill `0 / 100%` state remains valid.
 - Added card diagnostics for profile resolution, tracked and distinct reservoirs, discovered raw status/area roles and accounting reason/evidence. Calibration saves now merge only the active device record.
-- Models such as Tapo Matter with published capacity but no published usage telemetry are labelled manual-only and prompt for calibration/manual refill; no default or invented automatic telemetry is claimed.
+- Tapo Matter uses the real `clean_mode` axis as an affirmative mop gate. A supported profile can apply a bounded, high-uncertainty cross-model active-time seed and learn from low-water/refill anchors; missing or vacuum-only mode fails closed, and no unexposed intensity is invented.
 
 ## 5.1.14 (2026-08-28)
 

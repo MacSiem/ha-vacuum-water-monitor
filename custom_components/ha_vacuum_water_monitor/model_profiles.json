@@ -3,33 +3,50 @@
     "roborock_s8_maxv_ultra": {
       "identifiers": [
         "roborock_s8_maxv_ultra",
+        "a97",
+        "roborock_vacuum_a97",
+        "roborock.vacuum.a97",
         "Roborock S8 MaxV Ultra"
       ],
       "reservoirs_ml": {
-        "dock_clean": null,
+        "dock_clean": 4000,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 100,
         "robot_dirty": null
       },
-      "tracked_reservoir": "legacy_tank",
-      "tracked_capacity_ml": 3000,
-      "legacy_robot_tank_ml": 350,
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "legacy_robot_tank_ml": 100,
       "accounting": {
         "usage_ml_per_m2": {
           "fast": 4,
           "standard": 6,
-          "deep": 9
+          "deep": 9,
+          "default": 6
+        },
+        "usage_ml_per_active_minute": {
+          "fast": 3.2,
+          "standard": 4.8,
+          "deep": 7.2,
+          "default": 4.8
         },
         "wash_volume_ml": 150,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "uncertainty_percent": 35,
+        "rate_signal": "mop_mode"
       },
       "capability": "automatic_estimate",
-      "evidence": "maintainer_estimate",
-      "sources": [],
+      "evidence": "manufacturer_specifications",
+      "sources": [
+        "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra",
+        "https://support.roborock.com/hc/en-us/articles/33954061643673-What-s-the-key-features-of-S8-MaxV-Ultra"
+      ],
       "legacy_calibration": {
         "label": "Roborock S8 MaxV Ultra",
-        "tank_ml": 3000,
-        "robot_tank_ml": 350,
+        "tank_ml": 4000,
+        "dock_clean_tank_ml": 4000,
+        "robot_tank_ml": 100,
+        "robot_clean_tank_ml": 100,
         "water_per_m2": {
           "fast/low": 3.2,
           "fast/med": 4,
@@ -58,8 +75,13 @@
           "max": 1.3
         },
         "avg_area_per_charge": 250,
-        "mop_type": "VibraRise 3.0 dual spinning",
-        "notes": "3L dock, 350ml robot tank. Mop wash ~150ml/cycle. Auto-refill from dock. Data from HA sensors."
+        "mop_type": "VibraRise 3.0 sonic mop with edge mop",
+        "source_urls": [
+          "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra",
+          "https://support.roborock.com/hc/en-us/articles/33954061643673-What-s-the-key-features-of-S8-MaxV-Ultra"
+        ],
+        "data_quality": "manufacturer_specifications_with_maintainer_usage_estimates",
+        "notes": "Official capacities: 4L dock clean-water tank and 100ml onboard tank. Per-area and mop-wash consumption remain maintainer estimates and are refined by device calibration."
       }
     },
     "roborock_s8_pro_ultra": {
@@ -317,7 +339,8 @@
           "high": 11
         },
         "wash_volume_ml": 160,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -373,7 +396,8 @@
           "high": 11
         },
         "wash_volume_ml": 160,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -426,11 +450,24 @@
       "tracked_capacity_ml": 4000,
       "legacy_robot_tank_ml": 80,
       "accounting": {
-        "usage_ml_per_m2": {},
-        "wash_volume_ml": null,
-        "evidence": "not_published"
+        "usage_ml_per_m2": {
+          "low": 4,
+          "medium": 7.5,
+          "high": 11.5,
+          "default": 7.5
+        },
+        "usage_ml_per_active_minute": {
+          "low": 3.2,
+          "medium": 6,
+          "high": 9.2,
+          "default": 6
+        },
+        "wash_volume_ml": 160,
+        "evidence": "cross_model_estimate",
+        "uncertainty_percent": 55,
+        "rate_signal": "mop_intensity"
       },
-      "capability": "manual_only",
+      "capability": "automatic_estimate",
       "evidence": "manufacturer_specifications",
       "sources": [
         "https://www.roborock.sg/products/roborock-qrevo-5ae-white-certified-refurbished",
@@ -456,7 +493,7 @@
           "https://my.roborock.com/pages/roborock-qrevo-5ae"
         ],
         "data_quality": "manufacturer_specifications",
-        "notes": "Manufacturer specifications. Numeric ml/m² and wash-cycle volume are not published, so they remain unset."
+        "notes": "Manufacturer capacities and feature specifications. Numeric ml/m² and wash-cycle volume are not published; Water Monitor uses clearly labelled cross-model seed estimates with 55% initial uncertainty and learns a bounded device correction from valid low-water cycles."
       }
     },
     "roborock_qrevo_curv_2_flow": {
@@ -480,11 +517,24 @@
       "tracked_capacity_ml": 4000,
       "legacy_robot_tank_ml": null,
       "accounting": {
-        "usage_ml_per_m2": {},
-        "wash_volume_ml": null,
-        "evidence": "not_published"
+        "usage_ml_per_m2": {
+          "low": 5,
+          "medium": 9,
+          "high": 14,
+          "default": 9
+        },
+        "usage_ml_per_active_minute": {
+          "low": 4,
+          "medium": 7.2,
+          "high": 11.2,
+          "default": 7.2
+        },
+        "wash_volume_ml": 180,
+        "evidence": "cross_model_estimate",
+        "uncertainty_percent": 65,
+        "rate_signal": "mop_intensity"
       },
-      "capability": "manual_only",
+      "capability": "automatic_estimate",
       "evidence": "manufacturer_specifications",
       "sources": [
         "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq",
@@ -509,7 +559,7 @@
           "https://help.roborock.com/en-CA/product/qrevo-curv-2-flow-message?category=troubleshooting-1-1-1"
         ],
         "data_quality": "manufacturer_specifications",
-        "notes": "Manufacturer specifications; clean dock tank is published as approximately 4L. Numeric ml/m² and wash-cycle volume are not published."
+        "notes": "Manufacturer specifications; the clean dock tank is published as approximately 4L. Numeric ml/m² and wash-cycle volume are not published; Water Monitor uses clearly labelled cross-model seed estimates with 65% initial uncertainty and bounded device learning."
       }
     },
     "roborock_q7_max": {
@@ -533,7 +583,8 @@
           "high": 7
         },
         "wash_volume_ml": null,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -583,7 +634,8 @@
           "high": 7
         },
         "wash_volume_ml": null,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -634,7 +686,8 @@
           "deep": 16
         },
         "wash_volume_ml": 170,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -693,7 +746,8 @@
           "deep": 16
         },
         "wash_volume_ml": 150,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -752,7 +806,8 @@
           "deep": 16
         },
         "wash_volume_ml": 160,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -810,7 +865,8 @@
           "high": 11
         },
         "wash_volume_ml": 140,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -866,7 +922,8 @@
           "high": 11
         },
         "wash_volume_ml": 150,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -922,7 +979,8 @@
           "high": 6
         },
         "wash_volume_ml": null,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -972,7 +1030,8 @@
           "high": 12.5
         },
         "wash_volume_ml": 170,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1029,7 +1088,8 @@
           "deep": 15
         },
         "wash_volume_ml": 160,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1089,7 +1149,8 @@
           "deep": 16
         },
         "wash_volume_ml": 170,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1147,7 +1208,8 @@
           "high": 5.5
         },
         "wash_volume_ml": null,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1197,7 +1259,8 @@
           "high": 7
         },
         "wash_volume_ml": null,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1247,7 +1310,8 @@
           "high": 7
         },
         "wash_volume_ml": null,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1297,7 +1361,8 @@
           "high": 5
         },
         "wash_volume_ml": null,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1509,7 +1574,8 @@
           "high": 11
         },
         "wash_volume_ml": 160,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1565,7 +1631,8 @@
           "high": 11
         },
         "wash_volume_ml": 150,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1621,7 +1688,8 @@
           "high": 10
         },
         "wash_volume_ml": 140,
-        "evidence": "maintainer_estimate"
+        "evidence": "maintainer_estimate",
+        "rate_signal": "mop_intensity"
       },
       "capability": "automatic_estimate",
       "evidence": "maintainer_estimate",
@@ -1779,11 +1847,26 @@
       "tracked_capacity_ml": 5000,
       "legacy_robot_tank_ml": 95,
       "accounting": {
-        "usage_ml_per_m2": {},
-        "wash_volume_ml": null,
-        "evidence": "not_published"
+        "usage_ml_per_m2": {
+          "auto_vacuum_and_mop": 7.5,
+          "vacuum_and_mop": 7.5,
+          "mop": 7.5,
+          "mopping": 7.5,
+          "default": 7.5
+        },
+        "usage_ml_per_active_minute": {
+          "auto_vacuum_and_mop": 6,
+          "vacuum_and_mop": 6,
+          "mop": 6,
+          "mopping": 6,
+          "default": 6
+        },
+        "wash_volume_ml": 160,
+        "evidence": "cross_model_estimate",
+        "uncertainty_percent": 60,
+        "rate_signal": "cleaning_mode"
       },
-      "capability": "manual_only",
+      "capability": "automatic_estimate",
       "evidence": "manufacturer_specifications",
       "sources": [
         "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/"
@@ -1807,7 +1890,7 @@
           "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/"
         ],
         "data_quality": "manufacturer_specifications",
-        "notes": "Manufacturer specifications. Numeric ml/m² and wash-cycle volume are not published, so they remain unset."
+        "notes": "Manufacturer capacities and feature specifications. Matter exposes clean mode but not the product's water-flow level, numeric ml/m², or wash-cycle volume. Water Monitor therefore uses one clearly labelled mode-gated cross-model seed with 60% initial uncertainty and bounded device learning; vacuum-only or missing clean mode never consumes water."
       }
     },
     "generic": {

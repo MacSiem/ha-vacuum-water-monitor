@@ -38,6 +38,7 @@ class ModelProfileTests(unittest.TestCase):
         self.assertIsNotNone(profiles, "profiles module must exist")
         assert profiles is not None
         cases = (
+            ({"model_id": "roborock.vacuum.a97"}, "roborock_s8_maxv_ultra", "dock_clean", 4000),
             ({"model_id": "a170"}, "roborock_qrevo_5ae", "dock_clean", 4000),
             ({"model_id": "a245"}, "roborock_qrevo_curv_2_flow", "dock_clean", 4000),
             ({"model": "Xiaomi Robot Vacuum H50 Pro"}, "xiaomi_h50_pro", "dock_clean", 4000),
@@ -67,16 +68,55 @@ class ModelProfileTests(unittest.TestCase):
         self.assertEqual(resolved["profile_source"], "locked_override")
         self.assertEqual(resolved["tracked_capacity_ml"], 4500)
 
-    def test_matter_capacity_without_explicit_rates_is_manual_only(self) -> None:
+    def test_models_without_native_water_telemetry_use_cross_model_estimator_seeds(self) -> None:
         profiles = _load_profiles()
         self.assertIsNotNone(profiles, "profiles module must exist")
         assert profiles is not None
+        cases = (
+            ("1797", "tapo_rv50_pro_omni", 7.5, 6.0, 160),
+            ("a170", "roborock_qrevo_5ae", 7.5, 6.0, 160),
+            ("a245", "roborock_qrevo_curv_2_flow", 9.0, 7.2, 180),
+        )
+
+        for model_id, profile_key, area_rate, minute_rate, wash_ml in cases:
+            with self.subTest(model_id=model_id):
+                resolved = profiles.resolve_profile({"model_id": model_id})
+                self.assertEqual(resolved["profile_key"], profile_key)
+                self.assertEqual(resolved["capability"], "automatic_estimate")
+                self.assertEqual(resolved["usage_ml_per_m2"]["default"], area_rate)
+                self.assertEqual(
+                    resolved["usage_ml_per_active_minute"]["default"], minute_rate
+                )
+                self.assertEqual(resolved["wash_volume_ml"], wash_ml)
+                self.assertEqual(resolved["accounting_evidence"], "cross_model_estimate")
+                self.assertGreaterEqual(resolved["uncertainty_percent"], 40)
+
+    def test_vendor_profiles_select_rates_from_their_water_control_axis(self) -> None:
+        profiles = _load_profiles()
+        self.assertIsNotNone(profiles, "profiles module must exist")
+        assert profiles is not None
+
+        for model in (
+            "Ecovacs T20 Omni",
+            "Dreame L20 Ultra",
+            "iRobot Roomba Combo j7",
+            "Samsung Jet Bot Combo",
+            "Xiaomi Robot Vacuum X20 Pro",
+        ):
+            with self.subTest(model=model):
+                resolved = profiles.resolve_profile({"model": model})
+                self.assertEqual(resolved["rate_signal"], "mop_intensity")
+
+    def test_tapo_matter_profile_uses_the_exposed_clean_mode_axis(self) -> None:
+        profiles = _load_profiles()
+        self.assertIsNotNone(profiles, "profiles module must exist")
+        assert profiles is not None
+
         resolved = profiles.resolve_profile({"model_id": "1797"})
 
         self.assertEqual(resolved["profile_key"], "tapo_rv50_pro_omni")
-        self.assertEqual(resolved["capability"], "manual_only")
-        self.assertIsNone(resolved["wash_volume_ml"])
-        self.assertEqual(resolved["usage_ml_per_m2"], {})
+        self.assertEqual(resolved["capability"], "automatic_estimate")
+        self.assertEqual(resolved["rate_signal"], "cleaning_mode")
 
     def test_generic_profile_is_legacy_catalog_only_and_never_supplies_accounting(self) -> None:
         profiles = _load_profiles()

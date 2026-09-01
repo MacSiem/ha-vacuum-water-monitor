@@ -4,23 +4,14 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from .integration_adapters import (
+    ADAPTER_ATTRIBUTE_BINDINGS,
+    ADAPTER_DESCRIPTOR_METADATA,
+    ADAPTER_ROLE_IDENTIFIERS,
+    ROLE_IDENTIFIERS,
+    adapter_for,
+)
 from .profiles import normalize_identifier, resolve_profile
-
-
-_ROLE_IDENTIFIERS = {
-    "status_sensor": {"status", "cleaning_status", "vacuum_status"},
-    "area_sensor": {"cleaning_area", "cleaned_area", "cleaning_area_m2"},
-    "mop_mode_entity": {"mop_mode", "mop_cleaning_mode", "mop_wash_mode"},
-    "mop_intensity_entity": {"mop_intensity", "mop_water_level", "water_level", "water_flow"},
-}
-_PLATFORM_ROLE_IDENTIFIERS = {
-    "roborock": {
-        "status_sensor": {"status", "a01_status"},
-        "area_sensor": {"cleaning_area", "clean_area"},
-        "mop_mode_entity": {"mop_mode"},
-        "mop_intensity_entity": {"mop_intensity", "water_box_mode"},
-    }
-}
 
 
 def discover_descriptors(
@@ -88,38 +79,64 @@ def _descriptor(
         "model_id": model_id,
         "source_id": _source_id(entity_id, _value(vacuum, "unique_id"), device_id),
     }
+    integration_adapter = adapter_for(
+        descriptor["platform"], descriptor["manufacturer"], descriptor["registry_unique_id"]
+    )
+    descriptor["integration_adapter"] = integration_adapter
+    descriptor.update(ADAPTER_ATTRIBUTE_BINDINGS.get(integration_adapter, {}))
+    descriptor.update(ADAPTER_DESCRIPTOR_METADATA.get(integration_adapter, {}))
+    related_dock_ids = _verified_related_dock_ids(
+        device_id, devices, integration_adapter
+    )
+    descriptor["related_dock_confidence"] = (
+        "high" if related_dock_ids else "none"
+    )
     descriptor.update(resolve_profile(metadata))
+    signal_device_ids = {device_id, *related_dock_ids} if device_id else set()
     descriptor["signals"] = _signals_for_device(
-        device_id, _value(vacuum, "platform"), entities, states
+        signal_device_ids, integration_adapter, entities, states
     )
     return descriptor
 
 
 def _signals_for_device(
-    device_id: Any,
-    vacuum_platform: Any,
+    device_ids: Any,
+    integration_adapter: Any,
     entities: list[Any],
     states: dict[str, Any],
 ) -> dict[str, str]:
-    """Resolve roles only among enabled, available siblings of one device."""
-    if not device_id:
+    """Resolve roles among enabled siblings using adapter-owned contracts.
+
+    Some integrations, notably Dreame, intentionally mark mode entities
+    unavailable during a run.  Keeping an exact registry binding lets the tick
+    resume when the entity returns; availability is evaluated when its value is
+    consumed.  Unknown/uncontracted platforms still fail closed.
+    """
+    if not device_ids:
         return {}
+    if not isinstance(device_ids, (set, frozenset, list, tuple)):
+        device_ids = {device_ids}
+    else:
+        device_ids = set(device_ids)
     siblings = [
         entry
         for entry in entities
-        if _value(entry, "device_id") == device_id
+        if _value(entry, "device_id") in device_ids
         and not _value(entry, "disabled_by")
-        and _is_available(states.get(_value(entry, "entity_id")))
     ]
     resolved: dict[str, str] = {}
-    for role, exact_identifiers in _ROLE_IDENTIFIERS.items():
+    for role, exact_identifiers in ROLE_IDENTIFIERS.items():
         ranked: list[tuple[int, str]] = []
         for sibling in siblings:
             entity_id = str(_value(sibling, "entity_id") or "")
             if not entity_id or entity_id.startswith("vacuum."):
                 continue
-            score = _role_score(sibling, role, exact_identifiers, vacuum_platform)
+            score = _role_score(
+                sibling, role, exact_identifiers, integration_adapter
+            )
             if score:
+                if _is_available(states.get(entity_id)):
+                    score += 2
                 ranked.append((score, entity_id))
         if not ranked:
             continue
@@ -130,28 +147,92 @@ def _signals_for_device(
     return resolved
 
 
+def _verified_related_dock_ids(
+    device_id: Any,
+    devices: dict[str, Any],
+    integration_adapter: str,
+) -> set[str]:
+    """Link one separate Roborock dock only when registry metadata is exact.
+
+    Home Assistant may expose the robot and dock as separate device-registry
+    entries without ``via_device_id``.  Model prefix + manufacturer + shared
+    config entry is deterministic.  Multiple matches fail closed.
+    """
+    if integration_adapter != "roborock" or not device_id:
+        return set()
+    robot = devices.get(device_id)
+    robot_model = normalize_identifier(_value(robot, "model"))
+    robot_manufacturer = normalize_identifier(_value(robot, "manufacturer"))
+    robot_entries = _config_entries(robot)
+    if not robot_model or not robot_manufacturer or not robot_entries:
+        return set()
+
+    candidates: list[str] = []
+    for candidate_id, candidate in devices.items():
+        if candidate_id == device_id:
+            continue
+        if normalize_identifier(_value(candidate, "manufacturer")) != robot_manufacturer:
+            continue
+        candidate_model = normalize_identifier(_value(candidate, "model"))
+        is_matching_dock = (
+            candidate_model == f"{robot_model}_dock"
+            or (
+                candidate_model.startswith(f"{robot_model}_")
+                and candidate_model.endswith("dock")
+            )
+        )
+        if not is_matching_dock:
+            continue
+        if not robot_entries.intersection(_config_entries(candidate)):
+            continue
+        candidates.append(str(candidate_id))
+    return {candidates[0]} if len(candidates) == 1 else set()
+
+
+def _config_entries(device: Any) -> set[str]:
+    entries = _value(device, "config_entries")
+    if isinstance(entries, (set, frozenset, list, tuple)):
+        return {str(entry) for entry in entries if entry}
+    return set()
+
+
 def _role_score(
-    record: Any, role: str, exact_identifiers: set[str], vacuum_platform: Any
+    record: Any, role: str, exact_identifiers: set[str], integration_adapter: Any
 ) -> int:
     translation = normalize_identifier(_value(record, "translation_key"))
     platform = normalize_identifier(_value(record, "platform"))
-    vacuum_platform = normalize_identifier(vacuum_platform)
-    vendor_identifiers = _PLATFORM_ROLE_IDENTIFIERS.get(vacuum_platform, {}).get(
-        role, set()
+    adapter = normalize_identifier(integration_adapter)
+    vendor_identifiers = ADAPTER_ROLE_IDENTIFIERS.get(adapter, {}).get(role, ())
+    platform_matches_adapter = bool(
+        platform
+        and (
+            platform == adapter
+            or (adapter == "valetudo" and platform == "mqtt")
+        )
     )
-    same_platform = bool(platform and platform == vacuum_platform)
-    if same_platform and translation in vendor_identifiers:
-        return 140
-    if translation in exact_identifiers:
-        return 120 if same_platform else 100
+    if platform_matches_adapter and translation in vendor_identifiers:
+        # Earlier tuple entries are stronger when an integration exposes
+        # several similar sensors (Dreame state > status > task_status).
+        return 160 - vendor_identifiers.index(translation) * 10
+    if adapter != "valetudo":
+        return 0
+    # Friendly/original names are not a machine contract and may be localized
+    # or user-edited.  Valetudo's canonical MQTT discovery is the sole
+    # documented exception when translation_key is absent.
+    if not (adapter == "valetudo" and platform == "mqtt"):
+        return 0
     values = (
         normalize_identifier(_value(record, "original_name")),
         normalize_identifier(_value(record, "entity_id")),
     )
+    vendor_identifier_set = set(vendor_identifiers)
+    all_identifiers = exact_identifiers | vendor_identifier_set
+    if any(value in vendor_identifiers for value in values) and platform_matches_adapter:
+        return 110
     if any(value in exact_identifiers for value in values):
-        return 90 if same_platform else 70
-    if any(any(identifier in value for identifier in exact_identifiers) for value in values):
-        return 50 if same_platform else 30
+        return 90 if platform_matches_adapter else 70
+    if any(any(identifier in value for identifier in all_identifiers) for value in values):
+        return 50 if platform_matches_adapter else 30
     return 0
 
 

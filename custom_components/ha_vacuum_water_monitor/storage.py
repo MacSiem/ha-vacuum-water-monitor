@@ -168,7 +168,9 @@ class VacuumWaterStorage:
             "initialized": False,
             "last_reset_iso": None,
             "last_status": None,
+            "last_dock_status": None,
             "last_area": None,
+            "last_duration_seconds": None,
             "last_dock_err": None,
             "last_door": None,
             "last_reset_ts": 0,
@@ -178,6 +180,18 @@ class VacuumWaterStorage:
             "last_accounting_rate_ml": None,
             "last_accounting_evidence": None,
             "last_accounting_reason": None,
+            "last_tick_ts": 0,
+            "water_empty_active": False,
+            "water_anchor_source": None,
+            "water_anchor_kind": None,
+            "water_anchor_confidence": None,
+            "water_anchor_candidate_source": None,
+            "water_anchor_candidate_since_ts": 0,
+            "last_low_water_ts": 0,
+            "calibration_factor": 1.0,
+            "calibration_samples": 0,
+            "last_calibration_predicted_ml": None,
+            "last_calibration_target_ml": None,
         }
 
     @classmethod
