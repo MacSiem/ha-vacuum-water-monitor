@@ -80,6 +80,57 @@ _MOP_DISABLED_MODES = {
     "dry",
 }
 
+# Water-output levels that mean no water is dispensed.  MIoT models publish
+# this as an enum ("Close" on several Xiaomi devices) or as level 0.
+_MOP_INTENSITY_OFF = {
+    "off",
+    "0",
+    "none",
+    "close",
+    "closed",
+    "no_water",
+}
+
+# Documented level tokens that positively mean water is being dispensed.  An
+# unrecognized token is never read as evidence: ``ha_xiaomi_home`` renders enum
+# options from localized MIoT descriptions, so matching arbitrary text would
+# turn a translated "off" into "mopping".
+_MOP_INTENSITY_ON = {
+    "low",
+    "mild",
+    "light",
+    "medium",
+    "moderate",
+    "standard",
+    "normal",
+    "high",
+    "intense",
+    "strong",
+    "max",
+    "maximum",
+    "ultrahigh",
+    "ultra_high",
+    "custom",
+}
+
+
+def _intensity_water_state(value: str | None) -> bool | None:
+    """Return True when a level dispenses water, False for off, None if unknown.
+
+    Numeric levels are authoritative; ``_normalized_signal`` turns ``0.0`` into
+    ``0_0``, so the decimal form is restored before parsing.
+    """
+    if value is None or value == "":
+        return None
+    numeric = _float_or_none(value.replace("_", ".") if "_" in value else value)
+    if numeric is not None:
+        return numeric > 0
+    if value in _MOP_INTENSITY_OFF:
+        return False
+    if value in _MOP_INTENSITY_ON:
+        return True
+    return None
+
 
 async def async_tick_water_state(
     hass: HomeAssistant, storage: VacuumWaterStorage
@@ -191,6 +242,8 @@ def tick_device(
         mop_mode,
         mop_attached,
         water_box_attached,
+        mop_intensity=mop_intensity,
+        intensity_is_evidence=bool(device.get("mop_intensity_is_evidence")),
         require_evidence=bool(device.get("mop_evidence_required")),
     )
     cleaning_active = _binary_active(
@@ -726,9 +779,23 @@ def _is_mop_active(
     mop_attached: bool | None,
     water_box_attached: bool | None = None,
     *,
+    mop_intensity: str | None = None,
+    intensity_is_evidence: bool = False,
     require_evidence: bool = False,
 ) -> bool:
     if mop_attached is False or water_box_attached is False:
+        return False
+    # Only integrations whose adapter declares the level to be a genuine
+    # water-output control take part in this rule.  Several adapters bind
+    # ``mop_intensity`` to something else entirely — Roomba maps it to
+    # ``fan_speed`` — and Ecovacs' ``water_amount`` has no "off" option at all,
+    # so reading either as proof of mopping would bill plain vacuuming as water.
+    water_state = (
+        _intensity_water_state(mop_intensity) if intensity_is_evidence else None
+    )
+    # A water-output level of zero means no water reaches the floor, so it
+    # ends mopping regardless of any mode label.
+    if water_state is False:
         return False
     for value in (cleaning_mode, mop_mode):
         if value in _MOP_DISABLED_MODES:
@@ -740,6 +807,13 @@ def _is_mop_active(
     if mop_mode is not None:
         return mop_mode not in _MOP_DISABLED_MODES
     if mop_attached is True or water_box_attached is True:
+        return True
+    # Several MIoT integrations (Xiaomi H50/H50 Pro via xiaomi_home) expose a
+    # water-output level but no mop-mode or attachment entity.  A recognized
+    # non-zero level is direct evidence that water is being dispensed, and
+    # without it these vacuums fail the evidence gate forever and never accrue
+    # usage.  An unrecognized (possibly localized) token proves nothing.
+    if water_state is True:
         return True
     if require_evidence:
         return False

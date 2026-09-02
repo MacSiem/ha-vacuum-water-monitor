@@ -236,6 +236,8 @@ def apply_custom_calibration(
         if profile.get(key) is not None:
             effective.setdefault(key, profile[key])
 
+    _apply_signal_overrides(effective, settings)
+
     calibration = _merged_custom_calibration(effective, settings)
     profile_usage = _with_default_rate(
         _valid_rate_mapping(profile.get("usage_ml_per_m2"))
@@ -552,6 +554,60 @@ def _normalize_calibration_layer(layer: dict[str, Any]) -> dict[str, Any]:
             )
         normalized.pop(legacy, None)
     return normalized
+
+
+def _apply_signal_overrides(
+    device: dict[str, Any], settings: dict[str, Any]
+) -> None:
+    """Bind roles the user assigned by hand in the card.
+
+    Automatic discovery fails closed for integrations this build has never
+    seen, and refuses to guess between two equally ranked measurements.  Both
+    are correct defaults, but they leave the user with a silent zero.  An
+    explicit assignment is the most recent human decision about this device,
+    so it wins over discovery and over authored YAML alike; clearing the field
+    in the card restores automatic resolution.
+    """
+    overrides = settings.get("signal_overrides")
+    if not isinstance(overrides, dict):
+        return
+    entry = overrides.get(str(device.get("vacuum_entity") or ""))
+    if not isinstance(entry, dict):
+        return
+    signals = device.get("signals")
+    signals = dict(signals) if isinstance(signals, dict) else {}
+    # An assignment is only honoured for an entity that actually belongs to
+    # this vacuum's device.  Binding another robot's area counter would make
+    # both devices consume from one measurement without any visible symptom.
+    siblings = device.get("sibling_entities")
+    assignable = {
+        str(item.get("entity_id"))
+        for item in siblings
+        if isinstance(item, dict) and item.get("entity_id")
+    } if isinstance(siblings, list) and siblings else set()
+    applied = False
+    for role, entity_id in entry.items():
+        role = str(role)
+        if role not in _DIRECT_SIGNAL_FIELDS:
+            continue
+        if not isinstance(entity_id, str) or not entity_id.strip():
+            continue
+        entity_id = entity_id.strip()
+        if assignable and entity_id not in assignable:
+            continue
+        device[role] = entity_id
+        signals[role] = entity_id
+        applied = True
+    if applied:
+        device["signals"] = signals
+        device["signal_overrides_applied"] = sorted(
+            role
+            for role in entry
+            if str(role) in _DIRECT_SIGNAL_FIELDS
+            and isinstance(entry[role], str)
+            and entry[role].strip()
+            and (not assignable or entry[role].strip() in assignable)
+        )
 
 
 def _resolve_model_key(device: dict[str, Any]) -> str:

@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.3.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.4.0 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -2401,6 +2401,22 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (value != null && !explicit.has(key)) merged[key] = value;
     }
     if (descriptor.name && (!merged.name || merged.name === merged.vacuum_entity)) merged.name = descriptor.name;
+    // A hand-picked assignment from the Settings tab is the most recent human
+    // decision about this device, so it wins over discovery here exactly as it
+    // does in the backend tick — otherwise the card would render one binding
+    // while the water counter used another.
+    const signalOverrides = this._signalOverridesFor(merged.vacuum_entity);
+    const overriddenRoles = Object.keys(signalOverrides).filter(role => this._overridableSignalRoles().has(role));
+    if (overriddenRoles.length) {
+      const overriddenSignals = { ...(merged.signals && typeof merged.signals === 'object' ? merged.signals : {}) };
+      for (const role of overriddenRoles) {
+        const entityId = signalOverrides[role];
+        if (typeof entityId !== 'string' || !entityId.trim()) continue;
+        merged[role] = entityId.trim();
+        overriddenSignals[role] = entityId.trim();
+      }
+      merged.signals = overriddenSignals;
+    }
     return merged;
   }
 
@@ -3692,6 +3708,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
           </div>
         </div>
 
+        <!-- Signal mapping -->
+        ${this._buildSignalMappingSection(device)}
+
         <!-- Refill methods -->
         <div style="background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px">
           <div style="font-size:14px;font-weight:700;color:var(--bento-text);margin-bottom:4px;display:flex;align-items:center;gap:8px">
@@ -3778,6 +3797,128 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <button id="refill-sensor-save" style="${btnPrimary}">\uD83D\uDD17 Save and create automation</button>
           ${rc.sensorEntity ? '<button id="refill-sensor-remove" style="' + btnSt + ';background:rgba(239,68,68,0.08);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">\uD83D\uDDD1\uFE0F Remove</button>' : ''}
           <span id="refill-sensor-status" style="font-size:11px"></span>
+        </div>
+      </div>`;
+  }
+
+  // ── SIGNAL MAPPING ─────────────────────────────────────────────────────────
+
+  // Roles offered for manual assignment, in the order they are rendered.
+  _signalRoleCatalog() {
+    return [
+      ['status_sensor', 'Vacuum status'],
+      ['area_sensor', 'Cleaned area'],
+      ['duration_sensor', 'Cleaning time'],
+      ['mop_mode_entity', 'Mop mode'],
+      ['mop_intensity_entity', 'Water output level'],
+      ['cleaning_mode_entity', 'Cleaning mode'],
+      ['mop_attached_sensor', 'Mop attached'],
+      ['water_box_attached_sensor', 'Water tank attached'],
+      ['water_shortage_sensor', 'Water shortage'],
+      ['dock_clean_water_sensor', 'Dock clean water'],
+      ['dock_dirty_water_sensor', 'Dock dirty water'],
+    ];
+  }
+
+  // Roles the backend accepts as an override — mirrors _DIRECT_SIGNAL_FIELDS so
+  // the card never binds a stored override the tick would ignore, and never
+  // writes a non-signal device field from stored settings.
+  _overridableSignalRoles() {
+    return new Set([
+      'status_sensor', 'cleaning_active_sensor', 'area_sensor', 'duration_sensor',
+      'mop_mode_entity', 'mop_intensity_entity', 'cleaning_mode_entity',
+      'mop_attached_sensor', 'water_box_attached_sensor', 'water_box_detached_sensor',
+      'water_shortage_sensor', 'dock_clean_water_sensor', 'dock_dirty_water_sensor',
+      'dock_error_sensor', 'dock_status_sensor', 'water_error_sensor',
+      'tank_level_sensor', 'dock_tank_level_sensor',
+    ]);
+  }
+
+  _signalOverridesFor(vacuumEntity) {
+    const all = this._serverState?.settings?.signal_overrides;
+    if (!all || typeof all !== 'object') return {};
+    const entry = all[String(vacuumEntity || '')];
+    return entry && typeof entry === 'object' ? entry : {};
+  }
+
+  _buildSignalMappingSection(device) {
+    const sectionSt = 'background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px;margin-bottom:16px';
+    const header = `
+      <div style="font-size:14px;font-weight:700;color:var(--bento-text);margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        \uD83D\uDD17 Signal mapping
+      </div>
+      <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:12px;line-height:1.5">
+        The card detects your robot's entities automatically. If the vacuum is not fully recognised, correct or complete the assignment here \u2014 an entity you pick wins over automatic detection, and <strong>Automatic</strong> gives detection back.
+      </div>`;
+
+    const vacId = String(device?.vacuum_entity || '');
+    if (!vacId) {
+      return `
+        <div style="${sectionSt}">
+          ${header}
+          <div style="font-size:12px;color:var(--bento-text-secondary);line-height:1.5">Add a vacuum first \u2014 entity assignment is stored per device.</div>
+        </div>`;
+    }
+
+    const signals = device?.signals && typeof device.signals === 'object' ? device.signals : {};
+    const overrides = this._signalOverridesFor(vacId);
+    const ambiguous = new Set((Array.isArray(device?.ambiguous_roles) ? device.ambiguous_roles : []).map(role => String(role)));
+    const siblings = (Array.isArray(device?.sibling_entities) ? device.sibling_entities : [])
+      .filter(entry => entry && typeof entry === 'object' && entry.entity_id);
+
+    const optionLabel = (entry) => {
+      const entityId = String(entry.entity_id);
+      const name = this._sanitize(String(entry.name || entityId));
+      const extras = [entry.device_class, entry.unit_of_measurement]
+        .filter(value => value != null && String(value) !== '')
+        .map(value => this._sanitize(String(value)));
+      return `${name} \u2014 ${entityId}${extras.length ? ' \u00B7 ' + extras.join(' \u00B7 ') : ''}`;
+    };
+
+    const rowSt = 'padding:10px 12px;margin-bottom:8px;background:var(--vwm-bg,#fff);border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:10px';
+    const rowWarnSt = 'padding:10px 12px;margin-bottom:8px;background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.45);border-radius:10px';
+    const selectSt = 'width:100%;margin-top:6px;padding:7px 10px;border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:12px;background:var(--vwm-bg,#fff);color:var(--vwm-text,#1e293b);font-family:Inter,sans-serif';
+    const labelSt = 'font-size:12px;font-weight:700;color:var(--bento-text)';
+
+    const rows = this._signalRoleCatalog().map(([role, label]) => {
+      const current = String(overrides[role] ?? signals[role] ?? '');
+      const listed = siblings.some(entry => String(entry.entity_id) === current);
+      const options = ['<option value="">Automatic</option>'];
+      if (current && !listed) {
+        options.push(`<option value="${_esc(current)}" selected>${_esc(current)} (currently bound)</option>`);
+      }
+      for (const entry of siblings) {
+        const entityId = String(entry.entity_id);
+        options.push(`<option value="${_esc(entityId)}"${entityId === current ? ' selected' : ''}>${_esc(optionLabel(entry))}</option>`);
+      }
+      // Once the user has assigned this role by hand, the backend's ambiguity
+      // is settled — keeping the warning would make a resolved row look broken.
+      const isAmbiguous = ambiguous.has(role) && !overrides[role];
+      return `
+        <div style="${isAmbiguous ? rowWarnSt : rowSt}">
+          <div style="${labelSt}">
+            ${_esc(label)}
+            ${isAmbiguous ? '<span style="margin-left:6px;font-size:11px;font-weight:600;color:#b45309">\u26A0\uFE0F several candidates found \u2014 please confirm</span>' : ''}
+          </div>
+          <select class="vwm-signal-select" id="vwm-signal-${_esc(role)}" data-role="${_esc(role)}" style="${selectSt}">
+            ${options.join('')}
+          </select>
+        </div>`;
+    }).join('');
+
+    const noSiblings = siblings.length === 0 ? `
+      <div style="margin-bottom:10px;padding:10px 14px;background:rgba(245,158,11,0.1);border:1.5px solid rgba(245,158,11,0.25);border-radius:10px;font-size:12px;line-height:1.5;color:var(--vwm-text,#1e293b)">
+        \u26A0\uFE0F Home Assistant reports no assignable entities for <strong>${_esc(vacId)}</strong>. The robot's sensors have to belong to the same HA device before they can be mapped here.
+      </div>` : '';
+
+    return `
+      <div style="${sectionSt}">
+        ${header}
+        ${noSiblings}
+        ${rows}
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <button id="vwm-signal-save" style="padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:#fff;font-weight:600;font-size:12px;cursor:pointer;font-family:Inter,sans-serif">\uD83D\uDCBE Save signal mapping</button>
+          <span id="vwm-signal-status" role="status" aria-live="polite" style="font-size:11px;color:var(--bento-text-secondary)"></span>
         </div>
       </div>`;
   }
@@ -4355,6 +4496,65 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._render();
       });
     }
+
+    // Signal mapping: manual entity assignment for roles auto-discovery could
+    // not resolve (or resolved ambiguously). Stored per vacuum in the HA Store.
+    const signalSave = sr.querySelector('#vwm-signal-save');
+    if (signalSave) {
+      signalSave.addEventListener('click', async () => {
+        const status = sr.querySelector('#vwm-signal-status');
+        const vacuumId = String(device?.vacuum_entity || '');
+        if (!vacuumId) {
+          if (status) status.innerHTML = '<span style="color:#ef4444">\u26A0\uFE0F No vacuum selected.</span>';
+          return;
+        }
+        const all = { ...(this._serverState?.settings?.signal_overrides || {}) };
+        const previous = all[vacuumId] && typeof all[vacuumId] === 'object' ? all[vacuumId] : {};
+        const entry = { ...previous };
+        // Compare against the raw backend descriptor, not `device.signals`:
+        // the latter already has any stored override applied, so it would
+        // always compare equal and no change could ever be saved.
+        const descriptor = this._backendDescriptor(device);
+        const autoSignals = descriptor?.signals && typeof descriptor.signals === 'object' ? descriptor.signals : {};
+        const explicitKeys = this._explicitDeviceKeys(device);
+        const ambiguousRoles = new Set((Array.isArray(device?.ambiguous_roles) ? device.ambiguous_roles : []).map(r => String(r)));
+        sr.querySelectorAll('.vwm-signal-select').forEach(select => {
+          const role = select.dataset.role;
+          if (!role) return;
+          const value = String(select.value || '').trim();
+          // Baseline is what this role would resolve to with no override at
+          // all: an authored YAML field where present, otherwise discovery.
+          // Comparing against discovery alone would silently pin a YAML value
+          // as an override and make later YAML edits stop taking effect.
+          const baseline = explicitKeys.has(role)
+            ? String(device?.[role] ?? '')
+            : String(autoSignals[role] ?? '');
+          // Only a genuine correction is stored, so confirming what discovery
+          // already found does not pin the role and the device keeps
+          // benefiting from future detection improvements. An ambiguous role
+          // is the exception: there the confirmation is the point, and it also
+          // clears the warning.
+          if (value && (value !== baseline || ambiguousRoles.has(role))) entry[role] = value;
+          else delete entry[role];
+        });
+        if (Object.keys(entry).length) all[vacuumId] = entry;
+        else delete all[vacuumId];
+        signalSave.disabled = true;
+        signalSave.textContent = '\u23F3 Saving...';
+        if (status) { status.textContent = 'Saving to Home Assistant\u2026'; status.style.color = 'var(--bento-text-secondary)'; }
+        const result = await this._saveServerSettings({ signal_overrides: all });
+        const currentSave = sr.querySelector('#vwm-signal-save');
+        const currentStatus = sr.querySelector('#vwm-signal-status');
+        if (currentSave) { currentSave.disabled = false; currentSave.textContent = '\uD83D\uDCBE Save signal mapping'; }
+        if (!result.ok) {
+          if (currentStatus) currentStatus.innerHTML = '<span style="color:#ef4444">\u274C Could not save signal mapping. Please try again.</span>';
+          return;
+        }
+        if (currentStatus) currentStatus.innerHTML = '<span style="color:#22c55e">\u2705 Saved \u2014 signal mapping applied.</span>';
+        setTimeout(() => this._render(), 1500);
+      });
+    }
+
     // Add manual vacuum
     const addManualBtn = sr.querySelector('#btn-add-manual-vacuum');
     if (addManualBtn) {

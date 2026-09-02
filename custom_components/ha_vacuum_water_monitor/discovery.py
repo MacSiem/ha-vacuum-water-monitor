@@ -8,8 +8,10 @@ from .integration_adapters import (
     ADAPTER_ATTRIBUTE_BINDINGS,
     ADAPTER_DESCRIPTOR_METADATA,
     ADAPTER_ROLE_IDENTIFIERS,
+    MIOT_ADAPTERS,
     ROLE_IDENTIFIERS,
     adapter_for,
+    miot_role_rank_for,
 )
 from .profiles import normalize_identifier, resolve_profile
 
@@ -93,10 +95,54 @@ def _descriptor(
     )
     descriptor.update(resolve_profile(metadata))
     signal_device_ids = {device_id, *related_dock_ids} if device_id else set()
-    descriptor["signals"] = _signals_for_device(
+    descriptor["signals"], descriptor["ambiguous_roles"] = _signals_for_device(
         signal_device_ids, integration_adapter, entities, states
     )
+    descriptor["sibling_entities"] = _sibling_entities(
+        signal_device_ids, entities, states
+    )
     return descriptor
+
+
+def _sibling_entities(
+    device_ids: Any, entities: list[Any], states: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """List same-device entities the user can assign to a role by hand.
+
+    Automatic resolution fails closed for integrations this build has never
+    seen.  Returning the candidates anyway is what lets the card offer a manual
+    assignment instead of leaving the user with a silent zero.
+    """
+    if not device_ids:
+        return []
+    if not isinstance(device_ids, (set, frozenset, list, tuple)):
+        device_ids = {device_ids}
+    siblings: list[dict[str, Any]] = []
+    for entry in entities:
+        entity_id = str(_value(entry, "entity_id") or "")
+        if not entity_id or entity_id.startswith("vacuum."):
+            continue
+        if _value(entry, "device_id") not in set(device_ids):
+            continue
+        if _value(entry, "disabled_by"):
+            continue
+        attributes = _attributes(states.get(entity_id))
+        siblings.append(
+            {
+                "entity_id": entity_id,
+                "domain": entity_id.split(".", 1)[0],
+                "name": attributes.get("friendly_name")
+                or _value(entry, "original_name")
+                or entity_id,
+                "translation_key": _value(entry, "translation_key"),
+                "device_class": attributes.get("device_class")
+                or _value(entry, "original_device_class"),
+                "unit_of_measurement": attributes.get("unit_of_measurement"),
+                "state_class": attributes.get("state_class"),
+            }
+        )
+    siblings.sort(key=lambda item: item["entity_id"])
+    return siblings
 
 
 def _signals_for_device(
@@ -104,16 +150,23 @@ def _signals_for_device(
     integration_adapter: Any,
     entities: list[Any],
     states: dict[str, Any],
-) -> dict[str, str]:
+) -> tuple[dict[str, str], list[str]]:
     """Resolve roles among enabled siblings using adapter-owned contracts.
 
     Some integrations, notably Dreame, intentionally mark mode entities
     unavailable during a run.  Keeping an exact registry binding lets the tick
     resume when the entity returns; availability is evaluated when its value is
     consumed.  Unknown/uncontracted platforms still fail closed.
+
+    Returns the resolved roles and the roles that had more than one equally
+    strong candidate.  A tie is resolved deterministically rather than dropped:
+    HA Core's ``xiaomi_miio`` registers ``is_water_box_attached`` twice for
+    mop-capable models, and silently discarding the role there removed the mop
+    evidence for every such vacuum.  The ambiguity is reported so the card can
+    ask the user to confirm the binding.
     """
     if not device_ids:
-        return {}
+        return {}, []
     if not isinstance(device_ids, (set, frozenset, list, tuple)):
         device_ids = {device_ids}
     else:
@@ -125,6 +178,7 @@ def _signals_for_device(
         and not _value(entry, "disabled_by")
     ]
     resolved: dict[str, str] = {}
+    ambiguous: list[str] = []
     for role, exact_identifiers in ROLE_IDENTIFIERS.items():
         ranked: list[tuple[int, str]] = []
         for sibling in siblings:
@@ -141,10 +195,44 @@ def _signals_for_device(
         if not ranked:
             continue
         highest = max(score for score, _ in ranked)
-        candidates = [entity_id for score, entity_id in ranked if score == highest]
-        if len(candidates) == 1:
-            resolved[role] = candidates[0]
-    return resolved
+        candidates = sorted(
+            entity_id for score, entity_id in ranked if score == highest
+        )
+        if len(candidates) > 1:
+            ambiguous.append(role)
+            if role not in _TIE_BREAKABLE_ROLES or highest < _TIE_BREAK_MIN_SCORE:
+                # Anything outside the interchangeable-attachment set feeds a
+                # quantity, a rate key or a calibration anchor, and a weak
+                # substring match is not a contract.  The role stays unbound
+                # and the card asks the user to choose.
+                continue
+        # Equal binary attachment evidence is interchangeable, so a tie there is
+        # resolved rather than dropped.  HA Core's ``xiaomi_miio`` registers
+        # ``is_water_box_attached`` twice for mop-capable models; dropping it
+        # removed the mop evidence for every such vacuum.  Shortest entity_id
+        # wins because Home Assistant appends ``_2`` to the later duplicate,
+        # which makes the choice independent of registry iteration order.
+        resolved[role] = min(candidates, key=lambda value: (len(value), value))
+    return resolved, ambiguous
+
+
+# The only roles whose equally ranked candidates are genuinely interchangeable:
+# they report the same physical attachment as a binary.  Every other role feeds
+# either a quantity (area, duration, tank level), a rate key (mop mode and
+# intensity, cleaning mode) or a calibration anchor (shortage, dock water and
+# error states) whose wrong pick silently changes the reported millilitres — and
+# an anchor additionally trains a persisted calibration factor.
+_TIE_BREAKABLE_ROLES = frozenset(
+    {
+        "mop_attached_sensor",
+        "water_box_attached_sensor",
+        "water_box_detached_sensor",
+    }
+)
+
+# Only a contract-grade match may be tie-broken.  Valetudo's substring tier
+# scores 50/30 and routinely matches one dock sensor for several roles.
+_TIE_BREAK_MIN_SCORE = 90
 
 
 def _verified_related_dock_ids(
@@ -214,6 +302,25 @@ def _role_score(
         # Earlier tuple entries are stronger when an integration exposes
         # several similar sensors (Dreame state > status > task_status).
         return 160 - vendor_identifiers.index(translation) * 10
+    if adapter in MIOT_ADAPTERS and platform_matches_adapter:
+        # These integrations name entities after canonical MIoT properties
+        # instead of a translation_key.  The property identifies exactly one
+        # role, so an entity claimed by another role must not fall through to
+        # a weaker match here.
+        matched_role, rank, depth = miot_role_rank_for(
+            (
+                _value(record, "translation_key"),
+                _value(record, "unique_id"),
+                _value(record, "entity_id"),
+            ),
+            adapter,
+        )
+        if matched_role != role:
+            return 0
+        # Depth keeps the score above the contract floor so a MIoT match is
+        # never demoted below a substring guess, while still ranking a bare
+        # ``status`` above ``task_status`` on the same device.
+        return max(150 - rank * 5 - min(depth, 40), 100)
     if adapter != "valetudo":
         return 0
     # Friendly/original names are not a machine contract and may be localized

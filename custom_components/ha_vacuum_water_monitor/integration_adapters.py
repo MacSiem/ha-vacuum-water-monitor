@@ -8,6 +8,7 @@ becoming accounting logic.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 
@@ -140,6 +141,63 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
         "water_box_detached_sensor": ("water_tank_detached",),
         "water_shortage_sensor": ("is_water_shortage", "no_water"),
     },
+    # XiaoMi/ha_xiaomi_home publishes no ``translation_key`` at all and names
+    # entities from localized MIoT descriptions.  Its only machine-stable
+    # handle is the generated entity_id (which equals unique_id):
+    # ``<platform>.<model>_<cloud>_<did>_<miot_property>_p_<siid>_<piid>``.
+    # The aliases below are therefore canonical MIoT property names, matched
+    # as a suffix by ``miot_property_for``.  Statistical/lifetime properties
+    # (``statistical-clean-area``) are deliberately absent: they accumulate
+    # across sessions and would be read as a single run.
+    "xiaomi_home": {
+        "status_sensor": ("status",),
+        "area_sensor": ("cleaning_area", "clean_area"),
+        "duration_sensor": ("cleaning_time", "clean_time"),
+        "mop_intensity_entity": (
+            "mop_water_output_level",
+            "mop_water_output_level_no_tank",
+        ),
+        # ``mode`` is intentionally absent: suffix matching would claim every
+        # ``*_mode`` entity (dnd_mode, carpet_mode, water_mode), and MIoT
+        # ``vacuum:mode`` is suction power, not the sweep/mop distinction.
+        "cleaning_mode_entity": ("sweep_mop_type", "clean_mode"),
+        "mop_attached_sensor": ("mop_status", "sweep_mop_status"),
+        "water_box_attached_sensor": (
+            "host_water_tank_status",
+            "water_tank_status",
+            "water_box_status",
+            "water_box_exist",
+        ),
+        "water_shortage_sensor": ("water_shortage_status",),
+        "dock_clean_water_sensor": ("base_station_water_tank_status",),
+        "dock_dirty_water_sensor": ("sewage_tank_status",),
+    },
+    # al-one/hass-xiaomi-miot exposes the same MIoT properties, but prefixes
+    # ``translation_key`` with the service name (``vacuum-cleaning_area``) and
+    # suffixes ``unique_id`` with the piid (``...-vacuum-2.cleaning_area-6``).
+    # Both reduce to the same canonical property name after normalization.
+    "xiaomi_miot": {
+        "status_sensor": ("status",),
+        "area_sensor": ("cleaning_area", "clean_area"),
+        "duration_sensor": ("cleaning_time", "clean_time"),
+        "mop_intensity_entity": (
+            "mop_water_output_level",
+            "mop_water_output_level_no_tank",
+        ),
+        # See the xiaomi_home note above: bare ``mode`` is too greedy to match
+        # as a suffix and does not mean the sweep/mop distinction.
+        "cleaning_mode_entity": ("sweep_mop_type", "sweep_type", "clean_mode"),
+        "mop_attached_sensor": ("mop_status", "sweep_mop_status"),
+        "water_box_attached_sensor": (
+            "host_water_tank_status",
+            "water_tank_status",
+            "water_check_status",
+            "water_box_status",
+        ),
+        "water_shortage_sensor": ("water_shortage_status",),
+        "dock_clean_water_sensor": ("base_station_water_tank_status",),
+        "dock_dirty_water_sensor": ("sewage_tank_status",),
+    },
     # This is the HACS integration maintained at Tasshack/dreame-vacuum, not
     # an HA Core integration.  The aliases are its documented entity keys.
     "dreame_vacuum": {
@@ -172,11 +230,26 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
 }
 
 
+# Integrations whose entities carry a canonical MIoT property name rather than
+# a Home Assistant ``translation_key``.
+MIOT_ADAPTERS: frozenset[str] = frozenset({"xiaomi_home", "xiaomi_miot"})
+
+
 # Runtime behavior that is part of an integration contract rather than a
 # model profile.  Known adapters fail closed when they cannot prove that a mop
 # is active; this prevents vacuum-only runs from consuming virtual water.
+#
+# ``mop_intensity_is_evidence`` is deliberately limited to the MIoT adapters,
+# whose ``mop_intensity_entity`` is a real water-output control.  Elsewhere the
+# same role is bound to something that says nothing about water: Roomba maps it
+# to ``fan_speed``, and Ecovacs' ``water_amount`` has no "off" option, so a
+# vacuum-only run would otherwise be billed as mopping.
 ADAPTER_DESCRIPTOR_METADATA: dict[str, dict[str, Any]] = {
-    adapter: {"mop_evidence_required": True, "signal_contract_version": 1}
+    adapter: {
+        "mop_evidence_required": True,
+        "signal_contract_version": 1,
+        **({"mop_intensity_is_evidence": True} if adapter in MIOT_ADAPTERS else {}),
+    }
     for adapter in ADAPTER_ROLE_IDENTIFIERS
 }
 
@@ -199,6 +272,111 @@ ADAPTER_ATTRIBUTE_BINDINGS: dict[str, dict[str, Any]] = {
         "tank_semantics_confirmed": False,
     },
 }
+
+
+# Matching is suffix-based and always prefers the longest property, so
+# ``base-station-water-tank-status`` can never be shortened into
+# ``water-tank-status`` or ``status``.
+_MIOT_PROPERTY_ROLES: dict[str, dict[str, str]] = {
+    adapter: {
+        prop: role
+        for role, props in ADAPTER_ROLE_IDENTIFIERS[adapter].items()
+        for prop in props
+    }
+    for adapter in MIOT_ADAPTERS
+}
+
+# ``_p_<siid>_<piid>`` is appended by xiaomi_home; a bare ``_<piid>`` is left by
+# al-one's unique_id.  Both are stripped before the property is matched.
+# The trailing ``_<n>`` covers Home Assistant's collision suffix, appended when
+# a generated entity_id is already taken.
+_MIOT_ENTITY_SUFFIX = re.compile(r"_p_\d+_\d+(?:_\d+)?$")
+_MIOT_PIID_SUFFIX = re.compile(r"_\d+$")
+
+# Segments that turn a per-run property into a lifetime counter.  MIoT exposes
+# ``statistical-clean-area`` and ``total-clean-time`` beside the current-run
+# values, and a suffix match alone would accept them as the current run —
+# reading a monotonically growing total as a single session.
+_MIOT_AGGREGATE_MARKERS = frozenset(
+    {
+        "total",
+        "statistical",
+        "statistics",
+        "historical",
+        "history",
+        "accumulated",
+        "lifetime",
+        "all",
+    }
+)
+
+
+def miot_property_for(values: Any, adapter: Any) -> str | None:
+    """Return the longest canonical MIoT property named by any given value."""
+    return _miot_match(values, adapter)[0]
+
+
+def _miot_match(values: Any, adapter: Any) -> tuple[str | None, int]:
+    """Return the best MIoT property and how much text precedes it.
+
+    ``values`` are raw registry fields (translation_key, unique_id, entity_id).
+    Preferring the longest match keeps distinct reservoirs apart: the dock tank,
+    the robot tank and the plain run status all end in ``status``.
+
+    The second element counts the segments before the property.  Entities of one
+    device share the same generated prefix, so a smaller count means a cleaner
+    match: ``..._ov42gl_status_p_2_2`` beats ``..._ov42gl_task_status_p_2_9``
+    for the run-status role without either of them being discarded as a tie.
+    """
+    properties = _MIOT_PROPERTY_ROLES.get(_normalize(adapter))
+    if not properties:
+        return None, 0
+    best: str | None = None
+    best_depth = 0
+    for value in values if isinstance(values, (list, tuple, set)) else (values,):
+        candidate = _normalize(value)
+        if not candidate:
+            continue
+        candidate = _MIOT_ENTITY_SUFFIX.sub("", candidate)
+        candidate = _MIOT_PIID_SUFFIX.sub("", candidate)
+        if not candidate:
+            continue
+        for prop in properties:
+            if candidate == prop:
+                head = ""
+            elif candidate.endswith(f"_{prop}"):
+                head = candidate[: -len(prop) - 1]
+            else:
+                continue
+            if head.rsplit("_", 1)[-1] in _MIOT_AGGREGATE_MARKERS:
+                continue
+            depth = len(head.split("_")) if head else 0
+            if best is None or len(prop) > len(best):
+                best = prop
+                best_depth = depth
+            elif prop == best and depth < best_depth:
+                best_depth = depth
+    return best, best_depth
+
+
+def miot_role_rank_for(values: Any, adapter: Any) -> tuple[str | None, int, int]:
+    """Return the role named by a MIoT property, its rank and its match depth.
+
+    Rank mirrors the tuple order in ``ADAPTER_ROLE_IDENTIFIERS``: earlier
+    entries are the better signal for that role, so a device exposing both
+    ``sweep_mop_type`` and ``clean_mode`` resolves to the former instead of
+    falling through to an entity-id length tie-break.  Depth separates a clean
+    property match from one that merely ends with the same word.
+    """
+    prop, depth = _miot_match(values, adapter)
+    if prop is None:
+        return None, 0, 0
+    adapter_key = _normalize(adapter)
+    role = _MIOT_PROPERTY_ROLES.get(adapter_key, {}).get(prop)
+    if role is None:
+        return None, 0, 0
+    props = ADAPTER_ROLE_IDENTIFIERS.get(adapter_key, {}).get(role, ())
+    return role, props.index(prop) if prop in props else 0, depth
 
 
 def adapter_for(platform: Any, manufacturer: Any = None, unique_id: Any = None) -> str:

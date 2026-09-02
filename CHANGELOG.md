@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+## 5.4.0 (2026-09-02)
+
+- Added signal mapping for vacuums integrated through XiaoMi's official
+  `xiaomi_home` and through `xiaomi_miot`. Both name entities after canonical
+  MIoT properties instead of a Home Assistant `translation_key`, so previously
+  every role stayed unresolved and usage could never advance. Roles are now
+  matched on the MIoT property, always preferring the longest match so that the
+  dock tank, the robot tank and the plain run status stay distinct.
+- Added a manual **Signal mapping** section in Settings. Any role can be
+  assigned to an entity of the same device by hand, which takes precedence over
+  automatic detection; choosing *Automatic* hands the role back to detection.
+  Only a genuine correction is stored, so a device keeps benefiting from future
+  detection improvements.
+- Fixed a duplicated vendor `translation_key` silently dropping a role. HA Core
+  `xiaomi_miio` registers `is_water_box_attached` twice for mop-capable models,
+  which removed the mop evidence for every such vacuum. Interchangeable
+  binary/enum evidence is now resolved deterministically, while two competing
+  measurements (area, duration, tank level) still refuse to guess.
+- Roles with several equally ranked candidates are reported as ambiguous and
+  flagged in the card for confirmation instead of failing silently.
+- Added water-output level as mop evidence for MIoT integrations. Vacuums that
+  expose a water level but no mop-mode or mop-attachment entity, such as the
+  Xiaomi H50 and H50 Pro, previously failed the mop gate on every run. A level
+  of zero now also ends mopping regardless of any mode label. This is limited
+  to adapters whose level really is a water control: Roomba binds that role to
+  `fan_speed` and Ecovacs' `water_amount` has no off position, so reading
+  either as proof of mopping would have billed plain vacuuming as water. Only
+  recognized numeric or documented level tokens count, because these enums are
+  rendered in the user's own language.
+- Lifetime counters are no longer mistaken for the current run. `total_*` and
+  `statistical_*` properties are excluded, so a growing all-time total cannot
+  be read as one session or crowd out the real per-run sensor.
+- Descriptors expose the assignable same-device entities and their
+  `device_class`, unit and `state_class`, so the card can offer a mapping even
+  for integrations this build has never seen.
+
+Note for Xiaomi H50 and H50 Pro owners: this release makes the robot's signals
+resolve, which is what previously blocked everything. Xiaomi does not publish a
+water-consumption rate for these models, so automatic estimation still needs a
+measured calibration entered in the card — the release alone will not start the
+counter.
+
 ## 5.3.0 (2026-09-01)
 
 - Added per-integration machine-signal adapters for Roborock, Xiaomi Miio,

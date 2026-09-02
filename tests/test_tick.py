@@ -1271,5 +1271,106 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         self.assertEqual((anomalous["used_ml"], anomalous["last_area"]), (10, 30))
         self.assertEqual(anomalous["last_accounting_reason"], "area_anomaly")
 
+class MopEvidenceFromWaterOutputTests(unittest.TestCase):
+    """Water-output level is direct mop evidence for MIoT-style integrations.
+
+    Xiaomi H50 / H50 Pro via ``xiaomi_home`` expose ``mop-water-output-level``
+    but no mop-mode or mop-attachment entity.  Without this, the evidence gate
+    rejected every run and the vacuum could never accrue usage (issue #11).
+    """
+
+    def test_non_zero_water_output_level_counts_as_evidence(self) -> None:
+        self.assertTrue(
+            tick._is_mop_active(
+                None,
+                None,
+                None,
+                None,
+                mop_intensity="2",
+                intensity_is_evidence=True,
+                require_evidence=True,
+            )
+        )
+
+    def test_zero_water_output_level_ends_mopping(self) -> None:
+        for level in ("0", "0_0", "off", "close"):
+            with self.subTest(level=level):
+                self.assertFalse(
+                    tick._is_mop_active(
+                        None,
+                        None,
+                        None,
+                        None,
+                        mop_intensity=level,
+                        intensity_is_evidence=True,
+                        require_evidence=True,
+                    )
+                )
+
+    def test_absent_water_output_level_still_fails_closed(self) -> None:
+        self.assertFalse(
+            tick._is_mop_active(
+                None, None, None, None, intensity_is_evidence=True,
+                require_evidence=True,
+            )
+        )
+
+    def test_zero_level_overrides_a_mop_mode_label(self) -> None:
+        self.assertFalse(
+            tick._is_mop_active(
+                "mop", "standard", True, True, mop_intensity="off",
+                intensity_is_evidence=True, require_evidence=True,
+            )
+        )
+
+    def test_detached_mop_still_wins_over_a_stale_water_level(self) -> None:
+        self.assertFalse(
+            tick._is_mop_active(
+                None, None, False, None, mop_intensity="3",
+                intensity_is_evidence=True, require_evidence=True,
+            )
+        )
+
+    def test_localized_level_token_is_not_read_as_evidence(self) -> None:
+        """``ha_xiaomi_home`` renders enum options in the user's HA language.
+
+        Treating unrecognized text as "water flowing" would bill a translated
+        "off" as mopping, so an unknown token must prove nothing either way.
+        """
+        for token in ("wyaczony", "ausgeschaltet", "arret"):
+            with self.subTest(token=token):
+                self.assertFalse(
+                    tick._is_mop_active(
+                        None,
+                        None,
+                        None,
+                        None,
+                        mop_intensity=token,
+                        intensity_is_evidence=True,
+                        require_evidence=True,
+                    )
+                )
+
+    def test_level_is_ignored_for_adapters_that_do_not_declare_it(self) -> None:
+        """Roomba binds this role to ``fan_speed``; Ecovacs has no "off" level.
+
+        Without the adapter gate a plain vacuuming run on those integrations
+        would be billed as mopping, which is a regression for users whose
+        counters are currently correct.
+        """
+        for level in ("automatic", "medium", "high"):
+            with self.subTest(level=level):
+                self.assertFalse(
+                    tick._is_mop_active(
+                        None,
+                        None,
+                        None,
+                        None,
+                        mop_intensity=level,
+                        require_evidence=True,
+                    )
+                )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

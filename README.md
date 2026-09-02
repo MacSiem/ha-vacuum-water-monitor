@@ -74,6 +74,7 @@ status, entity-key, unit and fail-closed matrix is documented in
 |---|---|---|
 | Roborock | status, in-cleaning, area, duration, mop mode/intensity, attachments, shortage and dock state | Binary clean-box alerts are not treated as exact volume because they can also mean missing/transient refill state. |
 | Xiaomi Miio | current clean area/time, mop/tank attachment and no-water/shortage | HA Core's generic Xiaomi `water_level` sensor is not a vacuum entity and is deliberately excluded. |
+| Xiaomi Home / Xiaomi MIoT (custom) | status, cleaning area/time, mop water-output level, mop status, robot and dock tank status | These integrations name entities after canonical MIoT properties rather than a Home Assistant `translation_key`, so roles are matched on the property and the longest match always wins. Newer models such as the H50 and H50 Pro publish no water-consumption rate, so automatic estimation still needs a measured calibration. |
 | Ecovacs | stats area/time, water amount, work mode, mop attached and station state | Generic error text is diagnostic only, never a water-volume anchor. |
 | Matter RVC | vacuum activity, clean mode and operational error when Home Assistant exposes them | No area is required: supported model profiles use bounded active time, but only while `clean_mode` explicitly proves mopping. Missing or vacuum-only mode fails closed. |
 | iRobot Roomba/Braava | mission area/time attributes, tank-present and spray mode; tank percentages are discovered | Generic tank percentages are not used as clean water until a model profile confirms their semantics. |
@@ -82,6 +83,22 @@ status, entity-key, unit and fail-closed matrix is documented in
 | Dreame Vacuum (custom) | preferred `state`, area/time, water volume, cleaning mode, mop/tank and self-wash base state | `state` distinguishes washing from ordinary cleaning; temporarily unavailable dynamic entities keep their exact registry binding but are never consumed while unavailable. |
 | Valetudo MQTT | retained area/time, mode/water, attachments and clean/dirty tank enums | Area is normalized from cm². `empty` is an exact anchor; `missing` means absent hardware and never means consumed water. |
 | SwitchBot, Shark IQ, Miele, generic MQTT | only explicitly exposed/configured machine signals | No water telemetry is inferred from a generic `cleaning` state or entity name. |
+
+### Mapping signals by hand
+
+Automatic discovery fails closed: an integration this build has never seen, or
+two equally plausible candidates for the same measurement, leave the role
+unassigned rather than guessing a consumption figure. When that happens the card
+shows a **Signal mapping** section under *Settings*, listing every entity that
+belongs to the same Home Assistant device together with its `device_class` and
+unit, so the role can be assigned by hand.
+
+A manual assignment always wins over automatic detection, and selecting
+*Automatic* hands the role back. Only a genuine correction is stored, so
+confirming what discovery already found does not pin the role and the device
+keeps benefiting from future detection improvements. Roles where several
+candidates ranked equally are flagged for confirmation instead of being dropped
+silently.
 
 ## Screenshots
 

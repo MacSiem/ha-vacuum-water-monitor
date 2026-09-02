@@ -864,5 +864,109 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         )
 
 
+class ManualSignalOverrideTests(unittest.TestCase):
+    """A hand-assigned entity is the most recent human decision about a device."""
+
+    def test_override_binds_a_role_discovery_left_unresolved(self) -> None:
+        device = {
+            "vacuum_entity": "vacuum.h50_pro",
+            "signals": {"status_sensor": "sensor.h50_status"},
+        }
+        settings = {
+            "signal_overrides": {
+                "vacuum.h50_pro": {"area_sensor": "sensor.h50_cleaning_area"}
+            }
+        }
+
+        effective = apply_custom_calibration(device, settings)
+
+        self.assertEqual(effective["area_sensor"], "sensor.h50_cleaning_area")
+        self.assertEqual(
+            effective["signals"]["area_sensor"], "sensor.h50_cleaning_area"
+        )
+        self.assertEqual(
+            effective["signals"]["status_sensor"],
+            "sensor.h50_status",
+            "an override must not discard the roles discovery did resolve",
+        )
+
+    def test_override_replaces_a_wrong_automatic_binding(self) -> None:
+        device = {
+            "vacuum_entity": "vacuum.h50_pro",
+            "area_sensor": "sensor.total_area",
+            "signals": {"area_sensor": "sensor.total_area"},
+        }
+        settings = {
+            "signal_overrides": {
+                "vacuum.h50_pro": {"area_sensor": "sensor.current_area"}
+            }
+        }
+
+        effective = apply_custom_calibration(device, settings)
+
+        self.assertEqual(effective["area_sensor"], "sensor.current_area")
+        self.assertEqual(effective["signals"]["area_sensor"], "sensor.current_area")
+
+    def test_override_is_scoped_to_its_own_vacuum(self) -> None:
+        device = {"vacuum_entity": "vacuum.other", "signals": {}}
+        settings = {
+            "signal_overrides": {
+                "vacuum.h50_pro": {"area_sensor": "sensor.h50_cleaning_area"}
+            }
+        }
+
+        effective = apply_custom_calibration(device, settings)
+
+        self.assertNotIn("area_sensor", effective.get("signals", {}))
+
+    def test_entity_from_another_device_is_refused(self) -> None:
+        """Binding a foreign entity would make two vacuums share one counter."""
+        device = {
+            "vacuum_entity": "vacuum.h50_pro",
+            "signals": {},
+            "sibling_entities": [
+                {"entity_id": "sensor.h50_cleaning_area"},
+                {"entity_id": "sensor.h50_cleaning_time"},
+            ],
+        }
+        settings = {
+            "signal_overrides": {
+                "vacuum.h50_pro": {
+                    "area_sensor": "sensor.other_robot_area",
+                    "duration_sensor": "sensor.h50_cleaning_time",
+                }
+            }
+        }
+
+        effective = apply_custom_calibration(device, settings)
+
+        self.assertNotIn("area_sensor", effective.get("signals", {}))
+        self.assertEqual(
+            effective["signals"]["duration_sensor"], "sensor.h50_cleaning_time"
+        )
+        self.assertEqual(effective["signal_overrides_applied"], ["duration_sensor"])
+
+    def test_blank_and_unknown_roles_are_ignored(self) -> None:
+        device = {"vacuum_entity": "vacuum.h50_pro", "signals": {}}
+        settings = {
+            "signal_overrides": {
+                "vacuum.h50_pro": {
+                    "area_sensor": "   ",
+                    "not_a_role": "sensor.nope",
+                    "duration_sensor": "sensor.h50_cleaning_time",
+                }
+            }
+        }
+
+        effective = apply_custom_calibration(device, settings)
+
+        self.assertNotIn("area_sensor", effective.get("signals", {}))
+        self.assertNotIn("not_a_role", effective)
+        self.assertEqual(
+            effective["signals"]["duration_sensor"], "sensor.h50_cleaning_time"
+        )
+        self.assertEqual(effective["signal_overrides_applied"], ["duration_sensor"])
+
+
 if __name__ == "__main__":
     unittest.main()
