@@ -30,3 +30,6 @@ codex-runs/
 # Agent planning/review artifacts (local only)
 .superpowers/
 docs/superpowers/
+
+# Local app sprint evidence and dependency scratch
+work/

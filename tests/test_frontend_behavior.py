@@ -145,6 +145,17 @@ const diagnostics = card._buildDiagnostics({
   waterAnchorSource: 'water_shortage',
   waterAnchorKind: 'shortage',
   waterAnchorConfidence: 'estimated',
+  consumptionResolution: {
+    source: 'manufacturer_data',
+    method: 'action',
+    label: 'Manufacturer-declared, limited estimate',
+    source_type: 'manufacturer_declaration',
+    confidence: 'declared_source_limited',
+    estimate_method: 'Use the declared quantity only for the explicitly identified action.',
+    basis_ids: ['xiaomi_h50_pro_first_wash'],
+    limitations: ['Completion-counter binding is unknown'],
+    quantity: { value: 180, unit: 'ml/action' },
+  },
 });
 const hostileDiagnostics = card._buildDiagnostics({
   integrationAdapter: '<img src=x onerror=globalThis.__vwm_xss=1>',
@@ -238,6 +249,9 @@ process.stdout.write(JSON.stringify({ dock, dockEmpty, dockMissing, guidance, aw
         self.assertIn("affirmative mop mode", diagnostics)
         self.assertIn("not used automatically", diagnostics)
         self.assertIn("water_shortage", diagnostics)
+        self.assertIn("Manufacturer data", diagnostics)
+        self.assertIn("180 ml/action", diagnostics)
+        self.assertIn("not used automatically", diagnostics)
 
     def test_new_diagnostics_escape_hostile_home_assistant_values(self) -> None:
         diagnostics = self.output["hostileDiagnostics"]

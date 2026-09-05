@@ -172,7 +172,7 @@ async function smokeDraftAndCalibration(target) {
     const modelCases = [
       [{ vacuum_entity: 'vacuum.a170' }, 4000],
       [{ vacuum_entity: 'vacuum.living_room', brand_profile: 'roborock.vacuum.a170' }, 4000],
-      [{ vacuum_entity: 'vacuum.a245' }, 4000],
+      [{ vacuum_entity: 'vacuum.a245' }, 0], // No verified exact clean-water capacity
       [{ vacuum_entity: 'vacuum.xiaomi_h50' }, 4000],
       [{ vacuum_entity: 'vacuum.xiaomi_robot_vacuum_h50_pro' }, 4000],
       [{ vacuum_entity: 'vacuum.tapo_rv50_pro_omni' }, 5000]
@@ -188,25 +188,11 @@ async function smokeDraftAndCalibration(target) {
       throw new Error('Database did not activate the auto-detected a170 profile');
     }
 
-    el._config.brand_profile = 'xiaomi_h50_pro';
-    const h50Database = el._buildDatabaseTab();
-    for (const expected of ['4,000 ml clean dock', '4,000 ml dirty dock', 'up to 240 m²/fill', '180 ml pre-task', '120 ml mid-task', '5 / 8 / 10 m²']) {
-      if (!h50Database.includes(expected)) throw new Error(`H50 Pro database profile is missing: ${expected}`);
-    }
-    el._config.brand_profile = 'tapo_rv50_pro_omni';
-    const tapoDatabase = el._buildDatabaseTab();
-    for (const expected of ['5,000 ml clean dock', '4,000 ml dirty dock', '95 ml robot', '60°C wash', '3 water levels']) {
-      if (!tapoDatabase.includes(expected)) throw new Error(`Tapo database profile is missing: ${expected}`);
-    }
-    el._config.brand_profile = 'roborock_qrevo_5ae';
-    const qrevoDatabase = el._buildDatabaseTab();
-    for (const expected of ['80 ml robot', '200 rpm', '10 mm lift', '30 water levels']) {
-      if (!qrevoDatabase.includes(expected)) throw new Error(`Qrevo 5AE database profile is missing: ${expected}`);
-    }
-    el._config.brand_profile = 'roborock_qrevo_curv_2_flow';
-    const flowDatabase = el._buildDatabaseTab();
-    for (const expected of ['100 ml robot dirty', '220 rpm', '15 N', '15 mm lift']) {
-      if (!flowDatabase.includes(expected)) throw new Error(`Qrevo Curv 2 Flow database profile is missing: ${expected}`);
+    // Catalog claims are generated from the evidence-bearing backend dataset.
+    // Marketing area-per-fill and invented wash doses must not reappear.
+    const database = el._buildDatabaseTab();
+    for (const forbidden of ['180 ml pre-task', '120 ml mid-task', 'up to 240 m²/fill']) {
+      if (database.includes(forbidden)) throw new Error(`Unverified claim remains: ${forbidden}`);
     }
     el._config.brand_profile = undefined;
 

@@ -1,7 +1,7 @@
 {
   "name": "ha-vacuum-water-monitor-validation",
   "private": true,
-  "version": "5.4.0",
+  "version": "5.5.0",
   "scripts": {
     "test:smoke": "node .github/smoke.cjs"
   },

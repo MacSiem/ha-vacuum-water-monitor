@@ -1,0 +1,29 @@
+{
+  "schema_version": 2,
+  "fixture_class": "source_contract",
+  "sources": [
+    "https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/roborock/select.py",
+    "https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/ecovacs/select.py"
+  ],
+  "bindings": [
+    {"id":"roborock.water_level","integration":"roborock","role":"water_level","key":"mop_intensity","state":"present","source":"https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/roborock/select.py"},
+    {"id":"roborock.mop_mode","integration":"roborock","role":"mop_mode","key":"mop_mode","state":"present","source":"https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/roborock/select.py"},
+    {"id":"roborock.cleaning_area","integration":"roborock","role":"area","key":"cleaning_area","state":"present","source":"https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/roborock/sensor.py"},
+    {"id":"roborock.wash_completion","integration":"roborock","role":"wash_completion","key":"wash_phase","state":"unknown","source":"https://github.com/Python-roborock/python-roborock/blob/49ddc48d5fcabca3b7eb894c5657862335a0ece1/device_info.yaml"},
+    {"id":"ecovacs.water_level","integration":"ecovacs","role":"water_level","key":"water_amount","state":"present","source":"https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/ecovacs/select.py"},
+    {"id":"ecovacs.cleaning_mode","integration":"ecovacs","role":"cleaning_mode","key":"work_mode","state":"present","source":"https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/ecovacs/select.py"},
+    {"id":"ecovacs.passes","integration":"ecovacs","role":"passes","key":"clean_count","state":"present","source":"https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/ecovacs/number.py"},
+    {"id":"ecovacs.tray_clean_completion","integration":"ecovacs","role":"tray_clean_completion","key":"station_action_buttons","state":"unsupported","source":"https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/ecovacs/button.py"},
+    {"id":"ecovacs.detergent_refill","integration":"ecovacs","role":"detergent_refill","key":"detergent","state":"absent","source":"https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/ecovacs/select.py"}
+  ],
+  "settings": [
+    {"name":"task_scope","state":"unknown"},{"name":"suction_level","state":"unknown"},{"name":"carpet_policy","state":"not_applicable"},{"name":"cleaning_mode","state":"present"},{"name":"mop_mode","state":"present"},{"name":"water_level","state":"present"},{"name":"route","state":"unknown"},{"name":"passes","state":"present"},{"name":"wash_mode","state":"unknown"},{"name":"wash_frequency","state":"unknown"},{"name":"wash_temperature","state":"unknown"},{"name":"adaptive_mode","state":"unknown"},{"name":"detergent_mode","state":"absent"}
+  ],
+  "action_completion": {
+    "wash_mop":{"disposition":"unknown","evidence":"state","reason":"wash_phase is state only; no pinned completion counter/event."},
+    "tray_clean":{"disposition":"unsupported","evidence":"command","reason":"Core button action is not completion evidence."},
+    "flush":{"disposition":"unknown","evidence":"none","reason":"No pinned volume or completion signal."},
+    "refill":{"disposition":"unknown","evidence":"state","reason":"Level/state change is not a completed refill identity."},
+    "detergent_dose":{"disposition":"not_applicable","evidence":"none","reason":"No detergent sensor/action source contract; grams cannot be converted to ml."}
+  }
+}

@@ -9,7 +9,7 @@
   body.light ha-vacuum-water-monitor { --card-background-color: #ffffff; --primary-background-color: #f4f5f7; }
   body.dark { background: #111318; }
   body.dark ha-vacuum-water-monitor { --card-background-color: #1c1e26; --primary-background-color: #111318; }
-  ha-vacuum-water-monitor { display: block; width: 460px; }
+  ha-vacuum-water-monitor { display: block; width: min(460px, 100%); }
 </style>
 </head>
 <body>
@@ -64,6 +64,9 @@
     last_door: null,
   };
 
+  if (params.get('calibration') === '1') {
+    tankStates[VAC].automatic_sessions = [{ts: now - dayMs, area: 30, water: null, duration: 40, type:'automatic'}];
+  }
   const states = {};
   states[VAC] = {
     entity_id: VAC,
@@ -100,6 +103,13 @@
       if (type.endsWith('/set_settings')) {
         Object.assign(settings, (msg && msg.patch) || {});
         return { settings };
+      }
+      if (type.endsWith('/save_measurement')) {
+        if (params.get('failure') === '1') throw new Error('Synthetic offline fixture');
+        return {saved:true,sample_count:1,calibration:null};
+      }
+      if (type.endsWith('/calibration_preview')) {
+        return {kind:'contribution_draft',runtime_eligible:false,measurement:{observed_ml:msg.observed_ml}};
       }
       if (type.endsWith('/reset_tank')) {
         return { state: tankStates[VAC] };

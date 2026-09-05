@@ -1,0 +1,2217 @@
+{
+  "schema_version": 1,
+  "cutoff_date": "2026-09-05",
+  "global_inventory_complete": false,
+  "goal_complete": false,
+  "models": [
+    {
+      "profile_id": "cecotec_conga_3290",
+      "model": "Conga 3290",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "cecotec_conga_3790",
+      "model": "Conga 3790",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "commodore_cvr_200",
+      "model": "CVR 200",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_d10s_plus",
+      "model": "D10s Plus",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_d10s_pro",
+      "model": "D10s Pro",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_d9",
+      "model": "D9",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_d9_pro",
+      "model": "D9 Pro",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_f9",
+      "model": "F9",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l10_pro",
+      "model": "L10 Pro",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l10_ultra",
+      "model": "L10 Ultra",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l10s_pro_ultra",
+      "model": "L10s Pro Ultra",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l10s_pro_ultra_heat",
+      "model": "L10s Pro Ultra Heat",
+      "integration_adapters": [
+        "dreame_vacuum",
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l10s_ultra",
+      "model": "L10s Ultra",
+      "integration_adapters": [
+        "dreame_vacuum",
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l10s_ultra_gen_2",
+      "model": "L10s Ultra Gen 2",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l20_ultra",
+      "model": "L20 Ultra",
+      "integration_adapters": [
+        "dreame_vacuum",
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l30_ultra",
+      "model": "L30 Ultra",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l40_ultra",
+      "model": "L40 Ultra",
+      "integration_adapters": [
+        "dreame_vacuum",
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_l40_ultra_gen_2",
+      "model": "L40 Ultra Gen 2",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_w10",
+      "model": "W10",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_w10_pro",
+      "model": "W10 Pro",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_x30_ultra",
+      "model": "X30 Ultra",
+      "integration_adapters": [
+        "dreame_vacuum",
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_x40_master",
+      "model": "X40 Master",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_x40_ultra",
+      "model": "X40 Ultra",
+      "integration_adapters": [
+        "dreame_vacuum",
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_x50_ultra",
+      "model": "X50 Ultra",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "dreame_z10_pro",
+      "model": "Z10 Pro",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "ecovacs_deebot_n30_pro_omni",
+      "model": "ECOVACS DEEBOT N30 PRO OMNI",
+      "integration_adapters": [
+        "ecovacs"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "ecovacs_deebot_t30_pro_omni",
+      "model": "ECOVACS DEEBOT T30 PRO OMNI",
+      "integration_adapters": [
+        "ecovacs"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "ecovacs_deebot_t50_pro_omni",
+      "model": "ECOVACS DEEBOT T50 PRO OMNI",
+      "integration_adapters": [
+        "ecovacs"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "ecovacs_deebot_x1_omni",
+      "model": "ECOVACS DEEBOT X1 OMNI",
+      "integration_adapters": [
+        "ecovacs"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "ecovacs_deebot_x2_omni",
+      "model": "ECOVACS DEEBOT X2 OMNI",
+      "integration_adapters": [
+        "ecovacs"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "ecovacs_deebot_x5_hybrid",
+      "model": "ECOVACS DEEBOT X5 HYBRID",
+      "integration_adapters": [
+        "ecovacs"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "ecovacs_deebot_x8_pro_omni",
+      "model": "ECOVACS DEEBOT X8 PRO OMNI",
+      "integration_adapters": [
+        "ecovacs"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eufy_omni_c20",
+      "model": "Omni C20",
+      "integration_adapters": [],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eufy_omni_c28",
+      "model": "Omni C28",
+      "integration_adapters": [],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eufy_omni_e25",
+      "model": "Omni E25",
+      "integration_adapters": [],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eufy_omni_e28",
+      "model": "Omni E28",
+      "integration_adapters": [],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eufy_omni_s1",
+      "model": "Omni S1",
+      "integration_adapters": [],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eufy_omni_s2",
+      "model": "Omni S2",
+      "integration_adapters": [],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eufy_x10_pro_omni",
+      "model": "X10 Pro Omni",
+      "integration_adapters": [],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eureka_e20_evo_plus",
+      "model": "E20 Evo Plus",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eureka_e20_plus",
+      "model": "E20 Plus",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eureka_j12_ultra",
+      "model": "J12 Ultra",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eureka_j15_max_ultra",
+      "model": "J15 Max Ultra",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eureka_j15_pro_ultra",
+      "model": "J15 Pro Ultra",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "eureka_j15_ultra",
+      "model": "J15 Ultra",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "ikohs_netbot_ls22",
+      "model": "Netbot LS22",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "irobot_braava_jet_m6",
+      "model": "Braava jet m6",
+      "integration_adapters": [
+        "roomba"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "irobot_roomba_combo_10_max_plus_autowash_dock",
+      "model": "Roomba Combo 10 Max + AutoWash Dock",
+      "integration_adapters": [
+        "roomba"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "irobot_roomba_combo_i5",
+      "model": "Roomba Combo i5",
+      "integration_adapters": [
+        "roomba"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "irobot_roomba_combo_i5_plus",
+      "model": "Roomba Combo i5+",
+      "integration_adapters": [
+        "roomba"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "irobot_roomba_combo_j7",
+      "model": "Roomba Combo j7",
+      "integration_adapters": [
+        "roomba"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "irobot_roomba_combo_j7_plus",
+      "model": "Roomba Combo j7+",
+      "integration_adapters": [
+        "roomba"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "irobot_roomba_combo_j9_plus",
+      "model": "Roomba Combo j9+",
+      "integration_adapters": [
+        "roomba"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "mova_p10_pro_ultra",
+      "model": "P10 Pro Ultra",
+      "integration_adapters": [
+        "dreame_vacuum",
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "mova_p10_pro_ultra_gen2",
+      "model": "P10 Pro Ultra Gen2",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "mova_p20_ultra",
+      "model": "P20 Ultra",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "mova_s20_ultra",
+      "model": "S20 Ultra",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "mova_v50_ultra_complete",
+      "model": "V50 Ultra Complete",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "mova_z500",
+      "model": "Z500",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "mova_z50_ultra",
+      "model": "Z50 Ultra",
+      "integration_adapters": [
+        "dreame_vacuum"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "proscenic_m6_pro",
+      "model": "M6 Pro",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_q5_max_plus",
+      "model": "Q5 Max+",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_q7_max",
+      "model": "Q7 Max",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_q_revo",
+      "model": "Q Revo",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_2_pro",
+      "model": "Qrevo 2 Pro",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_5ae",
+      "model": "Qrevo 5AE",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_curv",
+      "model": "Qrevo Curv",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_curv_2_flow",
+      "model": "Qrevo Curv 2 Flow",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_curv_2_pro",
+      "model": "Qrevo Curv 2 Pro",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_curv_5xc",
+      "model": "Qrevo Curv 5XC",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_curvc",
+      "model": "Qrevo CurvC",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_curvx",
+      "model": "Qrevo CurvX",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_edge",
+      "model": "Qrevo Edge",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_edge_2",
+      "model": "Qrevo Edge 2",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_edge_2_flow",
+      "model": "Qrevo Edge 2 Flow",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_edge_2_pro",
+      "model": "Qrevo Edge 2 Pro",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_edge_3_pro",
+      "model": "Qrevo Edge 3 Pro",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_edge_5v1",
+      "model": "Qrevo Edge 5V1",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_edge_s5a",
+      "model": "Qrevo Edge S5A",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_edgec",
+      "model": "Qrevo EdgeC",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_edget",
+      "model": "Qrevo EdgeT",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_master",
+      "model": "Qrevo Master",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_maxv",
+      "model": "Qrevo MaxV",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_plus",
+      "model": "Qrevo Plus",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_pro",
+      "model": "Qrevo Pro",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_s",
+      "model": "Qrevo S",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_s_pro",
+      "model": "Qrevo S Pro",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_qrevo_slim",
+      "model": "Qrevo Slim",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_s5",
+      "model": "S5",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_s5_max",
+      "model": "S5 Max",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_s6",
+      "model": "S6",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_s6_pure",
+      "model": "S6 Pure",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_s7",
+      "model": "S7",
+      "integration_adapters": [
+        "roborock",
+        "valetudo",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_s7_maxv",
+      "model": "S7 MaxV",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_s7_pro_ultra",
+      "model": "S7 Pro Ultra",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_s8_maxv_ultra",
+      "model": "S8 MaxV Ultra",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_s8_pro_ultra",
+      "model": "S8 Pro Ultra",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_saros_10",
+      "model": "Saros 10",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_saros_10r",
+      "model": "Saros 10R",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_saros_20",
+      "model": "Saros 20",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_saros_20_flow",
+      "model": "Saros 20 Flow",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_saros_20_sonic",
+      "model": "Saros 20 Sonic",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "roborock_saros_z70",
+      "model": "Saros Z70",
+      "integration_adapters": [
+        "roborock",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "samsung_bespoke_jet_bot_combo_steam_plus_vr7md96514g_sp",
+      "model": "Bespoke Jet Bot Combo Steam+ VR7MD96514G/SP",
+      "integration_adapters": [
+        "smartthings"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "samsung_bespoke_jet_bot_combo_steam_vr7md96514g_eu",
+      "model": "Bespoke Jet Bot Combo Steam VR7MD96514G/EU",
+      "integration_adapters": [
+        "smartthings"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "switchbot_s10",
+      "model": "S10",
+      "integration_adapters": [
+        "switchbot_cloud"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "switchbot_s20",
+      "model": "S20",
+      "integration_adapters": [
+        "switchbot_cloud"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "tapo_rv20_max",
+      "model": "RV20 Max",
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "tapo_rv20_max_plus",
+      "model": "RV20 Max Plus",
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "tapo_rv20_mop_plus",
+      "model": "RV20 Mop Plus",
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "tapo_rv30_max",
+      "model": "RV30 Max",
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "tapo_rv30_max_plus",
+      "model": "RV30 Max Plus",
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "tapo_rv30_max_plus_gen_2",
+      "model": "RV30 Max Plus Gen 2",
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "tapo_rv30_plus",
+      "model": "RV30 Plus",
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "tapo_rv50_omni",
+      "model": "RV50 Omni",
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "tapo_rv50_pro_omni",
+      "model": "RV50 Pro Omni",
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "viomi_se",
+      "model": "SE",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "viomi_v6",
+      "model": "V6",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_1c",
+      "model": "1C",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_1t",
+      "model": "1T",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_h50",
+      "model": "Robot Vacuum H50",
+      "integration_adapters": [
+        "xiaomi_home",
+        "xiaomi_miot",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_h50_pro",
+      "model": "Robot Vacuum H50 Pro",
+      "integration_adapters": [
+        "xiaomi_home",
+        "xiaomi_miot",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_p2148",
+      "model": "P2148",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_robot_vacuum_5",
+      "model": "Robot Vacuum 5",
+      "integration_adapters": [
+        "xiaomi_home",
+        "xiaomi_miot",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_robot_vacuum_5_pro",
+      "model": "Robot Vacuum 5 Pro",
+      "integration_adapters": [
+        "xiaomi_home",
+        "xiaomi_miot",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_robot_vacuum_s10",
+      "model": "Robot Vacuum S10",
+      "integration_adapters": [
+        "xiaomi_home",
+        "xiaomi_miot",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_robot_vacuum_x10",
+      "model": "Robot Vacuum X10",
+      "integration_adapters": [
+        "xiaomi_home",
+        "xiaomi_miot",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_robot_vacuum_x20",
+      "model": "Robot Vacuum X20",
+      "integration_adapters": [
+        "xiaomi_home",
+        "xiaomi_miot",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_robot_vacuum_x20_plus",
+      "model": "Robot Vacuum X20+",
+      "integration_adapters": [
+        "xiaomi_home",
+        "xiaomi_miot",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_robot_vacuum_x20_pro",
+      "model": "Robot Vacuum X20 Pro",
+      "integration_adapters": [
+        "xiaomi_home",
+        "xiaomi_miot",
+        "xiaomi_miio"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_vacuum_mop_2_ultra",
+      "model": "Vacuum-Mop 2 Ultra",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_vacuum_mop_p",
+      "model": "Vacuum-Mop P",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
+      "profile_id": "xiaomi_x10_plus",
+      "model": "X10 Plus",
+      "integration_adapters": [
+        "valetudo"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    }
+  ],
+  "additional_researched_models": [
+    {
+      "model": "Concept VR4050",
+      "source": "https://www.my-concept.sk/img.asp?attid=56409021",
+      "ha_binding": "unknown",
+      "floor_water_levels": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "wash_modes": [
+        "standard",
+        "deep"
+      ],
+      "wash_interval_minutes": [
+        10,
+        15,
+        20
+      ],
+      "floor_rates": "unknown"
+    }
+  ],
+  "public_miot_spec_models": 356,
+  "published_action_quantities": 4
+}

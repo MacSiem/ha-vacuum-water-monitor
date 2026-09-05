@@ -511,6 +511,10 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         device = {
             "vacuum_entity": "vacuum.test",
             "water_shortage_sensor": "binary_sensor.shortage",
+            # Synthetic fixture: reservoir and measured shortage threshold explicitly confirmed.
+            "tracked_reservoir": "dock_clean",
+            "water_anchor_reservoir": "dock_clean",
+            "low_water_anchor_remaining_percent": 10,
             "tracked_capacity_ml": 5000,
         }
         initial = {
@@ -572,6 +576,10 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         device = {
             "vacuum_entity": "vacuum.test",
             "dock_error_sensor": "sensor.dock_error",
+            # Synthetic fixture: reservoir and measured shortage threshold explicitly confirmed.
+            "tracked_reservoir": "dock_clean",
+            "water_anchor_reservoir": "dock_clean",
+            "low_water_anchor_remaining_percent": 10,
             "tracked_capacity_ml": 5000,
         }
         initial = {
@@ -616,6 +624,10 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         device = {
             "vacuum_entity": "vacuum.test",
             "water_shortage_sensor": "binary_sensor.shortage",
+            # Synthetic fixture: reservoir and measured shortage threshold explicitly confirmed.
+            "tracked_reservoir": "dock_clean",
+            "water_anchor_reservoir": "dock_clean",
+            "low_water_anchor_remaining_percent": 10,
             "tracked_capacity_ml": 5000,
         }
         initial = {
@@ -670,6 +682,7 @@ class WaterAccountingTransitionTests(unittest.TestCase):
                 "vacuum_entity": "vacuum.test",
                 "water_shortage_sensor": "binary_sensor.shortage",
                 "tracked_capacity_ml": 5000,
+                "refill_on_clear": True,
             },
             {
                 "used_ml": 4500,
@@ -724,6 +737,10 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         device = {
             "vacuum_entity": "vacuum.test",
             "dock_clean_water_sensor": "sensor.freshwater",
+            # Synthetic fixture: reservoir and measured shortage threshold explicitly confirmed.
+            "tracked_reservoir": "dock_clean",
+            "water_anchor_reservoir": "dock_clean",
+            "low_water_anchor_remaining_percent": 10,
             "tracked_capacity_ml": 4000,
         }
         initial = {
@@ -775,6 +792,10 @@ class WaterAccountingTransitionTests(unittest.TestCase):
             {
                 "vacuum_entity": "vacuum.test",
                 "water_error_sensor": "sensor.water_error",
+                # Synthetic fixture: reservoir and measured shortage threshold explicitly confirmed.
+                "tracked_reservoir": "robot_clean",
+                "water_anchor_reservoir": "robot_clean",
+                "low_water_anchor_remaining_percent": 10,
                 "tracked_capacity_ml": 5000,
             },
             {

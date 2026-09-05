@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vacuum Water Monitor model catalog",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "dataset_version",
+    "cutoff_date",
+    "profiles"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "dataset_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cutoff_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "identifiers",
+          "manufacturer",
+          "model",
+          "model_ids",
+          "regional_skus",
+          "observed_ha_identifiers",
+          "integration_adapters",
+          "available_signals",
+          "reservoirs_ml",
+          "tracked_reservoir",
+          "tracked_capacity_ml",
+          "capability",
+          "confidence",
+          "verification_status",
+          "last_verified",
+          "sample_count",
+          "unsupported_unknowns",
+          "accounting",
+          "provenance"
+        ],
+        "properties": {
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "manufacturer": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "regional_skus": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "region",
+                "sku",
+                "equivalence_verified"
+              ],
+              "properties": {
+                "region": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sku": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "equivalence_verified": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "observed_ha_identifiers": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "integration_adapters": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "available_signals": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "reservoirs_ml": {
+            "type": "object",
+            "required": [
+              "dock_clean",
+              "dock_dirty",
+              "robot_clean",
+              "robot_dirty",
+              "detergent"
+            ],
+            "properties": {
+              "dock_clean": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dock_dirty": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "robot_clean": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "robot_dirty": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "detergent": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "tracked_reservoir": {
+            "enum": [
+              "dock_clean",
+              "dock_dirty",
+              "robot_clean",
+              "robot_dirty",
+              "detergent",
+              "legacy_tank",
+              null
+            ]
+          },
+          "tracked_capacity_ml": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capability": {
+            "enum": [
+              "manual_only",
+              "calibration_required"
+            ]
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "verification_status": {
+            "enum": [
+              "researched",
+              "capacity_verified"
+            ]
+          },
+          "last_verified": {
+            "type": "string",
+            "format": "date"
+          },
+          "sample_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unsupported_unknowns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "accounting": {
+            "type": "object",
+            "required": [
+              "usage_ml_per_m2",
+              "usage_ml_per_active_minute",
+              "wash_volume_ml",
+              "evidence",
+              "rate_signal"
+            ],
+            "properties": {
+              "usage_ml_per_m2": {
+                "type": "object",
+                "maxProperties": 0
+              },
+              "usage_ml_per_active_minute": {
+                "type": "object",
+                "maxProperties": 0
+              },
+              "wash_volume_ml": {
+                "type": "null"
+              },
+              "evidence": {
+                "const": "not_published"
+              },
+              "rate_signal": {
+                "type": "null"
+              }
+            },
+            "additionalProperties": false
+          },
+          "provenance": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "source_type",
+                "url",
+                "claim",
+                "last_verified"
+              ],
+              "properties": {
+                "source_type": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^https?://"
+                },
+                "claim": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "last_verified": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "retrieval_status": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

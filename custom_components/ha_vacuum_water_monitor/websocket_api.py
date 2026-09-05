@@ -14,6 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import DOMAIN, EVENT_STATE_CHANGED, signal_vacuum_water_updated
 from .storage import VacuumWaterStorage
 from .tick import list_vacuums
+from .calibration import build_contribution_draft, select_recorded_cycle
 
 
 def _storage(hass: HomeAssistant) -> VacuumWaterStorage:
@@ -119,6 +120,19 @@ async def _ws_remove_user_device(
     )
 
 
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/reprofile", vol.Required("vacuum_entity"): str})
+@websocket_api.async_response
+async def _ws_reprofile(hass, connection, msg):
+    """Explicitly refresh local profile settings; never call a vacuum service."""
+    try:
+        settings = await _storage(hass).async_reprofile(msg["vacuum_entity"])
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    _notify_store_updated(hass, {"settings": settings})
+    connection.send_result(msg["id"], {"settings": settings, "vacuums": list_vacuums(hass)})
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): f"{DOMAIN}/reset_tank",
@@ -132,6 +146,9 @@ async def _ws_reset_tank(
     msg: dict[str, Any],
 ) -> None:
     """Reset a vacuum tank counter."""
+    if not msg["vacuum_entity"].startswith("vacuum.") or hass.states.get(msg["vacuum_entity"]) is None:
+        connection.send_error(msg["id"], "invalid_payload", "Select an existing vacuum entity")
+        return
     now = datetime.now(timezone.utc)
     state = await _storage(hass).async_reset_tank(
         msg["vacuum_entity"], now.isoformat(), int(now.timestamp() * 1000)
@@ -165,6 +182,57 @@ async def _ws_dismiss_intro(
     connection.send_result(msg["id"], {"ok": True})
 
 
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/calibration_preview",
+    vol.Required("vacuum_entity"): str,
+    vol.Optional("session_index", default=0): vol.All(int, vol.Range(min=0, max=49)),
+    vol.Required("session_ts"): int,
+    vol.Optional("observed_ml"): vol.Any(int, float),
+    vol.Optional("resolution_ml"): vol.Any(int, float),
+})
+@websocket_api.async_response
+async def _ws_calibration_preview(hass, connection, msg):
+    """Read one stored cycle and return an allowlisted draft without saving it."""
+    vacuum = msg["vacuum_entity"]
+    if not vacuum.startswith("vacuum.") or hass.states.get(vacuum) is None:
+        connection.send_error(msg["id"], "invalid_payload", "Select an existing vacuum entity")
+        return
+    current = await _storage(hass).async_get_state()
+    sessions = current.get("tank_states", {}).get(vacuum, {}).get("automatic_sessions", [])
+    index = msg.get("session_index", 0)
+    try:
+        record = select_recorded_cycle(sessions, index, msg["session_ts"])
+        draft = build_contribution_draft(record, msg.get("observed_ml"), msg.get("resolution_ml"))
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    connection.send_result(msg["id"], draft)
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/save_measurement",
+    vol.Required("vacuum_entity"): str,
+    vol.Required("session_index"): vol.All(int, vol.Range(min=0, max=49)),
+    vol.Required("session_ts"): int,
+    vol.Required("measurement"): dict,
+})
+@websocket_api.async_response
+async def _ws_save_measurement(hass, connection, msg):
+    """Save an explicitly confirmed local measurement, without uploading data."""
+    vacuum = msg["vacuum_entity"]
+    if not vacuum.startswith("vacuum.") or hass.states.get(vacuum) is None:
+        connection.send_error(msg["id"], "invalid_payload", "Select an existing vacuum entity")
+        return
+    try:
+        result = await _storage(hass).async_save_measurement(
+            vacuum, msg["session_index"], msg["session_ts"], msg["measurement"])
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    _notify_store_updated(hass, {"settings": await _storage(hass).async_get_settings()})
+    connection.send_result(msg["id"], result)
+
+
 def async_register_commands(hass: HomeAssistant) -> None:
     """Register all websocket commands."""
     for handler in (
@@ -172,7 +240,10 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_get_state,
         _ws_set_settings,
         _ws_remove_user_device,
+        _ws_reprofile,
         _ws_reset_tank,
         _ws_dismiss_intro,
+        _ws_calibration_preview,
+        _ws_save_measurement,
     ):
         websocket_api.async_register_command(hass, handler)

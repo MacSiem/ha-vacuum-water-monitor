@@ -28,6 +28,27 @@ def discover_descriptors(
         key=lambda record: str(_value(record, "entity_id")),
     ):
         descriptors.append(_descriptor(vacuum, entities, devices, states))
+    # Connected components over registry identity facts. No model/name inference.
+    groups: list[tuple[set[str], list[dict[str, Any]]]] = []
+    for descriptor in descriptors:
+        record = devices.get(descriptor.get("device_id"))
+        keys = {"device:" + str(descriptor["device_id"])} if descriptor.get("device_id") else set()
+        for connection in _value(record, "connections") or []:
+            if len(connection) == 2 and connection[0] == "mac":
+                mac = normalize_identifier(connection[1]).replace("_", "")
+                if len(mac) == 12 and mac not in {"000000000000", "ffffffffffff"}:
+                    keys.add("mac:" + mac)
+        members = [descriptor]
+        for existing in list(groups):
+            if keys.intersection(existing[0]):
+                keys.update(existing[0]); members.extend(existing[1]); groups.remove(existing)
+        groups.append((keys, members))
+    for keys, members in groups:
+        group = min((str(d["entity_id"]) for d in members))
+        for descriptor in members:
+            descriptor["identity_group"] = group
+            descriptor["identity_confidence"] = "registry" if keys else "unlinked"
+            descriptor["duplicate_entities"] = sorted(d["entity_id"] for d in members if d is not descriptor)
     return descriptors
 
 
@@ -63,6 +84,7 @@ def _descriptor(
         else getattr(device, "model_id", None)
     )
     metadata = {
+        "manufacturer": _value(device, "manufacturer"),
         "entity_id": entity_id,
         "model_id": model_id,
         "model": _value(device, "model"),
@@ -79,6 +101,8 @@ def _descriptor(
         "manufacturer": _value(device, "manufacturer"),
         "model": _value(device, "model"),
         "model_id": model_id,
+        "observed_firmware": _value(device, "sw_version"),
+        "firmware": _value(device, "sw_version"),
         "source_id": _source_id(entity_id, _value(vacuum, "unique_id"), device_id),
     }
     integration_adapter = adapter_for(
@@ -287,6 +311,9 @@ def _config_entries(device: Any) -> set[str]:
 def _role_score(
     record: Any, role: str, exact_identifiers: set[str], integration_adapter: Any
 ) -> int:
+    setting_domains = {"route_entity": "select", "passes_entity": "number"}
+    if role in setting_domains and str(_value(record, "entity_id") or "").split(".")[0] != setting_domains[role]:
+        return 0
     translation = normalize_identifier(_value(record, "translation_key"))
     platform = normalize_identifier(_value(record, "platform"))
     adapter = normalize_identifier(integration_adapter)

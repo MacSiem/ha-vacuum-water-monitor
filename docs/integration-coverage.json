@@ -1,0 +1,374 @@
+{
+  "cutoff_date": "2026-09-05",
+  "core_inventory_source": "https://api.github.com/repos/home-assistant/core/git/trees/2026.9.0?recursive=1",
+  "core_tree_truncated": false,
+  "integrations": [
+    {
+      "adapter_id": "demo",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/demo",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "dreame_vacuum",
+      "official_status": "community_custom",
+      "source": "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md",
+      "contract_revision": "snapshot accessed 2026-09-05; upstream not pinned",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "ecovacs",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/ecovacs",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "lg_thinq",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/lg_thinq",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "litterrobot",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/litterrobot",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "matter",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/matter",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "miele",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/miele",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "mqtt",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/mqtt",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "neato",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/neato",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "roborock",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/roborock",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "romy",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/romy",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "roomba",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/roomba",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "sharkiq",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/sharkiq",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "smartthings",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/smartthings",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "switchbot",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/switchbot",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "switchbot_cloud",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/switchbot_cloud",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "template",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/template",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "tplink",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/tplink",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "tuya",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/tuya",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "no_automatic_water_contract",
+      "fixtures": null,
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "No canonical water-role mapping; manual configuration requires measured calibration"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "valetudo",
+      "official_status": "community_custom",
+      "source": "https://valetudo.cloud/pages/integrations/mqtt/",
+      "contract_revision": "snapshot accessed 2026-09-05; upstream not pinned",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "xiaomi_home",
+      "official_status": "manufacturer_custom",
+      "source": "https://github.com/XiaoMi/ha_xiaomi_home",
+      "contract_revision": "snapshot accessed 2026-09-05; upstream not pinned",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "xiaomi_miio",
+      "official_status": "ha_core",
+      "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/xiaomi_miio",
+      "contract_revision": "HA Core 2026.9.0",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    },
+    {
+      "adapter_id": "xiaomi_miot",
+      "official_status": "community_custom",
+      "source": "https://github.com/al-one/hass-xiaomi-miot",
+      "contract_revision": "snapshot accessed 2026-09-05; upstream not pinned",
+      "last_verified": "2026-09-05",
+      "status": "contract_tested_hardware_unverified",
+      "fixtures": "tests/fixtures/adapter_contracts.json",
+      "real_diagnostics": false,
+      "missing_data_behavior": "unknown; no dose without same-reservoir calibrated rate and affirmative mop evidence",
+      "unknowns": [
+        "Per-model firmware and regional signal presence",
+        "Minimum supported upstream version not established",
+        "No sanitized real hardware fixture"
+      ],
+      "usage_policy": "prefer Core; custom only for absent or unique canonical signals"
+    }
+  ]
+}

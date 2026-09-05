@@ -30,6 +30,20 @@ vacuum_slug = sensor_calculations.vacuum_slug
 class VacuumSensorCalculationTests(unittest.TestCase):
     """Verify Store-derived sensor helper behavior."""
 
+    def test_nonfinite_calibration_does_not_supply_rates(self):
+        for value in (float("inf"), float("nan"), True):
+            with self.subTest(value=value):
+                effective = apply_custom_calibration({"vacuum_entity":"vacuum.test"},
+                    {"custom_calibration":{"entity:vacuum.test":{"usage_ml_per_m2":{"default":value}}}})
+                self.assertFalse(effective.get("usage_ml_per_m2"))
+
+    def test_invalid_persisted_real_volume_stays_unknown(self):
+        for value in (float("inf"),float("nan"),True):
+            with self.subTest(value=value):
+                result = estimate_water_state({"water_volume_sensor":"sensor.volume"},
+                    {"last_water_volume_ml":value})
+                self.assertIsNone(result["remaining_ml"])
+
     def test_unknown_sensor_states_explain_the_required_setup_action(self) -> None:
         guidance = getattr(sensor_calculations, "setup_guidance", None)
         self.assertIsNotNone(
@@ -120,35 +134,6 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(estimate["remaining_ml"], 4000)
         self.assertEqual(estimate["remaining_percent"], 100)
         self.assertEqual(estimate["source"], "stored_estimate")
-
-    def test_estimate_water_state_model_database_via_brand_profile(self) -> None:
-        estimate = estimate_water_state(
-            {"vacuum_entity": "vacuum.living_room", "brand_profile": "dreame_x40_ultra"},
-            {"used_ml": 900, "last_reset_ts": 1},
-            {},
-        )
-
-        self.assertEqual(estimate["total_ml"], 4500)
-        self.assertEqual(estimate["remaining_ml"], 3600)
-        self.assertEqual(estimate["remaining_percent"], 80)
-
-    def test_estimate_water_state_resolves_reported_roborock_model_aliases(self) -> None:
-        cases = (
-            ({"vacuum_entity": "vacuum.a170"}, 4000),
-            (
-                {
-                    "vacuum_entity": "vacuum.living_room",
-                    "brand_profile": "roborock.vacuum.a170",
-                },
-                4000,
-            ),
-            ({"vacuum_entity": "vacuum.a245"}, 4000),
-        )
-
-        for device, expected_capacity in cases:
-            with self.subTest(device=device):
-                estimate = estimate_water_state(device, {"used_ml": 0, "last_reset_ts": 1}, {})
-                self.assertEqual(estimate["total_ml"], expected_capacity)
 
     def test_estimate_water_state_resolves_verified_new_model_capacities(self) -> None:
         cases = (
@@ -257,43 +242,6 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         )
         self.assertEqual(custom_only["wash_volume_ml"], 175)
 
-    def test_profile_area_rates_gain_a_bounded_active_time_fallback(self) -> None:
-        effective = apply_custom_calibration(
-            {
-                "vacuum_entity": "vacuum.braava",
-                "model": "iRobot Roomba Combo j7",
-            },
-            {},
-        )
-
-        self.assertEqual(effective["usage_ml_per_m2"]["default"], 4)
-        self.assertEqual(
-            effective["usage_ml_per_active_minute"],
-            {"low": 1.6, "medium": 3.2, "high": 5.6, "default": 3.2},
-        )
-        self.assertEqual(effective["estimated_m2_per_active_minute"], 0.8)
-        self.assertEqual(effective["time_accounting_evidence"], "derived_from_area_rate")
-        self.assertGreaterEqual(effective["uncertainty_percent"], 65)
-
-    def test_device_calibration_can_tune_the_active_time_area_speed(self) -> None:
-        effective = apply_custom_calibration(
-            {
-                "vacuum_entity": "vacuum.braava",
-                "model": "iRobot Roomba Combo j7",
-            },
-            {
-                "custom_calibration": {
-                    "entity:vacuum.braava": {
-                        "estimated_m2_per_active_minute": 1.0,
-                    }
-                }
-            },
-        )
-
-        self.assertEqual(effective["estimated_m2_per_active_minute"], 1.0)
-        self.assertEqual(effective["usage_ml_per_active_minute"]["default"], 4)
-
-
     def test_estimate_water_state_unknown_model_stays_unknown(self) -> None:
         estimate = estimate_water_state(
             {"vacuum_entity": "vacuum.robotic_vacuum_cleaner"},
@@ -351,7 +299,7 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(estimate["water_anchor_confidence"], "estimated")
         self.assertEqual(estimate["calibration_factor"], 1.22)
         self.assertEqual(estimate["calibration_samples"], 2)
-        self.assertEqual(estimate["uncertainty_percent"], 60)
+        self.assertIsNone(estimate["uncertainty_percent"])
 
     def test_exact_empty_anchor_reports_zero_remaining(self) -> None:
         estimate = estimate_water_state(
@@ -415,38 +363,6 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         )
 
         self.assertEqual(effective["usage_ml_per_m2"], {"standard": 9})
-        self.assertEqual(effective["wash_volume_ml"], 175)
-        self.assertEqual(effective["tracked_capacity_ml"], 4200)
-        self.assertEqual(effective["accounting_evidence"], "user_calibration")
-
-    def test_entity_calibration_overrides_profile_rates_discovered_for_that_entity(self) -> None:
-        discovered = build_vacuum_devices(
-            {},
-            {},
-            [
-                {
-                    "entity_id": "vacuum.living_room",
-                    "model": "Roborock S8 MaxV Ultra",
-                    "usage_ml_per_m2": {"fast": 4, "standard": 6, "deep": 9},
-                    "wash_volume_ml": 150,
-                    "accounting_evidence": "maintainer_estimate",
-                }
-            ],
-        )[0]
-        effective = apply_custom_calibration(
-            discovered,
-            {
-                "custom_calibration": {
-                    "entity:vacuum.living_room": {
-                        "usage_ml_per_m2": {"standard": 7.5},
-                        "wash_volume_ml": 175,
-                        "tracked_capacity_ml": 4200,
-                    }
-                }
-            },
-        )
-
-        self.assertEqual(effective["usage_ml_per_m2"]["standard"], 7.5)
         self.assertEqual(effective["wash_volume_ml"], 175)
         self.assertEqual(effective["tracked_capacity_ml"], 4200)
         self.assertEqual(effective["accounting_evidence"], "user_calibration")

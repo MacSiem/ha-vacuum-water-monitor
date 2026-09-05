@@ -12,8 +12,9 @@ The accounting gate is deliberately strict:
 2. The adapter must provide affirmative mop evidence: a mop/combined cleaning mode, an
    active mop control, or an attached mop/water tank.
 3. A model or user calibration must provide a rate for the signal axis actually exposed.
-4. Area is preferred, duration is second, and bounded wall time is used only when neither
-   counter is available. Explicit unknown units fail closed.
+4. An explicit same-reservoir mL/L volume sensor is authoritative. Otherwise area is
+   preferred and separately calibrated duration/active time is second. An unavailable
+   configured duration counter never becomes wall time. Explicit unknown units fail closed.
 
 ## Implemented adapters
 
@@ -54,16 +55,46 @@ not an exact-empty measurement.
 
 ## Primary sources
 
-- [Home Assistant Roborock sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/roborock/sensor.py), [selects](https://github.com/home-assistant/core/blob/dev/homeassistant/components/roborock/select.py), and [binary sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/roborock/binary_sensor.py)
+- [Home Assistant Roborock sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/roborock/sensor.py), [selects](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/roborock/select.py), and [binary sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/roborock/binary_sensor.py)
 - [python-roborock state codes](https://github.com/Python-roborock/python-roborock/blob/main/roborock/data/v1/v1_code_mappings.py)
-- [Home Assistant Matter RVC vacuum](https://github.com/home-assistant/core/blob/dev/homeassistant/components/matter/vacuum.py), [sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/matter/sensor.py), and [clean-mode select](https://github.com/home-assistant/core/blob/dev/homeassistant/components/matter/select.py)
-- [Home Assistant Ecovacs sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/ecovacs/sensor.py), [selects](https://github.com/home-assistant/core/blob/dev/homeassistant/components/ecovacs/select.py), [numbers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/ecovacs/number.py), and [binary sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/ecovacs/binary_sensor.py)
-- [Home Assistant Roomba/Braava vacuum attributes](https://github.com/home-assistant/core/blob/dev/homeassistant/components/roomba/vacuum.py) and [tank sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/roomba/sensor.py)
-- [Home Assistant SmartThings vacuum selects](https://github.com/home-assistant/core/blob/dev/homeassistant/components/smartthings/select.py)
-- [Home Assistant Xiaomi Miio vacuum sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/xiaomi_miio/sensor.py) and [binary sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/xiaomi_miio/binary_sensor.py)
-- [Home Assistant TP-Link vacuum sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/tplink/sensor.py) and [generic binary sensors](https://github.com/home-assistant/core/blob/dev/homeassistant/components/tplink/binary_sensor.py)
+- [Home Assistant Matter RVC vacuum](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/matter/vacuum.py), [sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/matter/sensor.py), and [clean-mode select](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/matter/select.py)
+- [Home Assistant Ecovacs sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/ecovacs/sensor.py), [selects](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/ecovacs/select.py), [numbers](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/ecovacs/number.py), and [binary sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/ecovacs/binary_sensor.py)
+- [Home Assistant Roomba/Braava vacuum attributes](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/roomba/vacuum.py) and [tank sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/roomba/sensor.py)
+- [Home Assistant SmartThings vacuum selects](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/smartthings/select.py)
+- [Home Assistant Xiaomi Miio vacuum sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/xiaomi_miio/sensor.py) and [binary sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/xiaomi_miio/binary_sensor.py)
+- [Home Assistant TP-Link vacuum sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/tplink/sensor.py) and [generic binary sensors](https://github.com/home-assistant/core/blob/2026.9.0/homeassistant/components/tplink/binary_sensor.py)
 - [Dreame Vacuum entity reference](https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md) and [state enums](https://github.com/Tasshack/dreame-vacuum/blob/master/custom_components/dreame_vacuum/dreame/types.py)
 - [Valetudo MQTT integration](https://valetudo.cloud/pages/integrations/mqtt/)
 
 When an upstream integration changes one of these contracts, update the adapter and add a
 registry-shaped regression fixture before enabling the new signal in automatic accounting.
+
+## Dated verification boundary
+
+[Machine-readable integration coverage](integration-coverage.json) inventories all 19
+HA Core 2026.9.0 vacuum platforms plus the four reviewed custom surfaces. Eleven automatic
+adapters have synthetic registry-shaped fixtures; zero have privately captured Diagnostics
+committed here. Xiaomi Home is manufacturer-maintained custom code, Xiaomi Miio is HA Core,
+Xiaomi MIoT and Dreame Vacuum are community custom code, and Valetudo is an optional local
+MQTT surface. Prefer Core whenever it supplies equivalent data; custom surfaces are for
+otherwise absent canonical properties/capabilities. Minimum-version and firmware coverage
+remain unknown where not established by a source; mutable custom upstreams need rechecking.
+
+Refill semantics are explicit: a cleared empty/shortage sensor is not full volume. A
+same-reservoir anchor and measured threshold are required for learned correction;
+`refill_on_clear` is opt-in only with a verified full-refill contract. `calibration_scope`
+separates whole-cycle measurements from floor-only plus independent wash measurement.
+# Additional setting contracts reviewed 2026-09-05
+
+Source revision: Home Assistant Core `93ecba49bd35ee65d12596d3d7f28863a63dd8fe`.
+This development snapshot does not certify an installed HA version or every model.
+
+- Roborock B01/Q7 `select.cleaning_route` uses the device clean-path mapping;
+  V1 `mop_mode` is a separate route selector. Discovery now binds the former as
+  `route_entity`, preserving the existing V1 binding. [Source](https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/roborock/select.py).
+- Ecovacs `number.clean_count` is a capability-dependent 1–4 repeat setting,
+  disabled by default. Discovery binds an enabled same-device entity as `passes_entity`.
+  It is a requested count, not proof of completed passes. [Source](https://github.com/home-assistant/core/blob/93ecba49bd35ee65d12596d3d7f28863a63dd8fe/homeassistant/components/ecovacs/number.py).
+- Both new roles require the expected entity domain and exact adapter key; changes
+  enter the accounting context and rebaseline the crossing interval. Synthetic tests
+  cover foreign/disabled/wrong-domain records. No setting is converted to water volume.

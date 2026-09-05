@@ -1,0 +1,986 @@
+{
+  "fixture_version": 2,
+  "cases": [
+    {
+      "adapter": "roborock",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/roborock",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "Roborock",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "roborock",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "roborock",
+          "translation_key": "status",
+          "unique_id": "status",
+          "original_name": "status"
+        },
+        {
+          "entity_id": "sensor.sample_1",
+          "device_id": "sample",
+          "platform": "roborock",
+          "translation_key": "cleaning_area",
+          "unique_id": "cleaning_area",
+          "original_name": "cleaning_area"
+        },
+        {
+          "entity_id": "sensor.sample_2",
+          "device_id": "sample",
+          "platform": "roborock",
+          "translation_key": "cleaning_time",
+          "unique_id": "cleaning_time",
+          "original_name": "cleaning_time"
+        },
+        {
+          "entity_id": "select.sample_3",
+          "device_id": "sample",
+          "platform": "roborock",
+          "translation_key": "mop_mode",
+          "unique_id": "mop_mode",
+          "original_name": "mop_mode"
+        },
+        {
+          "entity_id": "select.sample_4",
+          "device_id": "sample",
+          "platform": "roborock",
+          "translation_key": "mop_intensity",
+          "unique_id": "mop_intensity",
+          "original_name": "mop_intensity"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "sensor.sample_1": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "m\u00b2"
+          }
+        },
+        "sensor.sample_2": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "s"
+          }
+        },
+        "select.sample_3": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "select.sample_4": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        }
+      },
+      "expected_signals": {
+        "status_sensor": "sensor.sample_0",
+        "area_sensor": "sensor.sample_1",
+        "duration_sensor": "sensor.sample_2",
+        "mop_mode_entity": "select.sample_3",
+        "mop_intensity_entity": "select.sample_4"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "matter",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/matter",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "Example",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "matter",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "matter",
+          "translation_key": "operational_state",
+          "unique_id": "operational_state",
+          "original_name": "operational_state"
+        },
+        {
+          "entity_id": "select.sample_1",
+          "device_id": "sample",
+          "platform": "matter",
+          "translation_key": "clean_mode",
+          "unique_id": "clean_mode",
+          "original_name": "clean_mode"
+        },
+        {
+          "entity_id": "sensor.sample_2",
+          "device_id": "sample",
+          "platform": "matter",
+          "translation_key": "operational_error",
+          "unique_id": "operational_error",
+          "original_name": "operational_error"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "select.sample_1": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "sensor.sample_2": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        }
+      },
+      "expected_signals": {
+        "status_sensor": "sensor.sample_0",
+        "cleaning_mode_entity": "select.sample_1",
+        "water_error_sensor": "sensor.sample_2"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "ecovacs",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/ecovacs",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "Ecovacs",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "ecovacs",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "ecovacs",
+          "translation_key": "stats_area",
+          "unique_id": "stats_area",
+          "original_name": "stats_area"
+        },
+        {
+          "entity_id": "sensor.sample_1",
+          "device_id": "sample",
+          "platform": "ecovacs",
+          "translation_key": "stats_time",
+          "unique_id": "stats_time",
+          "original_name": "stats_time"
+        },
+        {
+          "entity_id": "select.sample_2",
+          "device_id": "sample",
+          "platform": "ecovacs",
+          "translation_key": "work_mode",
+          "unique_id": "work_mode",
+          "original_name": "work_mode"
+        },
+        {
+          "entity_id": "select.sample_3",
+          "device_id": "sample",
+          "platform": "ecovacs",
+          "translation_key": "water_amount",
+          "unique_id": "water_amount",
+          "original_name": "water_amount"
+        },
+        {
+          "entity_id": "sensor.sample_4",
+          "device_id": "sample",
+          "platform": "ecovacs",
+          "translation_key": "station_state",
+          "unique_id": "station_state",
+          "original_name": "station_state"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "m\u00b2"
+          }
+        },
+        "sensor.sample_1": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "s"
+          }
+        },
+        "select.sample_2": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "select.sample_3": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "sensor.sample_4": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        }
+      },
+      "expected_signals": {
+        "area_sensor": "sensor.sample_0",
+        "duration_sensor": "sensor.sample_1",
+        "cleaning_mode_entity": "select.sample_2",
+        "mop_intensity_entity": "select.sample_3",
+        "dock_status_sensor": "sensor.sample_4"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "roomba",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/roomba",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "iRobot",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "roomba",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "roomba",
+          "translation_key": "tank_level",
+          "unique_id": "tank_level",
+          "original_name": "tank_level"
+        },
+        {
+          "entity_id": "sensor.sample_1",
+          "device_id": "sample",
+          "platform": "roomba",
+          "translation_key": "dock_tank_level",
+          "unique_id": "dock_tank_level",
+          "original_name": "dock_tank_level"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "sensor.sample_1": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        }
+      },
+      "expected_signals": {
+        "tank_level_sensor": "sensor.sample_0",
+        "dock_tank_level_sensor": "sensor.sample_1"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "smartthings",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/smartthings",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "Samsung",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "smartthings",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "select.sample_0",
+          "device_id": "sample",
+          "platform": "smartthings",
+          "translation_key": "robot_cleaner_cleaning_type",
+          "unique_id": "robot_cleaner_cleaning_type",
+          "original_name": "robot_cleaner_cleaning_type"
+        },
+        {
+          "entity_id": "select.sample_1",
+          "device_id": "sample",
+          "platform": "smartthings",
+          "translation_key": "robot_cleaner_water_spray_level",
+          "unique_id": "robot_cleaner_water_spray_level",
+          "original_name": "robot_cleaner_water_spray_level"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "select.sample_0": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "select.sample_1": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        }
+      },
+      "expected_signals": {
+        "cleaning_mode_entity": "select.sample_0",
+        "mop_intensity_entity": "select.sample_1"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "xiaomi_miio",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/xiaomi_miio",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "Xiaomi",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "xiaomi_miio",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "xiaomi_miio",
+          "translation_key": "clean_area",
+          "unique_id": "clean_area",
+          "original_name": "clean_area"
+        },
+        {
+          "entity_id": "sensor.sample_1",
+          "device_id": "sample",
+          "platform": "xiaomi_miio",
+          "translation_key": "clean_time",
+          "unique_id": "clean_time",
+          "original_name": "clean_time"
+        },
+        {
+          "entity_id": "binary_sensor.sample_2",
+          "device_id": "sample",
+          "platform": "xiaomi_miio",
+          "translation_key": "is_water_box_attached",
+          "unique_id": "is_water_box_attached",
+          "original_name": "is_water_box_attached"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "m\u00b2"
+          }
+        },
+        "sensor.sample_1": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "s"
+          }
+        },
+        "binary_sensor.sample_2": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        }
+      },
+      "expected_signals": {
+        "area_sensor": "sensor.sample_0",
+        "duration_sensor": "sensor.sample_1",
+        "water_box_attached_sensor": "binary_sensor.sample_2"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "tplink",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/home-assistant/core/tree/2026.9.0/homeassistant/components/tplink",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "TP-Link",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "tplink",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "tplink",
+          "translation_key": "clean_area",
+          "unique_id": "clean_area",
+          "original_name": "clean_area"
+        },
+        {
+          "entity_id": "sensor.sample_1",
+          "device_id": "sample",
+          "platform": "tplink",
+          "translation_key": "clean_time",
+          "unique_id": "clean_time",
+          "original_name": "clean_time"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "m\u00b2"
+          }
+        },
+        "sensor.sample_1": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "s"
+          }
+        }
+      },
+      "expected_signals": {
+        "area_sensor": "sensor.sample_0",
+        "duration_sensor": "sensor.sample_1"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "dreame_vacuum",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "Dreame",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "dreame_vacuum",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "dreame_vacuum",
+          "translation_key": "state",
+          "unique_id": "state",
+          "original_name": "state"
+        },
+        {
+          "entity_id": "sensor.sample_1",
+          "device_id": "sample",
+          "platform": "dreame_vacuum",
+          "translation_key": "cleaned_area",
+          "unique_id": "cleaned_area",
+          "original_name": "cleaned_area"
+        },
+        {
+          "entity_id": "sensor.sample_2",
+          "device_id": "sample",
+          "platform": "dreame_vacuum",
+          "translation_key": "cleaning_time",
+          "unique_id": "cleaning_time",
+          "original_name": "cleaning_time"
+        },
+        {
+          "entity_id": "select.sample_3",
+          "device_id": "sample",
+          "platform": "dreame_vacuum",
+          "translation_key": "cleaning_mode",
+          "unique_id": "cleaning_mode",
+          "original_name": "cleaning_mode"
+        },
+        {
+          "entity_id": "select.sample_4",
+          "device_id": "sample",
+          "platform": "dreame_vacuum",
+          "translation_key": "water_volume",
+          "unique_id": "water_volume",
+          "original_name": "water_volume"
+        },
+        {
+          "entity_id": "sensor.sample_5",
+          "device_id": "sample",
+          "platform": "dreame_vacuum",
+          "translation_key": "self_wash_base_status",
+          "unique_id": "self_wash_base_status",
+          "original_name": "self_wash_base_status"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "sensor.sample_1": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "m\u00b2"
+          }
+        },
+        "sensor.sample_2": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "min"
+          }
+        },
+        "select.sample_3": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "select.sample_4": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "sensor.sample_5": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        }
+      },
+      "expected_signals": {
+        "status_sensor": "sensor.sample_0",
+        "area_sensor": "sensor.sample_1",
+        "duration_sensor": "sensor.sample_2",
+        "cleaning_mode_entity": "select.sample_3",
+        "mop_intensity_entity": "select.sample_4",
+        "dock_status_sensor": "sensor.sample_5"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "valetudo",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://valetudo.cloud/pages/integrations/mqtt/",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "Valetudo",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "mqtt",
+          "unique_id": "valetudo_sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "mqtt",
+          "translation_key": "status",
+          "unique_id": "status",
+          "original_name": "status"
+        },
+        {
+          "entity_id": "sensor.sample_1",
+          "device_id": "sample",
+          "platform": "mqtt",
+          "translation_key": "current_statistics_area",
+          "unique_id": "current_statistics_area",
+          "original_name": "current_statistics_area"
+        },
+        {
+          "entity_id": "sensor.sample_2",
+          "device_id": "sample",
+          "platform": "mqtt",
+          "translation_key": "current_statistics_time",
+          "unique_id": "current_statistics_time",
+          "original_name": "current_statistics_time"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "sensor.sample_1": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "cm\u00b2"
+          }
+        },
+        "sensor.sample_2": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "s"
+          }
+        }
+      },
+      "expected_signals": {
+        "status_sensor": "sensor.sample_0",
+        "area_sensor": "sensor.sample_1",
+        "duration_sensor": "sensor.sample_2"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "xiaomi_home",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/XiaoMi/ha_xiaomi_home",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "Xiaomi",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "xiaomi_home",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "xiaomi_home",
+          "translation_key": "vacuum.status",
+          "unique_id": "vacuum.status",
+          "original_name": "vacuum.status"
+        },
+        {
+          "entity_id": "sensor.sample_1",
+          "device_id": "sample",
+          "platform": "xiaomi_home",
+          "translation_key": "vacuum.cleaning-area",
+          "unique_id": "vacuum.cleaning-area",
+          "original_name": "vacuum.cleaning-area"
+        },
+        {
+          "entity_id": "sensor.sample_2",
+          "device_id": "sample",
+          "platform": "xiaomi_home",
+          "translation_key": "vacuum.cleaning-time",
+          "unique_id": "vacuum.cleaning-time",
+          "original_name": "vacuum.cleaning-time"
+        },
+        {
+          "entity_id": "select.sample_3",
+          "device_id": "sample",
+          "platform": "xiaomi_home",
+          "translation_key": "mop.water-output-level",
+          "unique_id": "mop.water-output-level",
+          "original_name": "mop.water-output-level"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "sensor.sample_1": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "m\u00b2"
+          }
+        },
+        "sensor.sample_2": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "min"
+          }
+        },
+        "select.sample_3": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        }
+      },
+      "expected_signals": {
+        "status_sensor": "sensor.sample_0",
+        "area_sensor": "sensor.sample_1",
+        "duration_sensor": "sensor.sample_2",
+        "mop_intensity_entity": "select.sample_3"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    },
+    {
+      "adapter": "xiaomi_miot",
+      "provenance": {
+        "kind": "synthetic_contract_fixture",
+        "source": "https://github.com/al-one/hass-xiaomi-miot",
+        "date": "2026-09-05",
+        "real_diagnostics": false
+      },
+      "devices": [
+        {
+          "id": "sample",
+          "manufacturer": "Xiaomi",
+          "model": "Unknown fixture model"
+        }
+      ],
+      "entities": [
+        {
+          "entity_id": "vacuum.sample",
+          "device_id": "sample",
+          "platform": "xiaomi_miot",
+          "unique_id": "sample"
+        },
+        {
+          "entity_id": "sensor.sample_0",
+          "device_id": "sample",
+          "platform": "xiaomi_miot",
+          "translation_key": "vacuum.status",
+          "unique_id": "vacuum.status",
+          "original_name": "vacuum.status"
+        },
+        {
+          "entity_id": "sensor.sample_1",
+          "device_id": "sample",
+          "platform": "xiaomi_miot",
+          "translation_key": "vacuum.cleaning-area",
+          "unique_id": "vacuum.cleaning-area",
+          "original_name": "vacuum.cleaning-area"
+        },
+        {
+          "entity_id": "sensor.sample_2",
+          "device_id": "sample",
+          "platform": "xiaomi_miot",
+          "translation_key": "vacuum.cleaning-time",
+          "unique_id": "vacuum.cleaning-time",
+          "original_name": "vacuum.cleaning-time"
+        },
+        {
+          "entity_id": "select.sample_3",
+          "device_id": "sample",
+          "platform": "xiaomi_miot",
+          "translation_key": "mop.water-output-level",
+          "unique_id": "mop.water-output-level",
+          "original_name": "mop.water-output-level"
+        }
+      ],
+      "states": {
+        "vacuum.sample": {
+          "state": "cleaning",
+          "attributes": {}
+        },
+        "sensor.sample_0": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        },
+        "sensor.sample_1": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "m\u00b2"
+          }
+        },
+        "sensor.sample_2": {
+          "state": "10",
+          "attributes": {
+            "unit_of_measurement": "min"
+          }
+        },
+        "select.sample_3": {
+          "state": "mopping",
+          "attributes": {
+            "unit_of_measurement": null
+          }
+        }
+      },
+      "expected_signals": {
+        "status_sensor": "sensor.sample_0",
+        "area_sensor": "sensor.sample_1",
+        "duration_sensor": "sensor.sample_2",
+        "mop_intensity_entity": "select.sample_3"
+      },
+      "unknowns": [
+        "Model/firmware feature presence requires sanitized device diagnostics",
+        "No measured water volume or consumption rate"
+      ]
+    }
+  ]
+}

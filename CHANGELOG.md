@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Evidence-gated 133-record model/variant catalogue with five separate reservoirs,
+  dated provenance, explicit regional/HA unknowns and no shipped consumption rates.
+- Registry/MAC identity deduplication in backend and card preserves one history owner.
+- Same-reservoir real volume takes precedence; unavailable inputs, counter gaps and
+  context changes rebaseline safely. No inferred time rate or unproved full refill.
+- Separate floor/wash measurement scope prevents hybrid double counting; automatic
+  session history retains unknown volumes. Reprofiling preserves authored settings.
+- Generated frontend catalogue, adapter contract fixtures, expanded regression checks,
+  diagnostics and coverage documentation. No production deployment or release.
+
 ## 5.4.0 (2026-09-02)
 
 - Added signal mapping for vacuums integrated through XiaoMi's official
@@ -302,3 +312,6 @@ All notable changes to **Vacuum Water Monitor** are documented here.
 ### Compatibility
 
 - Home Assistant ≥ 2024.1.0
+
+### Replacement sprint (unreleased)
+- Strict consumption resolver, private measured calibration, whole-cycle accounting and reservoir diagnostics; no new shared rates.

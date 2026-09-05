@@ -1,0 +1,17 @@
+{
+  "fixture_version": 1,
+  "cases": [
+    {"name": "level_or_flow", "expected": "requires_calibration"},
+    {"name": "area_with_calibrated_ml_m2", "expected": "accounts_once"},
+    {"name": "active_time_with_calibrated_ml_min", "expected": "accounts_once"},
+    {"name": "wash_edge_with_measured_ml_wash", "expected": "accounts_once"},
+    {"name": "hybrid_area_and_time", "expected": "area_precedence_no_double_count"},
+    {"name": "unknown_or_unavailable", "expected": "fail_closed"},
+    {"name": "restart_reload", "expected": "persistent_baseline"},
+    {"name": "refill_reset", "expected": "baseline_reset"},
+    {"name": "model_or_integration_change", "expected": "new_baseline_required"},
+    {"name": "multiple_vacuums", "expected": "isolated_counters"},
+    {"name": "duplicate_device_exposure", "expected": "deduplicated"},
+    {"name": "storage_upgrade_downgrade", "expected": "additive_safe"}
+  ]
+}

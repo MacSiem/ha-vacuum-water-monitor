@@ -1,0 +1,489 @@
+{
+  "date": "2026-09-05",
+  "proposed_public_repository": "MacSiem/vacuum-consumption-data",
+  "repository_state": "local_git_created_not_public",
+  "tasks": [
+    {
+      "id": "DATA-01",
+      "title": "Kontrakt i lokalny szkielet bazy",
+      "priority": "P0",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "DATA-01 — Kontrakt i lokalny szkielet bazy\n\n**P0; owner Codex; zależności brak.** Pliki nowego repo: `README.md`, `schemas/*.schema.json`, `CONTRIBUTING.md`, `tests/test_schema.py`.\n\n- [ ] Przygotować model, integrację, obserwację i profil jako cztery odrębne obiekty ze stabilnymi ID.\n- [ ] Utworzyć osobny lokalny katalog/repo; przenieść wyłącznie sprawdzone publiczne dane i zachować mapę migracji obecnych evidence IDs.\n- [ ] Testować odrzucenie rate bez jednostki, zbiornika, warunków i źródła; odrzucenie promocji samej obserwacji do aktywnego profilu.\n- [ ] Odbiór: przykłady wszystkich obiektów przechodzą schema, błędne fixture są odrzucane; żadne dane prywatnego HA nie trafiają do pakietu.",
+      "execution_state": "local_verified",
+      "execution_evidence": "134 model records,23 integrations,4 observations,5 settings catalogues; schemas and reference checks;32 dataset tests PASS",
+      "acceptance": [
+        {
+          "criterion": "Przygotować model, integrację, obserwację i profil jako cztery odrębne obiekty ze stabilnymi ID.",
+          "status": "local_verified_prior_session",
+          "evidence": "134 model records,23 integrations,4 observations,5 settings catalogues; schemas and reference checks;32 dataset tests PASS; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Utworzyć osobny lokalny katalog/repo; przenieść wyłącznie sprawdzone publiczne dane i zachować mapę migracji obecnych evidence IDs.",
+          "status": "local_verified_prior_session",
+          "evidence": "134 model records,23 integrations,4 observations,5 settings catalogues; schemas and reference checks;32 dataset tests PASS; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Testować odrzucenie rate bez jednostki, zbiornika, warunków i źródła; odrzucenie promocji samej obserwacji do aktywnego profilu.",
+          "status": "local_verified_prior_session",
+          "evidence": "134 model records,23 integrations,4 observations,5 settings catalogues; schemas and reference checks;32 dataset tests PASS; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Odbiór: przykłady wszystkich obiektów przechodzą schema, błędne fixture są odrzucane; żadne dane prywatnego HA nie trafiają do pakietu.",
+          "status": "local_verified_prior_session",
+          "evidence": "134 model records,23 integrations,4 observations,5 settings catalogues; schemas and reference checks;32 dataset tests PASS; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        }
+      ]
+    },
+    {
+      "id": "DATA-02",
+      "title": "Pełny indeks modeli i SKU",
+      "priority": "P0",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "DATA-02 — Pełny indeks modeli i SKU\n\n**P0; owner Codex; zależność DATA-01.** Pliki: `data/models/`, `data/inventory/`, `tools/build_inventory.py`, `tests/test_inventory.py`.\n\n- [ ] Zebrać marki, regiony, modele bieżące i wycofane, regionalne SKU, warianty stacji i podłączenia wodnego z katalogów i instrukcji.\n- [ ] Rozstrzygać każdy MIoT ID: retail mapping, niewydany, niemopujący lub unknown; status released API nie wystarcza.\n- [ ] Testować deduplikację oraz zakaz dziedziczenia zużycia przez alias/family bez dowodu równoważności.\n- [ ] Odbiór: każda pozycja indeksu źródłowego ma disposition, źródło i ownera braków; raport nazywa nieprzeszukane marki/regiony. 133 rekordy nie ograniczają zakresu.",
+      "execution_state": "partial",
+      "execution_evidence": "Partial inventory preserved;356 protocol IDs indexed;worldwide coverage remains unknown",
+      "acceptance": [
+        {
+          "criterion": "Zebrać marki, regiony, modele bieżące i wycofane, regionalne SKU, warianty stacji i podłączenia wodnego z katalogów i instrukcji.",
+          "status": "partial",
+          "evidence": "Partial inventory preserved;356 protocol IDs indexed;worldwide coverage remains unknown; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Rozstrzygać każdy MIoT ID: retail mapping, niewydany, niemopujący lub unknown; status released API nie wystarcza.",
+          "status": "partial",
+          "evidence": "Partial inventory preserved;356 protocol IDs indexed;worldwide coverage remains unknown; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Testować deduplikację oraz zakaz dziedziczenia zużycia przez alias/family bez dowodu równoważności.",
+          "status": "partial",
+          "evidence": "Partial inventory preserved;356 protocol IDs indexed;worldwide coverage remains unknown; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Odbiór: każda pozycja indeksu źródłowego ma disposition, źródło i ownera braków; raport nazywa nieprzeszukane marki/regiony. 133 rekordy nie ograniczają zakresu.",
+          "status": "partial",
+          "evidence": "Partial inventory preserved;356 protocol IDs indexed;worldwide coverage remains unknown; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        }
+      ]
+    },
+    {
+      "id": "DATA-03",
+      "title": "Integracje i obserwowalność",
+      "priority": "P0",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "DATA-03 — Integracje i obserwowalność\n\n**P0; owner Codex; zależność DATA-01.** Baza: `data/integrations/`, `fixtures/contracts/`. Aplikacja: `custom_components/ha_vacuum_water_monitor/integration_adapters.py`, `discovery.py`, `tests/test_adapter_fixtures.py`.\n\n- [ ] Przypiąć wersje/commity Core i właściwych HACS/Valetudo; udokumentować unikalne sygnały uzasadniające custom integrację.\n- [ ] Zmapować status, rzeczywiste mopowanie, area/time, mode, wash phase, refill, detergent i physical volume per model/firmware.\n- [ ] Testować jednostki i enumy, obce urządzenie, brak sygnału, duplikaty integracji. Fixture jawnie synthetic albo consented sanitized.\n- [ ] Odbiór: odróżniamy ustawienie water volume od sensora ml, komendę od wykonanej akcji oraz cechę deklarowaną API od aktywnej encji HA.",
+      "execution_state": "partial",
+      "execution_evidence": "Root-verified pinned Core subset:6 Roborock +3 Ecovacs contracts. App discovers exact enabled same-device route/repeat entities; hardware coverage pending.",
+      "acceptance": [
+        {
+          "criterion": "Przypiąć wersje/commity Core i właściwych HACS/Valetudo; udokumentować unikalne sygnały uzasadniające custom integrację.",
+          "status": "partial",
+          "evidence": "Root-verified pinned Core subset:6 Roborock +3 Ecovacs contracts. App discovers exact enabled same-device route/repeat entities; hardware coverage pending.; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Zmapować status, rzeczywiste mopowanie, area/time, mode, wash phase, refill, detergent i physical volume per model/firmware.",
+          "status": "partial",
+          "evidence": "Root-verified pinned Core subset:6 Roborock +3 Ecovacs contracts. App discovers exact enabled same-device route/repeat entities; hardware coverage pending.; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Testować jednostki i enumy, obce urządzenie, brak sygnału, duplikaty integracji. Fixture jawnie synthetic albo consented sanitized.",
+          "status": "partial",
+          "evidence": "Root-verified pinned Core subset:6 Roborock +3 Ecovacs contracts. App discovers exact enabled same-device route/repeat entities; hardware coverage pending.; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Odbiór: odróżniamy ustawienie water volume od sensora ml, komendę od wykonanej akcji oraz cechę deklarowaną API od aktywnej encji HA.",
+          "status": "partial",
+          "evidence": "Root-verified pinned Core subset:6 Roborock +3 Ecovacs contracts. App discovers exact enabled same-device route/repeat entities; hardware coverage pending.; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        }
+      ]
+    },
+    {
+      "id": "DATA-04",
+      "title": "Ilości zużycia per ustawienie i akcja",
+      "priority": "P0",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "DATA-04 — Ilości zużycia per ustawienie i akcja\n\n**P0; owner Codex; zależność DATA-02.** Pliki: `data/observations/manufacturer/`, `data/coverage/`, `tools/validate_observations.py`.\n\n- [ ] Przejść instrukcje, FAQ i publiczne protokoły każdego modelu/SKU; zapisać pełny wykaz osiągalnych ustawień i akcji opisanych wyżej.\n- [ ] Uzupełnić zakres czterech znalezionych ilości H50 Pro/VR4050; rozszerzać te same badania na pozostałe marki.\n- [ ] Dla ilości podać warunki, jednostkę, zakres i źródło; nie przeliczać capacity/area marketingowego na rate ani czasu programu na pracę pompy.\n- [ ] Odbiór: każda kombinacja ma deklarację/pomiar albo unknown z następnym krokiem. Nieznane firmware lub wash phase uniemożliwiają bezwarunkową promocję.",
+      "execution_state": "partial",
+      "execution_evidence": "5 partial settings catalogues;4 declared action quantities;no complete rate matrix",
+      "acceptance": [
+        {
+          "criterion": "Przejść instrukcje, FAQ i publiczne protokoły każdego modelu/SKU; zapisać pełny wykaz osiągalnych ustawień i akcji opisanych wyżej.",
+          "status": "partial",
+          "evidence": "5 partial settings catalogues;4 declared action quantities;no complete rate matrix; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Uzupełnić zakres czterech znalezionych ilości H50 Pro/VR4050; rozszerzać te same badania na pozostałe marki.",
+          "status": "partial",
+          "evidence": "5 partial settings catalogues;4 declared action quantities;no complete rate matrix; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Dla ilości podać warunki, jednostkę, zakres i źródło; nie przeliczać capacity/area marketingowego na rate ani czasu programu na pracę pompy.",
+          "status": "partial",
+          "evidence": "5 partial settings catalogues;4 declared action quantities;no complete rate matrix; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Odbiór: każda kombinacja ma deklarację/pomiar albo unknown z następnym krokiem. Nieznane firmware lub wash phase uniemożliwiają bezwarunkową promocję.",
+          "status": "partial",
+          "evidence": "5 partial settings catalogues;4 declared action quantities;no complete rate matrix; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        }
+      ]
+    },
+    {
+      "id": "CAL-01",
+      "title": "Pomiar, lokalna kalibracja i eksport",
+      "priority": "P0",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "CAL-01 — Pomiar, lokalna kalibracja i eksport\n\n**P0; owner Codex; pomiary: dobrowolni posiadacze; zależności DATA-01, DATA-03.** Baza: `protocols/calibration.md`, `schemas/observation.schema.json`, `examples/synthetic/`. Nowe pliki aplikacji: `custom_components/ha_vacuum_water_monitor/calibration.py`, `tests/test_calibration_export.py`.\n\n- [ ] Opisać bilans pięciu zbiorników, narzędzie/rozdzielczość pomiaru, przerwania i warunki; przygotować formularz standardowej próbki.\n- [ ] Wykrywać kandydatów do pomiaru w naturalnych cyklach; nie wywoływać dodatkowych akcji robota.\n- [ ] Zaimplementować eksport wyłącznie dozwolonych pól z podglądem; testować usuwanie prywatnych identyfikatorów i map.\n- [ ] Odbiór: powtarzalny protokół per model/ustawienie; brak automatycznego wysyłania. Kalibracja lokalna działa niezależnie od udziału społecznościowego.",
+      "execution_state": "partial",
+      "execution_evidence": "Private physical refill form, historical context, atomic measurement storage, three independent training cycles, disjoint holdout, per-context personal profiles.",
+      "acceptance": [
+        {
+          "criterion": "Opisać bilans pięciu zbiorników, narzędzie/rozdzielczość pomiaru, przerwania i warunki; przygotować formularz standardowej próbki.",
+          "status": "partial",
+          "evidence": "Private physical refill form, historical context, atomic measurement storage, three independent training cycles, disjoint holdout, per-context personal profiles.; docs/runtime-consumption-contract.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Wykrywać kandydatów do pomiaru w naturalnych cyklach; nie wywoływać dodatkowych akcji robota.",
+          "status": "partial",
+          "evidence": "Private physical refill form, historical context, atomic measurement storage, three independent training cycles, disjoint holdout, per-context personal profiles.; docs/runtime-consumption-contract.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Zaimplementować eksport wyłącznie dozwolonych pól z podglądem; testować usuwanie prywatnych identyfikatorów i map.",
+          "status": "partial",
+          "evidence": "Private physical refill form, historical context, atomic measurement storage, three independent training cycles, disjoint holdout, per-context personal profiles.; docs/runtime-consumption-contract.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Odbiór: powtarzalny protokół per model/ustawienie; brak automatycznego wysyłania. Kalibracja lokalna działa niezależnie od udziału społecznościowego.",
+          "status": "partial",
+          "evidence": "Private physical refill form, historical context, atomic measurement storage, three independent training cycles, disjoint holdout, per-context personal profiles.; docs/runtime-consumption-contract.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        }
+      ]
+    },
+    {
+      "id": "CAL-02",
+      "title": "Dopasowanie i walidacja profili",
+      "priority": "P0",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "CAL-02 — Dopasowanie i walidacja profili\n\n**P0; owner Codex i niezależny verifier; zależności DATA-04, CAL-01.** Pliki: `tools/fit_profiles.py`, `tools/validate_profiles.py`, `data/consumption_profiles/`, `tests/test_profile_fit.py`.\n\n- [ ] Sprawdzić identyfikowalność modeli area/time/action/hybrid przed dopasowaniem.\n- [ ] Rozdzielić trening/walidację cyklami i egzemplarzami; stosować zasady kalibracji z tego planu.\n- [ ] Testować odrzucenie profilu z jednego łącznego pomiaru dla wielu niezależnych parametrów, mieszania modeli i wycieku próbek treningowych do walidacji.\n- [ ] Odbiór: N, liczba urządzeń, error/bias/warunki i zakres stosowania udokumentowane; niewystarczające dane pozostają experimental. Żaden współczynnik nie jest wymyślony.",
+      "execution_state": "partial",
+      "execution_evidence": "App-side pre-fit design gate verifies area/time/action and three-component hybrid rank without fitting synthetic rates. Single-axis fit, disjoint holdout, scope/context/device/domain checks are implemented; empirical multi-device measurements and approved profiles remain blocked.",
+      "acceptance": [
+        {
+          "criterion": "Sprawdzić identyfikowalność modeli area/time/action/hybrid przed dopasowaniem.",
+          "status": "fixed+verified",
+          "evidence": "check_identifiability validates area/time/action and full three-column hybrid designs by matrix rank before fitting; synthetic tests reject a single combined measurement and collinear exposures without creating coefficients. tests/test_local_measurements.py",
+          "owner": "Codex",
+          "next_step": "Preserve the fail-closed rank gate when a measured hybrid fitter is added."
+        },
+        {
+          "criterion": "Rozdzielić trening/walidację cyklami i egzemplarzami; stosować zasady kalibracji z tego planu.",
+          "status": "fixed+verified",
+          "evidence": "Private fitter requires three distinct training cycles for one device/context and computes validation only from separately marked holdout cycles; portable importer rejects repeated cycles and device holdout leakage. tests/test_local_measurements.py; tests/test_consumption_import.py",
+          "owner": "Codex",
+          "next_step": "Apply the same split rules to future measured shared profiles."
+        },
+        {
+          "criterion": "Testować odrzucenie profilu z jednego łącznego pomiaru dla wielu niezależnych parametrów, mieszania modeli i wycieku próbek treningowych do walidacji.",
+          "status": "fixed+verified",
+          "evidence": "Synthetic design tests reject one total for three rates and rank-deficient hybrid matrices; private fitting rejects mixed devices/settings; portable import rejects train/validation device overlap. tests/test_local_measurements.py; tests/test_consumption_import.py",
+          "owner": "Codex",
+          "next_step": "Keep synthetic matrices test-only; they do not authorize a runtime profile."
+        },
+        {
+          "criterion": "Odbiór: N, liczba urządzeń, error/bias/warunki i zakres stosowania udokumentowane; niewystarczające dane pozostają experimental. Żaden współczynnik nie jest wymyślony.",
+          "status": "partial",
+          "evidence": "Single-axis fit,holdout metrics,scope/context/device/domain checks implemented;hybrid and empirical data pending; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        }
+      ]
+    },
+    {
+      "id": "APP-01",
+      "title": "Automatyczny resolver profilu",
+      "priority": "P0",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "APP-01 — Automatyczny resolver profilu\n\n**P0; owner Codex; zależności DATA-03 i kontrakt CAL-02.** Aplikacja: `custom_components/ha_vacuum_water_monitor/profiles.py`, `sensor_calculations.py`, `discovery.py`, `storage.py`, `tests/test_profile_selection.py`.\n\n- [ ] Wprowadzić `resolve_profile(context, signals, calibration, dataset)` zwracający metodę, profile/evidence IDs, parametry i reason codes; context zawiera cały klucz stosowalności.\n- [ ] Precedence: real sensor > per-device calibration > compatible verified model > evidence-backed safe fallback > unknown.\n- [ ] Testować obce SKU, nieznany enum, firmware upgrade/downgrade, zmianę ustawień oraz dwie integracje jednego robota.\n- [ ] Odbiór: lokalna kalibracja nie jest nadpisywana profilem wspólnym; brak zgodności nie uruchamia najbliższego profilu bez dowodu. Syntetyczne testy nie promują realnych danych.",
+      "execution_state": "partial",
+      "execution_evidence": "Runtime exact-context resolver and precedence implemented and tested; complete automatic bindings remain pending. V3 integration:266 Python tests; frozen bundle and contract SHAs verified; physical stream engine has empty trusted source and entity-binding registries. See dataset-v3-integration-2026-09-05.md.",
+      "acceptance": [
+        {
+          "criterion": "Wprowadzić `resolve_profile(context, signals, calibration, dataset)` zwracający metodę, profile/evidence IDs, parametry i reason codes; context zawiera cały klucz stosowalności.",
+          "status": "partial",
+          "evidence": "Runtime exact-context resolver and precedence implemented and tested; complete automatic bindings remain pending.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Precedence: real sensor > per-device calibration > compatible verified model > evidence-backed safe fallback > unknown.",
+          "status": "partial",
+          "evidence": "Runtime exact-context resolver and precedence implemented and tested; complete automatic bindings remain pending.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Testować obce SKU, nieznany enum, firmware upgrade/downgrade, zmianę ustawień oraz dwie integracje jednego robota.",
+          "status": "partial",
+          "evidence": "Runtime exact-context resolver and precedence implemented and tested; complete automatic bindings remain pending.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Odbiór: lokalna kalibracja nie jest nadpisywana profilem wspólnym; brak zgodności nie uruchamia najbliższego profilu bez dowodu. Syntetyczne testy nie promują realnych danych.",
+          "status": "partial",
+          "evidence": "Runtime exact-context resolver and precedence implemented and tested; complete automatic bindings remain pending.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        }
+      ]
+    },
+    {
+      "id": "APP-02",
+      "title": "Bilans i maszyna stanów",
+      "priority": "P0",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "APP-02 — Bilans i maszyna stanów\n\n**P0; owner Codex; zależność APP-01.** Aplikacja: `custom_components/ha_vacuum_water_monitor/tick.py`, `sensor_calculations.py`, `storage.py`, `tests/test_sprint_accounting.py`, `tests/test_sprint_storage.py`.\n\n- [ ] Rozliczać zdarzenia per reservoir i segment ustawień, w tym standalone wash/tray-clean, post-task wash i stacje wodociągowe.\n- [ ] Zachować brak double counting: floor area/time to alternatywy dla tego samego procesu; whole-cycle nie dodaje wash; transfer nie jest drugim systemowym zużyciem.\n- [ ] Rozszerzyć replay restart/reload/unavailable/reset/refill/reprofile/upgrade/downgrade/multi-vacuum i przerwanego wash.\n- [ ] Odbiór: bilans i ciągłość zgodne z fixture; unknown przy utracie dowodu; instalacja wodna bez fikcyjnego procentu zbiornika.",
+      "execution_state": "partial",
+      "execution_evidence": "Versioned area/time resolver, private whole-cycle calibration once at completion, completed wash counter, five distinct physical volume readings, invalid aggregate after missing evidence. Native V3 epoch-ms stream, strict segments, identity journal and external flows; no approved live source. See dataset-v3-integration-2026-09-05.md.",
+      "acceptance": [
+        {
+          "criterion": "Rozliczać zdarzenia per reservoir i segment ustawień, w tym standalone wash/tray-clean, post-task wash i stacje wodociągowe.",
+          "status": "partial",
+          "evidence": "Versioned area/time resolver, private whole-cycle calibration once at completion, completed wash counter, five distinct physical volume readings, invalid aggregate after missing evidence. Synthetic runtime/storage/reservoir tests.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Zachować brak double counting: floor area/time to alternatywy dla tego samego procesu; whole-cycle nie dodaje wash; transfer nie jest drugim systemowym zużyciem.",
+          "status": "partial",
+          "evidence": "Versioned area/time resolver, private whole-cycle calibration once at completion, completed wash counter, five distinct physical volume readings, invalid aggregate after missing evidence. Synthetic runtime/storage/reservoir tests.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Rozszerzyć replay restart/reload/unavailable/reset/refill/reprofile/upgrade/downgrade/multi-vacuum i przerwanego wash.",
+          "status": "partial",
+          "evidence": "Versioned area/time resolver, private whole-cycle calibration once at completion, completed wash counter, five distinct physical volume readings, invalid aggregate after missing evidence. Synthetic runtime/storage/reservoir tests.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Odbiór: bilans i ciągłość zgodne z fixture; unknown przy utracie dowodu; instalacja wodna bez fikcyjnego procentu zbiornika.",
+          "status": "partial",
+          "evidence": "Versioned area/time resolver, private whole-cycle calibration once at completion, completed wash counter, five distinct physical volume readings, invalid aggregate after missing evidence. Synthetic runtime/storage/reservoir tests.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        }
+      ]
+    },
+    {
+      "id": "APP-03",
+      "title": "UI i kreator kalibracji",
+      "priority": "P1",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "APP-03 — UI i kreator kalibracji\n\n**P1; owner Codex; zależności CAL-01, APP-01.** Aplikacja: obie kopie `ha-vacuum-water-monitor.js`, `custom_components/ha_vacuum_water_monitor/websocket_api.py`, `.github/sprint.cjs`.\n\n- [ ] Pokazać wersję/źródło profilu, metodę, confidence, zakres błędu, brakujące sygnały i niezgodne ustawienia.\n- [ ] Kreator wskazuje brakujące kombinacje pomiarowe; prywatna kalibracja i dobrowolne zgłoszenie to osobne działania.\n- [ ] Testować light/dark/mobile/klawiaturę, unknown, nieudany eksport i zachowanie historii po zmianie profilu.\n- [ ] Odbiór: użytkownik odróżnia pomiar i estymację; zna powód braku wyniku; obie kopie karty są identyczne.",
+      "execution_state": "partial",
+      "execution_evidence": "Private save separate from contribution preview; missing historical fields, resolver provenance/errors/domain, five physical levels and unknown aggregate. Both JS copies pass synthetic QA. V3 physical balance diagnostics hide stale values and do not invent percentages. See dataset-v3-integration-2026-09-05.md.",
+      "acceptance": [
+        {
+          "criterion": "Pokazać wersję/źródło profilu, metodę, confidence, zakres błędu, brakujące sygnały i niezgodne ustawienia.",
+          "status": "partial",
+          "evidence": "Private save separate from contribution preview; missing historical fields, resolver provenance/errors/domain, five physical levels and unknown aggregate. Both JS copies pass synthetic QA.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Kreator wskazuje brakujące kombinacje pomiarowe; prywatna kalibracja i dobrowolne zgłoszenie to osobne działania.",
+          "status": "partial",
+          "evidence": "Private save separate from contribution preview; missing historical fields, resolver provenance/errors/domain, five physical levels and unknown aggregate. Both JS copies pass synthetic QA.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Testować light/dark/mobile/klawiaturę, unknown, nieudany eksport i zachowanie historii po zmianie profilu.",
+          "status": "partial",
+          "evidence": "Private save separate from contribution preview; missing historical fields, resolver provenance/errors/domain, five physical levels and unknown aggregate. Both JS copies pass synthetic QA.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Odbiór: użytkownik odróżnia pomiar i estymację; zna powód braku wyniku; obie kopie karty są identyczne.",
+          "status": "partial",
+          "evidence": "Private save separate from contribution preview; missing historical fields, resolver provenance/errors/domain, five physical levels and unknown aggregate. Both JS copies pass synthetic QA.; docs/runtime-consumption-contract.md",
+          "owner": "Codex app session",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        }
+      ]
+    },
+    {
+      "id": "DATA-05",
+      "title": "Publiczne repo i współpraca",
+      "priority": "P1",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "DATA-05 — Publiczne repo i współpraca\n\n**P1; owner Codex przygotowanie, Maciej właściciel publikacji; zależności DATA-01, CAL-01.** Nowe repo: `CONTRIBUTING.md`, `LICENSES/`, `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`, `.github/workflows/validate.yml`.\n\n- [ ] Przygotować README po angielsku, JSON/CSV, licencję danych/kodu i formularze model/pomiar/korekta wraz z zasadami wkładu.\n- [ ] CI sprawdza schema, jednostki, provenance, duplikaty, PII oraz zmianę coverage; autor nie może sam oznaczyć profilu jako zweryfikowany bez przeglądu.\n- [ ] Przejrzeć pełny eksport publiczny; publikacja repo i pierwszy zdalny zapis następują w osobnej autoryzowanej turze z URL readback.\n- [ ] Odbiór: zewnętrzny użytkownik potrafi dodać próbkę i zgłosić korektę; PR nie jest automatycznie aktywnym profilem, błędne profile można wycofać.",
+      "execution_state": "partial",
+      "execution_evidence": "Local Git repo,MIT/CC BY terms,forms,CI,privacy checks ready;publication requires separate gate",
+      "acceptance": [
+        {
+          "criterion": "Przygotować README po angielsku, JSON/CSV, licencję danych/kodu i formularze model/pomiar/korekta wraz z zasadami wkładu.",
+          "status": "partial",
+          "evidence": "Local Git repo,MIT/CC BY terms,forms,CI,privacy checks ready;publication requires separate gate; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "CI sprawdza schema, jednostki, provenance, duplikaty, PII oraz zmianę coverage; autor nie może sam oznaczyć profilu jako zweryfikowany bez przeglądu.",
+          "status": "partial",
+          "evidence": "Local Git repo,MIT/CC BY terms,forms,CI,privacy checks ready;publication requires separate gate; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Przejrzeć pełny eksport publiczny; publikacja repo i pierwszy zdalny zapis następują w osobnej autoryzowanej turze z URL readback.",
+          "status": "partial",
+          "evidence": "Local Git repo,MIT/CC BY terms,forms,CI,privacy checks ready;publication requires separate gate; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        },
+        {
+          "criterion": "Odbiór: zewnętrzny użytkownik potrafi dodać próbkę i zgłosić korektę; PR nie jest automatycznie aktywnym profilem, błędne profile można wycofać.",
+          "status": "partial",
+          "evidence": "Local Git repo,MIT/CC BY terms,forms,CI,privacy checks ready;publication requires separate gate; docs/runtime-consumption-contract.md; docs/dataset-handoff-2026-09-05.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve remaining contract/evidence requirements in frozen dataset handoff; return receipt to app ledger."
+        }
+      ]
+    },
+    {
+      "id": "DATA-06",
+      "title": "Paczki danych i import do aplikacji",
+      "priority": "P1",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "DATA-06 — Paczki danych i import do aplikacji\n\n**P1; owner Codex; zależności DATA-01, kontrakty CAL-02 i APP-01. Publikacja paczek zależy dodatkowo od DATA-05.** Baza: `tools/build_bundle.py`, `tests/test_bundle.py`. Aplikacja: `scripts/import_consumption_data.py`, `custom_components/ha_vacuum_water_monitor/profiles.py`.\n\n- [ ] Budować deterministyczny pakiet: schema version, dataset version, source commit, checksum i evidence IDs.\n- [ ] Początkowo przypięty snapshot w aplikacji. Import waliduje kompatybilność i pokazuje diff stawek; nie wykonuje kodu z danych.\n- [ ] Testować uszkodzony hash, niezgodny schemat, brak provenance, rollback, offline i wycofany profil.\n- [ ] Odbiór: identyczne wejście daje identyczny pakiet; import nie niszczy osobistej kalibracji. Automatyczne pobieranie online jest opcjonalnym późniejszym ustawieniem.",
+      "execution_state": "local_verified",
+      "execution_evidence": "Deterministic offline bundle and pinned snapshot are validated without executing dataset code in HA runtime. Import reports added/removed/changed active rates and evidence lineage, rejects corrupt/incompatible/unproven/revoked profiles, and restores exact prior bytes after post-write verification failure. Zero approved profiles remains a data-evidence state, not an importer gap.",
+      "acceptance": [
+        {
+          "criterion": "Budować deterministyczny pakiet: schema version, dataset version, source commit, checksum i evidence IDs.",
+          "status": "fixed+verified",
+          "evidence": "Dataset foundation produced a deterministic versioned bundle with source revision, payload SHA-256 and evidence IDs; the app verifies the exact payload before compilation. tests/test_consumption_import.py; docs/dataset-v3-integration-2026-09-05.md",
+          "owner": "Codex",
+          "next_step": "Preserve canonical serialization and exact source binding."
+        },
+        {
+          "criterion": "Początkowo przypięty snapshot w aplikacji. Import waliduje kompatybilność i pokazuje diff stawek; nie wykonuje kodu z danych.",
+          "status": "fixed+verified",
+          "evidence": "Pinned offline snapshot import validates compatibility and emits sorted added/removed/changed fields for method, coefficient, unit and evidence_ids. Dataset tooling runs only in the developer import subprocess; HA runtime reads JSON. scripts/import_consumption_data.py; tests/test_consumption_import.py",
+          "owner": "Codex",
+          "next_step": "Review emitted diff before accepting any future measured rates."
+        },
+        {
+          "criterion": "Testować uszkodzony hash, niezgodny schemat, brak provenance, rollback, offline i wycofany profil.",
+          "status": "fixed+verified",
+          "evidence": "Tests cover corrupt hash, incompatible schema, missing empirical provenance, exact-byte rollback after a failed readback, offline local import behavior and explicit revoked-profile rejection. tests/test_consumption_import.py",
+          "owner": "Codex",
+          "next_step": "Keep all failures fail closed and retain the prior snapshot bytes."
+        },
+        {
+          "criterion": "Odbiór: identyczne wejście daje identyczny pakiet; import nie niszczy osobistej kalibracji. Automatyczne pobieranie online jest opcjonalnym późniejszym ustawieniem.",
+          "status": "fixed+verified",
+          "evidence": "Canonical JSON makes identical input deterministic; atomic import only replaces consumption_snapshot.json and cannot modify per-device calibration storage. Automatic online fetch remains intentionally absent. scripts/import_consumption_data.py; custom_components/ha_vacuum_water_monitor/storage.py",
+          "owner": "Codex",
+          "next_step": "No app action until a new frozen measured bundle exists."
+        }
+      ]
+    },
+    {
+      "id": "QA-01",
+      "title": "Odbiór i kompletność",
+      "priority": "P0",
+      "planning_state": "execution_tracked",
+      "source": "User 2026-09-05 + existing app sprint ledger",
+      "details": "QA-01 — Odbiór i kompletność\n\n**P0; owner Codex + niezależny verifier; zależności APP-02, APP-03, DATA-06.** Aplikacja: `scripts/check_consumption_coverage.py`, `docs/consumption-coverage.json`, `docs/app-sprint-ledger.json`. Baza: `tools/report_coverage.py`, `reports/`.\n\n- [ ] Raportować researched/declared/measured/calibrated/validated/unknown per model/SKU/firmware/integracja/ustawienie/akcja oraz licznik i mianownik rozpoznanych kombinacji.\n- [ ] Oddzielić kompletność indeksu od dokładności; ujawnić także nieprzeszukane źródła i modele bez obserwowalnego API.\n- [ ] Uruchomić pełne testy aplikacji i nowe regresje, oba frontend smoke, schema, bilans, wybór profilu i niezależne próbki walidacyjne.\n- [ ] Odbiór globalny wymaga dowodów dla wszystkich możliwych kombinacji. Unknown jest bezpiecznym zachowaniem, nie zaliczeniem dokładności.",
+      "execution_state": "partial",
+      "execution_evidence": "266 app tests plus local checks; frozen V3 source and bundle SHAs verified; 1023 unresolved global gates individually tracked. Live registries remain empty and independent physical accuracy is unverified. See dataset-v3-integration-2026-09-05.md.",
+      "acceptance": [
+        {
+          "criterion": "Raportować researched/declared/measured/calibrated/validated/unknown per model/SKU/firmware/integracja/ustawienie/akcja oraz licznik i mianownik rozpoznanych kombinacji.",
+          "status": "partial",
+          "evidence": "238 Python tests; full synthetic UI and local checks; 1023 unresolved global gates now individually tracked. Independent physical accuracy unverified.; docs/runtime-consumption-contract.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Oddzielić kompletność indeksu od dokładności; ujawnić także nieprzeszukane źródła i modele bez obserwowalnego API.",
+          "status": "partial",
+          "evidence": "238 Python tests; full synthetic UI and local checks; 1023 unresolved global gates now individually tracked. Independent physical accuracy unverified.; docs/runtime-consumption-contract.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Uruchomić pełne testy aplikacji i nowe regresje, oba frontend smoke, schema, bilans, wybór profilu i niezależne próbki walidacyjne.",
+          "status": "partial",
+          "evidence": "238 Python tests; full synthetic UI and local checks; 1023 unresolved global gates now individually tracked. Independent physical accuracy unverified.; docs/runtime-consumption-contract.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        },
+        {
+          "criterion": "Odbiór globalny wymaga dowodów dla wszystkich możliwych kombinacji. Unknown jest bezpiecznym zachowaniem, nie zaliczeniem dokładności.",
+          "status": "partial",
+          "evidence": "238 Python tests; full synthetic UI and local checks; 1023 unresolved global gates now individually tracked. Independent physical accuracy unverified.; docs/runtime-consumption-contract.md",
+          "owner": "Codex dataset session / independent reviewer",
+          "next_step": "Resolve exact semantic/source contract followup in docs/dataset-v2-followup-2026-09-05.md; preserve separate empirical gates."
+        }
+      ]
+    }
+  ],
+  "local_repository": "/Users/maciej/repos/vacuum-consumption-data",
+  "local_revision": "49c9077"
+}

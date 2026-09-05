@@ -1,0 +1,37 @@
+{
+  "read_only": true,
+  "raw_identifiers_retained": false,
+  "stored_calibration_audit": {
+    "readable": true,
+    "calibration_records": 0,
+    "records_with_measurement_provenance": 0
+  },
+  "days": 7,
+  "vacuum_count": 2,
+  "linked_entities": 51,
+  "history_samples": 711,
+  "active_samples": 6,
+  "adapters": [
+    "matter",
+    "roborock"
+  ],
+  "reason_counts": {
+    "vacuum_unavailable": 77,
+    "area_gap": 171,
+    "active_time_gap": 152,
+    "area_delta_below_minimum": 469,
+    "not_cleaning": 188,
+    "mop_inactive": 320,
+    "area_reset": 1,
+    "mop_off": 41,
+    "missing_time_rate": 3
+  },
+  "method_counts": {
+    "unknown": 77,
+    "area": 682,
+    "active_time": 663
+  },
+  "predicted_ml": null,
+  "observed_ml": null,
+  "comparison": "blocked_measured_same_reservoir_volume_and_calibration_required"
+}

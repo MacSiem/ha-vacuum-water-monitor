@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import importlib.util
 from pathlib import Path
 import re
+import math
 from typing import Any
 
 try:
@@ -21,8 +22,6 @@ except ImportError:  # Supports this module's existing direct-file pure tests.
     legacy_profile_defaults = _profile_module.legacy_profile_defaults
 
 MILLISECONDS_PER_DAY = 86_400_000
-DEFAULT_ESTIMATED_M2_PER_ACTIVE_MINUTE = 0.8
-DERIVED_TIME_UNCERTAINTY_PERCENT = 65
 
 
 def setup_guidance(state_reason: Any) -> dict[str, str]:
@@ -97,7 +96,21 @@ def build_vacuum_devices(
         if not device.get("name") or device.get("name") == entity:
             device["name"] = str(name)
 
-    return list(devices.values())
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for device in devices.values():
+        grouped.setdefault(str(device.get("identity_group") or device["vacuum_entity"]), []).append(device)
+    result = []
+    for members in grouped.values():
+        # Keep the existing history owner; do not silently add counters together.
+        members.sort(key=lambda d: (
+            d["vacuum_entity"] not in tank_states,
+            d.get("integration_adapter") in {"matter", "generic", None},
+            d["vacuum_entity"],
+        ))
+        primary = members[0]
+        primary["duplicate_entities"] = [d["vacuum_entity"] for d in members[1:]]
+        result.append(primary)
+    return result
 
 
 def filter_active_devices(
@@ -159,6 +172,29 @@ def estimate_water_state(
         "water_anchor_kind": tank_state.get("water_anchor_kind"),
         "water_anchor_confidence": tank_state.get("water_anchor_confidence"),
     }
+    if device.get("water_volume_sensor") or tank_state.get("last_accounting_source") == "real_sensor":
+        measured = tank_state.get("last_water_volume_ml")
+        valid = type(measured) in (int, float) and math.isfinite(measured) and measured >= 0
+        return {
+            **metadata,
+            "initialized": bool(valid),
+            "source": "real_sensor",
+            "state_reason": tank_state.get("last_accounting_reason"),
+            "total_ml": _format_number(total_ml) if total_ml is not None else None,
+            "remaining_ml": _format_number(measured) if valid else None,
+            "used_ml": _format_number(max(0, total_ml - measured)) if valid and total_ml is not None else None,
+            "remaining_percent": _format_number(round(_clamp(measured / total_ml * 100, 0, 100), 1)) if valid and total_ml else None,
+        }
+    if device.get("accounting_event_sensor"):
+        balance = tank_state.get("accounting_v2") or {}
+        volumes = balance.get("balances_ml") or {}
+        measured = volumes.get(device.get("tracked_reservoir")) if isinstance(volumes, dict) else None
+        valid = balance.get("status") == "known" and type(measured) in (int, float) and math.isfinite(measured) and measured >= 0
+        return {**metadata, "initialized": valid, "source": "physical_event_stream" if valid else "unknown",
+                "state_reason": None if valid else balance.get("reason") or "unknown_stream_reservoir",
+                "remaining_ml": measured if valid else None, "used_ml": None,
+                "total_ml": None, "remaining_percent": None}
+
     if not initialized:
         return {
             "source": "uninitialized",
@@ -168,6 +204,11 @@ def estimate_water_state(
             "remaining_percent": None,
             **{**metadata, "state_reason": "awaiting_refill"},
         }
+
+    if tank_state.get("accounting_incomplete"):
+        return {**metadata, "source": "unknown", "state_reason": "accounting_incomplete",
+                "total_ml": _format_number(total_ml) if total_ml is not None else None,
+                "used_ml": None, "remaining_ml": None, "remaining_percent": None}
 
     used_ml = max(0, _number(tank_state.get("used_ml"), 0))
     if total_ml is None:
@@ -236,8 +277,12 @@ def apply_custom_calibration(
         if profile.get(key) is not None:
             effective.setdefault(key, profile[key])
 
+    effective.setdefault("mop_evidence_required", True)
     _apply_signal_overrides(effective, settings)
 
+    modern = settings.get("consumption_calibrations") or {}
+    if isinstance(modern, dict) and isinstance(modern.get(effective.get("vacuum_entity")), (dict, list)):
+        effective["consumption_calibration"] = modern[effective["vacuum_entity"]]
     calibration = _merged_custom_calibration(effective, settings)
     profile_usage = _with_default_rate(
         _valid_rate_mapping(profile.get("usage_ml_per_m2"))
@@ -281,29 +326,9 @@ def apply_custom_calibration(
         **custom_time_usage,
         **explicit_time_usage,
     }
-    derive_time_from_area = bool(profile_usage) and not (
-        custom_time_usage or explicit_time_usage
-    ) and (
-        not profile_time_usage
-        or profile.get("time_accounting_evidence") == "derived_from_area_rate"
-    )
-    if derive_time_from_area:
-        estimated_speed = (
-            _positive_optional(calibration.get("estimated_m2_per_active_minute"))
-            or _positive_optional(effective.get("estimated_m2_per_active_minute"))
-            or DEFAULT_ESTIMATED_M2_PER_ACTIVE_MINUTE
-        )
-        effective["usage_ml_per_active_minute"] = {
-            key: round(rate * estimated_speed, 4)
-            for key, rate in merged_usage.items()
-        }
-        effective["estimated_m2_per_active_minute"] = estimated_speed
-        effective["time_accounting_evidence"] = "derived_from_area_rate"
-        effective["uncertainty_percent"] = max(
-            _optional_number(effective.get("uncertainty_percent")) or 0,
-            DERIVED_TIME_UNCERTAINTY_PERCENT,
-        )
-    elif merged_time_usage:
+    # A measured area dose is not a measured time dose. Never invent a travel
+    # speed to convert between them; each axis requires its own calibration.
+    if merged_time_usage:
         effective["usage_ml_per_active_minute"] = merged_time_usage
 
     for key in ("intensity_factor",):
@@ -352,6 +377,8 @@ def apply_custom_calibration(
         and "low_water_anchor_remaining_percent" not in explicit_fields
     ):
         effective["low_water_anchor_remaining_percent"] = low_water_remaining
+    if "calibration_scope" not in effective and calibration.get("calibration_scope") in {"floor_only", "whole_cycle"}:
+        effective["calibration_scope"] = calibration["calibration_scope"]
     profile_evidence = profile.get("accounting_evidence")
     discovery_evidence = effective.get("accounting_evidence")
     if explicit_usage or explicit_time_usage or explicit_wash:
@@ -669,7 +696,8 @@ def _optional_number(value: Any) -> float | None:
     if isinstance(value, bool):
         return None
     try:
-        return float(value)
+        parsed = float(value)
+        return parsed if math.isfinite(parsed) else None
     except (TypeError, ValueError):
         return None
 

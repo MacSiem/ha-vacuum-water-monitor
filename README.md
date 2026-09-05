@@ -10,9 +10,36 @@ it as sensors plus a bundled dashboard card.
 
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.7+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/github/v/release/MacSiem/ha-vacuum-water-monitor)](https://github.com/MacSiem/ha-vacuum-water-monitor/releases)
 
+## Check your model and help improve the consumption database
+
+We are building **Vacuum Consumption Data**, a separate open dataset for model-specific
+water and detergent consumption. Check the [current coverage and contribution guide](docs/consumption-database.md)
+to see what is known about your robot, inspect the sources and report missing or incorrect data.
+The separate repository is currently prepared locally; its public GitHub link will be added
+after publication. The intended repository name is `MacSiem/vacuum-consumption-data`.
+
+Contributions for any model are welcome: a documented setting, a corrected source or a
+measured cycle can improve coverage. We distinguish **mop-only, simultaneous vacuum-and-mop,
+vacuum-then-mop, route, mopping area, water intensity, passes and mop-washing settings**,
+including which combinations the robot actually permits. A profile for one combination
+does not prove another combination has the same consumption.
+
+An LLM can help organize sanitized sensor/statistics exports and propose estimates from
+measured examples. Area/time alone cannot determine millilitres: a measured water amount
+or verified applicable rate is still needed. See the [LLM-assisted contribution instructions](docs/llm-assisted-contribution.md).
+Do not share raw private Diagnostics. Proposed estimates are reviewed before becoming shared profiles.
+
+### What a number means
+
+Every value is labelled by its evidence: **Measured**, **Manufacturer data**, **Derived
+estimate** or **Unknown**. A recognized model ID, tank capacity or integration name does
+not by itself prove a per-cycle consumption value. See the [model support and evidence
+matrix](docs/model-support-matrix.md) for detection, available data, estimate scope and
+calibration limits, plus a privacy-safe partial-session template.
+
 ## How it works
 
-**Short version: the card reports an estimate, never a measured tank level.** After you
+**The card labels measured volume separately from calibrated estimates.** After you
 install the integration and add the card, press **💧 Refilled** while the tracked reservoir
 is full. Until that refill baseline exists, remaining water and water used intentionally
 stay **unknown** rather than displaying a fabricated 100% full tank.
@@ -22,7 +49,7 @@ What happens under the hood:
 1. **Auto-discovery.** The integration finds every `vacuum.*` entity in your Home Assistant
    and creates a device with water sensors for each robot. No YAML, no entity picking.
 2. **Water accounting runs server-side every 60 seconds.** It prefers cleaned-area deltas,
-   then a duration counter, then a bounded active-time interval. Mode, intensity, mop/tank
+   then a separately calibrated duration/active-time interval. A configured same-reservoir volume sensor takes precedence over both. Mode, intensity, mop/tank
    attachment and dock-wash signals are applied only when their integration exposes a
    canonical machine key. There is no friendly-name or translated-label guessing.
 3. **Tank capacity and signals come from the Home Assistant device descriptor.** The
@@ -35,8 +62,8 @@ What happens under the hood:
 4. **Refills and calibration anchors.** Press **Refilled** after filling the tracked
    reservoir. Exact machine-readable `empty` states may close a calibration cycle.
    Threshold-style low-water alerts require repeated observations and plausible prior
-   usage; an early or unavailable alert never rewrites the counter. The default low-water
-   reserve is 10% and can be tuned per device.
+   usage; an early or unavailable alert never rewrites the counter. The low-water
+   reserve has no assumed default: its measured threshold and reservoir must be explicit.
 5. **Everything is stored by Home Assistant** (Store, included in backups) — counters
    survive restarts and work across all your devices and browsers.
 
@@ -45,24 +72,23 @@ What happens under the hood:
 | Automatic | Manual (optional) |
 |---|---|
 | Discovering vacuums | Pressing **Refilled** after you fill the tank |
-| Water usage estimation when same-device signals and a model/user rate exist | Calibrating tank size, low-water reserve or active-time conversion |
+| Water usage estimation when same-device signals and a model/user rate exist | Calibrating tank size, measured low-water reserve or ml/min |
 | Tank capacity for known models | Wiring extra sensors (dock errors, tank door) |
 | Sensors + card registration | Maintenance schedule entries |
 
 > **Estimates, not measurements.** Most robot vacuums do not report actual water volume.
 > Published tank capacities and integration signals are kept separate from empirical
-> ml/m² and mop-wash estimates. Every time-derived fallback is labelled with high initial
-> uncertainty and can learn a bounded per-device correction from valid refill-to-low-water
-> cycles.
+> ml/m², ml/min and wash measurements. No model ships a consumption rate, and no
+> assumed travel speed converts area into time. Unknown remains unknown.
 
 ### Manual-only models and the refill baseline
 
 Some models expose a trustworthy clean-water capacity but no usable consumption profile.
-They remain **Manual-only** until you add a calibration. Models with an empirical ml/m²
-profile can fall back to active time at a conservative 0.8 m²/min when their integration
-does not expose area. This conversion is deliberately visible and editable. The
-Diagnostics section shows the adapter, resolved profile, signal roles, estimate source,
-uncertainty and calibration anchor.
+They remain **Manual-only** until you add a calibration. When an integration does not
+expose the exposure required by that calibration, automatic accounting remains unknown;
+the card does not invent an area-to-time conversion. The Diagnostics section shows the
+adapter, resolved profile, signal roles, estimate source, uncertainty and calibration
+anchor.
 
 ### Integration signal compatibility
 
@@ -224,7 +250,7 @@ These optional keys let you wire additional entities into the water accounting
 | `dock_clean_water_sensor` / `dock_dirty_water_sensor` | `sensor.robot_..._water_tank_clean` | Uses canonical enum semantics. `missing` is never treated as consumption. |
 | `dock_status_sensor` | `sensor.robot_..._station_state` | Detects one dock mop-wash cycle without confusing robot cleaning with dock cleaning. |
 | `water_error_sensor` | `sensor.robot_..._operational_error` | Accepts only exact machine-readable clean-water-empty states. |
-| `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. An `on` → `off` transition counts as "tank refilled" and resets the used-water counter automatically (60 s debounce between auto-resets). |
+| `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. Closing the lid does not prove full refill. Automatic reset requires an explicitly verified `refill_on_clear: true` contract. |
 
 ### Advanced — bring your own counter
 
@@ -259,7 +285,7 @@ has been scheduled. Add a maintenance interval in the card settings; `unknown` b
 that means “no schedule”, not a failed vacuum detector.
 
 **I see two devices but I only have one vacuum.**
-Either your robot is exposed by two integrations at once (e.g. the vendor integration and
+The current local implementation groups duplicate entities only with shared registry device identity or a matching non-placeholder MAC. It preserves one history owner and never adds histories together. Ambiguous identities remain separate. On older releases, your robot may be exposed by two integrations at once (e.g. the vendor integration and
 Matter — each creates its own `vacuum.*` entity), or you hit a bug fixed in v5.1.7 where a
 ghost "Vacuum" device could be created by the card's default config. Update and restart —
 the ghost is removed automatically. If it persists, remove it in Settings →
@@ -271,10 +297,11 @@ same manufacturer, matching robot-model prefix and a shared config entry. Otherw
 link fails closed and the dock is ignored instead of borrowing signals from another robot.
 
 **How accurate is it?**
-Accuracy depends on the integration and model. Area + a device-calibrated rate is the best
-estimate; duration/active-time fallback starts with higher uncertainty. Exact tank enum
-states and debounced low-water thresholds can refine the correction factor over complete
-cycles. You can tune mL/m², cleaning speed, low-water reserve and wash volume per vacuum.
+Accuracy requires physical comparison for the same reservoir, model and mode. There is
+no accuracy percentage without measurements. Configure measured ml/m² or ml/min;
+whole-cycle calibration includes dock washes, so separate wash dosing is enabled only
+with `calibration_scope: floor_only`. Low-water calibration also requires explicit
+reservoir semantics and a measured remaining threshold.
 
 ## Upgrading from v4
 
@@ -311,3 +338,32 @@ See [CHANGELOG.md](CHANGELOG.md).
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+## Evidence-gated catalog and diagnostics (unreleased)
+
+See [dated per-model and per-integration coverage](docs/coverage-report-2026-09-05.md),
+[measurement and Diagnostics instructions](docs/diagnostics-and-calibration.md), and
+[the sprint ledger](docs/app-sprint-ledger.json). The catalogue lists researched candidates,
+not a promise of hardware-verified support for every SKU.
+
+The panel now keeps bounded automatic session history (50 sessions), preserves unknown
+water values, and offers **Refresh detected profile** in Maintenance → Custom calibration.
+This releases profile locks while preserving authored settings, calibration and history.
+
+For an actual volume sensor configure `water_volume_sensor`, its
+`water_volume_reservoir`, and matching `tracked_reservoir`. Only mL/L are accepted;
+percent, mode enums and an unknown sensor unit cannot masquerade as volume. The legacy
+card-only `water_sensor` never overrides backend accounting; migrate real input sensors
+to these explicit fields. Measurement gaps fail closed instead of falling back to estimates.
+
+### Consumption research status (2026-09-05)
+
+Universal per-model/per-mode consumption remains incomplete. Published action quantities, public MIoT settings and unresolved integration bindings are tracked in [the consumption research report](docs/consumption-research-2026-09-05.md). They are not automatically promoted to runtime rates. `python3 scripts/check_consumption_coverage.py --require-complete` is the separate acceptance gate; passing local tests does not imply this gate passes.
+
+### Runtime selection and private measurements
+
+The replacement sprint adds strict context-based consumption selection, historical context,
+private measured calibration, independent reservoir readings and explicit accuracy diagnostics.
+See [runtime contract and limitations](docs/runtime-consumption-contract.md). The shipped
+snapshot still has no approved consumption profiles; local tests do not establish worldwide
+coverage or physical accuracy. Production HA has not been modified by this sprint.

@@ -13,6 +13,9 @@ from typing import Any
 
 
 ROLE_IDENTIFIERS: dict[str, set[str]] = {
+    # These settings are bound only by exact adapter contracts, never names.
+    "route_entity": set(),
+    "passes_entity": set(),
     "status_sensor": {
         "status",
         "cleaning_status",
@@ -88,6 +91,7 @@ ROLE_IDENTIFIERS: dict[str, set[str]] = {
 
 ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
     "roborock": {
+        "route_entity": ("cleaning_route",),
         "status_sensor": ("status", "a01_status", "q7_status"),
         "cleaning_active_sensor": ("in_cleaning",),
         "area_sensor": ("cleaning_area", "clean_area"),
@@ -108,6 +112,7 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
         "water_error_sensor": ("operational_error",),
     },
     "ecovacs": {
+        "passes_entity": ("clean_count",),
         "area_sensor": ("stats_area",),
         "duration_sensor": ("stats_time",),
         "mop_intensity_entity": ("water_amount",),

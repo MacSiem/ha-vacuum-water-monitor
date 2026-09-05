@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "fixture_class": "synthetic_accounting_replay",
+  "device_identity": {"installation_id":"synthetic-installation-a","vacuum_id":"synthetic-vacuum-a"},
+  "initial_reservoirs": {"dock_clean":1000,"dock_dirty":100,"robot_clean":100,"robot_dirty":0,"detergent":50},
+  "setting_segments": [{"start":0,"end":5,"settings_id":"low"},{"start":5,"end":10,"settings_id":"high"}],
+  "events": [
+    {"id":"wash-1","completed":true,"aborted":false,"completion_evidence":"counter_increment","edges":[{"from":"robot_clean","to":"robot_dirty","amount_ml":40},{"from":"dock_clean","to":"robot_clean","amount_ml":40}]},
+    {"id":"restart-1","completed":false,"aborted":false,"completion_evidence":"none","edges":[]},
+    {"id":"wash-2","completed":false,"aborted":true,"completion_evidence":"command","edges":[{"from":"robot_clean","to":"robot_dirty","amount_ml":10}]},
+    {"id":"plumbed-refill-1","completed":false,"aborted":false,"completion_evidence":"none","edges":[{"from":"external_supply","to":"dock_clean","amount_ml":300}]}
+  ],
+  "expected_final_reservoirs": {"dock_clean":1260,"dock_dirty":100,"robot_clean":90,"robot_dirty":50,"detergent":50}
+}

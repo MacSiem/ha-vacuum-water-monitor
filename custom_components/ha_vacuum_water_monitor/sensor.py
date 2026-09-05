@@ -353,6 +353,10 @@ def _water_state_attributes(
         "last_calibration_target_ml": tank_state.get(
             "last_calibration_target_ml"
         ),
+        "consumption_resolution": tank_state.get("consumption_resolution"),
+        "reservoir_levels": tank_state.get("reservoir_levels"),
+        "accounting_v2": {k: v for k, v in (tank_state.get("accounting_v2") or {}).items() if k not in {"journal", "events", "device_identity"}},
+        "accounting_incomplete": bool(tank_state.get("accounting_incomplete")),
         "last_accounting_source": tank_state.get("last_accounting_source"),
         "last_accounting_rate_ml": tank_state.get("last_accounting_rate_ml"),
         "last_accounting_reason": tank_state.get("last_accounting_reason"),

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import math
+from copy import deepcopy
+import hashlib
+import json
 import re
 from typing import Any
 import unicodedata
@@ -12,6 +15,9 @@ from homeassistant.core import HomeAssistant
 
 from .sensor_calculations import apply_custom_calibration
 from .storage import VacuumWaterStorage
+from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compatible_context
+from . import profiles as consumption_profiles
+from . import accounting_v2
 
 MOP_WASH_STATES = {
     "washing",
@@ -137,7 +143,7 @@ async def async_tick_water_state(
 ) -> dict[str, dict[str, Any]]:
     """Tick every known vacuum and persist changed states."""
     stored = await storage.async_get_state()
-    devices = _devices_to_tick(hass, stored["settings"])
+    devices = _devices_to_tick(hass, stored["settings"], stored["tank_states"])
     previous = stored["tank_states"]
     changed: dict[str, dict[str, Any]] = {}
 
@@ -173,10 +179,36 @@ def tick_device(
     state = dict(state)
     vacuum_entity = device.get("vacuum_entity")
     vac = hass.states.get(vacuum_entity) if vacuum_entity else None
-    if vac is None:
-        return state, False
+    event_sensor = device.get("accounting_event_sensor")
+    if event_sensor or state.get("accounting_v2"):
+        event_state = hass.states.get(event_sensor) if isinstance(event_sensor, str) and event_sensor.startswith("sensor.") else None
+        stream = None
+        if (vac is not None and _normalized_signal(vac.state) is not None
+                and event_state is not None and _normalized_signal(event_state.state) is not None):
+            stream = event_state.attributes.get("accounting_stream")
+        state["accounting_v2"] = accounting_v2.consume_dataset_live(
+            state.get("accounting_v2"), stream,
+            contracts=accounting_v2.SOURCE_CONTRACTS,
+            source_bindings=accounting_v2.SOURCE_BINDINGS,
+            source_entity=event_sensor,
+            now_ms=now_ts if now_ts is not None else int(datetime.now(timezone.utc).timestamp() * 1000))
+    if vac is None or _normalized_signal(vac.state) in {None, "unknown", "unavailable"}:
+        if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
+            state["accounting_incomplete"] = True
+        state.update(last_area=None, last_duration_seconds=None, last_tick_ts=0,
+                     area_gap=True, duration_gap=True, last_water_volume_ml=None, session_accounting_valid=False, session_exposure_complete=False,
+                     verified_wash_active=False, last_completed_wash_count=None)
+        state["reservoir_levels"] = {key: {"volume_ml": None, "source": "unknown", "reason": "vacuum_unavailable"}
+                                     for key in ("dock_clean", "dock_dirty", "robot_clean", "robot_dirty", "detergent")}
+        state["consumption_resolution"] = {"source": "unknown", "reason": "vacuum_unavailable", "profile_id": None}
+        _record_accounting(state, "unknown", None, None, "vacuum_unavailable")
+        return state, True
 
-    dirty = False
+    dirty = bool(event_sensor or state.get("accounting_v2"))
+    levels = _read_reservoir_levels(hass, device)
+    if state.get("reservoir_levels") != levels:
+        state["reservoir_levels"] = levels
+        dirty = True
     status_sensor = device.get("status_sensor")
     status_state = hass.states.get(status_sensor) if status_sensor else None
     if status_sensor:
@@ -184,6 +216,15 @@ def tick_device(
     else:
         curr_status_raw = vac.attributes.get("status") or vac.state
     curr_status = _normalized_signal(curr_status_raw)
+
+    if status_sensor and _is_transient_status(curr_status):
+        if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
+            state["accounting_incomplete"] = True
+        state.update(last_area=None, last_duration_seconds=None, area_gap=True,
+                     duration_gap=True, last_tick_ts=0, last_water_volume_ml=None, session_accounting_valid=False, session_exposure_complete=False,
+                     verified_wash_active=False, last_completed_wash_count=None)
+        _record_accounting(state, "unknown", None, None, "status_unavailable")
+        return state, True
 
     curr_area = _area_square_meters(hass, device.get("area_sensor"))
     if curr_area is None and device.get("area_attribute"):
@@ -284,6 +325,11 @@ def tick_device(
         if wash_volume_base is not None
         else None
     )
+    # A whole-cycle dose already includes dock washes. Separate wash dosing is
+    # permitted only when the user confirms the floor dose excludes washes.
+    if (usage_per_m2 is not None or usage_per_minute is not None) and device.get("calibration_scope") != "floor_only":
+        wash_volume = None
+
     evidence = device.get("accounting_evidence")
     time_evidence = device.get("time_accounting_evidence") or evidence
     if int(state.get("calibration_samples") or 0) > 0:
@@ -293,6 +339,110 @@ def tick_device(
     if now_ts is None:
         now_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
 
+    # Rates calibrated for one setting must not charge the interval spanning
+    # a change to another mode/route/wash configuration. Only observed canonical
+    # settings enter this fingerprint; area/time counters are exposures, not settings.
+    live_settings = {"cleaning_mode": cleaning_mode, "mop_mode": mop_mode,
+                     "water_level": mop_intensity}
+    for role in ("route_entity", "passes_entity", "wash_mode_entity",
+                 "wash_frequency_entity", "wash_temperature_entity",
+                 "adaptive_mode_entity", "detergent_mode_entity",
+                 "task_scope_entity", "suction_level_entity", "carpet_policy_entity"):
+        if device.get(role):
+            live_settings[role] = _normalized_signal(_state_value(hass, device[role]))
+    consumption_context = deepcopy(device.get("consumption_context") or {
+        "model_id": device.get("profile_key"), "sku": device.get("sku"),
+        "dock_variant": device.get("dock_variant"), "firmware": device.get("firmware"),
+        "integration_id": device.get("integration_adapter"),
+        "integration_version": device.get("integration_version"),
+        "reservoir": device.get("tracked_reservoir"), "action": "floor_mopping",
+        "settings": dict.fromkeys(CONSUMPTION_SETTINGS),
+    })
+    if isinstance(consumption_context, dict) and device.get("observed_firmware") is not None:
+        consumption_context["firmware"] = device["observed_firmware"]
+    whole_cycle_calibration = None
+    if isinstance(consumption_context, dict) and consumption_context:
+        settings_context = consumption_context.setdefault("settings", {})
+        if isinstance(settings_context, dict):
+            for setting, role in (("mop_mode", "mop_mode_entity"),
+                                  ("water_level", "mop_intensity_entity"),
+                                  ("cleaning_mode", "cleaning_mode_entity")):
+                if device.get(role):
+                    settings_context[setting] = _normalized_signal(_state_value(hass, device[role]))
+            for setting in CONSUMPTION_SETTINGS:
+                if device.get(setting + "_entity"):
+                    settings_context[setting] = _normalized_signal(_state_value(hass, device[setting + "_entity"]))
+        consumption_context["device_id"] = vacuum_entity
+        previous_area = _float_or_none(state.get("last_area"))
+        previous_duration = _float_or_none(state.get("last_duration_seconds"))
+        resolution = resolve_consumption_profile(
+            consumption_context,
+            {"area_m2": curr_area - previous_area if curr_area is not None and previous_area is not None else None,
+             "time_minutes": (curr_duration_seconds - previous_duration) / 60
+                 if curr_duration_seconds is not None and previous_duration is not None else None},
+            device.get("consumption_calibration"),
+        )
+        reservoir_matches = not device.get("tracked_reservoir") or device["tracked_reservoir"] == consumption_context.get("reservoir")
+        if not reservoir_matches:
+            resolution = {**resolution, "source": "unknown", "method": None, "coefficient": None,
+                          "scope": None, "reason": "context_reservoir_mismatch"}
+        state["consumption_resolution"] = resolution
+        personal = device.get("consumption_calibration")
+        if isinstance(personal, list):
+            matches = [r for r in personal if isinstance(r, dict) and r.get("device_id") == vacuum_entity
+                       and _compatible_context(consumption_context, r.get("context", {}))]
+            personal = matches[0] if len(matches) == 1 else None
+        if (reservoir_matches and isinstance(personal, dict) and personal.get("scope") == "whole_cycle"
+                and personal.get("device_id") == vacuum_entity
+                and _compatible_context(consumption_context, personal.get("context", {}))):
+            whole_cycle_calibration = personal
+            usage_per_m2 = usage_per_minute = wash_volume = None
+        # Legacy authored calibration remains authoritative. Shared model rates
+        # are only used when no authored coefficient is already effective.
+        if usage_per_m2 is None and usage_per_minute is None and wash_volume is None:
+            if resolution.get("scope") == "floor_only":
+                if resolution["method"] == "area":
+                    usage_per_m2 = resolution["coefficient"]
+                elif resolution["method"] == "time":
+                    usage_per_minute = resolution["coefficient"]
+                evidence = resolution["source"]
+                time_evidence = evidence
+                calibration_factor = 1
+            elif resolution.get("source") not in {"unknown", "manufacturer_data"} and whole_cycle_calibration is None:
+                state["consumption_resolution"] = {**resolution, "source": "unknown", "reason": "action_accounting_required"}
+    else:
+        consumption_context = None
+    context_values = {key: device.get(key) for key in (
+        "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",
+        "firmware", "sw_version", "sku", "dock_variant", "integration_version",
+        "area_sensor", "duration_sensor", "water_volume_sensor", "rate_signal",
+        "usage_ml_per_m2", "usage_ml_per_active_minute", "wash_volume_ml", "calibration_scope", "water_volume_reservoir"
+    )}
+    context_values["live_settings"] = live_settings
+    context_values["consumption_context"] = consumption_context
+    context_values["consumption_calibration"] = device.get("consumption_calibration")
+    context_values["dataset_revision"] = (consumption_profiles.CONSUMPTION_SNAPSHOT.get("dataset_version"), consumption_profiles.CONSUMPTION_SNAPSHOT.get("source_payload_sha256"))
+    context = hashlib.sha256(json.dumps(context_values, sort_keys=True, default=str).encode()).hexdigest()
+    old_context = state.get("accounting_context")
+    state["accounting_context"] = context
+    if old_context is not None and old_context != context:
+        state.update(last_area=curr_area, last_duration_seconds=curr_duration_seconds,
+                     last_tick_ts=now_ts, last_water_volume_ml=None, calibration_factor=1,
+                     calibration_samples=0, session_accounting_valid=False, session_exposure_complete=False,
+                     verified_wash_active=False, last_completed_wash_count=None)
+        _record_accounting(state, "unknown", None, None, "accounting_context_changed")
+        return state, True
+
+    last_tick = _positive_number(state.get("last_tick_ts"))
+    if last_tick is not None and (now_ts <= last_tick or now_ts - last_tick > MAX_ACTIVE_INTERVAL_SECONDS * 1000):
+        if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
+            state["accounting_incomplete"] = True
+        state.update(last_area=None, last_duration_seconds=None, area_gap=True,
+                     duration_gap=True, last_water_volume_ml=None, session_exposure_complete=False,
+                     verified_wash_active=False, last_completed_wash_count=None)
+
+    session_running = _is_cleaning(vac_state, curr_status, cleaning_active)
+    completed_wash_resolution = None
     previous_status = state.get("last_status")
     previous_dock_status = state.get("last_dock_status")
     wash_active = bool(state.get("wash_sequence_active")) or (
@@ -303,6 +453,38 @@ def tick_device(
         curr_status in MOP_WASH_STATES
         or curr_dock_status in DOCK_WASH_STATES
     )
+    if (consumption_context and whole_cycle_calibration is None and wash_volume is None
+            and not device.get("water_volume_sensor")
+            and (not device.get("tracked_reservoir") or device["tracked_reservoir"] == consumption_context.get("reservoir"))):
+        wash_context = deepcopy(consumption_context)
+        wash_context["action"] = "mop_wash"
+        wash_resolution = resolve_consumption_profile(wash_context, {"action_count": 1})
+        if wash_resolution.get("scope") == "wash_only" and wash_resolution.get("method") == "action":
+            # A phase ending or a command does not prove completion. A bound
+            # completed-action counter must advance exactly once without a gap.
+            completed = _float_or_none(_state_value(hass, device.get("wash_completed_sensor")))
+            before_completed = _float_or_none(state.get("last_completed_wash_count"))
+            state["last_completed_wash_count"] = completed
+            actual_wash = wash_now and curr_status != "going_to_wash_the_mop"
+            if (completed is not None and before_completed is not None
+                    and completed >= 0 and completed.is_integer()
+                    and completed - before_completed == 1 and state.get("verified_wash_active")):
+                amount = wash_resolution["coefficient"]
+                state["used_ml"] = round(_number(state.get("used_ml"), 0) + amount, 2)
+                state["wash_resolution"] = wash_resolution
+                completed_wash_resolution = wash_resolution
+                state["verified_wash_active"] = False
+                dirty = True
+            if actual_wash and before_completed == completed and completed is not None:
+                state["verified_wash_active"] = True
+            if completed is None or (before_completed is not None and completed != before_completed):
+                state["verified_wash_active"] = False
+    if session_running and not state.get("session_start_ts"):
+        state.update(session_start_ts=now_ts, session_start_used_ml=_number(state.get("used_ml"),0),
+                     session_start_area=curr_area, session_accounting_valid=True,
+                     session_context=deepcopy(consumption_context),
+                     session_resolution=deepcopy(state.get("consumption_resolution")),
+                     session_exposure_complete=curr_area == 0, session_segments=1)
     if wash_now:
         if wash_active:
             dirty |= _record_accounting(
@@ -313,6 +495,8 @@ def tick_device(
                 state, "wash", wash_volume, evidence, "wash_initial_observation"
             )
         elif wash_volume is None:
+            if whole_cycle_calibration is None and curr_status != "going_to_wash_the_mop" and not state.get("verified_wash_active"):
+                state["accounting_incomplete"] = True
             dirty |= _record_accounting(state, "wash", None, evidence, "missing_wash_rate")
         else:
             state["used_ml"] = round(_number(state.get("used_ml"), 0) + wash_volume, 2)
@@ -332,8 +516,62 @@ def tick_device(
             state["wash_sequence_active"] = False
             dirty = True
 
+    # A configured real volume sensor is authoritative only for the explicitly
+    # declared reservoir. Its missing samples never silently become estimates.
+    real_sensor = bool(device.get("water_volume_sensor"))
+    if real_sensor:
+        state["used_ml"] = _number(state.get("used_ml"), 0) - (
+            wash_volume if wash_now and not wash_active and previous_status is not None
+            and wash_volume is not None else 0
+        )
+        volume_state = hass.states.get(device["water_volume_sensor"])
+        volume = _float_or_none(volume_state.state) if volume_state else None
+        unit = str(volume_state.attributes.get("unit_of_measurement", "")) if volume_state else ""
+        capacity = _positive_number(device.get("tracked_capacity_ml"))
+        reason = None
+        if device.get("water_volume_reservoir") != device.get("tracked_reservoir") or not device.get("tracked_reservoir"):
+            reason = "real_sensor_reservoir_unverified"
+        elif volume is None:
+            reason = "real_sensor_unavailable"
+        elif unit not in {"mL", "ml", "L", "l"}:
+            reason = "real_sensor_unit_unknown"
+        else:
+            volume *= 1000 if unit in {"L", "l"} else 1
+            if volume < 0 or (capacity is not None and volume > capacity):
+                reason = "real_sensor_out_of_range"
+        previous_volume = _float_or_none(state.get("last_water_volume_ml"))
+        if reason:
+            state["last_water_volume_ml"] = None
+        else:
+            state["last_water_volume_ml"] = volume
+            state["water_empty_active"] = volume == 0
+            state["water_anchor_source"] = "real_sensor"
+            state["water_anchor_kind"] = "empty" if volume == 0 else None
+            state["water_anchor_confidence"] = "measured"
+            state["last_dock_err"] = curr_dock_err
+            if capacity is not None and volume == capacity and previous_volume is not None and previous_volume < volume:
+                state["initialized"] = True
+                state["last_reset_ts"] = now_ts
+                state["last_reset_iso"] = datetime.fromtimestamp(now_ts / 1000, tz=timezone.utc).isoformat()
+            if previous_volume is None:
+                reason = "real_sensor_baseline"
+            elif volume > previous_volume:
+                state["session_accounting_valid"] = False
+                reason = "real_sensor_refill_observed"
+                # A rise proves added volume, not a completely full reservoir.
+                state["used_ml"] = max(0, _number(state.get("used_ml"), 0) - (volume - previous_volume))
+            else:
+                state["used_ml"] = round(_number(state.get("used_ml"), 0) + previous_volume - volume, 2)
+        state["consumption_resolution"] = {"source": "real_sensor", "method": "volume", "reason": reason, "profile_id": None}
+        _record_accounting(state, "real_sensor", None, "measured_volume", reason)
+        state.update(last_area=curr_area, last_duration_seconds=curr_duration_seconds,
+                     last_status=curr_status, last_dock_status=curr_dock_status, last_tick_ts=now_ts)
+        _finish_session(state, session_running, curr_status, now_ts, curr_area)
+        return state, True
+
     last_area = _float_or_none(state.get("last_area"))
     if curr_area is None:
+        state["session_exposure_complete"] = False
         if device.get("area_sensor"):
             if not state.get("area_gap"):
                 state["area_gap"] = True
@@ -355,13 +593,19 @@ def tick_device(
         delta = curr_area - last_area
         ceiling = _positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2
         if delta < 0:
+            state["session_exposure_complete"] = False
+            state["session_accounting_valid"] = False
             dirty |= _record_accounting(state, "area", None, evidence, "area_reset")
         elif delta > ceiling:
+            state["session_exposure_complete"] = False
+            state["session_accounting_valid"] = False
             dirty |= _record_accounting(state, "area", None, evidence, "area_anomaly")
         elif delta < AREA_MIN_DELTA and not math.isclose(
             delta, AREA_MIN_DELTA, rel_tol=0, abs_tol=1e-9
         ):
             dirty |= _record_accounting(state, "area", None, evidence, "area_delta_below_minimum")
+        elif wash_now:
+            pass  # Wash and floor accounting must not consume the same sample.
         elif not _is_cleaning(vac_state, curr_status, cleaning_active):
             dirty |= _record_accounting(state, "area", None, evidence, "not_cleaning")
         elif not mop_active:
@@ -386,10 +630,10 @@ def tick_device(
     # consumption from bounded active time instead of leaving the counter stuck.
     previous_tick_ts = _positive_number(state.get("last_tick_ts"))
     last_duration_seconds = _float_or_none(state.get("last_duration_seconds"))
-    should_use_time = curr_area is None
+    should_use_time = (curr_area is None or (usage_per_m2 is None and usage_per_minute is not None)) and not wash_now
     elapsed_seconds: float | None = None
     if should_use_time and curr_duration_seconds is not None:
-        if last_duration_seconds is None:
+        if last_duration_seconds is None or state.get("duration_gap"):
             dirty |= _record_accounting(
                 state,
                 "active_time",
@@ -399,7 +643,7 @@ def tick_device(
             )
         else:
             elapsed_seconds = curr_duration_seconds - last_duration_seconds
-    elif should_use_time and previous_tick_ts is not None:
+    elif should_use_time and not (device.get("duration_sensor") or device.get("duration_attribute")) and previous_tick_ts is not None:
         elapsed_seconds = (now_ts - previous_tick_ts) / 1000
 
     if should_use_time and elapsed_seconds is not None:
@@ -429,6 +673,11 @@ def tick_device(
             dirty |= _record_accounting(
                 state, "active_time", effective_minute_rate, time_evidence, None
             )
+
+    if device.get("duration_sensor") or device.get("duration_attribute"):
+        state["duration_gap"] = curr_duration_seconds is None
+        if should_use_time and curr_duration_seconds is None:
+            dirty |= _record_accounting(state, "active_time", None, time_evidence, "duration_unavailable")
 
     # A configured status signal that is temporarily absent/unavailable is the
     # most actionable diagnostic for this pass, even when an area baseline was
@@ -462,6 +711,14 @@ def tick_device(
         (anchor for anchor in active_anchors if anchor[1] == "empty"),
         active_anchors[0] if active_anchors else None,
     )
+    if active_anchor is not None:
+        reservoir = device.get("tracked_reservoir")
+        if not reservoir or device.get("water_anchor_reservoir") != reservoir:
+            _record_accounting(state, "unknown", None, None, "water_anchor_reservoir_unverified")
+            active_anchor = None
+        elif active_anchor[1] == "shortage" and device.get("low_water_anchor_remaining_percent") is None:
+            _record_accounting(state, "unknown", None, None, "shortage_volume_unmeasured")
+            active_anchor = None
     water_empty_now = active_anchor is not None
     water_empty_before = bool(state.get("water_empty_active"))
 
@@ -626,7 +883,14 @@ def tick_device(
             # was persisted.  Unknown/unavailable never counts as a refill.
             do_reset = next(iter(water_anchor_states.values()))[0] is False
 
+    # Clearing an empty/shortage alarm or closing a lid does not prove a full
+    # refill. Automatic full reset requires an explicitly configured contract.
+    if do_reset and not device.get("refill_on_clear", False):
+        do_reset = False
+        dirty |= _record_accounting(state, "refill", None, evidence, "refill_volume_unmeasured")
+
     if do_reset and cooldown_ok:
+        state["session_accounting_valid"] = False
         state["used_ml"] = 0
         state["initialized"] = True
         state["last_reset_iso"] = datetime.fromtimestamp(
@@ -664,7 +928,92 @@ def tick_device(
         state["last_tick_ts"] = now_ts
         dirty = True
 
+    if whole_cycle_calibration is not None:
+        _record_accounting(state, "whole_cycle", None, "device_calibration", "whole_cycle_pending")
+        if (not session_running and not wash_now and curr_status in {"docked", "idle", "charging", "completed"}
+                and state.get("session_start_ts")):
+            exposure = curr_area - state.get("session_start_area", 0) if curr_area is not None and state.get("session_start_area") is not None else None
+            resolution = resolve_consumption_profile(consumption_context, {"area_m2": exposure}, whole_cycle_calibration)
+            state["consumption_resolution"] = resolution
+            if (state.get("session_exposure_complete") and state.get("session_accounting_valid")
+                    and resolution.get("source") == "device_calibration" and resolution.get("method") == "area"):
+                state["used_ml"] = round(_number(state.get("used_ml"), 0) + exposure * resolution["coefficient"], 2)
+                state["session_resolution"] = deepcopy(resolution)
+                _record_accounting(state, "whole_cycle", resolution["coefficient"], "device_calibration", None)
+            else:
+                state["session_accounting_valid"] = False
+                state["accounting_incomplete"] = True
+                _record_accounting(state, "unknown", None, None, resolution.get("reason") or "incomplete_cycle")
+        dirty = True
+    if state.get("last_accounting_reason") in {"missing_area_rate", "missing_time_rate", "missing_intensity_factor", "area_gap", "active_time_gap", "area_reset", "area_anomaly"}:
+        state["accounting_incomplete"] = True
+    if completed_wash_resolution is not None:
+        state["consumption_resolution"] = deepcopy(completed_wash_resolution)
+        _record_accounting(state, "wash", completed_wash_resolution["coefficient"],
+                           completed_wash_resolution["source"], None)
+    _finish_session(state, session_running or wash_now, curr_status, now_ts, curr_area)
     return state, dirty
+
+
+def _read_reservoir_levels(hass, device):
+    """Read distinct physical quantities; a transfer is not system consumption."""
+    bindings = device.get("reservoir_volume_sensors")
+    bindings = bindings if isinstance(bindings, dict) else {}
+    capacities = device.get("reservoirs_ml")
+    capacities = capacities if isinstance(capacities, dict) else {}
+    result = {}
+    for reservoir in ("dock_clean", "dock_dirty", "robot_clean", "robot_dirty", "detergent"):
+        entity = bindings.get(reservoir)
+        reason, volume = "volume_sensor_unbound", None
+        if isinstance(entity, str) and entity:
+            if not entity.startswith("sensor."):
+                reason = "volume_sensor_domain_invalid"
+            elif list(bindings.values()).count(entity) > 1:
+                reason = "ambiguous_reservoir_binding"
+            else:
+                sample = hass.states.get(entity)
+                volume = _float_or_none(sample.state) if sample else None
+                unit = sample.attributes.get("unit_of_measurement") if sample else None
+                reason = None
+                if volume is None:
+                    reason = "volume_sensor_unavailable"
+                elif unit not in {"ml", "mL", "l", "L"}:
+                    reason = "volume_unit_unknown"
+                else:
+                    volume *= 1000 if unit in {"l", "L"} else 1
+                    capacity = _positive_number(capacities.get(reservoir))
+                    if volume < 0 or (capacity is not None and volume > capacity):
+                        reason = "volume_out_of_range"
+        result[reservoir] = {"volume_ml": volume if reason is None else None,
+                             "source": "physical_sensor" if reason is None else "unknown", "reason": reason}
+    return result
+
+
+def _finish_session(state, running, status, now_ts, area):
+    """Persist a bounded automatic history, keeping unknown water as null."""
+    start = state.get("session_start_ts")
+    if not start:
+        return
+    reason = str(state.get("last_accounting_reason") or "")
+    if reason.startswith("missing_") or "unavailable" in reason or reason.endswith("gap"):
+        state["session_accounting_valid"] = False
+    if running or status not in {"docked", "idle", "charging", "completed"}:
+        return
+    measured = state.get("last_accounting_evidence") in {"measured_volume", "user_calibration", "explicit_user_configuration", "device_calibrated", "verified_model", "device_calibration"}
+    measured = measured or (state.get("session_resolution") or {}).get("source") in {"verified_model", "device_calibration"}
+    water = max(0, _number(state.get("used_ml"),0)-_number(state.get("session_start_used_ml"),0)) if measured and state.get("session_accounting_valid") else None
+    first_area = _float_or_none(state.get("session_start_area"))
+    record = {"ts": now_ts, "started_ts": start, "type": "automatic", "water": water,
+              "area": max(0,area-first_area) if area is not None and first_area is not None else None,
+              "duration": round(max(0,now_ts-start)/60000,1), "method":state.get("last_accounting_source"),
+              "evidence":state.get("last_accounting_evidence"),
+              "context": deepcopy(state.get("session_context")),
+              "resolution": deepcopy(state.get("session_resolution")),
+              "accounting_valid": bool(state.get("session_accounting_valid")),
+              "exposure_complete": bool(state.get("session_exposure_complete")),
+              "segments": state.get("session_segments", 1)}
+    state["automatic_sessions"] = [record, *(state.get("automatic_sessions") or [])][:50]
+    state["session_start_ts"] = None
 
 
 def list_vacuums(hass: HomeAssistant) -> list[dict[str, Any]]:
@@ -675,11 +1024,11 @@ def list_vacuums(hass: HomeAssistant) -> list[dict[str, Any]]:
 
 
 def _devices_to_tick(
-    hass: HomeAssistant, settings: dict[str, Any]
+    hass: HomeAssistant, settings: dict[str, Any], tank_states: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:
     from .sensor_calculations import build_vacuum_devices
 
-    devices = build_vacuum_devices(settings, {}, list_vacuums(hass))
+    devices = build_vacuum_devices(settings, tank_states or {}, list_vacuums(hass))
     return [apply_custom_calibration(device, settings) for device in devices]
 
 

@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "cutoff_date": "2026-09-05",
+  "records": [
+    {
+      "id": "xiaomi_h50_pro_first_wash",
+      "model": "Xiaomi Robot Vacuum H50 Pro",
+      "action": "first_time_mop_wash",
+      "mode": null,
+      "value": 180,
+      "unit": "ml/action",
+      "reservoir": "dock_clean",
+      "source_type": "manufacturer_documentation",
+      "url": "https://www.mi.com/global/support/faq/details/KA-673648/",
+      "last_verified": "2026-09-05",
+      "confidence": "manufacturer_claim_not_empirically_validated",
+      "claim": "FAQ Q62 gives 180 ml for first-time cleaning.",
+      "unknowns": [
+        "Meaning of first-time versus every pre-task wash",
+        "Wash intensity and firmware applicability",
+        "HA event identification",
+        "Final wash quantity"
+      ],
+      "ha_binding": null,
+      "firmware": null,
+      "sample_count": 0,
+      "runtime_eligible": false
+    },
+    {
+      "id": "xiaomi_h50_pro_mid_wash",
+      "model": "Xiaomi Robot Vacuum H50 Pro",
+      "action": "mid_task_mop_wash",
+      "mode": null,
+      "value": 120,
+      "unit": "ml/action",
+      "reservoir": "dock_clean",
+      "source_type": "manufacturer_documentation",
+      "url": "https://www.mi.com/global/support/faq/details/KA-673648/",
+      "last_verified": "2026-09-05",
+      "confidence": "manufacturer_claim_not_empirically_validated",
+      "claim": "FAQ Q62 gives 120 ml for each mid-task mop cleaning.",
+      "unknowns": [
+        "Wash intensity and firmware applicability",
+        "HA event identification",
+        "Whether robot refill is included",
+        "Independent validation"
+      ],
+      "ha_binding": null,
+      "firmware": null,
+      "sample_count": 0,
+      "runtime_eligible": false
+    },
+    {
+      "id": "concept_vr4050_wash_standard",
+      "model": "Concept VR4050",
+      "action": "mop_wash",
+      "mode": "standard",
+      "value": 130,
+      "unit": "ml/action",
+      "reservoir": "dock_clean",
+      "source_type": "manufacturer_documentation",
+      "url": "https://www.my-concept.sk/img.asp?attid=56409021",
+      "last_verified": "2026-09-05",
+      "confidence": "manufacturer_claim_not_empirically_validated",
+      "claim": "Manual PDF page 51, printed pages 100–101: standard fabric cleaning uses 130 ml and lasts 91 seconds.",
+      "unknowns": [
+        "HA integration and property binding",
+        "Firmware and regional equivalence",
+        "Whether concurrent robot refill is included",
+        "Independent validation"
+      ],
+      "ha_binding": null,
+      "firmware": null,
+      "sample_count": 0,
+      "runtime_eligible": false,
+      "source_sha256": "9bf5f4cd0cd4a842a6d2f25177703d50cdc51b6f0a403efb587c0c1b6b5fa5bc"
+    },
+    {
+      "id": "concept_vr4050_wash_deep",
+      "model": "Concept VR4050",
+      "action": "mop_wash",
+      "mode": "deep",
+      "value": 215,
+      "unit": "ml/action",
+      "reservoir": "dock_clean",
+      "source_type": "manufacturer_documentation",
+      "url": "https://www.my-concept.sk/img.asp?attid=56409021",
+      "last_verified": "2026-09-05",
+      "confidence": "manufacturer_claim_not_empirically_validated",
+      "claim": "Manual PDF page 51, printed pages 100–101: deep fabric cleaning uses 215 ml and lasts 145 seconds.",
+      "unknowns": [
+        "HA integration and property binding",
+        "Firmware and regional equivalence",
+        "Whether concurrent robot refill is included",
+        "Independent validation"
+      ],
+      "ha_binding": null,
+      "firmware": null,
+      "sample_count": 0,
+      "runtime_eligible": false,
+      "source_sha256": "9bf5f4cd0cd4a842a6d2f25177703d50cdc51b6f0a403efb587c0c1b6b5fa5bc"
+    }
+  ],
+  "policy": "Published action quantities are evidence, not automatic runtime rates until identity, action, mode, reservoir and firmware applicability are established. Capacity/area marketing ratios are not accepted as consumption rates."
+}

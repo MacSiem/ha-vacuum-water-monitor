@@ -31,6 +31,27 @@ def _load_discovery():
 class VacuumDiscoveryTests(unittest.TestCase):
     """Registry-shaped inputs exercise the real descriptor boundary."""
 
+    def test_setting_contracts_bind_only_enabled_same_device_entities(self):
+        discovery = _load_discovery()
+        for adapter, key, role, domain in (("ecovacs", "clean_count", "passes_entity", "number"),
+                                           ("roborock", "cleaning_route", "route_entity", "select")):
+            with self.subTest(adapter=adapter):
+                entity = {"entity_id": f"{domain}.option", "platform": adapter,
+                          "device_id": "one", "translation_key": key}
+                def resolve(record):
+                    return discovery._signals_for_device({'one'}, adapter, [record], {})[0]
+                self.assertEqual(resolve(entity).get(role), f"{domain}.option")
+                self.assertNotIn(role, resolve({**entity, 'device_id': 'other'}))
+                self.assertNotIn(role, resolve({**entity, 'disabled_by': 'integration'}))
+                self.assertNotIn(role, resolve({**entity, 'entity_id': 'button.option'}))
+
+    def test_registry_firmware_is_retained_for_upgrade_applicability(self):
+        discovery = _load_discovery()
+        result = discovery.discover_descriptors(
+            [{"entity_id":"vacuum.test","platform":"roborock","device_id":"a"}],
+            [{"id":"a","manufacturer":"Roborock","sw_version":"1.2.3"}], {})[0]
+        self.assertEqual(result.get("observed_firmware"), "1.2.3")
+
     def test_roborock_links_only_same_device_raw_status_and_area(self) -> None:
         # Moving the sibling records to another device_id must make this fail.
         discovery = _load_discovery()
@@ -141,7 +162,7 @@ class VacuumDiscoveryTests(unittest.TestCase):
         descriptor = descriptors[0]
         self.assertEqual(descriptor["profile_key"], "tapo_rv50_pro_omni")
         self.assertEqual(descriptor["tracked_capacity_ml"], 5000)
-        self.assertEqual(descriptor["capability"], "automatic_estimate")
+        self.assertEqual(descriptor["capability"], "calibration_required")
         self.assertEqual(
             descriptor["signals"],
             {

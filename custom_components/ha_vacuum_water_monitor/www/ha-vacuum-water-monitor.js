@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.4.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.5.0 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -105,11 +105,11 @@ const MOP_WASH_STATES = [
 ];
 
 // Default water dosing per m² by mop_mode (ml/m²)
-const DEFAULT_USAGE_PER_M2 = { fast: 4, standard: 6, deep: 9 };
+const DEFAULT_USAGE_PER_M2 = {};
 // Default multiplier by mop_intensity (or mop_water_level)
 const DEFAULT_INTENSITY_FACTOR = { low: 0.8, medium: 1.0, high: 1.2, max: 1.3, custom: 1.0, smart_mode: 1.0, custom_water_flow: 1.0 };
 // Default volume (ml) consumed per wash event
-const DEFAULT_WASH_VOLUME_ML = 150;
+const DEFAULT_WASH_VOLUME_ML = null;
 // Minimum area delta (m²) that triggers area-based dosing
 const AREA_MIN_DELTA = 0.1;
 // Minimum seconds between automatic resets (debounce)
@@ -118,940 +118,2308 @@ const RESET_COOLDOWN_SEC = 60;
 // Q1/Q2: Research-based calibration profiles per robot model
 // Water usage (ml/m²) and cleaning efficiency data
 const CALIBRATION_DATA = {
-  "roborock_s8_maxv_ultra": {
-    "label": "Roborock S8 MaxV Ultra",
-    "tank_ml": 4000,
-    "dock_clean_tank_ml": 4000,
-    "robot_tank_ml": 100,
-    "robot_clean_tank_ml": 100,
-    "water_per_m2": {
-      "fast/low": 3.2,
-      "fast/med": 4,
-      "std/low": 4.8,
-      "std/med": 6,
-      "std/high": 7.2,
-      "deep/med": 9,
-      "deep/high": 10.8,
-      "deep/max": 11.7
-    },
-    "mop_wash_ml": 150,
-    "mop_wash_modes": {
-      "quick": 100,
-      "standard": 150,
-      "deep": 200
-    },
-    "mop_modes": {
-      "fast": 4,
-      "standard": 6,
-      "deep": 9
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2,
-      "max": 1.3
-    },
-    "avg_area_per_charge": 250,
-    "mop_type": "VibraRise 3.0 sonic mop with edge mop",
-    "source_urls": [
-      "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra",
-      "https://support.roborock.com/hc/en-us/articles/33954061643673-What-s-the-key-features-of-S8-MaxV-Ultra"
-    ],
-    "data_quality": "manufacturer_specifications_with_maintainer_usage_estimates",
-    "notes": "Official capacities: 4L dock clean-water tank and 100ml onboard tank. Per-area and mop-wash consumption remain maintainer estimates and are refined by device calibration."
-  },
-  "roborock_s8_pro_ultra": {
-    "label": "Roborock S8 Pro Ultra",
-    "tank_ml": 3500,
-    "robot_tank_ml": 200,
-    "water_per_m2": {
-      "light/low": 3,
-      "light/med": 3.8,
-      "balanced/low": 4.5,
-      "balanced/med": 5.6,
-      "balanced/high": 6.7,
-      "deep/med": 8.4,
-      "deep/high": 10.1,
-      "deep/max": 10.9
-    },
-    "mop_wash_ml": 140,
-    "mop_wash_modes": {
-      "quick": 90,
-      "standard": 140,
-      "deep": 190
-    },
-    "mop_modes": {
-      "light": 3.8,
-      "balanced": 5.6,
-      "deep": 8.4
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2,
-      "max": 1.3
-    },
-    "avg_area_per_charge": 240,
-    "mop_type": "VibraRise 2.0 sonic 3000rpm",
-    "notes": "3.5L/3L dock. 80°C wash. 200ml robot tank. Estimates based on S8 MaxV ratios."
-  },
-  "roborock_s7_maxv_ultra": {
-    "label": "Roborock S7 MaxV Ultra",
-    "tank_ml": 3000,
-    "robot_tank_ml": 200,
-    "water_per_m2": {
-      "mild/low": 2.8,
-      "mild/med": 3.5,
-      "moderate/low": 4.2,
-      "moderate/med": 5.3,
-      "moderate/high": 6.3,
-      "intense/med": 7.9,
-      "intense/high": 9.5
-    },
-    "mop_wash_ml": 130,
-    "mop_wash_modes": {
-      "quick": 80,
-      "standard": 130,
-      "deep": 180
-    },
-    "mop_modes": {
-      "mild": 3.5,
-      "moderate": 5.3,
-      "intense": 7.9
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 200,
-    "mop_type": "VibraRise sonic 3000rpm",
-    "notes": "3L/2.3L dock. Sonic mop vibration, 5mm mop lift."
-  },
-  "roborock_s7_maxv": {
-    "label": "Roborock S7 MaxV (bez stacji)",
-    "tank_ml": 200,
-    "robot_tank_ml": 200,
-    "water_per_m2": {
-      "mild": 3.5,
-      "moderate": 5.3,
-      "intense": 7.9
-    },
-    "mop_modes": {
-      "mild": 3.5,
-      "moderate": 5.3,
-      "intense": 7.9
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 200,
-    "mop_type": "VibraRise sonic 3000rpm",
-    "notes": "No dock - 200ml robot tank only. Manual refill."
-  },
-  "roborock_s9_maxv": {
-    "label": "Roborock S9 MaxV Ultra",
-    "tank_ml": 4000,
-    "robot_tank_ml": 100,
-    "water_per_m2": {
-      "fast/low": 3.2,
-      "fast/med": 4,
-      "std/low": 4.8,
-      "std/med": 6,
-      "std/high": 7.2,
-      "deep/med": 9,
-      "deep/high": 10.8,
-      "deep/max": 11.7
-    },
-    "mop_wash_ml": 160,
-    "mop_wash_modes": {
-      "quick": 100,
-      "standard": 160,
-      "deep": 220
-    },
-    "mop_modes": {
-      "fast": 4,
-      "standard": 6,
-      "deep": 9
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2,
-      "max": 1.3
-    },
-    "avg_area_per_charge": 280,
-    "mop_type": "VibraRise 4.0 sonic 4000rpm",
-    "notes": "4L dock. 4000/min vibration. 22000Pa suction. 18mm mop lift. Values extrapolated from S8 MaxV."
-  },
-  "roborock_q_revo": {
-    "label": "Roborock Q Revo",
-    "tank_ml": 5000,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "mop_wash_ml": 160,
-    "mop_wash_modes": {
-      "quick": 110,
-      "standard": 160,
-      "deep": 220
-    },
-    "mop_modes": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 230,
-    "mop_type": "Dual rotating 200rpm",
-    "notes": "5L/4.2L dock. 30 flow levels. 45°C drying. Rotating mops use more water."
-  },
-  "roborock_q_revo_maxv": {
-    "label": "Roborock Q Revo MaxV",
-    "tank_ml": 4000,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "mop_wash_ml": 160,
-    "mop_wash_modes": {
-      "quick": 110,
-      "standard": 160,
-      "deep": 220
-    },
-    "mop_modes": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 240,
-    "mop_type": "Dual rotating 200rpm",
-    "notes": "4L/3.5L dock. ReactiveAI 2.0. 30 levels. Rotating mops."
-  },
-  "roborock_qrevo_5ae": {
-    "label": "Roborock Qrevo 5AE",
-    "tank_ml": 4000,
-    "dock_clean_tank_ml": 4000,
-    "dock_dirty_tank_ml": 3500,
-    "robot_tank_ml": 80,
-    "robot_clean_tank_ml": 80,
+  "cecotec_conga_3290": {
+    "label": "Cecotec Conga 3290",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
     "water_per_m2": {},
-    "avg_area_per_charge": null,
-    "mop_type": "Dual rotating mop pads",
-    "mop_max_rpm": 200,
-    "mop_lift_max_mm": 10,
-    "water_flow_levels_count": 30,
-    "mop_wash_stages": 3,
-    "drying_temp_c": 45,
+    "mop_wash_ml": null,
     "source_urls": [
-      "https://www.roborock.sg/products/roborock-qrevo-5ae-white-certified-refurbished",
-      "https://my.roborock.com/pages/roborock-qrevo-5ae"
+      "https://valetudo.cloud/pages/general/supported-robots/"
     ],
-    "data_quality": "manufacturer_specifications",
-    "notes": "Manufacturer capacities and feature specifications. Numeric ml/m² and wash-cycle volume are not published; Water Monitor uses clearly labelled cross-model seed estimates with 55% initial uncertainty and learns a bounded device correction from valid low-water cycles."
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "roborock_qrevo_curv_2_flow": {
-    "label": "Roborock Qrevo Curv 2 Flow / FlowX",
-    "tank_ml": 4000,
-    "dock_clean_tank_ml": 4000,
-    "robot_dirty_tank_ml": 100,
+  "cecotec_conga_3790": {
+    "label": "Cecotec Conga 3790",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
     "water_per_m2": {},
-    "avg_area_per_charge": null,
-    "mop_type": "SpiraFlow self-cleaning roller mop",
-    "mop_max_rpm": 220,
-    "mop_lift_max_mm": 15,
-    "mop_pressure_max_n": 15,
-    "continuous_fresh_water": true,
+    "mop_wash_ml": null,
     "source_urls": [
-      "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq",
-      "https://global.roborock.com/pages/roborock-qrevo-curv-2-flow",
-      "https://help.roborock.com/en-CA/product/qrevo-curv-2-flow-message?category=troubleshooting-1-1-1"
+      "https://valetudo.cloud/pages/general/supported-robots/"
     ],
-    "data_quality": "manufacturer_specifications",
-    "notes": "Manufacturer specifications; the clean dock tank is published as approximately 4L. Numeric ml/m² and wash-cycle volume are not published; Water Monitor uses clearly labelled cross-model seed estimates with 65% initial uncertainty and bounded device learning."
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "roborock_q7_max": {
-    "label": "Roborock Q7 Max / Q7 Max+",
-    "tank_ml": 350,
-    "robot_tank_ml": 350,
-    "water_per_m2": {
-      "low": 2.5,
-      "medium": 4.5,
-      "high": 7
-    },
-    "mop_modes": {
-      "low": 2.5,
-      "medium": 4.5,
-      "high": 7
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 180,
-    "mop_type": "Gravity mop pad 300g",
-    "notes": "350ml tank, no water dock. 30 levels. Passive mop - less water."
+  "commodore_cvr_200": {
+    "label": "Commodore CVR 200",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "roborock_q7": {
-    "label": "Roborock Q7",
-    "tank_ml": 300,
-    "robot_tank_ml": 300,
-    "water_per_m2": {
-      "low": 2.5,
-      "medium": 4.5,
-      "high": 7
-    },
-    "mop_modes": {
-      "low": 2.5,
-      "medium": 4.5,
-      "high": 7
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 180,
-    "mop_type": "Gravity mop pad",
-    "notes": "300ml tank. Passive mop, low water usage."
+  "dreame_d10s_plus": {
+    "label": "Dreame D10s Plus",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_d10s_pro": {
+    "label": "Dreame D10s Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_d9": {
+    "label": "Dreame D9",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_d9_pro": {
+    "label": "Dreame D9 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_f9": {
+    "label": "Dreame F9",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l10_pro": {
+    "label": "Dreame L10 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l10_ultra": {
+    "label": "Dreame L10 Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l10s_pro_ultra": {
+    "label": "Dreame L10s Pro Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://store.dreametech.com/robot-vacuum-and-mop-comparison/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l10s_pro_ultra_heat": {
+    "label": "Dreame L10s Pro Ultra Heat",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums",
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l10s_ultra": {
+    "label": "Dreame L10s Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.dreametech.com/products/dreamebot-l10s-ultra?gQT=1",
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l10s_ultra_gen_2": {
+    "label": "Dreame L10s Ultra Gen 2",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://store.dreametech.com/robot-vacuum-and-mop-comparison/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l20_ultra": {
+    "label": "Dreame L20 Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.dreametech.com/products/l20-ultra?variant=41846212296909",
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l30_ultra": {
+    "label": "Dreame L30 Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l40_ultra": {
+    "label": "Dreame L40 Ultra",
+    "tank_ml": 4500,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4500,
+    "dock_dirty_tank_ml": 4000,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.dreametech.com/products/l40ultra-robot-vacuum",
+      "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md",
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_l40_ultra_gen_2": {
+    "label": "Dreame L40 Ultra Gen 2",
+    "tank_ml": 4500,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4500,
+    "dock_dirty_tank_ml": 4000,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.dreametech.com/products/l40-ultra-gen2-robot-vacuum",
+      "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/events.md"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_w10": {
+    "label": "Dreame W10",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_w10_pro": {
+    "label": "Dreame W10 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_x30_ultra": {
+    "label": "Dreame X30 Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.dreametech.com/products/dreame-x30-ultra/",
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "dreame_x40_master": {
+    "label": "Dreame X40 Master",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
   "dreame_x40_ultra": {
     "label": "Dreame X40 Ultra",
     "tank_ml": 4500,
     "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12,
-      "deep": 16
-    },
-    "mop_wash_ml": 170,
-    "mop_wash_modes": {
-      "quick": 110,
-      "standard": 170,
-      "deep": 230
-    },
-    "mop_modes": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12,
-      "deep": 16
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 280,
-    "mop_type": "MopExtend rotating dual pads",
-    "notes": "4.5L/4L dock. 70°C wash. 32 humidity levels. Extending edge mop."
+    "dock_clean_tank_ml": 4500,
+    "dock_dirty_tank_ml": 4000,
+    "robot_clean_tank_ml": 80,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.dreametech.com/products/dreametech-x40-ultra-robot-vacuum",
+      "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md",
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "dreame_x30_ultra": {
-    "label": "Dreame X30 Ultra",
+  "dreame_x50_ultra": {
+    "label": "Dreame X50 Ultra",
     "tank_ml": 4500,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12,
-      "deep": 16
-    },
-    "mop_wash_ml": 150,
-    "mop_wash_modes": {
-      "quick": 100,
-      "standard": 150,
-      "deep": 200
-    },
-    "mop_modes": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12,
-      "deep": 16
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 243,
-    "mop_type": "MopExtend RoboSwing rotating dual pads",
-    "notes": "4.5L/4L dock. 60°C wash. 40mm mop. ~130ml/100sqft per Smart Home Hookup."
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4500,
+    "dock_dirty_tank_ml": 4000,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
+      "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "dreame_l20_ultra": {
-    "label": "Dreame L20 Ultra",
-    "tank_ml": 4500,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12,
-      "deep": 16
-    },
-    "mop_wash_ml": 160,
-    "mop_wash_modes": {
-      "quick": 100,
-      "standard": 160,
-      "deep": 210
-    },
-    "mop_modes": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12,
-      "deep": 16
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 300,
-    "mop_type": "MopExtend rotating dual pads",
-    "notes": "4.5L/4L dock. Hot-air drying. Extending mop. 300m²/charge."
+  "dreame_z10_pro": {
+    "label": "Dreame Z10 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "dreame_l10s_ultra": {
-    "label": "Dreame L10s Ultra",
+  "ecovacs_deebot_n30_pro_omni": {
+    "label": "Ecovacs ECOVACS DEEBOT N30 PRO OMNI",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.ecovacs.com/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "ecovacs_deebot_t30_pro_omni": {
+    "label": "Ecovacs ECOVACS DEEBOT T30 PRO OMNI",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://site-static.ecovacs.com/upload/global/file/product_manual_edit/2024/05/20/094053_6297-DEEBOTT30PROOMNI-UserManual.pdf",
+      "https://www.home-assistant.io/integrations/ecovacs"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "ecovacs_deebot_t50_pro_omni": {
+    "label": "Ecovacs ECOVACS DEEBOT T50 PRO OMNI",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.ecovacs.com/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "ecovacs_deebot_x1_omni": {
+    "label": "Ecovacs ECOVACS DEEBOT X1 OMNI",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.home-assistant.io/integrations/ecovacs"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "ecovacs_deebot_x2_omni": {
+    "label": "Ecovacs ECOVACS DEEBOT X2 OMNI",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.home-assistant.io/integrations/ecovacs"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "ecovacs_deebot_x5_hybrid": {
+    "label": "Ecovacs ECOVACS DEEBOT X5 HYBRID",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://site-static.ecovacs.com/upload/de/file/support/2025/06/24/024923_5962%24DEEBOTX5HYBRIDInstructionManual.pdf"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "ecovacs_deebot_x8_pro_omni": {
+    "label": "Ecovacs ECOVACS DEEBOT X8 PRO OMNI",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://site-static.ecovacs.com/upload/file/support/2025/07/04/012124_8335%24X8ProOMNIwithautorefill-EMEA.pdf",
+      "https://www.home-assistant.io/integrations/ecovacs"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "eufy_omni_c20": {
+    "label": "eufy Omni C20",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "eufy_omni_c28": {
+    "label": "eufy Omni C28",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "eufy_omni_e25": {
+    "label": "eufy Omni E25",
     "tank_ml": 2500,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 4,
-      "medium": 7.5,
-      "high": 11
-    },
-    "mop_wash_ml": 140,
-    "mop_wash_modes": {
-      "quick": 90,
-      "standard": 140,
-      "deep": 190
-    },
-    "mop_modes": {
-      "low": 4,
-      "medium": 7.5,
-      "high": 11
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 210,
-    "mop_type": "Dual rotating 180rpm",
-    "notes": "2.5L/2.4L dock. >250ml/100sqft per Smart Home Hookup. Rotating mops 180rpm."
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 2500,
+    "dock_dirty_tank_ml": 1800,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+      "https://www.eufy.com/uk/robot-vacuum-e28"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "dreame_l10s_pro_ultra": {
-    "label": "Dreame L10s Pro Ultra",
-    "tank_ml": 4500,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 4,
-      "medium": 7.5,
-      "high": 11
-    },
-    "mop_wash_ml": 150,
-    "mop_wash_modes": {
-      "quick": 100,
-      "standard": 150,
-      "deep": 200
-    },
-    "mop_modes": {
-      "low": 4,
-      "medium": 7.5,
-      "high": 11
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 230,
-    "mop_type": "Dual rotating pads",
-    "notes": "4.5L/4L dock. 58°C wash. Improved L10s Ultra."
+  "eufy_omni_e28": {
+    "label": "eufy Omni E28",
+    "tank_ml": 2500,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 2500,
+    "dock_dirty_tank_ml": 1800,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+      "https://www.eufy.com/uk/robot-vacuum-e28"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "dreame_d10_plus": {
-    "label": "Dreame D10 Plus",
-    "tank_ml": 150,
-    "robot_tank_ml": 150,
-    "water_per_m2": {
-      "low": 2,
-      "medium": 4,
-      "high": 6
-    },
-    "mop_modes": {
-      "low": 2,
-      "medium": 4,
-      "high": 6
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 120,
-    "mop_type": "Single rotating pad",
-    "notes": "Budget. 150ml, no water dock. 3 levels. 6000Pa suction."
+  "eufy_omni_s1": {
+    "label": "eufy Omni S1",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "ecovacs_x2_omni": {
-    "label": "Ecovacs Deebot X2 Omni",
-    "tank_ml": 4000,
-    "robot_tank_ml": 180,
-    "water_per_m2": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12.5
-    },
-    "mop_wash_ml": 170,
-    "mop_wash_modes": {
-      "quick": 110,
-      "standard": 170,
-      "deep": 230
-    },
-    "mop_modes": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12.5
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 260,
-    "mop_type": "OZMO Turbo 2.0 rotating 180rpm",
-    "notes": "4L/3.5L dock. 55°C wash. Square design. 6N pressure. ~400ml/100sqft max per TSHHU."
-  },
-  "ecovacs_t20_omni": {
-    "label": "Ecovacs Deebot T20 Omni",
-    "tank_ml": 4000,
-    "robot_tank_ml": 180,
-    "water_per_m2": {
-      "low": 4,
-      "medium": 7.5,
-      "high": 11.5,
-      "deep": 15
-    },
-    "mop_wash_ml": 160,
-    "mop_wash_modes": {
-      "quick": 100,
-      "standard": 160,
-      "deep": 210
-    },
-    "mop_modes": {
-      "low": 4,
-      "medium": 7.5,
-      "high": 11.5,
-      "deep": 15
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 240,
-    "mop_type": "OZMO Turbo spinning 180rpm",
-    "notes": "4L/4L dock. 60°C wash. 4 modes."
-  },
-  "ecovacs_t30_omni": {
-    "label": "Ecovacs Deebot T30S Omni",
-    "tank_ml": 4000,
-    "robot_tank_ml": 55,
-    "water_per_m2": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12.5,
-      "deep": 16
-    },
-    "mop_wash_ml": 170,
-    "mop_wash_modes": {
-      "quick": 110,
-      "standard": 170,
-      "deep": 230
-    },
-    "mop_modes": {
-      "low": 4.5,
-      "medium": 8,
-      "high": 12.5,
-      "deep": 16
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 250,
-    "mop_type": "Dual spin mops 180rpm",
-    "notes": "4L/4L dock. 70°C wash. 55ml robot continuous refill. Auto-detergent."
-  },
-  "ecovacs_n20_plus": {
-    "label": "Ecovacs Deebot N20 Plus",
-    "tank_ml": 220,
-    "robot_tank_ml": 220,
-    "water_per_m2": {
-      "low": 2,
-      "medium": 3.5,
-      "high": 5.5
-    },
-    "mop_modes": {
-      "low": 2,
-      "medium": 3.5,
-      "high": 5.5
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 120,
-    "mop_type": "OZMO fixed pad (no lift)",
-    "notes": "Budget. 220ml, no mop wash. Manual removal for carpets."
-  },
-  "irobot_combo_j9": {
-    "label": "iRobot Roomba Combo j9+",
-    "tank_ml": 3000,
-    "robot_tank_ml": 210,
-    "water_per_m2": {
-      "low": 2,
-      "medium": 4,
-      "high": 7
-    },
-    "mop_modes": {
-      "low": 2,
-      "medium": 4,
-      "high": 7
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 150,
-    "mop_type": "SmartScrub retractable microfiber",
-    "notes": "3L auto-refill dock. Mop lifts up. D.R.I. carpets. 3 levels."
-  },
-  "irobot_combo_j7": {
-    "label": "iRobot Roomba Combo j7+",
-    "tank_ml": 210,
-    "robot_tank_ml": 210,
-    "water_per_m2": {
-      "low": 2,
-      "medium": 4,
-      "high": 7
-    },
-    "mop_modes": {
-      "low": 2,
-      "medium": 4,
-      "high": 7
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 140,
-    "mop_type": "Retractable microfiber pad",
-    "notes": "210ml tank. Mop lifts up. Electronic pump. Bona support."
-  },
-  "irobot_combo_essential": {
-    "label": "iRobot Roomba Combo Essential",
-    "tank_ml": 200,
-    "robot_tank_ml": 200,
-    "water_per_m2": {
-      "low": 1.5,
-      "medium": 3,
-      "high": 5
-    },
-    "mop_modes": {
-      "low": 1.5,
-      "medium": 3,
-      "high": 5
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 46,
-    "mop_type": "Fixed microfiber pad (drag)",
-    "notes": "Budget. 200ml, no mop lift. ~46m²/tank. 3 levels."
-  },
-  "narwal_freo_x_ultra": {
-    "label": "Narwal Freo X Ultra",
-    "tank_ml": 5000,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 5,
-      "medium": 9,
-      "high": 14
-    },
-    "mop_wash_ml": 210,
-    "mop_wash_modes": {
-      "quick": 140,
-      "standard": 210,
-      "deep": 280
-    },
-    "mop_modes": {
-      "low": 5,
-      "medium": 9,
-      "high": 14
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 250,
-    "mop_type": "Dual rotating pads",
-    "notes": "5L/4.5L dock. ~210ml/mop wash per TSHHU. Highest water usage in class."
-  },
-  "narwal_freo_x_plus": {
-    "label": "Narwal Freo X Plus",
-    "tank_ml": 280,
-    "robot_tank_ml": 280,
-    "water_per_m2": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "mop_modes": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 200,
-    "mop_type": "Dual rotating pads",
-    "notes": "Compact base, no dock wash. 280ml tank. 450m² range."
+  "eufy_omni_s2": {
+    "label": "eufy Omni S2",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
   "eufy_x10_pro_omni": {
-    "label": "Eufy X10 Pro Omni",
-    "tank_ml": 3000,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 3.5,
-      "medium": 6.5,
-      "high": 10
-    },
-    "mop_wash_ml": 140,
-    "mop_wash_modes": {
-      "quick": 90,
-      "standard": 140,
-      "deep": 190
-    },
-    "mop_modes": {
-      "low": 3.5,
-      "medium": 6.5,
-      "high": 10
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 180,
-    "mop_type": "MopMaster 2.0 pentagon dual 180rpm",
-    "notes": "3L dock. 1kg pressure. 45°C drying. 188ml/100sqft max per TSHHU."
+    "label": "eufy X10 Pro Omni",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "samsung_jet_bot_combo": {
-    "label": "Samsung Jet Bot Combo AI",
+  "eureka_e20_evo_plus": {
+    "label": "Eureka E20 Evo Plus",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "eureka_e20_plus": {
+    "label": "Eureka E20 Plus",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "eureka_j12_ultra": {
+    "label": "Eureka J12 Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "eureka_j15_max_ultra": {
+    "label": "Eureka J15 Max Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "eureka_j15_pro_ultra": {
+    "label": "Eureka J15 Pro Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "eureka_j15_ultra": {
+    "label": "Eureka J15 Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "ikohs_netbot_ls22": {
+    "label": "IKOHS Netbot LS22",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "irobot_braava_jet_m6": {
+    "label": "iRobot Braava jet m6",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.irobot.com/sfsites/c/cms/delivery/media/MCLJTXTOSTTBDWDNWBJ3AEPORTHM",
+      "https://www.home-assistant.io/integrations/roomba"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "irobot_roomba_combo_10_max_plus_autowash_dock": {
+    "label": "iRobot Roomba Combo 10 Max + AutoWash Dock",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://homesupport.irobot.com/articles/en_US/Knowledge/10009",
+      "https://answers.irobot.com/nl-NL/knowledge/163",
+      "https://www.home-assistant.io/integrations/roomba"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "irobot_roomba_combo_i5": {
+    "label": "iRobot Roomba Combo i5",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://answers.irobot.com/nl-NL/knowledge/163",
+      "https://www.home-assistant.io/integrations/roomba"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "irobot_roomba_combo_i5_plus": {
+    "label": "iRobot Roomba Combo i5+",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://answers.irobot.com/nl-NL/knowledge/163",
+      "https://www.home-assistant.io/integrations/roomba"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "irobot_roomba_combo_j7": {
+    "label": "iRobot Roomba Combo j7",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://answers.irobot.com/nl-NL/knowledge/163",
+      "https://www.home-assistant.io/integrations/roomba"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "irobot_roomba_combo_j7_plus": {
+    "label": "iRobot Roomba Combo j7+",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://answers.irobot.com/nl-NL/knowledge/163",
+      "https://www.home-assistant.io/integrations/roomba"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "irobot_roomba_combo_j9_plus": {
+    "label": "iRobot Roomba Combo j9+",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://answers.irobot.com/nl-NL/knowledge/163",
+      "https://www.home-assistant.io/integrations/roomba"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "mova_p10_pro_ultra": {
+    "label": "MOVA P10 Pro Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mova-tech.com/",
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "mova_p10_pro_ultra_gen2": {
+    "label": "MOVA P10 Pro Ultra Gen2",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://us.mova.tech/products/mova-p10-pro-ultra-gen2-robot-vacuum"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "mova_p20_ultra": {
+    "label": "MOVA P20 Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://us.mova.tech/products/mova-p10-pro-ultra-robot-vacuum-live-only"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "mova_s20_ultra": {
+    "label": "MOVA S20 Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "mova_v50_ultra_complete": {
+    "label": "MOVA V50 Ultra Complete",
+    "tank_ml": 4000,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": 3500,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mova.tech/products/mova-v50-ultra-robot-vacuum"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "mova_z500": {
+    "label": "MOVA Z500",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "mova_z50_ultra": {
+    "label": "MOVA Z50 Ultra",
+    "tank_ml": 4500,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4500,
+    "dock_dirty_tank_ml": 4000,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mova.tech/products/mova-z50-ultra-robot-vacuum"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "proscenic_m6_pro": {
+    "label": "Proscenic M6 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_q5_max_plus": {
+    "label": "Roborock Q5 Max+",
+    "tank_ml": 180,
+    "robot_tank_ml": 180,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": 180,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-q5-max-plus"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_q7_max": {
+    "label": "Roborock Q7 Max",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_q_revo": {
+    "label": "Roborock Q Revo",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+      "https://github.com/home-assistant/core/issues/103213"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_2_pro": {
+    "label": "Roborock Qrevo 2 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-2-pro"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_5ae": {
+    "label": "Roborock Qrevo 5AE",
+    "tank_ml": 4000,
+    "robot_tank_ml": 80,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": 3500,
+    "robot_clean_tank_ml": 80,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.roborock.sg/products/roborock-qrevo-5ae-white-certified-refurbished",
+      "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/12"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_curv": {
+    "label": "Roborock Qrevo Curv",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_curv_2_flow": {
+    "label": "Roborock Qrevo Curv 2 Flow",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-2-flow",
+      "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/12"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_curv_2_pro": {
+    "label": "Roborock Qrevo Curv 2 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_curv_5xc": {
+    "label": "Roborock Qrevo Curv 5XC",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_curvc": {
+    "label": "Roborock Qrevo CurvC",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_curvx": {
+    "label": "Roborock Qrevo CurvX",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_edge": {
+    "label": "Roborock Qrevo Edge",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-edge-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_edge_2": {
+    "label": "Roborock Qrevo Edge 2",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_edge_2_flow": {
+    "label": "Roborock Qrevo Edge 2 Flow",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_edge_2_pro": {
+    "label": "Roborock Qrevo Edge 2 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_edge_3_pro": {
+    "label": "Roborock Qrevo Edge 3 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_edge_5v1": {
+    "label": "Roborock Qrevo Edge 5V1",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-edge-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_edge_s5a": {
+    "label": "Roborock Qrevo Edge S5A",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-edge-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_edgec": {
+    "label": "Roborock Qrevo EdgeC",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-edge-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_edget": {
+    "label": "Roborock Qrevo EdgeT",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_master": {
+    "label": "Roborock Qrevo Master",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_maxv": {
+    "label": "Roborock Qrevo MaxV",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_plus": {
+    "label": "Roborock Qrevo Plus",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_pro": {
+    "label": "Roborock Qrevo Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_s": {
+    "label": "Roborock Qrevo S",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_s_pro": {
+    "label": "Roborock Qrevo S Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_qrevo_slim": {
+    "label": "Roborock Qrevo Slim",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_s5": {
+    "label": "Roborock S5",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_s5_max": {
+    "label": "Roborock S5 Max",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_s6": {
+    "label": "Roborock S6",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_s6_pure": {
+    "label": "Roborock S6 Pure",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_s7": {
+    "label": "Roborock S7",
+    "tank_ml": 300,
+    "robot_tank_ml": 300,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": 300,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-s7",
+      "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_s7_maxv": {
+    "label": "Roborock S7 MaxV",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+      "https://global.roborock.com/pages/roborock-auto-empty-dock"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_s7_pro_ultra": {
+    "label": "Roborock S7 Pro Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_s8_maxv_ultra": {
+    "label": "Roborock S8 MaxV Ultra",
     "tank_ml": 4000,
     "robot_tank_ml": 100,
-    "water_per_m2": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "mop_wash_ml": 160,
-    "mop_wash_modes": {
-      "quick": 100,
-      "standard": 160,
-      "deep": 210
-    },
-    "mop_modes": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 200,
-    "mop_type": "Dual spin mops",
-    "notes": "4L/3.6L dock. Auto-steam 70°C+. Samsung AI."
-  },
-  "xiaomi_x20_max": {
-    "label": "Xiaomi Robot Vacuum X20 Max",
-    "tank_ml": 4000,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "mop_wash_ml": 150,
-    "mop_wash_modes": {
-      "quick": 100,
-      "standard": 150,
-      "deep": 200
-    },
-    "mop_modes": {
-      "low": 4,
-      "medium": 7,
-      "high": 11
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 200,
-    "mop_type": "Rotating dual pads, hot wash",
-    "notes": "4L/3.8L dock. Hot water. 2 output levels. 200m²."
-  },
-  "xiaomi_x20_pro": {
-    "label": "Xiaomi Robot Vacuum X20 Pro",
-    "tank_ml": 4000,
-    "robot_tank_ml": 80,
-    "water_per_m2": {
-      "low": 3.5,
-      "medium": 6.5,
-      "high": 10
-    },
-    "mop_wash_ml": 140,
-    "mop_wash_modes": {
-      "quick": 90,
-      "standard": 140,
-      "deep": 190
-    },
-    "mop_modes": {
-      "low": 3.5,
-      "medium": 6.5,
-      "high": 10
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 120,
-    "mop_type": "Rotating dual pads, hot wash",
-    "notes": "4L dock. 3 humidity levels. 120m² mopping."
-  },
-  "xiaomi_h50": {
-    "label": "Xiaomi Robot Vacuum H50",
-    "tank_ml": 4000,
     "dock_clean_tank_ml": 4000,
-    "dock_dirty_tank_ml": 4000,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": 100,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
     "water_per_m2": {},
-    "tested_max_area_per_fill_m2": 240,
-    "avg_area_per_charge": null,
-    "mop_type": "Dual rotating mop pads",
-    "mop_max_rpm": 180,
-    "mop_lift_max_mm": 10,
-    "water_flow_levels_count": 3,
+    "mop_wash_ml": null,
     "source_urls": [
-      "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50/"
+      "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra"
     ],
-    "data_quality": "manufacturer_specifications",
-    "notes": "Manufacturer specifications. 240m² is published coverage per full clean-water tank, not an ml/m² dosing rate."
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
-  "xiaomi_h50_pro": {
-    "label": "Xiaomi Robot Vacuum H50 Pro",
-    "tank_ml": 4000,
-    "dock_clean_tank_ml": 4000,
-    "dock_dirty_tank_ml": 4000,
+  "roborock_s8_pro_ultra": {
+    "label": "Roborock S8 Pro Ultra",
+    "tank_ml": 3500,
+    "robot_tank_ml": 200,
+    "dock_clean_tank_ml": 3500,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": 200,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
     "water_per_m2": {},
-    "tested_max_area_per_fill_m2": 240,
-    "avg_area_per_charge": null,
-    "mop_type": "Dual rotating mop pads",
-    "mop_max_rpm": 180,
-    "mop_lift_max_mm": 10,
-    "mop_wash_pre_task_ml": 180,
-    "mop_wash_mid_task_ml": 120,
-    "mop_wash_interval_m2_options": [
-      5,
-      8,
-      10
-    ],
-    "mop_wash_interval_m2_default": 8,
-    "mop_wash_interval_min_options": [
-      5,
-      8,
-      10
-    ],
-    "mop_wash_interval_min_default": 8,
-    "mop_wash_frequency_levels": 3,
-    "mop_cleaning_preferences": 2,
+    "mop_wash_ml": null,
     "source_urls": [
-      "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
-      "https://www.mi.com/global/support/faq/details/KA-673648/"
+      "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra",
+      "https://global.roborock.com/pages/roborock-academy"
     ],
-    "data_quality": "manufacturer_specifications",
-    "notes": "Manufacturer specifications. 180ml is pre-task washing and 120ml is mid-task washing; final-wash volume is not published, so no generic automatic wash volume is set."
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_saros_10": {
+    "label": "Roborock Saros 10",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-saros-10"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_saros_10r": {
+    "label": "Roborock Saros 10R",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-saros-10r"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_saros_20": {
+    "label": "Roborock Saros 20",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-saros-20"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_saros_20_flow": {
+    "label": "Roborock Saros 20 Flow",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_saros_20_sonic": {
+    "label": "Roborock Saros 20 Sonic",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-saros-20-sonic"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "roborock_saros_z70": {
+    "label": "Roborock Saros Z70",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://global.roborock.com/pages/roborock-saros-z70"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "samsung_bespoke_jet_bot_combo_steam_plus_vr7md96514g_sp": {
+    "label": "Samsung Bespoke Jet Bot Combo Steam+ VR7MD96514G/SP",
+    "tank_ml": 4000,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": 3600,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://news.samsung.com/sg/samsung-sets-new-standards-for-cleanliness-and-hygiene-with-the-new-bespoke-jet-bot-combo"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "samsung_bespoke_jet_bot_combo_steam_vr7md96514g_eu": {
+    "label": "Samsung Bespoke Jet Bot Combo Steam VR7MD96514G/EU",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.samsung.com/uk/vacuum-cleaners/robot/70w--jet-bot-combo--all-in-one-clean-station-steam-plus-with-steamwash-satin-greige-vr7md96514g-eu/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "switchbot_s10": {
+    "label": "SwitchBot S10",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "switchbot_s20": {
+    "label": "SwitchBot S20",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "tapo_rv20_max": {
+    "label": "Tapo RV20 Max",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.tapo.com/us/faq/290/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "tapo_rv20_max_plus": {
+    "label": "Tapo RV20 Max Plus",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.tapo.com/us/faq/290/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "tapo_rv20_mop_plus": {
+    "label": "Tapo RV20 Mop Plus",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.tapo.com/us/faq/290/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "tapo_rv30_max": {
+    "label": "Tapo RV30 Max",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.tapo.com/us/faq/290/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "tapo_rv30_max_plus": {
+    "label": "Tapo RV30 Max Plus",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.tapo.com/us/faq/290/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "tapo_rv30_max_plus_gen_2": {
+    "label": "Tapo RV30 Max Plus Gen 2",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.tapo.com/us/faq/290/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "tapo_rv30_plus": {
+    "label": "Tapo RV30 Plus",
+    "tank_ml": 300,
+    "robot_tank_ml": 300,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": 300,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.tapo.com/en/product/robot-vacuum/tapo-rv30-plus/",
+      "https://www.tapo.com/pl/faq/834/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "tapo_rv50_omni": {
+    "label": "Tapo RV50 Omni",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.tapo.com/pl/faq/834/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
   "tapo_rv50_pro_omni": {
     "label": "Tapo RV50 Pro Omni",
     "tank_ml": 5000,
+    "robot_tank_ml": 95,
     "dock_clean_tank_ml": 5000,
     "dock_dirty_tank_ml": 4000,
-    "robot_tank_ml": 95,
     "robot_clean_tank_ml": 95,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
     "water_per_m2": {},
-    "avg_area_per_charge": null,
-    "mop_type": "DeepEdge dual spinning mops",
-    "water_flow_levels_count": 3,
-    "mop_wash_temp_c": 60,
-    "drying_temp_c": 50,
-    "smart_dirt_detection": true,
-    "auto_detergent": true,
+    "mop_wash_ml": null,
     "source_urls": [
-      "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/"
+      "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/",
+      "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/10"
     ],
-    "data_quality": "manufacturer_specifications",
-    "notes": "Manufacturer capacities and feature specifications. Matter exposes clean mode but not the product's water-flow level, numeric ml/m², or wash-cycle volume. Water Monitor therefore uses one clearly labelled mode-gated cross-model seed with 60% initial uncertainty and bounded device learning; vacuum-only or missing clean mode never consumes water."
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "viomi_se": {
+    "label": "Viomi SE",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "viomi_v6": {
+    "label": "Viomi V6",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_1c": {
+    "label": "Xiaomi 1C",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_1t": {
+    "label": "Xiaomi 1T",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_h50": {
+    "label": "Xiaomi Robot Vacuum H50",
+    "tank_ml": 4000,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": 4000,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_h50_pro": {
+    "label": "Xiaomi Robot Vacuum H50 Pro",
+    "tank_ml": 4000,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": 4000,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
+      "https://www.mi.com/global/support/faq/details/KA-673648/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_p2148": {
+    "label": "Xiaomi P2148",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_robot_vacuum_5": {
+    "label": "Xiaomi Robot Vacuum 5",
+    "tank_ml": 4000,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mi.com/global/product/xiaomi-robot-vacuum-5/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_robot_vacuum_5_pro": {
+    "label": "Xiaomi Robot Vacuum 5 Pro",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mi.com/global/product/xiaomi-robot-vacuum-5-pro/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_robot_vacuum_s10": {
+    "label": "Xiaomi Robot Vacuum S10",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mi.com/global/product/xiaomi-robot-vacuum-s10/specs/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_robot_vacuum_x10": {
+    "label": "Xiaomi Robot Vacuum X10",
+    "tank_ml": 200,
+    "robot_tank_ml": 200,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": 200,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mi.com/global/product/xiaomi-robot-vacuum-x10/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_robot_vacuum_x20": {
+    "label": "Xiaomi Robot Vacuum X20",
+    "tank_ml": 4000,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20/",
+      "https://www.home-assistant.io/integrations/xiaomi_miio/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_robot_vacuum_x20_plus": {
+    "label": "Xiaomi Robot Vacuum X20+",
+    "tank_ml": 4000,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20-plus/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_robot_vacuum_x20_pro": {
+    "label": "Xiaomi Robot Vacuum X20 Pro",
+    "tank_ml": 4000,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": 3800,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20-pro/"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_vacuum_mop_2_ultra": {
+    "label": "Xiaomi Vacuum-Mop 2 Ultra",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_vacuum_mop_p": {
+    "label": "Xiaomi Vacuum-Mop P",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
+  },
+  "xiaomi_x10_plus": {
+    "label": "Xiaomi X10 Plus",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": null,
+    "dock_dirty_tank_ml": null,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://valetudo.cloud/pages/general/supported-robots/"
+    ],
+    "data_quality": "researched",
+    "notes": "Capacity evidence only. Unknown fields require model-specific documentation; all consumption rates require measurement."
   },
   "generic": {
-    "label": "Generic / Nieznany model",
-    "tank_ml": 300,
-    "robot_tank_ml": 300,
-    "water_per_m2": {
-      "low": 3,
-      "medium": 6,
-      "high": 10
-    },
-    "mop_modes": {
-      "low": 3,
-      "medium": 6,
-      "high": 10
-    },
-    "intensity_factors": {
-      "low": 0.8,
-      "medium": 1,
-      "high": 1.2
-    },
-    "avg_area_per_charge": 150,
-    "mop_type": "Standard",
-    "notes": "Default estimates - adjust for your model."
+    "label": "Unknown model",
+    "tank_ml": null,
+    "robot_tank_ml": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "notes": "No verified capacity or consumption rate."
   }
 };
 
@@ -1713,7 +3081,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if ('checked' in control) control.checked = saved.checked;
     }
     const expanded = sr.getElementById('vwm-custom-calibration-body');
-    if (expanded && draft.calibrationExpanded) expanded.style.display = 'block';
+    if (expanded && draft.calibrationExpanded) { expanded.style.display = 'block'; expanded.previousElementSibling?.setAttribute('aria-expanded', 'true'); }
     const active = draft.activeId ? sr.getElementById(draft.activeId) : (draft.activeIndex >= 0 ? controls[draft.activeIndex] : null);
     if (!active) return;
     active.focus();
@@ -1908,14 +3276,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     const single = {};
     const keys = [
-      'device_name','water_sensor','water_used_sensor','water_used_input','water_total_ml',
+      'device_name','water_volume_sensor','water_volume_reservoir','water_anchor_reservoir','refill_on_clear','water_sensor','water_used_sensor','water_used_input','water_total_ml',
       'vacuum_entity','dock_error_sensor','filter_sensor','last_session_sensor',
       'last_reset_entity','main_brush_sensor','side_brush_sensor','filter_time_sensor',
       'sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor',
       'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','cleaning_active_sensor',
       'last_clean_start','last_clean_end','charge_sensor','status_sensor',
-      'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal',
+      'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope',
       'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
       'brand_profile','tracked_capacity_ml','tank_ml','tracked_reservoir','signals',
       'accounting_evidence','evidence','uncertainty_percent','profile_locked','profile_override','locked_profile',
@@ -2228,7 +3596,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _normaliseModelKey(value) {
-    return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    return String(value || '').toLowerCase().replace(/\+/g, ' plus ').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   }
 
   _resolveProfileKey(device) {
@@ -2360,11 +3728,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const signals = descriptor.signals && typeof descriptor.signals === 'object' ? descriptor.signals : {};
     const merged = { ...(device || {}), vacuum_entity: descriptor.entity_id || device?.vacuum_entity };
     const bindingFields = new Set([
-      'water_total_ml','tracked_capacity_ml','tank_ml','tracked_reservoir','low_water_anchor_remaining_percent','signals',
+      'water_volume_sensor','water_volume_reservoir','water_anchor_reservoir','refill_on_clear','water_total_ml','tracked_capacity_ml','tank_ml','tracked_reservoir','low_water_anchor_remaining_percent','signals',
       'status_sensor','cleaning_active_sensor','area_sensor','duration_sensor',
       'area_attribute','area_attribute_unit','duration_attribute','duration_attribute_unit','mop_intensity_attribute','water_box_attached_attribute','tank_semantics_confirmed','mop_evidence_required','signal_contract_version',
       'mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','mop_attached_sensor','water_box_attached_sensor','water_box_detached_sensor',
-      'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml',
+      'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml',
       'accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','evidence','profile_locked','profile_override','locked_profile','brand_profile',
       'dock_error_sensor','water_sensor','water_used_sensor','water_used_input',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor','dock_status_sensor','tank_level_sensor','dock_tank_level_sensor','reset_door_sensor',
@@ -2394,7 +3762,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       merged.signals = effectiveSignals;
     }
     const locked = Boolean(merged.profile_locked) && explicit.has('profile_locked');
-    const profileFields = new Set(['profile_key','profile_source','profile_confidence','capability','evidence','tracked_reservoir','tracked_capacity_ml','reservoirs_ml','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','wash_volume_ml','accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','uncertainty_percent','low_water_anchor_remaining_percent']);
+    const profileFields = new Set(['profile_key','profile_source','profile_confidence','capability','evidence','tracked_reservoir','tracked_capacity_ml','reservoirs_ml','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','wash_volume_ml','accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','uncertainty_percent','low_water_anchor_remaining_percent']);
     for (const [key, value] of Object.entries(descriptor)) {
       if (key === 'entity_id' || key === 'vacuum_entity' || key === 'signals' || key === 'name') continue;
       if (locked && profileFields.has(key)) continue;
@@ -2485,13 +3853,29 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _getDevices() {
+    const devices = this._getDeviceCandidates();
+    const groups = new Map();
+    const stored = this._serverState?.tank_states || {};
+    for (const device of devices) {
+      const descriptor = this._backendDescriptor(device);
+      const key = descriptor?.identity_group || device.vacuum_entity;
+      const current = groups.get(key);
+      const rank = d => [Object.hasOwn(stored, d.vacuum_entity) ? 0 : 1,
+        ['matter', 'generic'].includes(this._backendDescriptor(d)?.integration_adapter) ? 1 : 0,
+        d.vacuum_entity || ''].join('|');
+      if (!current || rank(device) < rank(current)) groups.set(key, device);
+    }
+    return [...groups.values()];
+  }
+
+  _getDeviceCandidates() {
     if (this._config.devices && Array.isArray(this._config.devices)) {
       return this._config.devices.map(d => this._withBackendDescriptor(this._decorateLegacyProfile(d)));
     }
     // Single device mode
     const single = {};
     const keys = [
-      'device_name','water_sensor','water_used_sensor','water_used_input','water_total_ml',
+      'device_name','water_volume_sensor','water_volume_reservoir','water_anchor_reservoir','refill_on_clear','water_sensor','water_used_sensor','water_used_input','water_total_ml',
       'vacuum_entity','dock_error_sensor','filter_sensor','last_session_sensor',
       'last_reset_entity','main_brush_sensor','side_brush_sensor','filter_time_sensor',
       'sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
@@ -2499,7 +3883,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','cleaning_active_sensor',
       'last_clean_start','last_clean_end','charge_sensor','status_sensor',
       'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity',
-      'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal',
+      'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope',
       'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
       'brand_profile','tracked_capacity_ml','tank_ml','tracked_reservoir','signals',
       'accounting_evidence','evidence','uncertainty_percent','profile_locked','profile_override','locked_profile',
@@ -2566,16 +3950,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const resolvedCapacity = lockedProfile
       ? (Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : null)
       : (Number.isFinite(backendCapacity) && backendCapacity > 0 ? backendCapacity : null);
-    const totalMl = configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || (Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
+    const totalMl = configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
     const legacyResetTs = Number(tankState.last_reset_ts);
-    const initialized = Boolean(
+    let initialized = Boolean(
       tankState.initialized
       || tankState.last_reset_iso
       || (Number.isFinite(legacyResetTs) && legacyResetTs > 0)
     );
-    const stateReason = initialized ? (tankState.last_accounting_reason || null) : 'awaiting_refill';
+    let stateReason = initialized ? (tankState.last_accounting_reason || null) : 'awaiting_refill';
 
     // The integration state machine populates usedMl when no live water sensor exists.
     const configMissing = false; // standalone mode works out of the box — never flag as misconfigured
@@ -2584,26 +3968,44 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // refill would falsely manufacture a 100% tank. Only show accounting after
     // an explicit/manual refill baseline has initialized the state.
     if (totalMl > 0 && initialized) {
-      const waterSensorRaw = this._getStateValue(device.water_sensor);
-      if (waterSensorRaw !== null && waterSensorRaw !== 'unavailable' && waterSensorRaw !== 'unknown') {
-        remainingL = parseFloat(waterSensorRaw);
-        usedMl = totalMl - (remainingL * 1000);
-        percentRemaining = Math.max(0, Math.min(100, (remainingL * 1000 / totalMl) * 100));
-      } else {
-        const jsUsed = tankState.used_ml;
-        if (jsUsed !== null && jsUsed !== undefined) {
-          usedMl = jsUsed;
-          remainingL = (totalMl - usedMl) / 1000;
-          percentRemaining = Math.max(0, Math.min(100, (totalMl - usedMl) / totalMl * 100));
-        }
+      const jsUsed = tankState.used_ml;
+      if (typeof jsUsed === 'number' && Number.isFinite(jsUsed)) {
+        usedMl = jsUsed;
+        remainingL = Math.max(0, totalMl - usedMl) / 1000;
+        percentRemaining = Math.max(0, Math.min(100, (totalMl - usedMl) / totalMl * 100));
       }
+    }
+
+    if (tankState.accounting_incomplete) {
+      remainingL = percentRemaining = usedMl = null;
+      stateReason = 'accounting_incomplete';
+    }
+
+    if (device.accounting_event_sensor) {
+      const balance = tankState.accounting_v2 || {};
+      const measured = balance.balances_ml?.[device.tracked_reservoir];
+      const valid = balance.status === 'known' && typeof measured === 'number' && Number.isFinite(measured) && measured >= 0;
+      initialized = valid;
+      remainingL = valid ? measured / 1000 : null;
+      percentRemaining = usedMl = null;
+      stateReason = valid ? null : (balance.reason || 'unknown_stream_reservoir');
+    }
+
+    if (device.water_volume_sensor || tankState.last_accounting_source === 'real_sensor') {
+      const measured = tankState.last_water_volume_ml;
+      const valid = typeof measured === 'number' && Number.isFinite(measured) && measured >= 0;
+      initialized = valid;
+      stateReason = tankState.last_accounting_reason || null;
+      remainingL = valid ? measured / 1000 : null;
+      usedMl = valid && totalMl > 0 ? Math.max(0, totalMl - measured) : null;
+      percentRemaining = valid && totalMl > 0 ? Math.max(0, Math.min(100, measured / totalMl * 100)) : null;
     }
 
     const dockErr = this._getStateValue(device.dock_error_sensor);
     const waterAnchorKind = tankState.water_anchor_kind || null;
     const anchorActive = Boolean(tankState.water_empty_active);
     const waterLow = anchorActive && waterAnchorKind === 'shortage';
-    const waterEmpty = dockErr === 'water_empty' || (anchorActive && !waterLow);
+    const waterEmpty = anchorActive && !waterLow;
     const vacState = this._getStateValue(device.vacuum_entity);
     const isCleaning = ['cleaning', 'running', 'sweeping', 'mopping', 'vacuuming'].includes(this._normaliseModelKey(vacState));
     const charge = this._getStateValue(device.charge_sensor) ||
@@ -2664,6 +4066,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       accountingEvidence: tankState.last_accounting_evidence || ((customCalib.usage_ml_per_m2 || customCalib.wash_volume_ml) ? 'user_calibration' : device.accounting_evidence || null),
       accountingSource: tankState.last_accounting_source || null,
       accountingRate: tankState.last_accounting_rate_ml ?? null,
+      consumptionResolution: tankState.consumption_resolution || null,
+      reservoirLevels: tankState.reservoir_levels || null,
+      accountingV2: tankState.accounting_v2 || null,
       uncertaintyPercent: Number.isFinite(Number(device.uncertainty_percent)) ? Number(device.uncertainty_percent) : null,
       calibrationFactor: Number.isFinite(Number(tankState.calibration_factor)) ? Number(tankState.calibration_factor) : 1,
       calibrationSamples: Number.isFinite(Number(tankState.calibration_samples)) ? Number(tankState.calibration_samples) : 0,
@@ -2833,7 +4238,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 Calibration: ${calib.label}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
             <div>🪣 Tank: <b>${calib.tank_ml} ml</b></div>
-            <div>🧹 Mop: <b>${calib.mop_type}</b></div>
+            <div>🧹 Mop: <b>${calib.mop_type || "Unknown"}</b></div>
             ${calib.avg_area_per_charge ? `<div>📏 Est. area/charge: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
             ${estAreaPerTank ? `<div>📏 Est. area/tank: <b>~${estAreaPerTank} m²</b></div>` : ''}
           </div>
@@ -2877,13 +4282,28 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _buildAccountingGuidance(data) {
     const box = (title, text, color = '#64748b') => `<div class="accounting-guidance" style="border-color:${color}"><b>${title}</b><span>${text}</span></div>`;
+    if (data.stateReason === 'accounting_incomplete') {
+      return box('Water balance incomplete.', 'An interval had no applicable rate or continuous signal. The remaining volume is unknown until a new full-refill baseline or a physical volume measurement.', '#f59e0b');
+    }
     if (!data.initialized) {
       const capability = data.capability === 'manual_only'
         ? ' Manual-only: add calibration and use manual refill to maintain the estimate.'
         : '';
       return box('Needs a refill baseline.', `Water remaining and used are unknown until you press Refilled with a full tracked reservoir.${capability}`, '#f59e0b');
     }
-    if (data.stateReason === 'water_empty' || data.waterEmpty) {
+    const blockedReasons = {
+      water_anchor_reservoir_unverified: 'The water warning does not identify the tracked reservoir. Accounting is unchanged.',
+      shortage_volume_unmeasured: 'Low-water threshold has no measured remaining volume. It cannot calibrate consumption.',
+      accounting_context_changed: 'Model or accounting signals changed. A new sample baseline is being established.',
+      vacuum_unavailable: 'The vacuum is missing or unavailable. Accounting is paused.',
+      duration_unavailable: 'The configured duration signal is unavailable. No elapsed time is inferred.',
+      real_sensor_unavailable: 'The authoritative volume sensor is unavailable. Estimates will not replace it.',
+      real_sensor_reservoir_unverified: 'Confirm which reservoir the volume sensor measures.',
+      real_sensor_unit_unknown: 'Volume sensor must publish mL or L.',
+    };
+    if (blockedReasons[data.stateReason]) return box('Accounting paused.', blockedReasons[data.stateReason], '#f59e0b');
+    if (data.accountingSource === 'real_sensor') return box('Measured volume.', 'The configured sensor for this reservoir takes precedence over all estimates.');
+    if (data.stateReason === 'water_empty'  || data.waterEmpty) {
       return box('Tracked reservoir is empty.', 'A machine-readable empty state closed this calibration cycle. Refill the reservoir; the learned device factor is preserved.', '#ef4444');
     }
     if (data.stateReason === 'water_low' || data.waterLow || data.waterShortage) {
@@ -2922,6 +4342,44 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _buildDiagnostics(data) {
     const rows = [];
+    for (const [name, level] of Object.entries(data.reservoirLevels || {})) {
+      if (level && typeof level === 'object') rows.push([`Physical ${name}`, level.volume_ml == null
+        ? `Unknown: ${level.reason || 'no measurement'}` : this._formatMl(level.volume_ml)]);
+    }
+    const balance = data.accountingV2;
+    if (balance && typeof balance === 'object') {
+      rows.push(['Physical transfer balance', balance.status === 'known' ? 'Measured event stream' : `Unknown: ${balance.reason || 'source unavailable'}`]);
+      if (balance.status === 'known') {
+        if (balance.source_contract_id) rows.push(['Transfer source', balance.source_contract_id]);
+        for (const [name, ml] of Object.entries(balance.balances_ml || {})) {
+          if (typeof ml === 'number' && Number.isFinite(ml) && ml >= 0) rows.push([`Balanced ${name}`, this._formatMl(ml)]);
+        }
+        for (const [label, ml] of [['External supply', balance.external_supply_ml], ['External drain', balance.external_drain_ml]]) {
+          if (typeof ml === 'number' && Number.isFinite(ml) && ml >= 0) rows.push([label, this._formatMl(ml)]);
+        }
+      }
+    }
+    const resolved = data.consumptionResolution;
+    if (resolved && typeof resolved === 'object') {
+      rows.push(['Consumption method', [resolved.source, resolved.method, resolved.reason].filter(Boolean).join(' / ')]);
+      if (resolved.source === 'manufacturer_data') {
+        rows.push(['Evidence tier', 'Manufacturer data — limited estimate; not used automatically']);
+        if (resolved.label) rows.push(['Estimate label', resolved.label]);
+        if (resolved.quantity?.value != null && resolved.quantity?.unit) rows.push(['Declared quantity', `${resolved.quantity.value} ${resolved.quantity.unit}`]);
+        if (resolved.basis_ids?.length) rows.push(['Estimate basis', resolved.basis_ids.join(', ')]);
+        if (resolved.limitations?.length) rows.push(['Estimate limitations', resolved.limitations.join('; ')]);
+      } else if (resolved.source === 'verified_model' || resolved.source === 'device_calibration') {
+        rows.push(['Evidence tier', resolved.source === 'device_calibration' ? 'Measured calibration' : 'Measured']);
+      } else if (resolved.source === 'unknown') {
+        rows.push(['Evidence tier', 'Unknown']);
+      }
+      if (resolved.profile_id) rows.push(['Consumption profile', resolved.profile_id]);
+      if (resolved.dataset_version) rows.push(['Dataset version', resolved.dataset_version]);
+      if (resolved.confidence) rows.push(['Consumption evidence', resolved.confidence]);
+      if (resolved.validation?.max_error_ml != null) rows.push(['Observed holdout maximum error', `${resolved.validation.max_error_ml} ml (not a guaranteed bound)`]);
+      else rows.push(['Independent accuracy', 'Not measured']);
+      if (resolved.exposure_domain) rows.push(['Applicable exposure', `${resolved.exposure_domain.min}–${resolved.exposure_domain.max}; ${resolved.unit || ''}`]);
+    }
     if (data.integrationAdapter) rows.push(['Integration adapter', data.integrationAdapter]);
     if (data.signalContractVersion != null) rows.push(['Signal contract', `v${data.signalContractVersion}`]);
     if (data.mopEvidenceRequired) rows.push(['Mop accounting gate', 'affirmative mop mode or attachment required']);
@@ -2935,8 +4393,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (entity) rows.push([role, entity]);
     }
     if (data.accountingSource || data.stateReason || data.accountingEvidence) rows.push(['Accounting', [data.accountingSource, data.accountingRate != null ? `rate ${data.accountingRate}` : null, data.stateReason, data.accountingEvidence].filter(Boolean).join(' / ')]);
-    if (Number.isFinite(Number(data.estimatedM2PerActiveMinute))) rows.push(['Active-time conversion', `${Number(data.estimatedM2PerActiveMinute)} m\u00B2/min`]);
-    if (Number.isFinite(Number(data.uncertaintyPercent))) rows.push(['Initial uncertainty', `${Number(data.uncertaintyPercent)}%`]);
+    if (data.estimatedM2PerActiveMinute != null && Number.isFinite(Number(data.estimatedM2PerActiveMinute))) rows.push(['Active-time conversion', `${Number(data.estimatedM2PerActiveMinute)} m\u00B2/min`]);
+    if (data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent))) rows.push(['Initial uncertainty', `${Number(data.uncertaintyPercent)}%`]);
     if (Number(data.calibrationSamples) > 0) rows.push(['Device calibration', `${Number(data.calibrationSamples)} samples / factor ${Number(data.calibrationFactor || 1)}`]);
     if (data.waterAnchorSource || data.waterAnchorKind || data.waterAnchorConfidence) rows.push(['Water anchor', [data.waterAnchorSource, data.waterAnchorKind, data.waterAnchorConfidence].filter(Boolean).join(' / ')]);
     if ((data.tankLevel != null || data.dockTankLevel != null) && !data.tankSemanticsConfirmed) {
@@ -3086,8 +4544,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ...Array.from({ length: Math.max(0, 3 - savedModeRows.length) }, () => ['', '']),
     ].map(([name, value]) => `
       <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
-        <input type="text" value="${_esc(String(name))}" placeholder="e.g. standard" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name">
-        <input type="number" min="0.1" step="0.1" value="${_esc(value === '' ? '' : String(value))}" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val">
+        <input type="text" value="${_esc(String(name))}" placeholder="e.g. standard" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name" aria-label="Mopping mode name">
+        <input type="number" min="0.1" step="0.1" value="${_esc(value === '' ? '' : String(value))}" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val" aria-label="Measured ml per square metre">
       </div>`).join('');
     // Known default max lifespans (hours) per consumable type.
     // These match Roborock factory defaults; other brands vary but are similar order-of-magnitude.
@@ -3198,14 +4656,27 @@ class HAVacuumWaterMonitor extends HTMLElement {
         </div>
 
         <div class="section-block">
-          <div class="section-title" style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <button type="button" class="section-title" aria-expanded="false" aria-controls="vwm-custom-calibration-body" style="cursor:pointer;background:transparent;border:0;color:inherit;text-align:left" onclick="const open=this.nextElementSibling.style.display==='none';this.nextElementSibling.style.display=open?'block':'none';this.setAttribute('aria-expanded',String(open))">
             \u2699\uFE0F Custom calibration values <span style="font-size:10px;color:var(--bento-text-muted);font-weight:400">(click to expand)</span>
-          </div>
+          </button>
           <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
             ${effectiveCalibration}
+            <button type="button" style="padding:8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);cursor:pointer" onclick="this.getRootNode().host._reprofileDevice()">Refresh detected profile</button>
+            <div id="vwm-reprofile-status" role="status" aria-live="polite"></div>
+            <p>Refresh reads the current Home Assistant registry and releases the profile lock. Authored capacities, calibration, signal assignments and history are preserved.</p>
             <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
               If your robot is not on the list or you want to correct values — enter your own data. They are saved per device in Home Assistant Store.
             </div>
+            <p>Use measured water loss for this reservoir and mode. A whole-cycle dock measurement includes washes: do not also enter a wash dose for that same water. Capacity and advertised floor coverage are not consumption measurements.</p>
+            <label>Calibration measurement scope
+              <select id="vwm-custom-scope" style="width:100%;max-width:100%;min-width:0;background:var(--bento-bg);color:var(--bento-text);padding:8px;border:1px solid var(--bento-border);border-radius:6px">
+                <option value="whole_cycle" ${customCalibration.calibration_scope !== 'floor_only' ? 'selected' : ''}>Whole cycle (includes dock washes)</option>
+                <option value="floor_only" ${customCalibration.calibration_scope === 'floor_only' ? 'selected' : ''}>Floor only (dock washes measured separately)</option>
+              </select>
+            </label>
+            <label>Measured water use (ml/active minute)
+              <input type="number" id="vwm-custom-minute-rate" min="0.001" step="any" value="${_esc(String(customCalibration.usage_ml_per_active_minute?.default || ''))}">
+            </label>
             <div id="vwm-custom-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
               <label style="font-size:11px;color:var(--bento-text-secondary)">
                 ${_esc(reservoirLabel)} (ml)
@@ -3227,10 +4698,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
                 Remaining water at low-water alert (%)
                 <input type="number" id="vwm-custom-low-water" min="0" max="50" step="1" value="${_esc(String(customCalibration.low_water_anchor_remaining_percent ?? ''))}" placeholder="10" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
-              <label style="font-size:11px;color:var(--bento-text-secondary)">
-                Estimated cleaning speed (m\u00B2/min)
-                <input type="number" id="vwm-custom-speed" min="0.1" max="5" step="0.1" value="${_esc(String(customCalibration.estimated_m2_per_active_minute ?? ''))}" placeholder="0.8" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
-              </label>
+
             </div>
             <div style="margin-top:10px">
               <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:6px">Mopping modes — mode name and ml/m\u00B2 usage:</div>
@@ -3257,7 +4725,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
             Report data or correction on GitHub
           </a>
           <div style="margin-top:6px;font-size:10px;color:var(--bento-text-muted)">
-            Calibration data: manufacturer specs + Smart Home Hookup / Vacuum Wars tests + user measurements.
+            Catalog: linked primary sources. Consumption: your measured calibration; unknown until measured.
           </div>
         </div>
       </div>`;
@@ -3310,6 +4778,31 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }).join('');
 
     const noHistory = !lastSessionHtml && !manualRows && !data.isCleaning;
+    const rawCycles = this._serverState?.tank_states?.[device?.vacuum_entity]?.automatic_sessions;
+    const recordedCycles = Array.isArray(rawCycles) ? rawCycles.filter(s => s && typeof s === 'object' && Number.isFinite(s.ts)) : [];
+    const contributionForm = `<div class="section-block contribution-form">
+      <div class="section-title">Help improve consumption data</div>
+      <p>Select a recorded cycle. Optionally enter the water measured to refill the same reservoir to its starting level and your measurement resolution. Review the draft before downloading; nothing is uploaded.</p>
+      <label>Recorded cycle <select id="cal-cycle" class="maint-input" ${recordedCycles.length ? '' : 'disabled'}>
+        ${recordedCycles.slice(0, 50).map((s, i) => `<option value="${rawCycles.indexOf(s)}" data-cycle-ts="${Number(s.ts)}">Cycle ${i + 1} — ${_esc(new Date(s.ts).toLocaleString())}</option>`).join('')}
+      </select></label>
+      <label>Measured refill (ml) <input id="cal-observed" class="maint-input" type="number" min="0" step="any" /></label>
+      <label>Measurement resolution (ml) <input id="cal-resolution" class="maint-input" type="number" min="0" step="any" /></label>
+      <div class="section-title">Private measured calibration</div>
+      <p id="cal-readiness">${_esc(this._measurementReadiness(recordedCycles[0]))}</p>
+      <p>Save a full-to-full refill for this device. Three distinct complete cycles with the same historical settings fit a whole-cycle dose per m². Independent validation cycles never change that fit. Partial cycles, missing context and changed settings cannot be used.</p>
+      <label>Instrument <select id="cal-instrument" class="maint-input"><option value="graduated_jug">Graduated jug</option><option value="scale_water">Scale (water, converted to ml)</option><option value="flow_meter">Flow meter</option></select></label>
+      <label>Sample purpose <select id="cal-purpose" class="maint-input"><option value="training">Training</option><option value="validation">Independent validation</option></select></label>
+      <label><span><input type="checkbox" id="cal-boundaries" /> Same full reservoir level before and after; no intermediate refill or unmeasured transfer</span></label>
+      <label><span><input type="checkbox" id="cal-uninterrupted" /> Complete cycle observed from zero area, with unchanged settings and no interruption</span></label>
+      <button type="button" id="cal-save" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>Save private measurement</button>
+      <div id="cal-local-status" role="status" aria-live="polite"></div>
+      <p>The draft excludes identifiers and dates. Historical settings still need verification; estimates and elapsed time are not physical measurements or active mopping time.</p>
+      <button type="button" id="cal-preview" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>Preview contribution draft</button>
+      <div id="cal-export-status" role="status" aria-live="polite"></div>
+      <textarea id="cal-export-preview" aria-label="Contribution draft preview" readonly hidden style="width:100%;box-sizing:border-box;min-height:220px"></textarea>
+      <button type="button" id="cal-download" class="maint-add-btn" disabled>Download reviewed draft</button>
+    </div>`;
 
     return `
       <div class="tab-content">
@@ -3317,6 +4810,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ${lastSessionHtml ? `<div class="section-block"><div class="section-title">\uD83D\uDDD3\uFE0F Last Session (HA)</div>${lastSessionHtml}</div>` : ''}
         ${manualRows ? `<div class="section-block"><div class="section-title">\uD83D\uDCCA Logged Sessions</div>${manualRows}</div>` : ''}
         ${noHistory ? '<div class="empty-state">No session history available.<br>Start a cleaning to record sessions.</div>' : ''}
+        ${contributionForm}
         <div class="section-block">
           <div class="section-title">\u270F\uFE0F Log Manual Session</div>
           <div class="add-maint-form">
@@ -3332,13 +4826,120 @@ class HAVacuumWaterMonitor extends HTMLElement {
   _getSessionsFromStorage(device) {
     const key = (device && (device.vacuum_entity || device.name)) || 'default';
     const sessions = ((this._serverState.settings || {}).sessions || {})[key];
-    return Array.isArray(sessions) ? sessions : [];
+    const rawAutomatic = this._serverState?.tank_states?.[device?.vacuum_entity]?.automatic_sessions;
+    const automatic = Array.isArray(rawAutomatic) ? rawAutomatic : [];
+    return [...(Array.isArray(sessions) ? sessions : []), ...automatic]
+      .filter(s => s && typeof s === 'object' && Number.isFinite(s.ts)).sort((a,b) => b.ts-a.ts);
+  }
+
+  _measurementReadiness(session) {
+    if (!session || typeof session !== 'object') return 'No recorded cycle available.';
+    const missing = [];
+    const ctx = session.context;
+    if (!ctx || typeof ctx !== 'object') missing.push('historical context');
+    else {
+      for (const key of ['model_id','sku','dock_variant','firmware','integration_id','integration_version','reservoir','action']) {
+        if (!ctx[key] || ['unknown','unavailable'].includes(ctx[key])) missing.push(key);
+      }
+      for (const key of ['mop_mode','water_level','route','passes','wash_mode','wash_frequency','wash_temperature','adaptive_mode','detergent_mode','cleaning_mode','task_scope','suction_level','carpet_policy']) {
+        if (!ctx.settings?.[key] || ['unknown','unavailable'].includes(ctx.settings[key])) missing.push(key);
+      }
+    }
+    if (!session.exposure_complete || session.segments !== 1) missing.push('complete single-context cycle');
+    if (!(Number.isFinite(session.area) && session.area > 0)) missing.push('measured area');
+    return missing.length ? `Not ready for fitting: ${missing.join(', ')}. Current settings cannot fill historical gaps.`
+      : 'Historical context and complete area are recorded. Confirm the physical measurement boundaries below.';
+  }
+
+  async _saveLocalMeasurement(device) {
+    const sr = this.shadowRoot;
+    const status = sr.getElementById('cal-local-status');
+    const button = sr.getElementById('cal-save');
+    const rawVolume = sr.getElementById('cal-observed')?.value;
+    const rawResolution = sr.getElementById('cal-resolution')?.value;
+    const volume = Number(rawVolume), resolution = Number(rawResolution);
+    if (!rawVolume || !rawResolution || !Number.isFinite(volume) || !Number.isFinite(resolution) ||
+        volume <= 0 || resolution <= 0 || resolution >= volume ||
+        !sr.getElementById('cal-boundaries')?.checked || !sr.getElementById('cal-uninterrupted')?.checked) {
+      if (status) status.textContent = 'Enter measured ml and resolution, then confirm both measurement boundaries.';
+      return false;
+    }
+    if (button?.disabled) return false;
+    if (button) button.disabled = true;
+    const generation = this._localMeasurementGeneration || 0;
+    const request = {type:'ha_vacuum_water_monitor/save_measurement', vacuum_entity:device.vacuum_entity,
+      session_index:Number(sr.getElementById('cal-cycle')?.value),
+      session_ts:Number(sr.getElementById('cal-cycle')?.selectedOptions[0]?.dataset.cycleTs),
+      measurement:{observed_ml:volume,resolution_ml:resolution,
+        instrument:sr.getElementById('cal-instrument')?.value,
+        purpose:sr.getElementById('cal-purpose')?.value,boundaries_confirmed:true,uninterrupted:true}};
+    try {
+      const result = await this._hass.callWS(request);
+      if (result?.saved !== true || !Number.isInteger(result.sample_count) || result.sample_count < 1) throw new Error('Invalid measurement acknowledgement');
+      if (sr.getElementById('cal-local-status') !== status || generation !== (this._localMeasurementGeneration || 0)) return true;
+      if (status) status.textContent = result.calibration
+        ? `Saved privately. ${result.sample_count} sample(s); device calibration available within its measured area range. Independent accuracy remains separate.`
+        : `Saved privately. ${result.sample_count} sample(s) for these settings; at least three distinct training cycles are needed.`;
+      return true;
+    } catch (_) {
+      if (sr.getElementById('cal-local-status') === status && status) status.textContent = 'Could not save. Check complete historical context, measurement boundaries, duplicate cycle and connection.';
+      return false;
+    } finally {
+      if (sr.getElementById('cal-save') === button && button) button.disabled = false;
+    }
+  }
+
+  async _previewCalibration(device) {
+    const sr = this.shadowRoot;
+    const status = sr.getElementById('cal-export-status');
+    const preview = sr.getElementById('cal-export-preview');
+    const download = sr.getElementById('cal-download');
+    const observed = sr.getElementById('cal-observed')?.value || '';
+    const resolution = sr.getElementById('cal-resolution')?.value || '';
+    const request = { type: 'ha_vacuum_water_monitor/calibration_preview',
+      vacuum_entity: device.vacuum_entity,
+      session_index: Number(sr.getElementById('cal-cycle')?.value || 0),
+      session_ts: Number(sr.getElementById('cal-cycle')?.selectedOptions[0]?.dataset.cycleTs) };
+    if (observed !== '' || resolution !== '') {
+      if (observed === '' || resolution === '' || !Number.isFinite(Number(observed)) ||
+          !Number.isFinite(Number(resolution)) || Number(observed) < 0 || Number(resolution) <= 0) {
+        if (status) status.textContent = 'Enter both measured refill and a positive resolution in ml.';
+        if (download) download.disabled = true;
+        return false;
+      }
+      request.observed_ml = Number(observed);
+      request.resolution_ml = Number(resolution);
+    }
+    if (download) download.disabled = true;
+    if (preview) { preview.value = ''; preview.hidden = true; }
+    const generation = this._calibrationPreviewGeneration = (this._calibrationPreviewGeneration || 0) + 1;
+    if (status) status.textContent = 'Preparing preview…';
+    try {
+      const draft = await this._hass.callWS(request);
+      if (generation !== this._calibrationPreviewGeneration || sr.getElementById('cal-export-preview') !== preview) return false;
+      const content = JSON.stringify(draft, null, 2);
+      if (preview) { preview.value = content; preview.hidden = false; }
+      if (status) status.textContent = 'Review every field. Missing context must be completed before submission. Nothing has been uploaded.';
+      if (download) {
+        download.disabled = false;
+        download.onclick = () => {
+          const url = URL.createObjectURL(new Blob([content + '\n'], {type: 'application/json'}));
+          const link = document.createElement('a');
+          link.href = url; link.download = 'vacuum-consumption-draft.json'; link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        };
+      }
+      return true;
+    } catch (_) {
+      if (generation === this._calibrationPreviewGeneration && status) status.textContent = 'Could not prepare the draft. Check the connection and recorded cycle, then retry.';
+      return false;
+    }
   }
 
   _saveSession(device, session) {
     const key = (device && (device.vacuum_entity || device.name)) || 'default';
     const all = { ...(((this._serverState.settings || {}).sessions) || {}) };
-    const sessions = this._getSessionsFromStorage(device);
+    const sessions = this._getSessionsFromStorage(device).filter(item => item.type !== 'automatic');
     sessions.unshift({ ...session, ts: Date.now() });
     all[key] = sessions.slice(0, 50);
     this._serverState.settings = { ...(this._serverState.settings || {}), sessions: all };
@@ -3379,7 +4980,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const weekAgo = Date.now() - 7 * 86400000;
     const thisWeek = allSessions.filter(s => s.ts > weekAgo);
     const totalArea = thisWeek.reduce((sum, s) => sum + (parseFloat(s.area) || 0), 0);
-    const totalWater = thisWeek.reduce((sum, s) => sum + (parseFloat(s.water) || 0), 0);
+    const knownWater = thisWeek.filter(s => typeof s.water === 'number' && Number.isFinite(s.water));
+    const totalWater = knownWater.reduce((sum, s) => sum + s.water, 0);
     const totalSessions = thisWeek.length;
 
     return `<div class="section-block">
@@ -3387,7 +4989,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div class="stats-grid">
         <div class="stat-box"><div class="stat-num">${totalSessions}</div><div class="stat-label">sessions</div></div>
         <div class="stat-box"><div class="stat-num">${(totalArea || 0).toFixed(0)}</div><div class="stat-label">m\u00B2 cleaned</div></div>
-        <div class="stat-box"><div class="stat-num">${((totalWater || 0) / 1000).toFixed(1)}</div><div class="stat-label">L water</div></div>
+        <div class="stat-box"><div class="stat-num">${knownWater.length ? (totalWater / 1000).toFixed(1) : '—'}</div><div class="stat-label">L water (${knownWater.length}/${thisWeek.length} known)</div></div>
       </div>
     </div>`;
   }
@@ -3395,6 +4997,24 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   // ── TAB: DATABASE ─────────────────────────────────────────────────────────
 
+
+  async _reprofileDevice() {
+    const device = this._getDevices()[this._activeDeviceIdx] || {};
+    const status = this.shadowRoot?.getElementById('vwm-reprofile-status');
+    if (!device.vacuum_entity || !this._hass?.callWS) return false;
+    try {
+      const result = await this._hass.callWS({type: `${VWM_DOMAIN}/reprofile`, vacuum_entity: device.vacuum_entity});
+      this._serverState = {...this._serverState, settings: result.settings};
+      this._discoveredVacuums = result.vacuums || [];
+      this._render();
+      const current = this.shadowRoot?.getElementById('vwm-reprofile-status');
+      if (current) current.textContent = 'Profile refreshed. Your calibration and history are preserved.';
+      return true;
+    } catch (error) {
+      if (status) status.textContent = 'Could not refresh the profile. Please try again.';
+      return false;
+    }
+  }
 
   async _saveCustomCalibration() {
     const shadow = this.shadowRoot;
@@ -3406,10 +5026,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const area = shadow.getElementById('vwm-custom-area')?.value;
     const lowWaterRemaining = shadow.getElementById('vwm-custom-low-water')?.value;
     const estimatedSpeed = shadow.getElementById('vwm-custom-speed')?.value;
+    const minuteRate = shadow.getElementById('vwm-custom-minute-rate')?.value;
     const modeNames = shadow.querySelectorAll('.vwm-mode-name');
     const modeVals = shadow.querySelectorAll('.vwm-mode-val');
     const modes = {};
     const custom = {};
+    const measurementScope = shadow.getElementById('vwm-custom-scope')?.value || 'whole_cycle';
     const addPositiveInteger = (raw, key, label) => {
       if (raw === '' || raw == null) return;
       const value = Number(raw);
@@ -3417,6 +5039,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
       custom[key] = Math.round(value);
     };
     try {
+      if (minuteRate !== '' && minuteRate != null) {
+        const rate = Number(minuteRate);
+        if (!Number.isFinite(rate) || rate <= 0) throw new Error('Measured ml/min must be positive');
+        custom.usage_ml_per_active_minute = {default: rate};
+      }
       addPositiveInteger(tank, 'tracked_capacity_ml', 'Tracked reservoir');
       addPositiveInteger(robotTank, 'robot_tank_ml', 'Robot tank');
       addPositiveInteger(wash, 'wash_volume_ml', 'Mop wash');
@@ -3456,6 +5083,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (status) { status.textContent = 'Enter at least one calibration value.'; status.style.color = '#ef4444'; }
       return false;
     }
+    custom.calibration_scope = measurementScope;
     const activeDevice = this._getDevices()[this._activeDeviceIdx] || null;
     const key = this._customCalibrationKey(activeDevice);
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
@@ -3515,7 +5143,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!container) return;
     const div = document.createElement('div');
     div.style.cssText = 'display:flex;gap:4px;align-items:center';
-    div.innerHTML = '<input type="text" placeholder="tryb" style="flex:1;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name"><input type="number" placeholder="ml/m\u00B2" style="width:60px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val"><span onclick="this.parentElement.remove()" style="cursor:pointer;color:var(--bento-text-muted);font-size:14px">\u00D7</span>';
+    div.innerHTML = '<input type="text" placeholder="tryb" style="flex:1;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name" aria-label="Mopping mode name"><input type="number" placeholder="ml/m\u00B2" style="width:60px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val" aria-label="Measured ml per square metre"><span onclick="this.parentElement.remove()" style="cursor:pointer;color:var(--bento-text-muted);font-size:14px">\u00D7</span>';
     container.appendChild(div);
   }
   _buildDatabaseTab() {
@@ -3557,7 +5185,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return `<tr style="${rowBg}">
         <td style="${cellSt}">
           <div style="font-weight:600;font-size:12px">${m.label}${isActive ? ' <span style="color:#3b82f6;font-size:10px">\u2705 aktywny</span>' : ''}</div>
-          <div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${m.mop_type}</div>
+          <div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${m.mop_type || "Unknown"}</div>
         </td>
         <td style="${cellSt};${numSt}">${Number(m.tank_ml).toLocaleString('en-US')} ml</td>
         <td style="${cellSt}">${levelTags || '<span style="color:var(--vwm-text-muted,#9ca3af)">not measured</span>'}</td>
@@ -4138,6 +5766,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
         .maint-done-btn, .maint-del-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px; }
         /* Add form */
         .add-maint-form { display: flex; gap: 6px; flex-wrap: wrap; }
+        .contribution-form { display: grid; gap: 10px; font-size: 12px; line-height: 1.5; }
+        .contribution-form p { margin: 0; }
+        .contribution-form label { display: grid; gap: 4px; }
+        .contribution-form .maint-input { width: 100%; box-sizing: border-box; }
+        .contribution-form button { justify-self: start; max-width: 100%; white-space: normal; }
+        .contribution-form button:disabled { opacity: 0.45; cursor: default; }
         .maint-input { background: var(--bento-primary-light); border: 1px solid var(--bento-border); border-radius: 6px; color: var(--bento-text); padding: 6px 10px; font-size: 12px; font-family: Inter, sans-serif; flex: 1; min-width: 80px; }
         .maint-days, .maint-icon { max-width: 100px; }
         .maint-input::placeholder { color: var(--bento-text-muted); }
@@ -4393,6 +6027,32 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
 
     // Refill methods toggle
+    const calSave = sr.querySelector('#cal-save');
+    if (calSave) calSave.addEventListener('click', () => this._saveLocalMeasurement(device));
+    const calPreview = sr.querySelector('#cal-preview');
+    if (calPreview) calPreview.addEventListener('click', () => this._previewCalibration(device));
+    for (const id of ['cal-cycle', 'cal-observed', 'cal-resolution']) {
+      sr.getElementById(id)?.addEventListener('input', () => {
+        this._calibrationPreviewGeneration = (this._calibrationPreviewGeneration || 0) + 1;
+        this._localMeasurementGeneration = (this._localMeasurementGeneration || 0) + 1;
+        const localStatus = sr.getElementById('cal-local-status');
+        if (localStatus) localStatus.textContent = '';
+        if (id === 'cal-cycle') {
+          const index = Number(sr.getElementById(id)?.value);
+          const sessions = this._serverState?.tank_states?.[device?.vacuum_entity]?.automatic_sessions;
+          const readiness = sr.getElementById('cal-readiness');
+          if (readiness) readiness.textContent = this._measurementReadiness(Array.isArray(sessions) ? sessions[index] : null);
+          for (const confirmId of ['cal-boundaries','cal-uninterrupted']) {
+            const checkbox = sr.getElementById(confirmId); if (checkbox) checkbox.checked = false;
+          }
+        }
+        const download = sr.getElementById('cal-download');
+        if (download) download.disabled = true;
+        const preview = sr.getElementById('cal-export-preview');
+        if (preview) { preview.value = ''; preview.hidden = true; }
+      });
+    }
+
     const refillToggle = sr.querySelector('#refill-methods-toggle');
     if (refillToggle) {
       const body = sr.querySelector('#refill-methods-body');

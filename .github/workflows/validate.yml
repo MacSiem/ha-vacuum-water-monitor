@@ -44,3 +44,14 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run test:smoke
+      - name: Evidence catalog and sprint regressions
+        run: |
+          python scripts/validate_catalog.py
+          python scripts/check_consumption_coverage.py
+          python scripts/check_sprint_ledger.py
+          python scripts/generate_frontend_catalog.py --check
+          node .github/sprint.cjs
+      - name: Full catalog JSON Schema
+        run: |
+          pip install jsonschema
+          python -c "import json,jsonschema,pathlib; p=pathlib.Path('custom_components/ha_vacuum_water_monitor'); jsonschema.Draft202012Validator(json.loads((p/'model_profiles.schema.json').read_text()),format_checker=jsonschema.FormatChecker()).validate(json.loads((p/'model_profiles.json').read_text()))"

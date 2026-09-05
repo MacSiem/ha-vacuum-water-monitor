@@ -138,17 +138,80 @@ class VacuumWaterStorage:
         self, vacuum_entity: str, when_iso: str, when_ts: int
     ) -> dict[str, Any]:
         """Reset one tank counter and return the new tank state."""
+        if not vacuum_entity.startswith("vacuum.") or len(vacuum_entity) <= 7:
+            raise ValueError("Select a vacuum entity")
         async with self._lock:
             data = await self._ensure_loaded_locked()
             state = self.default_tank_state()
             state.update(data["tank_states"].get(vacuum_entity) or {})
+            state.update(last_area=None, last_duration_seconds=None, last_tick_ts=0,
+                         last_water_volume_ml=None, area_gap=True, duration_gap=True,
+                         water_empty_active=False, water_anchor_candidate_source=None,
+                         session_accounting_valid=False, session_exposure_complete=False,
+                         verified_wash_active=False, last_completed_wash_count=None)
             state["used_ml"] = 0
+            state["accounting_incomplete"] = False
             state["initialized"] = True
             state["last_reset_iso"] = when_iso
             state["last_reset_ts"] = when_ts
             data["tank_states"][vacuum_entity] = state
             await self._store.async_save(data)
             return deepcopy(state)
+
+    async def async_save_measurement(self, vacuum_entity, index, expected_ts, values):
+        """Select and save a measured cycle under one lock; never retarget a stale UI."""
+        from .calibration import select_recorded_cycle, build_local_measurement, fit_local_measurements
+        if not isinstance(vacuum_entity, str) or not vacuum_entity.startswith("vacuum."):
+            raise ValueError("Select a vacuum entity")
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            sessions = data["tank_states"].get(vacuum_entity, {}).get("automatic_sessions", [])
+            session = select_recorded_cycle(sessions, index, expected_ts)
+            sample = build_local_measurement(session, values, vacuum_entity)
+            all_samples = deepcopy(data["settings"].get("local_measurements") or {})
+            samples = list(all_samples.get(vacuum_entity) or [])
+            if any(s.get("id") == sample["id"] for s in samples):
+                raise ValueError("This cycle already has a measurement; it cannot be both training and validation")
+            if len(samples) >= 200:
+                raise ValueError("Measurement history is full; preserve/export it before collecting more")
+            samples.append(sample)
+            all_samples[vacuum_entity] = samples
+            # Other settings remain intact, and old context samples stay available.
+            matching = [s for s in samples if s.get("context") == sample["context"]]
+            fitted = fit_local_measurements(matching)
+            profiles = deepcopy(data["settings"].get("consumption_calibrations") or {})
+            if fitted:
+                previous_profiles = profiles.get(vacuum_entity) or []
+                if isinstance(previous_profiles, dict):
+                    previous_profiles = [previous_profiles]
+                profiles[vacuum_entity] = [p for p in previous_profiles
+                    if isinstance(p, dict) and p.get("context") != fitted["context"]] + [fitted]
+            data["settings"].update(local_measurements=all_samples, consumption_calibrations=profiles)
+            await self._store.async_save(data)
+            return {"saved": True, "sample_count": len(matching), "calibration": deepcopy(fitted)}
+
+    async def async_reprofile(self, vacuum_entity: str) -> dict[str, Any]:
+        """Refresh generated discovery, retaining authored config and all history."""
+        if not vacuum_entity.startswith("vacuum."):
+            raise ValueError("vacuum_entity must name a vacuum")
+        from .sensor_calculations import _configuration_field_provenance
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            for key in ("configured_devices", "user_devices"):
+                for index, device in enumerate(data["settings"].get(key) or []):
+                    if not isinstance(device, dict) or device.get("vacuum_entity") != vacuum_entity:
+                        continue
+                    authored = _configuration_field_provenance(device)[0] - {"profile_locked", "profile_override", "locked_profile", "profile_key", "profile_source", "profile_confidence", "brand_profile"}
+                    replacement = {k: deepcopy(v) for k, v in device.items() if k in authored}
+                    replacement["vacuum_entity"] = vacuum_entity
+                    replacement["config_provenance"] = {"authored_fields": sorted(authored | {"vacuum_entity"})}
+                    data["settings"][key][index] = replacement
+            state = data["tank_states"].get(vacuum_entity)
+            if isinstance(state, dict):
+                state.update(last_area=None, last_duration_seconds=None, last_tick_ts=0,
+                             last_water_volume_ml=None, area_gap=True, duration_gap=True)
+            await self._store.async_save(data)
+            return deepcopy(data["settings"])
 
     async def _ensure_loaded_locked(self) -> dict[str, Any]:
         """Load data while caller holds the lock."""
