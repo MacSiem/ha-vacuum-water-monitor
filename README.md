@@ -15,8 +15,9 @@ it as sensors plus a bundled dashboard card.
 We are building **Vacuum Consumption Data**, a separate open dataset for model-specific
 water and detergent consumption. Check the [current coverage and contribution guide](docs/consumption-database.md)
 to see what is known about your robot, inspect the sources and report missing or incorrect data.
-The separate repository is currently prepared locally; its public GitHub link will be added
-after publication. The intended repository name is `MacSiem/vacuum-consumption-data`.
+The published [Vacuum Consumption Data repository](https://github.com/MacSiem/vacuum-consumption-data)
+contains the versioned dataset; use its [contribution guide](https://github.com/MacSiem/vacuum-consumption-data/blob/main/CONTRIBUTING.md)
+for sanitized submissions.
 
 Contributions for any model are welcome: a documented setting, a corrected source or a
 measured cycle can improve coverage. We distinguish **mop-only, simultaneous vacuum-and-mop,

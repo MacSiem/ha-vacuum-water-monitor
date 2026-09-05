@@ -13,18 +13,18 @@ explicitly identified first-time mop wash and 120 ml for an explicitly identifie
 mop wash. They retain their basis and limitations, and never charge automatic accounting or
 a completion counter because the Home Assistant action binding is unknown.
 
-Publication is blocked by three independent gates:
+Public-release conditions:
 
 1. `ALLOW_RELEASE=1` is absent, so push, tag, GitHub release and HACS publication are
    prohibited.
-2. `MacSiem/vacuum-consumption-data` does not exist on GitHub. Do not publish a link or
-   request issue reporters to use a nonexistent repository.
+2. The published dataset is verified before its links are used in README or issue replies.
 
-The exact local candidate is frozen by the release receipt. After a separate data-repository
-publication produces a real URL, substitute it in the README and reply drafts, review that
-small documentation change, then use a separate `ALLOW_RELEASE=1` turn for the public
-sequence: push app commit → create/tag v5.5.0 release → confirm HACS metadata/distribution
-→ publish the dataset URL → post issue replies with verified URLs. No URL is invented here.
+The exact local candidate is frozen by the release receipt. The data repository is now
+published at [MacSiem/vacuum-consumption-data](https://github.com/MacSiem/vacuum-consumption-data),
+with its [contribution guide](https://github.com/MacSiem/vacuum-consumption-data/blob/main/CONTRIBUTING.md)
+and [v0.2.0 release](https://github.com/MacSiem/vacuum-consumption-data/releases/tag/v0.2.0).
+This authorized release turn will push the final documentation commit, create/tag v5.5.0,
+confirm HACS metadata/distribution, then post issue replies with verified URLs.
 
 ## Candidate scope
 
@@ -41,7 +41,7 @@ sequence: push app commit → create/tag v5.5.0 release → confirm HACS metadat
 
 Version surfaces are aligned to `5.5.0`: integration manifest, Python cache-bust
 constant, both bundled card copies, package metadata and lockfile. The data repository
-remains unpublished and unlinked.
+is published and linked from the README.
 
 ## GitHub issue readback and reply drafts
 
