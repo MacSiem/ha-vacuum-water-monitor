@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.5.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.6.0 — HACS integration bundled card */
 (function() {
 'use strict';
 

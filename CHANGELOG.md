@@ -1,6 +1,54 @@
 # Changelog
 
-## Unreleased
+## 5.6.0 (2026-09-09)
+
+### Fixed
+
+- **A vacuum whose manufacturer is written in registry form is recognised again.**
+  5.5.0 narrowed the catalogue by comparing the Home Assistant device-registry
+  manufacturer for whole-string equality. Home Assistant reports vendor-formatted
+  values such as `Beijing Roborock Technology Co., Ltd.` or
+  `TP-Link Corporation Limited`, so the catalogue was narrowed to nothing and an
+  otherwise exact `model_id` match was discarded. The vacuum then appeared
+  unrecognised even though its model was present in the catalogue. Reported for
+  the Qrevo Curv 2 Flow X (`roborock.vacuum.a245`) and seen for the Qrevo 5AE
+  (`roborock.vacuum.a170`) and the Tapo RV50 Pro Omni (Matter `1797`).
+  A known manufacturer is now also matched on token boundaries. A stated but
+  unknown manufacturer still scopes the search, so a product id that is not
+  unique across vendors stays unresolved rather than matching another brand.
+
+- **The shipped consumption snapshot is reproducible from published inputs.**
+  5.5.0 shipped a snapshot compiled from an uncommitted working tree of the data
+  repository (`source_revision` ending in `-dirty`) that nobody could rebuild.
+  The snapshot is now compiled from the committed data-repository revision, and
+  a release test refuses any snapshot whose `source_revision` is not a full
+  commit sha.
+
+### Added
+
+- Release gate: the bundled card under `custom_components/.../www/` must be
+  byte-identical to the repository card, so a stale copy cannot ship.
+- Regression coverage for registry manufacturer forms, for cross-vendor product
+  ids and for snapshot provenance.
+
+### Documentation
+
+- `docs/consumption-roadmap.json` declared `local_git_created_not_public` and a
+  stale revision long after the repository was public. Corrected.
+- The changelog section describing the 5.5.0 content was still headed
+  *Unreleased* and claimed no release had happened.
+
+### Unchanged, and deliberately so
+
+- **No consumption rates are shipped.** The dataset still contains zero approved
+  consumption profiles and two manufacturer-declared, display-only quantities.
+  A model with no measured rate reports `unknown` with a reason, and the card
+  points to calibration. Coverage is not complete: the acceptance gate
+  (`scripts/check_consumption_coverage.py --require-complete`) still exits 2 with
+  `goal_complete: false` and 1023 unresolved criteria across 133 models.
+
+
+## 5.5.0 (2026-09-05)
 
 - Evidence-gated 133-record model/variant catalogue with five separate reservoirs,
   dated provenance, explicit regional/HA unknowns and no shipped consumption rates.
@@ -10,7 +58,7 @@
 - Separate floor/wash measurement scope prevents hybrid double counting; automatic
   session history retains unknown volumes. Reprofiling preserves authored settings.
 - Generated frontend catalogue, adapter contract fixtures, expanded regression checks,
-  diagnostics and coverage documentation. No production deployment or release.
+  diagnostics and coverage documentation.
 
 ## 5.4.0 (2026-09-02)
 

@@ -13,7 +13,7 @@ class ReleaseDocumentationTests(unittest.TestCase):
         self.assertIn("Unknown remains unknown.", readme)
 
     def test_release_version_is_consistent_across_all_public_surfaces(self):
-        version = "5.5.0"
+        version = "5.6.0"
         self.assertIn(f'"version": "{version}"',
                       (ROOT / "custom_components/ha_vacuum_water_monitor/manifest.json").read_text(encoding="utf-8"))
         self.assertIn(f'VERSION = "{version}"',
@@ -37,3 +37,43 @@ class ReleaseDocumentationTests(unittest.TestCase):
         for field in ("model", "integration", "settings", "area", "duration", "mop washes"):
             self.assertIn(field, matrix)
         self.assertIn("capacity is not consumption", matrix)
+
+
+class ShippedArtefactProvenanceTests(unittest.TestCase):
+    """A published build must be reproducible from published inputs.
+
+    5.6.0 shipped a consumption snapshot compiled from an uncommitted working
+    tree ("...-dirty") of the data repository, while the published dataset was
+    still an older revision. Nobody could rebuild the shipped artefact.
+    """
+
+    SNAPSHOT = ROOT / "custom_components/ha_vacuum_water_monitor/consumption_snapshot.json"
+
+    def _snapshot(self):
+        import json
+        return json.loads(self.SNAPSHOT.read_text(encoding="utf-8"))
+
+    def test_snapshot_is_built_from_a_committed_revision(self):
+        revision = self._snapshot().get("source_revision")
+        self.assertIsInstance(revision, str)
+        self.assertNotIn("-dirty", revision,
+                         "snapshot was compiled from an uncommitted data-repo tree")
+        self.assertNotEqual(revision, "uncommitted")
+        self.assertRegex(revision, r"^[0-9a-f]{40}$",
+                         "source_revision must be a full commit sha")
+
+    def test_snapshot_declares_the_supported_contract_and_its_payload_hash(self):
+        snapshot = self._snapshot()
+        self.assertEqual(snapshot.get("schema_version"), 2)
+        self.assertRegex(str(snapshot.get("source_payload_sha256")), r"^[0-9a-f]{64}$")
+        self.assertIsInstance(snapshot.get("dataset_version"), str)
+        self.assertTrue(snapshot["dataset_version"])
+        self.assertIsInstance(snapshot.get("profiles"), list)
+        self.assertIsInstance(snapshot.get("estimates"), list)
+
+    def test_bundled_card_is_identical_to_the_repository_card(self):
+        """HACS serves the bundled copy; a drifted copy ships a stale card."""
+        source = (ROOT / "ha-vacuum-water-monitor.js").read_bytes()
+        bundled = (ROOT / "custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js").read_bytes()
+        self.assertEqual(source, bundled,
+                         "root card and bundled www copy have diverged")

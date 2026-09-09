@@ -52,3 +52,45 @@ class ModelProfileTests(unittest.TestCase):
     def test_matter_product_id_is_not_global_across_manufacturers(self):
         r=profiles.resolve_profile({'manufacturer':'Unrelated manufacturer','model_id':'1797'})
         self.assertEqual(r['capability'],'unknown')
+
+    def test_registry_manufacturer_forms_still_scope_to_the_known_vendor(self):
+        """5.5.0 compared the registry manufacturer for whole-string equality.
+
+        Home Assistant reports vendor-formatted values, so "Beijing Roborock
+        Technology Co., Ltd." and "TP-Link Corporation Limited" scoped the
+        catalogue to nothing and discarded an exact model_id match. Reported for
+        the Qrevo Curv 2 Flow X (roborock.vacuum.a245) and the Tapo RV50 Pro
+        Omni (Matter 1797).
+        """
+        cases = [
+            ("Roborock", "roborock.vacuum.a245", "roborock_qrevo_curv_2_flow"),
+            ("Roborock Technology Co., Ltd", "roborock.vacuum.a245", "roborock_qrevo_curv_2_flow"),
+            ("Beijing Roborock Technology Co., Ltd.", "roborock.vacuum.a245", "roborock_qrevo_curv_2_flow"),
+            ("Roborock", "roborock.vacuum.a170", "roborock_qrevo_5ae"),
+            ("TP-Link", "1797", "tapo_rv50_pro_omni"),
+            ("TP-Link Corporation Limited", "1797", "tapo_rv50_pro_omni"),
+            ("Tapo", "1797", "tapo_rv50_pro_omni"),
+        ]
+        for manufacturer, model_id, expected in cases:
+            with self.subTest(manufacturer=manufacturer, model_id=model_id):
+                resolved = profiles.resolve_profile(
+                    {"manufacturer": manufacturer, "model_id": model_id})
+                self.assertEqual(resolved["profile_key"], expected)
+                self.assertEqual(resolved["profile_source"], "model_id")
+
+    def test_unrecognised_manufacturer_never_widens_back_to_the_full_catalogue(self):
+        """A stated vendor scopes the search even when it is unknown."""
+        for manufacturer in ("Unrelated manufacturer", "ACME Robotics GmbH", "Generic"):
+            with self.subTest(manufacturer=manufacturer):
+                resolved = profiles.resolve_profile(
+                    {"manufacturer": manufacturer, "model_id": "1797"})
+                self.assertIsNone(resolved["profile_key"])
+                self.assertEqual(resolved["capability"], "unknown")
+
+    def test_manufacturer_token_match_does_not_cross_brands(self):
+        """Token matching must not turn one vendor's string into another's."""
+        self.assertEqual(profiles._canonical_manufacturer("dreame", {"dreame", "roborock"}), "dreame")
+        self.assertEqual(profiles._canonical_manufacturer("shenzhen_dreame_innovation", {"dreame"}), "dreame")
+        self.assertEqual(profiles._canonical_manufacturer("dreamer_labs", {"dreame"}), "")
+        self.assertEqual(profiles._canonical_manufacturer("predreame", {"dreame"}), "")
+        self.assertEqual(profiles._canonical_manufacturer("", {"dreame"}), "")

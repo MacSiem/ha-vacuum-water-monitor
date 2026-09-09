@@ -209,15 +209,59 @@ def load_catalog(path: Path | str = _CATALOG_PATH) -> dict[str, dict[str, Any]]:
     return validated
 
 
+_MANUFACTURER_EQUIVALENTS = {
+    "tp_link": "tapo",
+    "tplink": "tapo",
+    "roborock_technology_co_ltd": "roborock",
+}
+
+
+def _token_match(normalized: str, candidate: str) -> bool:
+    """True when `candidate` occurs in `normalized` on token boundaries."""
+    return (normalized == candidate
+            or normalized.startswith(candidate + "_")
+            or normalized.endswith("_" + candidate)
+            or ("_" + candidate + "_") in normalized)
+
+
+def _canonical_manufacturer(normalized: str, known: set[str]) -> str:
+    """Map a device-registry manufacturer string onto a catalog manufacturer.
+
+    Returns "" when the vendor is not recognised, which keeps an unrelated
+    manufacturer unresolved instead of matching a non-unique product id.
+    """
+    if not normalized:
+        return ""
+    direct = _MANUFACTURER_EQUIVALENTS.get(normalized, normalized)
+    if direct in known:
+        return direct
+    for candidate in sorted(known):
+        if _token_match(normalized, candidate):
+            return candidate
+    for alias, candidate in sorted(_MANUFACTURER_EQUIVALENTS.items()):
+        if candidate in known and _token_match(normalized, alias):
+            return candidate
+    return ""
+
+
 def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
     """Resolve one profile using explicit configuration before registry metadata."""
     device = device if isinstance(device, dict) else {}
     catalog = CATALOG if catalog is None else catalog
-    manufacturer = normalize_identifier(device.get("manufacturer"))
-    if manufacturer:
-        equivalents = {"tp_link": "tapo", "tplink": "tapo", "roborock_technology_co_ltd": "roborock"}
-        manufacturer = equivalents.get(manufacturer, manufacturer)
-        catalog = {k:r for k,r in catalog.items() if normalize_identifier(r.get("manufacturer")) == manufacturer}
+    stated = normalize_identifier(device.get("manufacturer"))
+    if stated:
+        # A stated manufacturer always scopes the catalog: a bare Matter product
+        # id is not unique across vendors. It must therefore stay unresolved for
+        # an unknown vendor, while a known vendor written in registry form
+        # ("Beijing Roborock Technology Co., Ltd.", "TP-Link Corporation
+        # Limited") must still scope correctly. 5.5.0 compared the whole string
+        # for equality, so those forms scoped the catalog to nothing and
+        # discarded an otherwise exact model_id match.
+        known = {normalize_identifier(record.get("manufacturer")) for record in catalog.values()}
+        known.discard("")
+        manufacturer = _canonical_manufacturer(stated, known)
+        catalog = {k: r for k, r in catalog.items()
+                   if manufacturer and normalize_identifier(r.get("manufacturer")) == manufacturer}
     indexes = _catalog_indexes(catalog)
 
     locked = _first_profile(
