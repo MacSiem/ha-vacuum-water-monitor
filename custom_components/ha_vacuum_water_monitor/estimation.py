@@ -71,6 +71,11 @@ CALIBRATION_WINDOW = 8
 DEFAULT_EMPTY_RESIDUAL_PERCENT = 5.0
 MIN_CALIBRATION_CYCLE_FRACTION = 0.3
 OUTLIER_LOG_RATIO = math.log(2.0)
+# Before a device has three accepted tanks, a tank outside the plausible band
+# of its current estimate (the basis uncertainty) is held until the next tank
+# confirms it. A tank lifted mid-cycle or a refill nobody reported produces one
+# such sample; a genuinely different robot produces two consistent ones.
+CONFIRMATION_LOG_RATIO = math.log(1.25)
 MIN_FACTOR = 0.25
 MAX_FACTOR = 4.0
 
@@ -131,11 +136,28 @@ def validate_estimate(key: str, estimate: Any) -> str | None:
     return None
 
 
+def _stored_window(state: dict[str, Any]) -> list[float] | None:
+    """The stored window, or None when absent or written over by an older version.
+
+    5.7 always stores ``calibration_samples == len(window)``. A mismatch means an
+    older release reset or relearned the factor without touching the window.
+    """
+    stored = state.get("calibration_log_factors")
+    if not isinstance(stored, list) or not all(
+            isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in stored):
+        return None
+    window = [float(v) for v in stored][-CALIBRATION_WINDOW:]
+    samples = state.get("calibration_samples")
+    if isinstance(samples, int) and not isinstance(samples, bool) and samples != len(window):
+        return None
+    return window
+
+
 def seed_log_factors(state: dict[str, Any]) -> list[float]:
     """Return the stored factor window, migrating 5.x mean-based state."""
-    stored = state.get("calibration_log_factors")
-    if isinstance(stored, list) and all(isinstance(v, (int, float)) and math.isfinite(v) for v in stored):
-        return [float(v) for v in stored][-CALIBRATION_WINDOW:]
+    window = _stored_window(state)
+    if window is not None:
+        return window
     samples = int(state.get("calibration_samples") or 0)
     factor = state.get("calibration_factor")
     if samples > 0 and _positive(factor):
@@ -145,9 +167,9 @@ def seed_log_factors(state: dict[str, Any]) -> list[float]:
 
 def uncertainty_log_factors(state: dict[str, Any]) -> list[float]:
     """Factors that describe spread: the real window, or one migrated 5.x factor."""
-    stored = state.get("calibration_log_factors")
-    if isinstance(stored, list):
-        return [float(v) for v in stored if isinstance(v, (int, float)) and math.isfinite(v)][-CALIBRATION_WINDOW:]
+    window = _stored_window(state)
+    if window is not None:
+        return window
     samples = int(state.get("calibration_samples") or 0)
     factor = state.get("calibration_factor")
     if samples > 0 and _positive(factor):
@@ -158,14 +180,40 @@ def uncertainty_log_factors(state: dict[str, Any]) -> list[float]:
 def update_calibration(
     log_factors: list[float],
     observed_factor: float,
-) -> tuple[list[float], float, bool, str | None]:
-    """Add one tank's observed total factor; return window, factor, accepted, reason."""
+    *,
+    band_fraction: float | None = None,
+    pending: float | None = None,
+) -> tuple[list[float], float, bool, str | None, float | None]:
+    """Add one tank's observed total factor.
+
+    Returns the window, the learned factor, whether the tank was accepted, the
+    reason, and the log factor now waiting for confirmation (if any).
+    """
     observed = min(max(observed_factor, MIN_FACTOR), MAX_FACTOR)
     value = math.log(observed)
-    if len(log_factors) >= 3 and abs(value - median(log_factors)) > OUTLIER_LOG_RATIO:
-        return list(log_factors), math.exp(median(log_factors)), False, "calibration_sample_outlier"
-    window = (list(log_factors) + [value])[-CALIBRATION_WINDOW:]
-    return window, math.exp(median(window)), True, None
+    window = [float(v) for v in log_factors][-CALIBRATION_WINDOW:]
+    current = math.exp(median(window)) if window else 1.0
+    if len(window) >= 3:
+        if abs(value - median(window)) > OUTLIER_LOG_RATIO:
+            return window, current, False, "calibration_sample_outlier", None
+        window = (window + [value])[-CALIBRATION_WINDOW:]
+        return window, math.exp(median(window)), True, None, None
+    center = median(window) if window else 0.0
+    if band_fraction is None or abs(value - center) <= math.log(1 + max(band_fraction, 0.0)):
+        window = (window + [value])[-CALIBRATION_WINDOW:]
+        return window, math.exp(median(window)), True, None, None
+    if pending is not None and math.isfinite(pending) and abs(value - pending) <= CONFIRMATION_LOG_RATIO:
+        window = (window + [pending, value])[-CALIBRATION_WINDOW:]
+        return window, math.exp(median(window)), True, "calibration_sample_confirmed", None
+    return window, current, False, "calibration_sample_unconfirmed", value
+
+
+def band_fraction(basis: Any, uncertainty: Any = None) -> float:
+    """Plausible relative error of an uncalibrated estimate for confirmation."""
+    percent = BASIS_UNCERTAINTY_PERCENT.get(str(basis)) if basis else None
+    if percent is None and _positive(uncertainty):
+        percent = float(uncertainty)
+    return (percent if percent is not None else 50) / 100
 
 
 def uncertainty_percent(basis: Any, log_factors: Any) -> int | None:

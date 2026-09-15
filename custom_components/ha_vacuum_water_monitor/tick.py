@@ -65,6 +65,14 @@ _CALIBRATION_IDENTITY_KEYS = (
 )
 DEFAULT_AREA_ANOMALY_CEILING_M2 = 25
 RESET_COOLDOWN_SEC = 60
+# An observation gap this short, with the same mop settings on both sides and a
+# continuous cumulative area counter, is bridged instead of invalidating the tank.
+BRIDGE_GAP_MAX_SECONDS = 600
+AREA_COUNTER_JITTER_M2 = 0.05
+# A dock that reports empty during a wash could not finish it. Half of that
+# wash is the expected water it still drew.
+FAILED_WASH_WINDOW_SECONDS = 300
+FAILED_WASH_REFUND_FRACTION = 0.5
 MAX_ACTIVE_INTERVAL_SECONDS = 180
 WATER_ANCHOR_CONFIRMATION_SECONDS = 60
 DEFAULT_LOW_WATER_REMAINING_PERCENT = 10
@@ -245,12 +253,11 @@ def _tick_device_pass(
             source_entity=event_sensor,
             now_ms=now_ts)
     if vac is None or _normalized_signal(vac.state) in {None, "unknown", "unavailable"}:
-        if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
-            state["accounting_incomplete"] = True
+        _open_observation_gap(state, now_ts)
         # The last area is kept so that a change observed after the gap proves
-        # unobserved exposure instead of silently starting a new baseline.
+        # unobserved exposure (or bridges it) instead of silently starting a new baseline.
         state.update(last_duration_seconds=None, last_tick_ts=0,
-                     area_gap=True, duration_gap=True, last_water_volume_ml=None, session_accounting_valid=False, session_exposure_complete=False,
+                     area_gap=True, duration_gap=True, last_water_volume_ml=None, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
         state["reservoir_levels"] = {key: {"volume_ml": None, "source": "unknown", "reason": "vacuum_unavailable"}
                                      for key in ("dock_clean", "dock_dirty", "robot_clean", "robot_dirty", "detergent")}
@@ -272,10 +279,9 @@ def _tick_device_pass(
     curr_status = _normalized_signal(curr_status_raw)
 
     if status_sensor and _is_transient_status(curr_status):
-        if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
-            state["accounting_incomplete"] = True
+        _open_observation_gap(state, now_ts)
         state.update(last_duration_seconds=None, area_gap=True,
-                     duration_gap=True, last_tick_ts=0, last_water_volume_ml=None, session_accounting_valid=False, session_exposure_complete=False,
+                     duration_gap=True, last_tick_ts=0, last_water_volume_ml=None, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
         _record_accounting(state, "unknown", None, None, "status_unavailable")
         return state, True
@@ -387,6 +393,41 @@ def _tick_device_pass(
         evidence = "device_calibrated"
         time_evidence = "device_calibrated"
 
+    last_tick = _positive_number(state.get("last_tick_ts"))
+    if last_tick is not None and (now_ts <= last_tick or now_ts - last_tick > MAX_ACTIVE_INTERVAL_SECONDS * 1000):
+        _open_observation_gap(state, min(last_tick, now_ts))
+        state.update(last_duration_seconds=None, area_gap=True,
+                     duration_gap=True, last_water_volume_ml=None, session_exposure_complete=False,
+                     verified_wash_active=False, last_completed_wash_count=None)
+    if curr_area is None and device.get("area_sensor"):
+        _open_observation_gap(state, int(last_tick or now_ts))
+
+    # A short gap with the same settings and a continuous area counter keeps the
+    # tank complete: the cumulative counter still carries the cleaned area.
+    bridge_area = False
+    rate_settings = {"cleaning_mode": cleaning_mode, "mop_mode": mop_mode, "mop_intensity": mop_intensity}
+    gap_started = _positive_number(state.get("gap_started_ts"))
+    if gap_started is not None and (curr_area is not None or not device.get("area_sensor")):
+        gap_exposure = bool(state.get("gap_exposure_possible"))
+        last_area_seen = _float_or_none(state.get("last_area"))
+        ceiling_m2 = _positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2
+        continuous = (curr_area is not None and last_area_seen is not None
+                      and -AREA_COUNTER_JITTER_M2 <= curr_area - last_area_seen <= ceiling_m2)
+        if (gap_exposure and continuous and now_ts - gap_started <= BRIDGE_GAP_MAX_SECONDS * 1000
+                and state.get("last_rate_settings") == rate_settings):
+            bridge_area = True
+            state["bridged_gaps"] = int(state.get("bridged_gaps") or 0) + 1
+            _record_accounting(state, "area", None, evidence, "gap_bridged")
+        elif gap_exposure:
+            state["accounting_incomplete"] = True
+            state["session_accounting_valid"] = False
+            _record_accounting(state, "unknown", None, None, "gap_not_bridged")
+        state["gap_started_ts"] = None
+        state["gap_exposure_possible"] = False
+        dirty = True
+    if curr_area is not None or not device.get("area_sensor"):
+        state["last_rate_settings"] = rate_settings
+
     # Rates calibrated for one setting must not charge the interval spanning
     # a change to another mode/route/wash configuration. Only observed canonical
     # settings enter this fingerprint; area/time counters are exposures, not settings.
@@ -494,13 +535,6 @@ def _tick_device_pass(
         _record_accounting(state, "unknown", None, None, "accounting_context_changed")
         return state, True
 
-    last_tick = _positive_number(state.get("last_tick_ts"))
-    if last_tick is not None and (now_ts <= last_tick or now_ts - last_tick > MAX_ACTIVE_INTERVAL_SECONDS * 1000):
-        if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
-            state["accounting_incomplete"] = True
-        state.update(last_duration_seconds=None, area_gap=True,
-                     duration_gap=True, last_water_volume_ml=None, session_exposure_complete=False,
-                     verified_wash_active=False, last_completed_wash_count=None)
 
     session_running = _is_cleaning(vac_state, curr_status, cleaning_active)
     had_open_session = bool(state.get("session_start_ts"))
@@ -533,6 +567,8 @@ def _tick_device_pass(
                     and completed - before_completed == 1 and state.get("verified_wash_active")):
                 amount = wash_resolution["coefficient"]
                 state["used_ml"] = round(_number(state.get("used_ml"), 0) + amount, 2)
+                state["last_wash_charged_ts"] = now_ts
+                state["last_wash_charged_ml"] = round(amount, 2)
                 state["wash_resolution"] = wash_resolution
                 completed_wash_resolution = wash_resolution
                 state["verified_wash_active"] = False
@@ -566,6 +602,8 @@ def _tick_device_pass(
             dirty |= _record_accounting(state, "wash", None, evidence, "missing_wash_rate")
         else:
             state["used_ml"] = round(_number(state.get("used_ml"), 0) + wash_volume, 2)
+            state["last_wash_charged_ts"] = now_ts
+            state["last_wash_charged_ml"] = round(wash_volume, 2)
             dirty = True
             dirty |= _record_accounting(state, "wash", wash_volume, evidence, None)
         if not state.get("wash_sequence_active"):
@@ -639,6 +677,8 @@ def _tick_device_pass(
         return state, True
 
     last_area = _float_or_none(state.get("last_area"))
+    if bridge_area:
+        state["area_gap"] = False
     hold_area_baseline = False
     unobserved_exposure = False
     area_baseline: float | None = None
@@ -656,7 +696,7 @@ def _tick_device_pass(
             dirty |= _record_accounting(state, "area", None, evidence, "area_gap")
         else:
             dirty |= _record_accounting(state, "area", None, evidence, "area_baseline_initialized")
-    elif state.get("area_gap"):
+    elif state.get("area_gap") and not bridge_area:
         state["area_gap"] = False
         dirty = True
         moved = curr_area - last_area
@@ -897,7 +937,13 @@ def _tick_device_pass(
         state["last_low_water_ts"] = now_ts
         dirty = True
         capacity = _device_capacity_ml(device)
-        predicted_used = _positive_number(state.get("used_ml"))
+        wash_refund = 0.0
+        charged_ts = _positive_number(state.get("last_wash_charged_ts"))
+        if (anchor_kind == "empty" and charged_ts is not None
+                and 0 <= now_ts - charged_ts <= FAILED_WASH_WINDOW_SECONDS * 1000):
+            wash_refund = _number(state.get("last_wash_charged_ml"), 0) * FAILED_WASH_REFUND_FRACTION
+            state["last_wash_charged_ts"] = 0
+        predicted_used = _positive_number(_number(state.get("used_ml"), 0) - wash_refund)
         initialized = bool(state.get("initialized") or state.get("last_reset_iso"))
         if capacity is not None and initialized:
             remaining_percent = (
@@ -922,7 +968,7 @@ def _tick_device_pass(
                 # Water was dispensed while a signal was missing: the tank's
                 # prediction is not a fair sample, but the anchor still applies.
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
-                                            calibration_factor, False, "calibration_sample_incomplete_cycle")
+                                            calibration_factor, False, "calibration_sample_incomplete_cycle", wash_refund)
                 state["used_ml"] = round(calibration_target, 2)
                 dirty |= _record_accounting(state, "low_water", None, evidence,
                                             "calibration_sample_incomplete_cycle")
@@ -934,10 +980,14 @@ def _tick_device_pass(
                     MIN_CALIBRATION_FACTOR,
                     MAX_CALIBRATION_FACTOR,
                 )
-                window, learned_factor, accepted, rejection = estimation.update_calibration(
-                    log_factors, observed_factor)
+                pending = _float_or_none(state.get("calibration_pending_log_factor"))
+                window, learned_factor, accepted, rejection, pending = estimation.update_calibration(
+                    log_factors, observed_factor,
+                    band_fraction=estimation.band_fraction(device.get("estimate_basis"), device.get("uncertainty_percent")),
+                    pending=pending)
+                state["calibration_pending_log_factor"] = round(pending, 6) if pending is not None else None
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
-                                            calibration_factor, accepted, rejection)
+                                            calibration_factor, accepted, rejection, wash_refund)
                 state["calibration_log_factors"] = [round(value, 6) for value in window]
                 state["calibration_factor"] = round(
                     _clamp(learned_factor, MIN_CALIBRATION_FACTOR, MAX_CALIBRATION_FACTOR), 4)
@@ -1089,12 +1139,14 @@ def _empty_residual_percent(device: dict[str, Any]) -> float:
     return 0.0
 
 
-def _append_calibration_history(state, now_ts, predicted, target, factor_before, accepted, reason):
+def _append_calibration_history(state, now_ts, predicted, target, factor_before, accepted, reason, wash_refund=0.0):
     """Keep a prequential record: the prediction was made before learning from this tank."""
     error = (predicted - target) / target * 100 if target else None
     record = {"ts": now_ts, "predicted_ml": round(predicted, 1), "target_ml": round(target, 1),
               "error_percent": round(error, 1) if error is not None else None,
               "factor_before": round(factor_before, 4), "accepted": bool(accepted), "reason": reason}
+    if wash_refund:
+        record["failed_wash_refund_ml"] = round(wash_refund, 1)
     state["calibration_history"] = [record, *(state.get("calibration_history") or [])][:12]
 
 
@@ -1551,6 +1603,15 @@ def _water_anchor_states(
         result["dock_error"] = (dock_error_state, dock_error_kind)
 
     return result
+
+
+def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
+    """Remember when observation stopped and whether water could flow meanwhile."""
+    exposure = bool(state.get("session_start_ts") or state.get("verified_wash_active")
+                    or state.get("wash_sequence_active"))
+    if not _positive_number(state.get("gap_started_ts")):
+        state["gap_started_ts"] = started_ts
+    state["gap_exposure_possible"] = bool(state.get("gap_exposure_possible")) or exposure
 
 
 def _observe_user_refill_signals(

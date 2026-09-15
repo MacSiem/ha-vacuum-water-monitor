@@ -42,7 +42,8 @@ def _percentile(values, q):
     return ordered[index]
 
 
-def _simulate(kind, prior_system, calibrate=True, devices=120, tanks=7, seed=20260915, topup=0.02):
+def _simulate(kind, prior_system, calibrate=True, devices=120, tanks=7, seed=20260915, topup=0.02, basis="class_prior",
+              contamination=0.0, gate=True):
     rng = random.Random(seed)
     prior = estimation.CLASS_PRIORS[prior_system]
     errors = [[] for _ in range(tanks)]
@@ -55,6 +56,7 @@ def _simulate(kind, prior_system, calibrate=True, devices=120, tanks=7, seed=202
         residual = rng.uniform(120, 320)
         carpet = rng.uniform(0, 0.25)
         log_factors: list[float] = []
+        pending = None
         for tank in range(tanks):
             weights = ([rng.random() + 0.2 for _ in ROUTES], [rng.random() + 0.2 for _ in LEVELS])
             level = CAPACITY
@@ -93,14 +95,22 @@ def _simulate(kind, prior_system, calibrate=True, devices=120, tanks=7, seed=202
             factor = math.exp(estimation.median(log_factors)) if log_factors else 1.0
             errors[tank].append(abs(predicted_raw * factor - drawn) / drawn)
             if calibrate:
-                observed = (CAPACITY - ASSUMED_RESIDUAL) / predicted_raw
-                log_factors, _factor, _accepted, _reason = estimation.update_calibration(log_factors, observed)
+                anchored = predicted_raw
+                roll = rng.random()
+                if roll < contamination / 2:
+                    anchored *= rng.uniform(0.35, 0.7)   # tank lifted mid-cycle: dock reports empty early
+                elif roll < contamination:
+                    anchored *= rng.uniform(1.3, 1.9)    # unreported full top-up before the real empty
+                observed = (CAPACITY - ASSUMED_RESIDUAL) / anchored
+                log_factors, _factor, _accepted, _reason, pending = estimation.update_calibration(
+                    log_factors, observed, band_fraction=estimation.band_fraction(basis) if gate else None,
+                    pending=pending if gate else None)
     return [(_percentile(e, 0.5) * 100, _percentile(e, 0.9) * 100) for e in errors]
 
 
 class EstimationBenchmarkTests(unittest.TestCase):
     def test_owner_prior_on_pad_robot_converges_after_three_tanks(self):
-        result = _simulate("pad", "pad")
+        result = _simulate("pad", "pad", basis="owner_device")
         for median, p90 in result[3:]:
             self.assertLessEqual(median, 5.0, result)
             self.assertLessEqual(p90, 12.0, result)
@@ -112,6 +122,15 @@ class EstimationBenchmarkTests(unittest.TestCase):
             self.assertLessEqual(median, 8.0, result)
             self.assertLessEqual(p90, 20.0, result)
 
+    def test_confirmation_gate_contains_misplaced_empty_anchors(self):
+        """15% of tanks anchored at the wrong point (lifted tank, unreported top-up)."""
+        for kind, prior, basis in (("pad", "pad", "owner_device"), ("roller", "roller", "class_prior")):
+            gated = _simulate(kind, prior, basis=basis, contamination=0.15, devices=200)
+            ungated = _simulate(kind, prior, basis=basis, contamination=0.15, devices=200, gate=False)
+            for tank in (1, 2):
+                self.assertLessEqual(gated[tank][1], 20.0, (kind, gated))
+                self.assertLess(gated[tank][1], ungated[tank][1] * 0.6, (kind, gated, ungated))
+
     def test_calibration_beats_prior_only(self):
         calibrated = _simulate("pad", "rotating_pads")
         prior_only = _simulate("pad", "rotating_pads", calibrate=False)
@@ -121,9 +140,9 @@ class EstimationBenchmarkTests(unittest.TestCase):
     def test_single_abnormal_tank_does_not_move_a_learned_factor(self):
         window: list[float] = []
         for value in (1.30, 1.33, 1.31, 1.32):
-            window, factor, accepted, _ = estimation.update_calibration(window, value)
+            window, factor, accepted, _, _ = estimation.update_calibration(window, value)
             self.assertTrue(accepted)
-        window, after, accepted, reason = estimation.update_calibration(window, 3.5)
+        window, after, accepted, reason, _ = estimation.update_calibration(window, 3.5)
         self.assertFalse(accepted)
         self.assertEqual(reason, "calibration_sample_outlier")
         self.assertAlmostEqual(after, factor, places=6)

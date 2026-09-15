@@ -115,7 +115,7 @@ class RuntimePathTests(unittest.TestCase):
         state = run(device, state, [dict(dock_err="water_empty"), dict(dock_err="ok")])
         self.assertFalse(state["accounting_incomplete"])
         self.assertEqual(state["used_ml"], 0)
-        state = run(device, {**state, "used_ml": 3000}, [dict(dock_err="water_empty"), dict(dock_err="ok")], ts=20_000_000)
+        state = run(device, {**state, "used_ml": 3500}, [dict(dock_err="water_empty"), dict(dock_err="ok")], ts=20_000_000)
         self.assertEqual(state["calibration_samples"], 1)
 
     def test_session_run_entirely_while_unobserved_is_reported(self):
