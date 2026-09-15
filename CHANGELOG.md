@@ -1,5 +1,37 @@
 # Changelog
 
+## 5.7.0-beta.1 (2026-09-15)
+
+Beta: labelled estimates from the model database with automatic empty-tank calibration.
+
+### Added
+
+- **Every recognised model gets a water estimate.** Model records carry a mop system and,
+  where available, a labelled estimate; class priors cover pad, rotating-pad and roller robots
+  and a generic prior covers the rest. Each basis has a fixed, documented accuracy.
+- **Automatic calibration from the dock's empty-water signal.** The median of the last eight
+  tanks becomes the robot's correction; an abnormal tank and tanks with missing signals are
+  skipped. The card shows the accuracy and the last tank results.
+- **Automatic refill** when the dock's `water_empty` error clears to OK (Refilled stays as an override).
+- **Optional anonymous calibration sharing** (off by default, reviewed payload, user-submitted).
+- Roborock S8 MaxV Ultra estimate from owner-device accounting (S8 Pro Ultra by family
+  transfer); Qrevo Curv 2 Flow (`roborock.vacuum.a245`) gains its sourced 4 l / 3 l capacity.
+- Independent physics benchmark and card/backend parity tests in CI.
+
+### Fixed
+
+- Pressing **Refilled** no longer turns the balance incomplete one tick later (#12).
+- A per-session cleaned-area counter restarting at zero is a new baseline, not a gap.
+- Small area increments accumulate instead of being dropped.
+- Restarts or unavailable robots while docked no longer invalidate the balance, and a later
+  reason can no longer hide a missing rate.
+- An unrelated dock error after an empty tank is no longer treated as a refill.
+- A mop wash passing through docking/returning states is counted once.
+- Changing mop mode or upgrading the dataset keeps the learned calibration.
+- Missing capacities are shown as "unknown" instead of 0 / `null ml`; Polish labels in the
+  English card were translated.
+
+
 ## 5.6.0 (2026-09-09)
 
 ### Fixed

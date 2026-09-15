@@ -184,7 +184,7 @@ async function smokeDraftAndCalibration(target) {
 
     el._config.brand_profile = undefined;
     const aliasDatabase = el._buildDatabaseTab();
-    if (!/Qrevo 5AE[\s\S]*aktywny/.test(aliasDatabase)) {
+    if (!/Qrevo 5AE[\s\S]*active/.test(aliasDatabase)) {
       throw new Error('Database did not activate the auto-detected a170 profile');
     }
 

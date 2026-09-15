@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.6.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.7.0-beta.1 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -9,6 +9,41 @@ const _esc = (s) => _escBase(_asText(s));
 const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
+const VWM_VERSION = '5.7.0-beta.1';
+const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
+const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
+// Mirrors estimation.py: deterministic uncertainty per estimate basis.
+const VWM_BASIS_UNCERTAINTY = { fleet_posterior: 15, owner_device: 20, manufacturer_declared: 20, review_measured: 25, family_transfer: 35, class_prior: 50, generic_prior: 65 };
+const VWM_BASIS_LABEL = {
+  fleet_posterior: 'Learned from calibrated robots of this model',
+  owner_device: 'Based on an owner\u2019s measured accounting for this model',
+  manufacturer_declared: 'Based on manufacturer-declared quantities',
+  review_measured: 'Based on an independent review measurement',
+  family_transfer: 'Based on a closely related model',
+  class_prior: 'Typical for this mop system',
+  generic_prior: 'Generic mopping estimate',
+};
+const _vwmMedian = (values) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+// Python round() uses banker's rounding; match it for exact parity.
+const _vwmRound = (value) => {
+  const floor = Math.floor(value);
+  const diff = value - floor;
+  if (Math.abs(diff - 0.5) < 1e-9) return floor % 2 === 0 ? floor : floor + 1;
+  return Math.round(value);
+};
+const _vwmUncertainty = (basis, logFactors) => {
+  const base = Object.prototype.hasOwnProperty.call(VWM_BASIS_UNCERTAINTY, basis) ? VWM_BASIS_UNCERTAINTY[basis] : null;
+  const factors = Array.isArray(logFactors) ? logFactors.map(Number).filter(Number.isFinite) : [];
+  if (!factors.length) return base;
+  if (factors.length < 3) return Math.max(8, _vwmRound((base === null ? 50 : base) / (factors.length + 1)));
+  const center = _vwmMedian(factors);
+  const mad = _vwmMedian(factors.map(v => Math.abs(v - center))) * 1.4826;
+  return Math.max(5, Math.min(50, _vwmRound((Math.exp(mad * 1.25) - 1) * 100 + 3)));
+};
 const VWM_EVENT = 'ha_vacuum_water_monitor_state_changed';
 
 
@@ -4938,7 +4973,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
       consumptionResolution: tankState.consumption_resolution || null,
       reservoirLevels: tankState.reservoir_levels || null,
       accountingV2: tankState.accounting_v2 || null,
-      uncertaintyPercent: Number.isFinite(Number(device.uncertainty_percent)) ? Number(device.uncertainty_percent) : null,
+      estimateBasis: device.estimate_basis || null,
+      mopSystem: device.mop_system || null,
+      calibrationLogFactors: Array.isArray(tankState.calibration_log_factors) ? tankState.calibration_log_factors : [],
+      calibrationHistory: Array.isArray(tankState.calibration_history) ? tankState.calibration_history : [],
+      uncertaintyPercent: device.estimate_basis
+        ? _vwmUncertainty(device.estimate_basis, tankState.calibration_log_factors)
+        : (Number.isFinite(Number(device.uncertainty_percent)) ? Number(device.uncertainty_percent) : null),
       calibrationFactor: Number.isFinite(Number(tankState.calibration_factor)) ? Number(tankState.calibration_factor) : 1,
       calibrationSamples: Number.isFinite(Number(tankState.calibration_samples)) ? Number(tankState.calibration_samples) : 0,
       estimatedM2PerActiveMinute: Number.isFinite(Number(device.estimated_m2_per_active_minute)) ? Number(device.estimated_m2_per_active_minute) : null,
@@ -5106,13 +5147,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
           <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 Calibration: ${calib.label}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
-            <div>🪣 Tank: <b>${calib.tank_ml} ml</b></div>
+            <div>🪣 Tank: <b>${calib.tank_ml ? `${Number(calib.tank_ml).toLocaleString('en-US')} ml` : 'unknown'}</b></div>
             <div>🧹 Mop: <b>${calib.mop_type || "Unknown"}</b></div>
             ${calib.avg_area_per_charge ? `<div>📏 Est. area/charge: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
             ${estAreaPerTank ? `<div>📏 Est. area/tank: <b>~${estAreaPerTank} m²</b></div>` : ''}
           </div>
           ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>Estimated water usage per m²:</b> ${levels}</div>` : '<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">Water-usage estimates are not published for this model; add a measured custom calibration if available.</div>'}
+          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>Estimated water usage per m²${calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : 'No estimate for this model yet; set the tank capacity to enable tracking.'}</div>`}
           ${calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + calib.notes + '</div>' : ''}
         </div>`;
     }
@@ -5152,7 +5193,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   _buildAccountingGuidance(data) {
     const box = (title, text, color = '#64748b') => `<div class="accounting-guidance" style="border-color:${color}"><b>${title}</b><span>${text}</span></div>`;
     if (data.stateReason === 'accounting_incomplete') {
-      return box('Water balance incomplete.', 'An interval had no applicable rate or continuous signal. The remaining volume is unknown until a new full-refill baseline or a physical volume measurement.', '#f59e0b');
+      return box('Water balance paused.', 'Water may have been used while a signal was missing, so the remaining volume is unknown until the next refill. Tracking continues automatically after that refill.', '#f59e0b');
     }
     if (!data.initialized) {
       const capability = data.capability === 'manual_only'
@@ -5190,9 +5231,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ? ` Initial uncertainty: approximately ${Number(data.uncertaintyPercent)}%.`
       : '';
     const samples = Math.max(0, Number(data.calibrationSamples) || 0);
+    const accuracy = Number.isFinite(Number(data.uncertaintyPercent)) ? ` About \u00B1${Number(data.uncertaintyPercent)}%.` : '';
     if (samples > 0) {
       const factor = Number.isFinite(Number(data.calibrationFactor)) ? Number(data.calibrationFactor) : 1;
-      return box('Device-calibrated estimate.', `Learned from ${samples} low-water cycles; current correction factor: ${factor}. More complete refill-to-empty cycles will refine it.`, '#22c55e');
+      return box('Calibrated for this robot.', `Calibrated on ${samples} empty ${samples === 1 ? 'tank' : 'tanks'} (correction \u00D7${factor}).${accuracy} Every empty-tank signal refines it automatically.`, '#22c55e');
+    }
+    if (data.estimateBasis) {
+      const label = VWM_BASIS_LABEL[data.estimateBasis] || 'Labelled estimate';
+      return box(active ? 'Estimating now.' : 'Estimated usage.', `${_esc(label)}.${accuracy} It calibrates automatically the first time the dock reports an empty clean-water tank; no manual measurement is needed.`, '#22c55e');
     }
     if (data.capability === 'manual_only' && active && data.accountingEvidence === 'user_calibration') {
       return box('Measured calibration active.', 'This manual-only model is currently accounting from your measured calibration and same-device signal.', '#22c55e');
@@ -5263,7 +5309,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     if (data.accountingSource || data.stateReason || data.accountingEvidence) rows.push(['Accounting', [data.accountingSource, data.accountingRate != null ? `rate ${data.accountingRate}` : null, data.stateReason, data.accountingEvidence].filter(Boolean).join(' / ')]);
     if (data.estimatedM2PerActiveMinute != null && Number.isFinite(Number(data.estimatedM2PerActiveMinute))) rows.push(['Active-time conversion', `${Number(data.estimatedM2PerActiveMinute)} m\u00B2/min`]);
-    if (data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent))) rows.push(['Initial uncertainty', `${Number(data.uncertaintyPercent)}%`]);
+    if (data.estimateBasis) rows.push(['Estimate basis', VWM_BASIS_LABEL[data.estimateBasis] || data.estimateBasis]);
+    if (data.mopSystem) rows.push(['Mop system', String(data.mopSystem).replace(/_/g, ' ')]);
+    if (data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent))) rows.push(['Estimated accuracy', `\u00B1${Number(data.uncertaintyPercent)}%`]);
+    const tanks = (data.calibrationHistory || []).slice(0, 5);
+    if (tanks.length) rows.push(['Last empty tanks', tanks.map(t => `${Number.isFinite(Number(t.error_percent)) ? (Number(t.error_percent) > 0 ? '+' : '') + Number(t.error_percent) + '%' : '?'}${t.accepted ? '' : ' (skipped)'}`).join(', ')]);
     if (Number(data.calibrationSamples) > 0) rows.push(['Device calibration', `${Number(data.calibrationSamples)} samples / factor ${Number(data.calibrationFactor || 1)}`]);
     if (data.waterAnchorSource || data.waterAnchorKind || data.waterAnchorConfidence) rows.push(['Water anchor', [data.waterAnchorSource, data.waterAnchorKind, data.waterAnchorConfidence].filter(Boolean).join(' / ')]);
     if ((data.tankLevel != null || data.dockTankLevel != null) && !data.tankSemanticsConfirmed) {
@@ -5640,7 +5690,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <div class="session-date">${label} <span class="session-time">${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</span></div>
         <div class="session-stats">
           ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${s.area} m\u00B2</span>` : ''}
-          ${s.water ? `<span class="session-stat">\uD83D\uDCA7 ${s.water} ml</span>` : ''}
+          ${s.water ? `<span class="session-stat" title="${s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded'}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${s.water} ml</span>` : ''}
           ${s.duration ? `<span class="session-stat">\u23F1\uFE0F ${s.duration}</span>` : ''}
         </div>
       </div>`;
@@ -6038,12 +6088,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const levels = Object.entries(m.water_per_m2 || {});
       const publishedFacts = _calibrationFacts(m);
       const levelTags = levels.map(([mode, val]) => {
-        const estArea = Math.round(m.tank_ml / val);
+        const estArea = m.tank_ml ? Math.round(m.tank_ml / val) : '?';
         return `<span style="${tagSt};${levelColor(val)}" title="${mode}: ${val} ml/m\u00B2 \u2192 ~${estArea} m\u00B2/tank">${mode}: ${val}</span>`;
       }).join(' ');
 
       // Area estimates per mode
       const areaEstimates = levels.map(([mode, val]) => {
+        if (!m.tank_ml) return '';
         const area = Math.round(m.tank_ml / val);
         return `<span style="${tagSt};background:var(--vwm-overlay-light,rgba(0,0,0,0.04));color:var(--vwm-text-secondary,#6b7280)">${mode}: ~${area} m\u00B2</span>`;
       }).join(' ');
@@ -6053,11 +6104,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
       return `<tr style="${rowBg}">
         <td style="${cellSt}">
-          <div style="font-weight:600;font-size:12px">${m.label}${isActive ? ' <span style="color:#3b82f6;font-size:10px">\u2705 aktywny</span>' : ''}</div>
+          <div style="font-weight:600;font-size:12px">${m.label}${isActive ? ' <span style="color:#3b82f6;font-size:10px">\u2705 active</span>' : ''}</div>
           <div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${m.mop_type || "Unknown"}</div>
         </td>
-        <td style="${cellSt};${numSt}">${Number(m.tank_ml).toLocaleString('en-US')} ml</td>
-        <td style="${cellSt}">${levelTags || '<span style="color:var(--vwm-text-muted,#9ca3af)">not measured</span>'}</td>
+        <td style="${cellSt};${numSt}">${m.tank_ml ? `${Number(m.tank_ml).toLocaleString('en-US')} ml` : 'unknown'}</td>
+        <td style="${cellSt}">${levelTags ? `${levelTags}${m.estimate_basis ? `<div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${_esc(VWM_BASIS_LABEL[m.estimate_basis] || '')}${m.uncertainty_percent ? ` \u00B7 \u00B1${m.uncertainty_percent}%` : ''}</div>` : ''}` : '<span style="color:var(--vwm-text-muted,#9ca3af)">no estimate</span>'}</td>
         <td style="${cellSt}">${areaEstimates || '—'}</td>
         <td style="${cellSt};${numSt}">${m.avg_area_per_charge ? m.avg_area_per_charge + ' m\u00B2' : '—'}</td>
         <td style="${cellSt};font-size:10px;color:var(--vwm-text-secondary,#6b7280);max-width:220px">
@@ -6076,11 +6127,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const sourceLinks = (active.source_urls || []).map((url, index) => `<a href="${_esc(url)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6">manufacturer source${active.source_urls.length > 1 ? ' ' + (index + 1) : ''}</a>`).join(' · ');
       activeCard = `
         <div style="margin-bottom:14px;padding:14px;background:rgba(59,130,246,0.06);border:1.5px solid rgba(59,130,246,0.2);border-radius:12px">
-          <div style="font-weight:700;font-size:14px;margin-bottom:8px">\uD83E\uDDA4 ${active.label} <span style="font-size:11px;color:#3b82f6;font-weight:500">(aktywny profil)</span></div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px">\uD83E\uDDA4 ${active.label} <span style="font-size:11px;color:#3b82f6;font-weight:500">(active profile)</span></div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
-              <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${Number(active.tank_ml).toLocaleString('en-US')}</div>
-              <div style="font-size:10px;color:var(--bento-text-muted)">ml clean-water capacity</div>
+              <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${active.tank_ml ? Number(active.tank_ml).toLocaleString('en-US') : '\u2014'}</div>
+              <div style="font-size:10px;color:var(--bento-text-muted)">${active.tank_ml ? 'ml clean-water capacity' : 'clean-water capacity unknown'}</div>
             </div>
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
               <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${active.tested_max_area_per_fill_m2 || active.avg_area_per_charge || '—'}</div>
@@ -6088,27 +6139,27 @@ class HAVacuumWaterMonitor extends HTMLElement {
             </div>
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
               <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${levels.length}</div>
-              <div style="font-size:10px;color:var(--bento-text-muted)">tryb\u00F3w mopu</div>
+              <div style="font-size:10px;color:var(--bento-text-muted)">estimated mop modes</div>
             </div>
           </div>
           ${publishedFacts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">${publishedFacts.map(fact => `<span style="${tagSt};background:rgba(59,130,246,0.08);color:var(--vwm-text-secondary,#6b7280)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          <div style="font-size:12px;font-weight:600;margin-bottom:6px">Zu\u017Cycie wody wg trybu:</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px">Estimated water usage by mode${active.uncertainty_percent ? ` (\u00B1${active.uncertainty_percent}%, ${_esc(VWM_BASIS_LABEL[active.estimate_basis] || 'labelled estimate')})` : ''}:</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px">
             ${levels.length ? levels.map(([mode, val]) => {
-              const area = Math.round(active.tank_ml / val);
+              const area = active.tank_ml ? Math.round(active.tank_ml / val) : null;
               const pct = Math.round((val / Math.max(...levels.map(l => l[1]))) * 100);
               return `<div style="padding:8px;background:var(--vwm-bg,#fff);border-radius:8px;border:1px solid var(--vwm-border,#e5e7eb)">
                 <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--bento-text-secondary);margin-bottom:4px">${mode}</div>
                 <div style="font-size:16px;font-weight:700;color:var(--bento-text)">${val} <span style="font-size:10px;font-weight:400">ml/m\u00B2</span></div>
                 <div style="margin:4px 0;height:4px;background:rgba(59,130,246,0.12);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;border-radius:2px;background:${val <= 8 ? '#22c55e' : val <= 14 ? '#3b82f6' : val <= 18 ? '#f59e0b' : '#ef4444'}"></div></div>
-                <div style="font-size:10px;color:var(--bento-text-muted)">\u2248 ${area} m\u00B2 / zbiornik</div>
+                <div style="font-size:10px;color:var(--bento-text-muted)">${area ? `\u2248 ${area} m\u00B2 / tank` : 'capacity unknown'}</div>
               </div>`;
-            }).join('') : '<div style="font-size:11px;color:var(--bento-text-secondary)">No manufacturer usage-rate data. Add a measured custom calibration for this device.</div>'}
+            }).join('') : '<div style="font-size:11px;color:var(--bento-text-secondary)">No estimate for this model yet.</div>'}
           </div>
           ${active.mop_type ? `<div style="margin-top:8px;font-size:11px;color:var(--bento-text-secondary)">\uD83E\uDDF9 ${active.mop_type}</div>` : ''}
           ${active.notes ? `<div style="margin-top:4px;font-size:11px;color:var(--bento-text-muted);font-style:italic">\uD83D\uDCA1 ${active.notes}</div>` : ''}
           ${active.mop_wash_ml ? `<div style="margin-top:4px;font-size:11px;color:var(--bento-text-secondary)">\uD83D\uDEBF Mop wash in dock: ${active.mop_wash_ml}ml/cycle${active.mop_wash_modes ? ' (' + Object.entries(active.mop_wash_modes).map(([k,v]) => k + ': ' + v + 'ml').join(', ') + ')' : ''}</div>` : ''}
-          ${sourceLinks ? `<div style="margin-top:6px;font-size:10px">Verified from ${sourceLinks} · ${_esc(active.data_quality || 'manufacturer data')}</div>` : ''}
+          ${sourceLinks ? `<div style="margin-top:6px;font-size:10px">Sources: ${sourceLinks} · ${_esc(active.data_quality || 'manufacturer data')}</div>` : ''}
         </div>`;
     }
 
@@ -6151,6 +6202,86 @@ class HAVacuumWaterMonitor extends HTMLElement {
           </div>
         </div>
       </div>`;
+  }
+
+  _estimateUncertainty(basis, logFactors) {
+    return _vwmUncertainty(basis, logFactors);
+  }
+
+  _calibrationSharingEnabled() {
+    const sharing = this._serverState?.settings?.calibration_sharing;
+    return Boolean(sharing && sharing.enabled === true);
+  }
+
+  // Builds the only data that can ever leave Home Assistant through this card.
+  // It is shown in full before sharing and contains no entity ids, names,
+  // device/account identifiers, timestamps, areas, rooms, maps or firmware.
+  _buildCalibrationSharePayload(device, data) {
+    const round = (value, step) => (Number.isFinite(Number(value)) ? Math.round(Number(value) / step) * step : null);
+    const tanks = (data?.calibrationHistory || []).slice(0, 12).map(t => ({
+      predicted_ml: round(t.predicted_ml, 10),
+      target_ml: round(t.target_ml, 10),
+      error_percent: round(t.error_percent, 0.1) === null ? null : Number(round(t.error_percent, 0.1).toFixed(1)),
+      accepted: t.accepted === true,
+    }));
+    return {
+      schema: VWM_SHARE_SCHEMA,
+      integration_version: VWM_VERSION,
+      profile_key: data?.profileKey || null,
+      mop_system: data?.mopSystem || null,
+      integration_adapter: data?.integrationAdapter || null,
+      estimate_basis: data?.estimateBasis || null,
+      tracked_reservoir: data?.trackedReservoir || null,
+      tracked_capacity_ml: round(data?.totalMl, 10),
+      calibration_factor: Number.isFinite(Number(data?.calibrationFactor)) ? Number(Number(data.calibrationFactor).toFixed(3)) : null,
+      calibrated_tanks: Number(data?.calibrationSamples) || 0,
+      tanks,
+    };
+  }
+
+  _buildCalibrationSharingSection(device, data) {
+    if (!device || !data) return '';
+    const enabled = this._calibrationSharingEnabled();
+    const payload = this._buildCalibrationSharePayload(device, data);
+    const ready = enabled && payload.calibrated_tanks > 0 && payload.profile_key;
+    const json = JSON.stringify(payload, null, 2);
+    return `
+        <div style="background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px;margin-bottom:16px">
+          <div style="font-size:14px;font-weight:700;color:var(--bento-text);margin-bottom:4px">\uD83E\uDD1D Help improve estimates (optional, beta)</div>
+          <div style="font-size:12px;color:var(--bento-text-secondary);line-height:1.5;margin-bottom:10px">
+            Share this robot model's calibration summary so estimates for everyone with the same model start closer to reality.
+            Nothing is sent automatically: you review the exact data below and submit it yourself.
+            It contains only the model, mop system, integration, tank capacity and per-tank calibration results.
+            It never contains entity or device names, identifiers, account data, timestamps, rooms, maps, areas or firmware.
+            Submitting opens a GitHub issue, so your GitHub username is visible on it.
+          </div>
+          <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--bento-text)">
+            <input type="checkbox" id="vwm-share-optin" ${enabled ? 'checked' : ''}> I want to share anonymous calibration summaries
+          </label>
+          ${enabled ? `
+          <pre id="vwm-share-payload" style="margin:10px 0;padding:10px;max-height:220px;overflow:auto;background:var(--bento-card,#fff);border:1px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:11px;white-space:pre-wrap">${_esc(json)}</pre>
+          ${ready ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary" id="vwm-share-copy" style="padding:6px 12px">Copy summary</button>
+            <a class="btn-primary" id="vwm-share-submit" target="_blank" rel="noopener noreferrer" href="${_esc(this._calibrationShareUrl(payload))}" style="padding:6px 12px;text-decoration:none">Submit on GitHub</a>
+          </div>` : '<div style="font-size:11px;color:var(--bento-text-secondary)">Nothing to share yet: the summary becomes available after the first calibrated empty tank.</div>'}` : ''}
+        </div>`;
+  }
+
+  _calibrationShareUrl(payload) {
+    const params = new URLSearchParams({
+      template: 'calibration_share.yml',
+      title: `[calibration] ${payload.profile_key || 'unknown model'}`,
+      summary: JSON.stringify(payload),
+    });
+    return `${VWM_SHARE_ISSUE_URL}?${params.toString()}`;
+  }
+
+  async _setCalibrationSharing(enabled) {
+    const patch = { calibration_sharing: { enabled: Boolean(enabled), schema: VWM_SHARE_SCHEMA, changed_at: new Date().toISOString() } };
+    const result = await this._saveServerSettings(patch);
+    this._lastHtml = '';
+    this._render();
+    return result;
   }
 
   _buildSettingsTab(device, data) {
@@ -6207,6 +6338,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
         <!-- Signal mapping -->
         ${this._buildSignalMappingSection(device)}
+
+        <!-- Anonymous calibration sharing (opt-in) -->
+        ${this._buildCalibrationSharingSection(device, data)}
 
         <!-- Refill methods -->
         <div style="background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px">
@@ -6898,6 +7032,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // Refill methods toggle
     const calSave = sr.querySelector('#cal-save');
     if (calSave) calSave.addEventListener('click', () => this._saveLocalMeasurement(device));
+    const shareOptIn = sr.querySelector('#vwm-share-optin');
+    if (shareOptIn) shareOptIn.addEventListener('change', () => this._setCalibrationSharing(shareOptIn.checked));
+    const shareCopy = sr.querySelector('#vwm-share-copy');
+    if (shareCopy) shareCopy.addEventListener('click', async () => {
+      const text = sr.querySelector('#vwm-share-payload')?.textContent || '';
+      try { await navigator.clipboard.writeText(text); shareCopy.textContent = 'Copied'; } catch (e) { shareCopy.textContent = 'Select and copy the text above'; }
+    });
     const calPreview = sr.querySelector('#cal-preview');
     if (calPreview) calPreview.addEventListener('click', () => this._previewCalibration(device));
     for (const id of ['cal-cycle', 'cal-observed', 'cal-resolution']) {

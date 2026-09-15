@@ -38,6 +38,30 @@ not by itself prove a per-cycle consumption value. See the [model support and ev
 matrix](docs/model-support-matrix.md) for detection, available data, estimate scope and
 calibration limits, plus a privacy-safe partial-session template.
 
+## How water estimates work (5.7 beta)
+
+The integration always starts from the best data available for your model and then corrects
+itself on your robot:
+
+1. **Model database.** Each model record carries its tank capacities and a mop system (pad,
+   rotating pads or roller). Water use is estimated from what Home Assistant reports: cleaned
+   area per route and water level, and every dock mop-wash sequence.
+2. **Labelled basis and accuracy.** Each estimate says what it is based on, from most to least
+   specific: learned from calibrated robots of the same model, an owner's measured accounting
+   on that model, manufacturer or review data, a closely related model, the typical values for
+   the mop system, or a generic mopping estimate. Each basis has a fixed starting accuracy
+   (±15% to ±65%).
+3. **Automatic calibration.** When the dock reports an empty clean-water tank, the prediction
+   for that tank is compared with the tank capacity. The median of recent tanks becomes the
+   robot's correction, an abnormal tank is ignored, and the empty error clearing counts as a
+   refill. The accuracy shown narrows as tanks agree; the last results are in Diagnostics.
+4. **Your data wins.** A volume sensor or your own calibration replaces the estimate.
+
+The method was chosen on an independent physics benchmark (tests/test_estimation_benchmark.py):
+with the owner-device estimate a pad robot reaches about ±3–4% median error (P90 about ±7–11%)
+from the fourth tank, and a roller robot that starts from the wrong class recovers to about ±5%.
+These are simulation results for method quality, not a guarantee for a specific robot.
+
 ## How it works
 
 **The card labels measured volume separately from calibrated estimates.** After you
@@ -73,14 +97,16 @@ What happens under the hood:
 | Automatic | Manual (optional) |
 |---|---|
 | Discovering vacuums | Pressing **Refilled** after you fill the tank |
-| Water usage estimation when same-device signals and a model/user rate exist | Calibrating tank size, measured low-water reserve or ml/min |
+| Water usage estimation for every recognised model (labelled estimate + automatic calibration) | Your own measured ml/m² or tank size, which replace the estimate |
+| Detecting a refill when the dock's empty-water error clears | Pressing **Refilled** if your dock does not report an empty tank |
 | Tank capacity for known models | Wiring extra sensors (dock errors, tank door) |
 | Sensors + card registration | Maintenance schedule entries |
 
-> **Estimates, not measurements.** Most robot vacuums do not report actual water volume.
-> Published tank capacities and integration signals are kept separate from empirical
-> ml/m², ml/min and wash measurements. No model ships a consumption rate, and no
-> assumed travel speed converts area into time. Unknown remains unknown.
+> **Labelled estimates that calibrate themselves.** Most robot vacuums do not report actual
+> water volume. A recognised model therefore starts from a labelled estimate (see below) and
+> learns its own correction from the dock's empty-water signal. Every number shows where it
+> came from and how accurate it is. A value with no basis at all (an unrecognised model with
+> no capacity) is never invented: Unknown remains unknown.
 
 ### Manual-only models and the refill baseline
 
@@ -320,10 +346,15 @@ Browser-only v4 tank counters are not automatically imported. After installing v
 
 ## Privacy
 
-- No telemetry, analytics, or tracking.
+- No telemetry, analytics, or tracking. Nothing is sent automatically.
 - No CDN-hosted assets.
-- No maps, room names, entity states, registry identifiers or calibration history leave
-  Home Assistant.
+- No maps, room names, entity states or registry identifiers leave Home Assistant.
+- **Optional calibration sharing (off by default).** In ⚙️ Settings → *Help improve estimates*
+  you can enable a calibration summary for your robot model. The card then shows the exact
+  JSON: model, mop system, integration, tank capacity (rounded), correction factor and
+  per-tank results (rounded). It never contains entity or device names, identifiers, account
+  data, timestamps, rooms, maps, areas or firmware. You copy it or submit it yourself through
+  a public GitHub issue, which shows your GitHub username. Turning the option off hides it again.
 - Tank state is stored locally by Home Assistant in its normal storage area and is included
   in Home Assistant backups.
 

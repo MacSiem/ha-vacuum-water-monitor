@@ -229,7 +229,7 @@ process.stdout.write(JSON.stringify({ dock, dockEmpty, dockMissing, guidance, aw
 
     def test_learned_calibration_explains_sample_count(self) -> None:
         learned = self.output["learned"]
-        self.assertIn("2 low-water cycles", learned)
+        self.assertIn("2 empty tanks", learned)
         self.assertIn("1.2", learned)
 
     def test_low_water_anchor_is_not_presented_as_an_exact_empty_tank(self) -> None:
