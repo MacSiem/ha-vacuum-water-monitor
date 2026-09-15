@@ -72,6 +72,15 @@ class CardEstimateTests(unittest.TestCase):
         self.assertTrue(self.result["url"].startswith("https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new?template=calibration_share.yml"))
         self.assertNotIn("chappie", self.result["url"].lower())
 
+    def test_share_link_prefills_form_and_plain_issue_without_ticking_consent(self):
+        from urllib.parse import parse_qs, urlsplit
+        query = parse_qs(urlsplit(self.result["url"]).query)
+        self.assertEqual(json.loads(query["summary"][0]), self.result["payload"])
+        body = query["body"][0]
+        self.assertIn(json.dumps(self.result["payload"], separators=(",", ":")), body)
+        self.assertIn("- [ ] I reviewed the summary", body)
+        self.assertNotIn("[x]", body.lower())
+
     def test_sharing_is_off_by_default(self):
         source = (PKG / "www/ha-vacuum-water-monitor.js").read_text()
         self.assertIn("sharing.enabled === true", source)

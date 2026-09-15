@@ -6478,10 +6478,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _calibrationShareUrl(payload) {
+    const summary = JSON.stringify(payload);
+    // GitHub reads issue forms only from the default branch. Until the form is
+    // there, the same summary lands in a plain issue body with consent unticked.
     const params = new URLSearchParams({
       template: 'calibration_share.yml',
       title: `[calibration] ${payload.profile_key || 'unknown model'}`,
-      summary: JSON.stringify(payload),
+      summary,
+      body: `Calibration summary (JSON):\n\n\`\`\`json\n${summary}\n\`\`\`\n\n- [ ] I reviewed the summary and agree to publish it under CC BY 4.0 in the vacuum consumption dataset.\n`,
     });
     return `${VWM_SHARE_ISSUE_URL}?${params.toString()}`;
   }
