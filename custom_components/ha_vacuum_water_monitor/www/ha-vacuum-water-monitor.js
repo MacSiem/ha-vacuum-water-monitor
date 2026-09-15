@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.7.0-beta.1 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.7.0-beta.2 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -9,7 +9,7 @@ const _esc = (s) => _escBase(_asText(s));
 const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.7.0-beta.1';
+const VWM_VERSION = '5.7.0-beta.2';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.

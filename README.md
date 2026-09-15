@@ -53,10 +53,12 @@ itself on your robot:
    (±15% to ±65%).
 3. **Automatic calibration.** When the dock reports an empty clean-water tank, the prediction
    for that tank is compared with the tank capacity. The median of recent tanks becomes the
-   robot's correction, an abnormal tank is ignored, and the empty error clearing counts as a
-   refill. An estimated dock tank is closed at capacity minus a 5% unusable residual (the water
-   the pump cannot draw). The accuracy shown narrows as tanks agree; the last results are in
-   Diagnostics.
+   robot's correction. Until three tanks are learned, a tank far outside the estimate's accuracy
+   (a tank lifted mid-cycle, a top-up nobody reported) waits for the next tank to confirm it;
+   after that an abnormal tank is ignored. A tank whose signals were missing for more than a
+   short, bridgeable gap does not teach the robot. An estimated dock tank is closed at capacity
+   minus a 5% unusable residual (the water the pump cannot draw). The accuracy shown narrows as
+   tanks agree; the last results are in Diagnostics.
 4. **Your data wins.** A volume sensor or your own calibration replaces the estimate.
 5. **No mopping, no water.** A run with the water level off or the mop detached uses no water.
    A robot that exposes no signal showing when it mops asks you to map one instead of showing
@@ -65,7 +67,33 @@ itself on your robot:
 The method was chosen on an independent physics benchmark (tests/test_estimation_benchmark.py):
 with the owner-device estimate a pad robot reaches about ±3–4% median error (P90 about ±7–11%)
 from the fourth tank, and a roller robot that starts from the wrong class recovers to about ±5%.
-These are simulation results for method quality, not a guarantee for a specific robot.
+With 15% of tanks anchored at the wrong point, the confirmation step keeps the second and third
+tank within about ±14% at P90 instead of ±46%. These are simulation results for method
+quality, not a guarantee for a specific robot.
+
+### Refill options
+
+Every option marks the tracked tank full and they can be combined (⚙️ Settings → *Tank reset
+methods*):
+
+| Option | How |
+|---|---|
+| **Refilled** button | Press it in the Water tab after filling the tank. |
+| Automatic from the dock | On by default when the dock reports an empty clean-water tank: the error clearing counts as a refill. Switch it off if that error sometimes clears without a refill. |
+| Dashboard or physical button | Pick an `input_button` or `button` entity; pressing it marks the tank refilled. |
+| Tank lid or door sensor | Pick a contact sensor; closing it counts as a full refill. |
+| Automation or script | Call `ha_vacuum_water_monitor.mark_refilled` with the vacuum as target. |
+
+```yaml
+action: ha_vacuum_water_monitor.mark_refilled
+target:
+  entity_id: vacuum.roborock_s8_maxv_ultra
+```
+
+Pressing **Refilled** while the dock still shows its empty-tank error keeps the tank full; the
+error clearing later is not counted a second time. The *Last refill* sensor shows what reported
+each refill. Refill methods created by versions before 5.7 generated automations that only reset
+DIY helpers; the card offers to remove them.
 
 ## How it works
 
@@ -78,7 +106,10 @@ What happens under the hood:
 
 1. **Auto-discovery.** The integration finds every `vacuum.*` entity in your Home Assistant
    and creates a device with water sensors for each robot. No YAML, no entity picking.
-2. **Water accounting runs server-side every 60 seconds.** It prefers cleaned-area deltas,
+2. **Water accounting runs server-side when a bound entity changes** (status, cleaned area, dock
+   error, mop settings, refill button or lid), with a 60-second heartbeat as a fallback. A short
+   gap in the robot's signals with the same mop settings is bridged from the cumulative area
+   counter. It prefers cleaned-area deltas,
    then a separately calibrated duration/active-time interval. A configured same-reservoir volume sensor takes precedence over both. Mode, intensity, mop/tank
    attachment and dock-wash signals are applied only when their integration exposes a
    canonical machine key. There is no friendly-name or translated-label guessing.
@@ -103,7 +134,7 @@ What happens under the hood:
 |---|---|
 | Discovering vacuums | Pressing **Refilled** after you fill the tank |
 | Water usage estimation for every recognised model (labelled estimate + automatic calibration) | Your own measured ml/m² or tank size, which replace the estimate |
-| Detecting a refill when the dock's empty-water error clears | Pressing **Refilled** if your dock does not report an empty tank |
+| Detecting a refill when the dock's empty-water error clears (can be switched off) | Pressing **Refilled**, a bound button, a tank lid sensor or the `mark_refilled` action |
 | Tank capacity for known models | Wiring extra sensors (dock errors, tank door) |
 | Sensors + card registration | Maintenance schedule entries |
 
@@ -207,7 +238,7 @@ Each discovered vacuum gets its own device with these sensors:
 |---|---:|---|---|
 | Water remaining | `%` | normal | Estimated water left in the tank |
 | Water used since refill | `mL` | normal | Usage accumulated since the last refill |
-| Last refill | timestamp | diagnostic | When you last pressed Refilled (or auto-reset fired) |
+| Last refill | timestamp | diagnostic | When the tank was last refilled; attributes show what reported it and recent refills |
 | Next maintenance due | `d` | diagnostic | Days until the next custom maintenance item |
 
 Use them like any other sensor — dashboards, template sensors, and automations.
@@ -282,7 +313,7 @@ These optional keys let you wire additional entities into the water accounting
 | `dock_clean_water_sensor` / `dock_dirty_water_sensor` | `sensor.robot_..._water_tank_clean` | Uses canonical enum semantics. `missing` is never treated as consumption. |
 | `dock_status_sensor` | `sensor.robot_..._station_state` | Detects one dock mop-wash cycle without confusing robot cleaning with dock cleaning. |
 | `water_error_sensor` | `sensor.robot_..._operational_error` | Accepts only exact machine-readable clean-water-empty states. |
-| `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. Closing the lid does not prove full refill. Automatic reset requires an explicitly verified `refill_on_clear: true` contract. |
+| `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. Closing it counts as a full refill (the same choice as the card's lid option). |
 
 ### Advanced — bring your own counter
 
