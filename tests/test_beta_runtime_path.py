@@ -153,5 +153,20 @@ class RuntimePathTests(unittest.TestCase):
         self.assertIsNone(result["remaining_percent"])
 
 
+
+class ReviewFollowUpTests(unittest.TestCase):
+    def test_counter_reset_to_zero_while_unavailable_in_dock_is_not_exposure(self):
+        device = effective({}, descriptor())
+        state = run(device, dict(BASE), [dict(vac="unavailable"), dict(area="0", _gap=3_600_000), dict(area="0")])
+        self.assertFalse(state.get("accounting_incomplete"))
+
+    def test_empty_tank_displays_zero_remaining(self):
+        device = effective({}, descriptor())
+        state = run(device, {**BASE, "used_ml": 3000, "last_dock_err": "ok"}, [dict(dock_err="water_empty")])
+        result = sc.estimate_water_state(device, state, {})
+        self.assertEqual(result["remaining_ml"], 0)
+        self.assertEqual(result["state_reason"], "water_empty")
+
+
 if __name__ == "__main__":
     unittest.main()

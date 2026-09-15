@@ -159,7 +159,8 @@ def estimate_water_state(
     settings = settings if isinstance(settings, dict) else {}
 
     profile = resolve_profile(device)
-    user_rate = device.get("accounting_evidence") in {"user_calibration", "explicit_user_configuration"}
+    user_rate = (device.get("accounting_evidence") in {"user_calibration", "explicit_user_configuration"}
+                 or bool(device.get("consumption_calibration")))
     estimate_basis = None if user_rate else (device.get("estimate_basis") or profile.get("estimate_basis"))
     initialized = bool(tank_state.get("initialized")) or parse_refill_datetime(tank_state) is not None
     total_ml = _water_capacity_ml(device, settings)
@@ -248,6 +249,9 @@ def estimate_water_state(
 
     if tank_state.get("water_empty_active"):
         remaining_ml = max(0, total_ml - used_ml)
+        if tank_state.get("water_anchor_kind") == "empty":
+            # The unusable residual stays in the accounting, not in the display.
+            remaining_ml = 0
         percent = _clamp((remaining_ml / total_ml) * 100, 0, 100)
         anchor_kind = tank_state.get("water_anchor_kind")
         return {

@@ -5063,10 +5063,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
         usedMl = jsUsed;
         remainingL = Math.max(0, totalMl - usedMl) / 1000;
         percentRemaining = Math.max(0, Math.min(100, (totalMl - usedMl) / totalMl * 100));
+        if (tankState.water_empty_active && tankState.water_anchor_kind === 'empty') {
+          remainingL = 0;
+          percentRemaining = 0;
+        }
       }
     }
 
-    const userRate = Boolean(customCalib.usage_ml_per_m2 || customCalib.water_per_m2 || customCalib.usage_ml_per_active_minute || customCalib.wash_volume_ml || customCalib.mop_wash_ml);
+    const userRate = Boolean(customCalib.usage_ml_per_m2 || customCalib.water_per_m2 || customCalib.usage_ml_per_active_minute || customCalib.wash_volume_ml || customCalib.mop_wash_ml)
+      || ['usage_ml_per_m2', 'usage_ml_per_active_minute', 'wash_volume_ml'].some(key => explicit.has(key))
+      || Boolean(device.consumption_calibration);
     const hasMopSignal = ['mop_attached_sensor', 'mop_mode_entity', 'cleaning_mode_entity', 'water_box_attached_sensor', 'water_box_attached_attribute', 'water_box_detached_sensor'].some(key => device[key])
       || Boolean(device.mop_intensity_entity && device.mop_intensity_is_evidence);
     if (!userRate && device.estimate_basis && device.mop_evidence_required === true && !hasMopSignal) {

@@ -45,6 +45,8 @@ AREA_MIN_DELTA = 0.1
 # returning_home) between going_to_wash_the_mop and washing_the_mop.  It ends
 # when the robot resumes cleaning or after this quiet period.
 WASH_SEQUENCE_GAP_SECONDS = 240
+# Area change across an observation gap below this is counter noise, not a session.
+GAP_AREA_TOLERANCE_M2 = 0.5
 _PASS_REASONS_KEY = "_pass_reasons"
 # Reasons that prove water was dispensed without an applicable rate.
 _MISSING_RATE_REASONS = frozenset({"missing_area_rate", "missing_time_rate", "missing_intensity_factor"})
@@ -653,7 +655,9 @@ def _tick_device_pass(
     elif state.get("area_gap"):
         state["area_gap"] = False
         dirty = True
-        if math.isclose(curr_area, last_area, rel_tol=0, abs_tol=AREA_MIN_DELTA - 1e-9):
+        moved = curr_area - last_area
+        restarted_without_cleaning = moved < 0 and curr_area < AREA_MIN_DELTA
+        if abs(moved) <= GAP_AREA_TOLERANCE_M2 or restarted_without_cleaning:
             dirty |= _record_accounting(state, "area", None, evidence, "area_gap_resumed")
         else:
             # The area changed while nothing was observed: water may have been
