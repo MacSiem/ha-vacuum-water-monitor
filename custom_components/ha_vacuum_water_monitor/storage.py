@@ -144,8 +144,9 @@ class VacuumWaterStorage:
             data = await self._ensure_loaded_locked()
             state = self.default_tank_state()
             state.update(data["tank_states"].get(vacuum_entity) or {})
+            # A refill starts a new baseline; it is not a signal gap.
             state.update(last_area=None, last_duration_seconds=None, last_tick_ts=0,
-                         last_water_volume_ml=None, area_gap=True, duration_gap=True,
+                         last_water_volume_ml=None, area_gap=False, duration_gap=False,
                          water_empty_active=False, water_anchor_candidate_source=None,
                          session_accounting_valid=False, session_exposure_complete=False,
                          verified_wash_active=False, last_completed_wash_count=None)

@@ -40,6 +40,23 @@ MOP_WASH_STATES = {
 DOCK_WASH_STATES = frozenset(MOP_WASH_STATES)
 
 AREA_MIN_DELTA = 0.1
+# A mop-wash sequence can pass through non-wash transit states (docking,
+# returning_home) between going_to_wash_the_mop and washing_the_mop.  It ends
+# when the robot resumes cleaning or after this quiet period.
+WASH_SEQUENCE_GAP_SECONDS = 240
+_PASS_REASONS_KEY = "_pass_reasons"
+# Reasons that prove water was dispensed without an applicable rate.
+_MISSING_RATE_REASONS = frozenset({"missing_area_rate", "missing_time_rate", "missing_intensity_factor"})
+# Reasons that only mean an exposure baseline was lost; they make the balance
+# incomplete only when water could have been dispensed in that interval.
+_GAP_REASONS = frozenset({"area_gap", "active_time_gap", "area_reset", "area_anomaly"})
+_DOCK_OK_STATES = frozenset({"ok", "none", "no_error", "no_error_detected"})
+# Changing any of these makes a learned device scale meaningless.
+_CALIBRATION_IDENTITY_KEYS = (
+    "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",
+    "rate_signal", "usage_ml_per_m2", "usage_ml_per_active_minute", "wash_volume_ml",
+    "calibration_scope",
+)
 DEFAULT_AREA_ANOMALY_CEILING_M2 = 25
 RESET_COOLDOWN_SEC = 60
 MAX_ACTIVE_INTERVAL_SECONDS = 180
@@ -168,7 +185,24 @@ async def async_tick_water_state(
     return changed
 
 
+def _digest(values: Any) -> str:
+    return hashlib.sha256(json.dumps(values, sort_keys=True, default=str).encode()).hexdigest()
+
+
 def tick_device(
+    hass: HomeAssistant,
+    device: dict[str, Any],
+    state: dict[str, Any],
+    *,
+    now_ts: int | None = None,
+) -> tuple[dict[str, Any], bool]:
+    """Run one accounting pass and strip pass-local bookkeeping from the result."""
+    new_state, dirty = _tick_device_pass(hass, device, state, now_ts=now_ts)
+    new_state.pop(_PASS_REASONS_KEY, None)
+    return new_state, dirty
+
+
+def _tick_device_pass(
     hass: HomeAssistant,
     device: dict[str, Any],
     state: dict[str, Any],
@@ -177,6 +211,7 @@ def tick_device(
 ) -> tuple[dict[str, Any], bool]:
     """Translate one v4 `_tickWaterState` pass into Python."""
     state = dict(state)
+    state[_PASS_REASONS_KEY] = []
     vacuum_entity = device.get("vacuum_entity")
     vac = hass.states.get(vacuum_entity) if vacuum_entity else None
     event_sensor = device.get("accounting_event_sensor")
@@ -422,14 +457,27 @@ def tick_device(
     context_values["consumption_context"] = consumption_context
     context_values["consumption_calibration"] = device.get("consumption_calibration")
     context_values["dataset_revision"] = (consumption_profiles.CONSUMPTION_SNAPSHOT.get("dataset_version"), consumption_profiles.CONSUMPTION_SNAPSHOT.get("source_payload_sha256"))
-    context = hashlib.sha256(json.dumps(context_values, sort_keys=True, default=str).encode()).hexdigest()
-    old_context = state.get("accounting_context")
-    state["accounting_context"] = context
-    if old_context is not None and old_context != context:
-        state.update(last_area=curr_area, last_duration_seconds=curr_duration_seconds,
-                     last_tick_ts=now_ts, last_water_volume_ml=None, calibration_factor=1,
-                     calibration_samples=0, session_accounting_valid=False, session_exposure_complete=False,
-                     verified_wash_active=False, last_completed_wash_count=None)
+    # The dataset revision identifies the shipped catalogue bytes. An upgrade
+    # that does not change this device's rates must not break its baseline.
+    interval_values = {key: value for key, value in context_values.items() if key != "dataset_revision"}
+    context = _digest(interval_values)
+    calibration_values = {key: device.get(key) for key in _CALIBRATION_IDENTITY_KEYS}
+    calibration_values["intensity_factor"] = device.get("intensity_factor")
+    calibration_context = _digest(calibration_values)
+    old_interval_context = state.get("accounting_interval_context")
+    old_calibration_context = state.get("accounting_calibration_context")
+    state["accounting_context"] = _digest(context_values)
+    state["accounting_interval_context"] = context
+    state["accounting_calibration_context"] = calibration_context
+    # 5.6 state has only the legacy hash; the first 5.7 pass adopts it silently.
+    if old_interval_context is not None and old_interval_context != context:
+        updates: dict[str, Any] = dict(
+            last_area=curr_area, last_duration_seconds=curr_duration_seconds,
+            last_tick_ts=now_ts, last_water_volume_ml=None, session_accounting_valid=False,
+            session_exposure_complete=False, verified_wash_active=False, last_completed_wash_count=None)
+        if old_calibration_context is not None and old_calibration_context != calibration_context:
+            updates.update(calibration_factor=1, calibration_samples=0, calibration_log_factors=[])
+        state.update(updates)
         _record_accounting(state, "unknown", None, None, "accounting_context_changed")
         return state, True
 
@@ -486,6 +534,7 @@ def tick_device(
                      session_resolution=deepcopy(state.get("consumption_resolution")),
                      session_exposure_complete=curr_area == 0, session_segments=1)
     if wash_now:
+        state["last_wash_seen_ts"] = now_ts
         if wash_active:
             dirty |= _record_accounting(
                 state, "wash", wash_volume, evidence, "wash_already_active"
@@ -513,8 +562,11 @@ def tick_device(
         )
     ):
         if state.get("wash_sequence_active"):
-            state["wash_sequence_active"] = False
-            dirty = True
+            resumed = _is_cleaning(vac_state, curr_status, cleaning_active)
+            quiet_ms = now_ts - int(state.get("last_wash_seen_ts") or 0)
+            if resumed or quiet_ms > WASH_SEQUENCE_GAP_SECONDS * 1000:
+                state["wash_sequence_active"] = False
+                dirty = True
 
     # A configured real volume sensor is authoritative only for the explicitly
     # declared reservoir. Its missing samples never silently become estimates.
@@ -570,6 +622,8 @@ def tick_device(
         return state, True
 
     last_area = _float_or_none(state.get("last_area"))
+    hold_area_baseline = False
+    area_baseline: float | None = None
     if curr_area is None:
         state["session_exposure_complete"] = False
         if device.get("area_sensor"):
@@ -592,6 +646,13 @@ def tick_device(
     else:
         delta = curr_area - last_area
         ceiling = _positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2
+        previously_active = (_is_cleaning(None, state.get("last_status"), None)
+                             or bool(state.get("wash_sequence_active")))
+        if delta < 0 and not previously_active:
+            # Per-session counters (for example Roborock cleaning_area) restart
+            # at zero when a new session starts: the area since restart is new.
+            area_baseline = 0.0
+            delta = curr_area
         if delta < 0:
             state["session_exposure_complete"] = False
             state["session_accounting_valid"] = False
@@ -603,6 +664,9 @@ def tick_device(
         elif delta < AREA_MIN_DELTA and not math.isclose(
             delta, AREA_MIN_DELTA, rel_tol=0, abs_tol=1e-9
         ):
+            # Keep the baseline so small increments accumulate instead of
+            # being silently discarded.
+            hold_area_baseline = True
             dirty |= _record_accounting(state, "area", None, evidence, "area_delta_below_minimum")
         elif wash_now:
             pass  # Wash and floor accounting must not consume the same sample.
@@ -696,8 +760,7 @@ def tick_device(
         do_reset = True
     if (
         state.get("last_dock_err") == "water_empty"
-        and curr_dock_err
-        and curr_dock_err != "water_empty"
+        and curr_dock_err in _DOCK_OK_STATES
     ):
         do_reset = True
 
@@ -906,9 +969,13 @@ def tick_device(
     if state.get("last_status") != curr_status:
         state["last_status"] = curr_status
         dirty = True
-    if curr_area is not None and state.get("last_area") != curr_area:
-        state["last_area"] = curr_area
-        dirty = True
+    if curr_area is not None:
+        next_area = curr_area
+        if hold_area_baseline:
+            next_area = area_baseline if area_baseline is not None else last_area
+        if state.get("last_area") != next_area:
+            state["last_area"] = next_area
+            dirty = True
     if (
         curr_duration_seconds is not None
         and state.get("last_duration_seconds") != curr_duration_seconds
@@ -945,7 +1012,10 @@ def tick_device(
                 state["accounting_incomplete"] = True
                 _record_accounting(state, "unknown", None, None, resolution.get("reason") or "incomplete_cycle")
         dirty = True
-    if state.get("last_accounting_reason") in {"missing_area_rate", "missing_time_rate", "missing_intensity_factor", "area_gap", "active_time_gap", "area_reset", "area_anomaly"}:
+    pass_reasons = set(state.get(_PASS_REASONS_KEY) or ())
+    exposure_possible = bool(session_running or wash_now or state.get("session_start_ts")
+                             or state.get("verified_wash_active"))
+    if pass_reasons & _MISSING_RATE_REASONS or (exposure_possible and pass_reasons & _GAP_REASONS):
         state["accounting_incomplete"] = True
     if completed_wash_resolution is not None:
         state["consumption_resolution"] = deepcopy(completed_wash_resolution)
@@ -1491,6 +1561,9 @@ def _record_accounting(
         "last_accounting_evidence": evidence,
         "last_accounting_reason": reason,
     }
+    reasons = state.get(_PASS_REASONS_KEY)
+    if isinstance(reasons, list) and reason:
+        reasons.append(reason)
     changed = False
     for key, value in payload.items():
         if state.get(key) != value:
