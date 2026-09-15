@@ -18,6 +18,7 @@ from .storage import VacuumWaterStorage
 from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compatible_context
 from . import profiles as consumption_profiles
 from . import accounting_v2
+from . import estimation
 
 MOP_WASH_STATES = {
     "washing",
@@ -51,6 +52,7 @@ _MISSING_RATE_REASONS = frozenset({"missing_area_rate", "missing_time_rate", "mi
 # incomplete only when water could have been dispensed in that interval.
 _GAP_REASONS = frozenset({"area_gap", "active_time_gap", "area_reset", "area_anomaly"})
 _DOCK_OK_STATES = frozenset({"ok", "none", "no_error", "no_error_detected"})
+_ANCHOR_SOURCE_SCOPE = {"dock_error": "dock_clean", "dock_clean_water": "dock_clean"}
 # Changing any of these makes a learned device scale meaningless.
 _CALIBRATION_IDENTITY_KEYS = (
     "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",
@@ -756,6 +758,7 @@ def _tick_device_pass(
         > RESET_COOLDOWN_SEC
     )
     do_reset = False
+    exact_empty_reset = False
     if curr_door and state.get("last_door") == "on" and curr_door == "off":
         do_reset = True
     if (
@@ -763,6 +766,7 @@ def _tick_device_pass(
         and curr_dock_err in _DOCK_OK_STATES
     ):
         do_reset = True
+        exact_empty_reset = True
 
     water_anchor_states = _water_anchor_states(hass, device, curr_dock_err)
     active_anchors = [
@@ -776,7 +780,13 @@ def _tick_device_pass(
     )
     if active_anchor is not None:
         reservoir = device.get("tracked_reservoir")
-        if not reservoir or device.get("water_anchor_reservoir") != reservoir:
+        declared_reservoir = device.get("water_anchor_reservoir")
+        # An inferred anchor reservoir only covers signals scoped to that
+        # reservoir (a dock error for the dock tank); a robot-side error needs
+        # an explicitly configured contract.
+        inferred_scope_mismatch = bool(device.get("water_anchor_reservoir_inferred")) and (
+            _ANCHOR_SOURCE_SCOPE.get(active_anchor[0]) != reservoir)
+        if not reservoir or declared_reservoir != reservoir or inferred_scope_mismatch:
             _record_accounting(state, "unknown", None, None, "water_anchor_reservoir_unverified")
             active_anchor = None
         elif active_anchor[1] == "shortage" and device.get("low_water_anchor_remaining_percent") is None:
@@ -882,41 +892,44 @@ def _tick_device_pass(
                 )
             )
             calibration_target = capacity * (1 - remaining_percent / 100)
-            if (
+            cycle_long_enough = (
                 predicted_used is not None
-                and predicted_used >= capacity * MIN_CALIBRATION_USAGE_FRACTION
-            ):
-                samples = max(0, int(state.get("calibration_samples") or 0))
+                and predicted_used >= capacity * max(
+                    MIN_CALIBRATION_USAGE_FRACTION, estimation.MIN_CALIBRATION_CYCLE_FRACTION)
+            )
+            if cycle_long_enough and state.get("accounting_incomplete"):
+                # Water was dispensed while a signal was missing: the tank's
+                # prediction is not a fair sample, but the anchor still applies.
+                _append_calibration_history(state, now_ts, predicted_used, calibration_target,
+                                            calibration_factor, False, "calibration_sample_incomplete_cycle")
+                state["used_ml"] = round(calibration_target, 2)
+                dirty |= _record_accounting(state, "low_water", None, evidence,
+                                            "calibration_sample_incomplete_cycle")
+            elif cycle_long_enough:
+                assert predicted_used is not None
+                log_factors = estimation.seed_log_factors(state)
                 observed_factor = _clamp(
                     calibration_factor * calibration_target / predicted_used,
                     MIN_CALIBRATION_FACTOR,
                     MAX_CALIBRATION_FACTOR,
                 )
-                learned_factor = (
-                    calibration_factor * samples + observed_factor
-                ) / (samples + 1)
+                window, learned_factor, accepted, rejection = estimation.update_calibration(
+                    log_factors, observed_factor)
+                _append_calibration_history(state, now_ts, predicted_used, calibration_target,
+                                            calibration_factor, accepted, rejection)
+                state["calibration_log_factors"] = [round(value, 6) for value in window]
                 state["calibration_factor"] = round(
-                    _clamp(
-                        learned_factor,
-                        MIN_CALIBRATION_FACTOR,
-                        MAX_CALIBRATION_FACTOR,
-                    ),
-                    4,
-                )
-                state["calibration_samples"] = samples + 1
-                state["last_calibration_predicted_ml"] = round(
-                    predicted_used, 2
-                )
-                state["last_calibration_target_ml"] = round(
-                    calibration_target, 2
-                )
+                    _clamp(learned_factor, MIN_CALIBRATION_FACTOR, MAX_CALIBRATION_FACTOR), 4)
+                state["calibration_samples"] = len(window)
+                state["last_calibration_predicted_ml"] = round(predicted_used, 2)
+                state["last_calibration_target_ml"] = round(calibration_target, 2)
                 state["used_ml"] = round(calibration_target, 2)
                 dirty |= _record_accounting(
                     state,
                     "low_water",
                     state["calibration_factor"],
                     "device_calibrated",
-                    "low_water_calibrated",
+                    "low_water_calibrated" if accepted else rejection,
                 )
             else:
                 state["used_ml"] = round(calibration_target, 2)
@@ -937,18 +950,23 @@ def _tick_device_pass(
             )
     elif water_empty_before and not water_empty_now:
         previous_anchor_source = state.get("water_anchor_source")
+        cleared = False
         if previous_anchor_source in water_anchor_states:
-            do_reset = (
-                water_anchor_states[previous_anchor_source][0] is False
-            )
+            cleared = water_anchor_states[previous_anchor_source][0] is False
         elif len(water_anchor_states) == 1:
             # Additive migration for v5.2 records written before anchor source
             # was persisted.  Unknown/unavailable never counts as a refill.
-            do_reset = next(iter(water_anchor_states.values()))[0] is False
+            cleared = next(iter(water_anchor_states.values()))[0] is False
+        if cleared:
+            do_reset = True
+            exact_empty_reset = exact_empty_reset or state.get("water_anchor_kind") == "empty"
 
     # Clearing an empty/shortage alarm or closing a lid does not prove a full
     # refill. Automatic full reset requires an explicitly configured contract.
-    if do_reset and not device.get("refill_on_clear", False):
+    refill_allowed = bool(device.get("refill_on_clear", False))
+    if refill_allowed and device.get("refill_on_clear_inferred") and not exact_empty_reset:
+        refill_allowed = False
+    if do_reset and not refill_allowed:
         do_reset = False
         dirty |= _record_accounting(state, "refill", None, evidence, "refill_volume_unmeasured")
 
@@ -1025,6 +1043,15 @@ def _tick_device_pass(
     return state, dirty
 
 
+def _append_calibration_history(state, now_ts, predicted, target, factor_before, accepted, reason):
+    """Keep a prequential record: the prediction was made before learning from this tank."""
+    error = (predicted - target) / target * 100 if target else None
+    record = {"ts": now_ts, "predicted_ml": round(predicted, 1), "target_ml": round(target, 1),
+              "error_percent": round(error, 1) if error is not None else None,
+              "factor_before": round(factor_before, 4), "accepted": bool(accepted), "reason": reason}
+    state["calibration_history"] = [record, *(state.get("calibration_history") or [])][:12]
+
+
 def _read_reservoir_levels(hass, device):
     """Read distinct physical quantities; a transfer is not system consumption."""
     bindings = device.get("reservoir_volume_sensors")
@@ -1069,7 +1096,7 @@ def _finish_session(state, running, status, now_ts, area):
         state["session_accounting_valid"] = False
     if running or status not in {"docked", "idle", "charging", "completed"}:
         return
-    measured = state.get("last_accounting_evidence") in {"measured_volume", "user_calibration", "explicit_user_configuration", "device_calibrated", "verified_model", "device_calibration"}
+    measured = state.get("last_accounting_evidence") in {"measured_volume", "user_calibration", "explicit_user_configuration", "device_calibrated", "verified_model", "device_calibration", estimation.LABELED_ESTIMATE}
     measured = measured or (state.get("session_resolution") or {}).get("source") in {"verified_model", "device_calibration"}
     water = max(0, _number(state.get("used_ml"),0)-_number(state.get("session_start_used_ml"),0)) if measured and state.get("session_accounting_valid") else None
     first_area = _float_or_none(state.get("session_start_area"))

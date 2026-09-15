@@ -21,11 +21,14 @@ class ModelProfileTests(unittest.TestCase):
             self.assertEqual(record["accounting"]["usage_ml_per_active_minute"], {})
             self.assertIsNone(record["accounting"]["wash_volume_ml"])
 
-    def test_capacity_needs_calibration(self):
+    def test_capacity_model_gets_a_labelled_estimate(self):
+        """Decision 2026-09-15: a recognised model always gets a labelled estimate."""
         resolved = profiles.resolve_profile({"model_id": "a97"})
         self.assertEqual(resolved["tracked_capacity_ml"], 4000)
-        self.assertEqual(resolved["capability"], "calibration_required")
-        self.assertEqual(resolved["usage_ml_per_m2"], {})
+        self.assertEqual(resolved["capability"], "automatic_estimate")
+        self.assertEqual(resolved["accounting_evidence"], "labeled_estimate")
+        self.assertIn(resolved["estimate_basis"], profiles.estimation.ESTIMATE_BASES)
+        self.assertTrue(resolved["usage_ml_per_m2"])
 
     def test_unknown_model_fails_closed(self):
         resolved = profiles.resolve_profile({"model": "unlisted model"})

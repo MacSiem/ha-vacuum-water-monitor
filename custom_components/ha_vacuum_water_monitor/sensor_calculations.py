@@ -21,6 +21,16 @@ except ImportError:  # Supports this module's existing direct-file pure tests.
     resolve_profile = _profile_module.resolve_profile
     legacy_profile_defaults = _profile_module.legacy_profile_defaults
 
+try:
+    from . import estimation
+except ImportError:  # Direct-file loading used by the pure tests.
+    _estimation_spec = importlib.util.spec_from_file_location(
+        "vwm_standalone_estimation_calc", Path(__file__).with_name("estimation.py")
+    )
+    assert _estimation_spec and _estimation_spec.loader
+    estimation = importlib.util.module_from_spec(_estimation_spec)
+    _estimation_spec.loader.exec_module(estimation)
+
 MILLISECONDS_PER_DAY = 86_400_000
 
 
@@ -162,9 +172,16 @@ def estimate_water_state(
         "signal_contract_version": device.get("signal_contract_version"),
         "mop_evidence_required": bool(device.get("mop_evidence_required")),
         "accounting_evidence": tank_state.get("last_accounting_evidence") or device.get("accounting_evidence") or profile["accounting_evidence"],
-        "uncertainty_percent": device.get("uncertainty_percent")
-        if device.get("uncertainty_percent") is not None
-        else profile.get("uncertainty_percent"),
+        "estimate_basis": device.get("estimate_basis") or profile.get("estimate_basis"),
+        "mop_system": device.get("mop_system") or profile.get("mop_system"),
+        "uncertainty_percent": estimation.uncertainty_percent(
+            device.get("estimate_basis") or profile.get("estimate_basis"),
+            estimation.seed_log_factors(tank_state),
+        ) if (device.get("estimate_basis") or profile.get("estimate_basis")) else (
+            device.get("uncertainty_percent")
+            if device.get("uncertainty_percent") is not None
+            else profile.get("uncertainty_percent")),
+        "calibration_history": list(tank_state.get("calibration_history") or [])[:12],
         "calibration_factor": _number(tank_state.get("calibration_factor"), 1),
         "calibration_samples": max(
             0, int(_number(tank_state.get("calibration_samples"), 0))
@@ -273,9 +290,19 @@ def apply_custom_calibration(
         "uncertainty_percent",
         "time_accounting_evidence",
         "estimated_m2_per_active_minute",
+        "estimate_basis",
+        "mop_system",
+        "tracked_reservoir",
+        "water_anchor_reservoir",
+        "water_anchor_reservoir_inferred",
+        "refill_on_clear",
+        "refill_on_clear_inferred",
     ):
         if profile.get(key) is not None:
             effective.setdefault(key, profile[key])
+    if effective.get("tracked_reservoir") and effective.get("tracked_capacity_ml") is None and profile.get(
+            "tracked_reservoir") == effective.get("tracked_reservoir"):
+        effective["tracked_capacity_ml"] = profile.get("tracked_capacity_ml")
 
     effective.setdefault("mop_evidence_required", True)
     _apply_signal_overrides(effective, settings)
@@ -299,6 +326,11 @@ def apply_custom_calibration(
             {} if discovered_usage == profile_usage else discovered_usage
         )
     )
+    profile_is_estimate = profile.get("accounting_evidence") == estimation.LABELED_ESTIMATE
+    if profile_is_estimate and (custom_usage or explicit_usage):
+        # A measured or authored rate replaces the labelled estimate entirely;
+        # merging per key would keep estimate bands the user never measured.
+        profile_usage = {}
     merged_usage = {**profile_usage, **custom_usage, **explicit_usage}
     if merged_usage:
         effective["usage_ml_per_m2"] = merged_usage
@@ -336,6 +368,8 @@ def apply_custom_calibration(
             **_valid_rate_mapping(calibration.get(key)),
             **_valid_rate_mapping(effective.get(key)),
         }
+        if not merged_mapping and profile_is_estimate and profile_usage:
+            merged_mapping = _valid_rate_mapping(profile.get(key))
         if merged_mapping:
             effective[key] = merged_mapping
 
@@ -379,6 +413,10 @@ def apply_custom_calibration(
         effective["low_water_anchor_remaining_percent"] = low_water_remaining
     if "calibration_scope" not in effective and calibration.get("calibration_scope") in {"floor_only", "whole_cycle"}:
         effective["calibration_scope"] = calibration["calibration_scope"]
+    if "calibration_scope" not in effective and profile_is_estimate and profile_usage:
+        effective["calibration_scope"] = profile.get("calibration_scope") or "floor_only"
+    if not (custom_usage or explicit_usage) and profile_is_estimate and profile_usage:
+        effective.setdefault("estimate_basis", profile.get("estimate_basis"))
     profile_evidence = profile.get("accounting_evidence")
     discovery_evidence = effective.get("accounting_evidence")
     if explicit_usage or explicit_time_usage or explicit_wash:

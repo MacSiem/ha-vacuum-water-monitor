@@ -172,7 +172,7 @@ async function smokeDraftAndCalibration(target) {
     const modelCases = [
       [{ vacuum_entity: 'vacuum.a170' }, 4000],
       [{ vacuum_entity: 'vacuum.living_room', brand_profile: 'roborock.vacuum.a170' }, 4000],
-      [{ vacuum_entity: 'vacuum.a245' }, 0], // No verified exact clean-water capacity
+      [{ vacuum_entity: 'vacuum.a245' }, 4000], // Sourced clean-water capacity (notebookcheck review + Roborock FAQ), 5.7
       [{ vacuum_entity: 'vacuum.xiaomi_h50' }, 4000],
       [{ vacuum_entity: 'vacuum.xiaomi_robot_vacuum_h50_pro' }, 4000],
       [{ vacuum_entity: 'vacuum.tapo_rv50_pro_omni' }, 5000]
