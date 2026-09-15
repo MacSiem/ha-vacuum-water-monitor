@@ -483,7 +483,11 @@ def apply_custom_calibration(
         and "low_water_anchor_remaining_percent" not in explicit_fields
     ):
         effective["low_water_anchor_remaining_percent"] = low_water_remaining
-    if "calibration_scope" not in effective and calibration.get("calibration_scope") in {"floor_only", "whole_cycle"}:
+    # A saved scope describes the user's own measured rate. Without such a rate
+    # (the 5.7.0-beta.1 card saved one with a capacity alone) it must not turn a
+    # labelled estimate into a whole-cycle rate that stops counting dock washes.
+    if ("calibration_scope" not in effective and calibration.get("calibration_scope") in {"floor_only", "whole_cycle"}
+            and (custom_usage or custom_time_usage)):
         effective["calibration_scope"] = calibration["calibration_scope"]
     if "calibration_scope" not in effective and profile_is_estimate and profile_usage:
         effective["calibration_scope"] = profile.get("calibration_scope") or "floor_only"

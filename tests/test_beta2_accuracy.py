@@ -32,6 +32,22 @@ class AreaAtTransitionTests(unittest.TestCase):
         self.assertEqual(state["used_ml"], 0)
 
 
+class SavedScopeTests(unittest.TestCase):
+    def test_capacity_saved_with_a_scope_but_no_rate_keeps_counting_washes(self):
+        custom = {"entity:vacuum.robot": {"tracked_capacity_ml": 4000, "calibration_scope": "whole_cycle"}}
+        dev = effective({"custom_calibration": custom}, descriptor())
+        self.assertEqual(dev["calibration_scope"], "floor_only")
+        state = run(dev, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0"),
+                                      dict(status="cleaning", vac="cleaning", area="10"),
+                                      dict(status="going_to_wash_the_mop", vac="returning", area="10")])
+        self.assertAlmostEqual(state["used_ml"], 10 * 6 + 150, places=1)
+
+    def test_a_measured_whole_cycle_rate_keeps_its_scope(self):
+        custom = {"entity:vacuum.robot": {"usage_ml_per_m2": {"default": 20}, "calibration_scope": "whole_cycle"}}
+        dev = effective({"custom_calibration": custom}, descriptor())
+        self.assertEqual(dev["calibration_scope"], "whole_cycle")
+
+
 class WaterLevelTests(unittest.TestCase):
     def ml_for(self, level):
         state = run(S8, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0", intensity=level),
