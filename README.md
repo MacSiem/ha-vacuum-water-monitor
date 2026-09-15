@@ -54,8 +54,13 @@ itself on your robot:
 3. **Automatic calibration.** When the dock reports an empty clean-water tank, the prediction
    for that tank is compared with the tank capacity. The median of recent tanks becomes the
    robot's correction, an abnormal tank is ignored, and the empty error clearing counts as a
-   refill. The accuracy shown narrows as tanks agree; the last results are in Diagnostics.
+   refill. An estimated dock tank is closed at capacity minus a 5% unusable residual (the water
+   the pump cannot draw). The accuracy shown narrows as tanks agree; the last results are in
+   Diagnostics.
 4. **Your data wins.** A volume sensor or your own calibration replaces the estimate.
+5. **No mopping, no water.** A run with the water level off or the mop detached uses no water.
+   A robot that exposes no signal showing when it mops asks you to map one instead of showing
+   a full tank.
 
 The method was chosen on an independent physics benchmark (tests/test_estimation_benchmark.py):
 with the owner-device estimate a pad robot reaches about ±3–4% median error (P90 about ±7–11%)

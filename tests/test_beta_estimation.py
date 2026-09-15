@@ -162,11 +162,12 @@ class CalibratorTests(unittest.TestCase):
             state = self._tank(device, state, predicted * before, ts)
             ts += 10_000_000
         self.assertEqual(state["calibration_samples"], 3)
-        self.assertAlmostEqual(state["calibration_factor"], 4000 / 3000, delta=0.02)
+        # Estimated dock tanks close at capacity minus the default 5% unusable residual.
+        self.assertAlmostEqual(state["calibration_factor"], 3800 / 3000, delta=0.02)
         self.assertEqual(state["used_ml"], 0, "exact empty cleared to OK must be an automatic refill")
         self.assertTrue(state["calibration_history"][0]["accepted"])
         first_error = state["calibration_history"][-1]["error_percent"]
-        self.assertAlmostEqual(first_error, -25.0, delta=0.1)
+        self.assertAlmostEqual(first_error, (3000 - 3800) / 3800 * 100, delta=0.1)
         outlier = self._tank(device, state, 1300, ts)
         self.assertEqual(outlier["calibration_samples"], 3)
         self.assertFalse(outlier["calibration_history"][0]["accepted"])

@@ -207,11 +207,15 @@ class CalibrationPersistenceTests(unittest.TestCase):
 
     def test_upgrade_from_state_without_static_context_does_not_reset(self):
         state = self._calibrated()
-        state.pop("accounting_context_static", None)
-        state.pop("accounting_context_calibration", None)
+        # A real 5.6 record has only the legacy context hash.
+        state.pop("accounting_interval_context", None)
+        state.pop("accounting_calibration_context", None)
         state["accounting_context"] = "legacy-5.6-hash"
-        state, _ = run(state, [{}], start_ts=20_000_000)
+        state["calibration_samples"] = 2
+        state, _ = run(state, [{"mode": "deep"}], start_ts=20_000_000)
         self.assertEqual(state["calibration_factor"], 1.3)
+        self.assertEqual(state["calibration_samples"], 2)
+        self.assertNotEqual(state["last_accounting_reason"], "accounting_context_changed")
 
 
 if __name__ == "__main__":

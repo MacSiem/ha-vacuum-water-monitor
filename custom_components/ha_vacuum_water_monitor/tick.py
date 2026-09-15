@@ -52,6 +52,7 @@ _MISSING_RATE_REASONS = frozenset({"missing_area_rate", "missing_time_rate", "mi
 # incomplete only when water could have been dispensed in that interval.
 _GAP_REASONS = frozenset({"area_gap", "active_time_gap", "area_reset", "area_anomaly"})
 _DOCK_OK_STATES = frozenset({"ok", "none", "no_error", "no_error_detected"})
+_SESSION_END_STATES = frozenset({"docked", "idle", "charging", "completed", "charging_complete"})
 _ANCHOR_SOURCE_SCOPE = {"dock_error": "dock_clean", "dock_clean_water": "dock_clean"}
 # Changing any of these makes a learned device scale meaningless.
 _CALIBRATION_IDENTITY_KEYS = (
@@ -232,7 +233,9 @@ def _tick_device_pass(
     if vac is None or _normalized_signal(vac.state) in {None, "unknown", "unavailable"}:
         if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
             state["accounting_incomplete"] = True
-        state.update(last_area=None, last_duration_seconds=None, last_tick_ts=0,
+        # The last area is kept so that a change observed after the gap proves
+        # unobserved exposure instead of silently starting a new baseline.
+        state.update(last_duration_seconds=None, last_tick_ts=0,
                      area_gap=True, duration_gap=True, last_water_volume_ml=None, session_accounting_valid=False, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
         state["reservoir_levels"] = {key: {"volume_ml": None, "source": "unknown", "reason": "vacuum_unavailable"}
@@ -257,7 +260,7 @@ def _tick_device_pass(
     if status_sensor and _is_transient_status(curr_status):
         if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
             state["accounting_incomplete"] = True
-        state.update(last_area=None, last_duration_seconds=None, area_gap=True,
+        state.update(last_duration_seconds=None, area_gap=True,
                      duration_gap=True, last_tick_ts=0, last_water_volume_ml=None, session_accounting_valid=False, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
         _record_accounting(state, "unknown", None, None, "status_unavailable")
@@ -364,7 +367,9 @@ def _tick_device_pass(
     )
     # A whole-cycle dose already includes dock washes. Separate wash dosing is
     # permitted only when the user confirms the floor dose excludes washes.
+    wash_covered_by_cycle_rate = False
     if (usage_per_m2 is not None or usage_per_minute is not None) and device.get("calibration_scope") != "floor_only":
+        wash_covered_by_cycle_rate = True
         wash_volume = None
 
     evidence = device.get("accounting_evidence")
@@ -487,11 +492,12 @@ def _tick_device_pass(
     if last_tick is not None and (now_ts <= last_tick or now_ts - last_tick > MAX_ACTIVE_INTERVAL_SECONDS * 1000):
         if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
             state["accounting_incomplete"] = True
-        state.update(last_area=None, last_duration_seconds=None, area_gap=True,
+        state.update(last_duration_seconds=None, area_gap=True,
                      duration_gap=True, last_water_volume_ml=None, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
 
     session_running = _is_cleaning(vac_state, curr_status, cleaning_active)
+    had_open_session = bool(state.get("session_start_ts"))
     completed_wash_resolution = None
     previous_status = state.get("last_status")
     previous_dock_status = state.get("last_dock_status")
@@ -545,6 +551,9 @@ def _tick_device_pass(
             dirty |= _record_accounting(
                 state, "wash", wash_volume, evidence, "wash_initial_observation"
             )
+        elif wash_volume is None and wash_covered_by_cycle_rate:
+            # A whole-cycle area/time rate already includes the dock washes.
+            dirty |= _record_accounting(state, "wash", None, evidence, "wash_included_in_cycle_rate")
         elif wash_volume is None:
             if whole_cycle_calibration is None and curr_status != "going_to_wash_the_mop" and not state.get("verified_wash_active"):
                 state["accounting_incomplete"] = True
@@ -625,6 +634,7 @@ def _tick_device_pass(
 
     last_area = _float_or_none(state.get("last_area"))
     hold_area_baseline = False
+    unobserved_exposure = False
     area_baseline: float | None = None
     if curr_area is None:
         state["session_exposure_complete"] = False
@@ -641,16 +651,21 @@ def _tick_device_pass(
         else:
             dirty |= _record_accounting(state, "area", None, evidence, "area_baseline_initialized")
     elif state.get("area_gap"):
-        if state.get("area_gap"):
-            state["area_gap"] = False
-            dirty = True
-        dirty |= _record_accounting(state, "area", None, evidence, "area_gap")
+        state["area_gap"] = False
+        dirty = True
+        if math.isclose(curr_area, last_area, rel_tol=0, abs_tol=AREA_MIN_DELTA - 1e-9):
+            dirty |= _record_accounting(state, "area", None, evidence, "area_gap_resumed")
+        else:
+            # The area changed while nothing was observed: water may have been
+            # dispensed without a rate being applied.
+            unobserved_exposure = True
+            dirty |= _record_accounting(state, "area", None, evidence, "area_gap")
     else:
         delta = curr_area - last_area
         ceiling = _positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2
         previously_active = (_is_cleaning(None, state.get("last_status"), None)
                              or bool(state.get("wash_sequence_active")))
-        if delta < 0 and not previously_active:
+        if delta < 0 and not previously_active and not had_open_session:
             # Per-session counters (for example Roborock cleaning_area) restart
             # at zero when a new session starts: the area since restart is new.
             area_baseline = 0.0
@@ -880,7 +895,7 @@ def _tick_device_pass(
         initialized = bool(state.get("initialized") or state.get("last_reset_iso"))
         if capacity is not None and initialized:
             remaining_percent = (
-                0.0
+                _empty_residual_percent(device)
                 if anchor_kind == "empty"
                 else _clamp(
                     _number(
@@ -971,6 +986,7 @@ def _tick_device_pass(
         dirty |= _record_accounting(state, "refill", None, evidence, "refill_volume_unmeasured")
 
     if do_reset and cooldown_ok:
+        state["accounting_incomplete"] = False
         state["session_accounting_valid"] = False
         state["used_ml"] = 0
         state["initialized"] = True
@@ -1015,7 +1031,7 @@ def _tick_device_pass(
 
     if whole_cycle_calibration is not None:
         _record_accounting(state, "whole_cycle", None, "device_calibration", "whole_cycle_pending")
-        if (not session_running and not wash_now and curr_status in {"docked", "idle", "charging", "completed"}
+        if (not session_running and not wash_now and curr_status in _SESSION_END_STATES
                 and state.get("session_start_ts")):
             exposure = curr_area - state.get("session_start_area", 0) if curr_area is not None and state.get("session_start_area") is not None else None
             resolution = resolve_consumption_profile(consumption_context, {"area_m2": exposure}, whole_cycle_calibration)
@@ -1033,7 +1049,8 @@ def _tick_device_pass(
     pass_reasons = set(state.get(_PASS_REASONS_KEY) or ())
     exposure_possible = bool(session_running or wash_now or state.get("session_start_ts")
                              or state.get("verified_wash_active"))
-    if pass_reasons & _MISSING_RATE_REASONS or (exposure_possible and pass_reasons & _GAP_REASONS):
+    if (unobserved_exposure or pass_reasons & _MISSING_RATE_REASONS
+            or (exposure_possible and pass_reasons & _GAP_REASONS)):
         state["accounting_incomplete"] = True
     if completed_wash_resolution is not None:
         state["consumption_resolution"] = deepcopy(completed_wash_resolution)
@@ -1041,6 +1058,21 @@ def _tick_device_pass(
                            completed_wash_resolution["source"], None)
     _finish_session(state, session_running or wash_now, curr_status, now_ts, curr_area)
     return state, dirty
+
+
+def _empty_residual_percent(device: dict[str, Any]) -> float:
+    """Water a dock cannot draw when it reports empty.
+
+    Only a labelled estimate closes a tank below full capacity: the pump intake
+    leaves a small unusable residual (benchmarked default 5%). An authored or
+    measured contract keeps its exact empty semantics.
+    """
+    explicit = _float_or_none(device.get("empty_residual_percent"))
+    if explicit is not None:
+        return _clamp(explicit, 0, 20)
+    if device.get("estimate_basis") and device.get("water_anchor_reservoir_inferred"):
+        return estimation.DEFAULT_EMPTY_RESIDUAL_PERCENT
+    return 0.0
 
 
 def _append_calibration_history(state, now_ts, predicted, target, factor_before, accepted, reason):
@@ -1094,7 +1126,7 @@ def _finish_session(state, running, status, now_ts, area):
     reason = str(state.get("last_accounting_reason") or "")
     if reason.startswith("missing_") or "unavailable" in reason or reason.endswith("gap"):
         state["session_accounting_valid"] = False
-    if running or status not in {"docked", "idle", "charging", "completed"}:
+    if running or status not in _SESSION_END_STATES:
         return
     measured = state.get("last_accounting_evidence") in {"measured_volume", "user_calibration", "explicit_user_configuration", "device_calibrated", "verified_model", "device_calibration", estimation.LABELED_ESTIMATE}
     measured = measured or (state.get("session_resolution") or {}).get("source") in {"verified_model", "device_calibration"}
@@ -1230,6 +1262,10 @@ def _is_mop_active(
     require_evidence: bool = False,
 ) -> bool:
     if mop_attached is False or water_box_attached is False:
+        return False
+    # An explicit no-water level (for example Roborock water_box_mode "off" in
+    # vacuum-only runs) means no water reaches the floor for any integration.
+    if mop_intensity in _MOP_INTENSITY_OFF:
         return False
     # Only integrations whose adapter declares the level to be a genuine
     # water-output control take part in this rule.  Several adapters bind

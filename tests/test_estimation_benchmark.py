@@ -32,7 +32,8 @@ SPEED = {"fast": 1.1, "standard": 0.85, "deep": 0.6}
 FLOW = {"pad": {"low": 3.0, "medium": 5.0, "high": 7.5},
         "roller": {"low": 6.0, "medium": 9.0, "high": 12.0}}
 CAPACITY = 4000.0
-ASSUMED_RESIDUAL = 200.0
+# Production closes an estimated dock tank at capacity minus the default 5% residual.
+ASSUMED_RESIDUAL = CAPACITY * estimation.DEFAULT_EMPTY_RESIDUAL_PERCENT / 100
 
 
 def _percentile(values, q):

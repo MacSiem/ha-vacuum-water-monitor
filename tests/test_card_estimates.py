@@ -17,7 +17,7 @@ _spec.loader.exec_module(estimation)
 CASES = [
     ["owner_device", []], ["class_prior", [0.2]], ["generic_prior", [0.1, 0.12]],
     ["class_prior", [0.29, 0.28, 0.3]], ["family_transfer", [0.1, 0.4, -0.2, 0.3, 0.05]],
-    ["unknown_basis", []], ["class_prior", [0.0, 0.9, -0.9, 0.5]],
+    ["unknown_basis", []], ["class_prior", [0.0, 0.9, -0.9, 0.5]], ["generic_prior", [0.3]],
 ]
 
 SCRIPT = r"""

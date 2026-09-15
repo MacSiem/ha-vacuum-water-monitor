@@ -67,6 +67,8 @@ CLASS_PRIORS: dict[str, dict[str, Any]] = {
 }
 
 CALIBRATION_WINDOW = 8
+# Unusable water left in a dock tank when it reports empty (pump intake height).
+DEFAULT_EMPTY_RESIDUAL_PERCENT = 5.0
 MIN_CALIBRATION_CYCLE_FRACTION = 0.3
 OUTLIER_LOG_RATIO = math.log(2.0)
 MIN_FACTOR = 0.25
@@ -138,6 +140,18 @@ def seed_log_factors(state: dict[str, Any]) -> list[float]:
     factor = state.get("calibration_factor")
     if samples > 0 and _positive(factor):
         return [math.log(float(factor))] * min(samples, 3)
+    return []
+
+
+def uncertainty_log_factors(state: dict[str, Any]) -> list[float]:
+    """Factors that describe spread: the real window, or one migrated 5.x factor."""
+    stored = state.get("calibration_log_factors")
+    if isinstance(stored, list):
+        return [float(v) for v in stored if isinstance(v, (int, float)) and math.isfinite(v)][-CALIBRATION_WINDOW:]
+    samples = int(state.get("calibration_samples") or 0)
+    factor = state.get("calibration_factor")
+    if samples > 0 and _positive(factor):
+        return [math.log(float(factor))]
     return []
 
 

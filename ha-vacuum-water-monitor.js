@@ -5066,6 +5066,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       }
     }
 
+    const userRate = Boolean(customCalib.usage_ml_per_m2 || customCalib.water_per_m2 || customCalib.usage_ml_per_active_minute || customCalib.wash_volume_ml || customCalib.mop_wash_ml);
+    const hasMopSignal = ['mop_attached_sensor', 'mop_mode_entity', 'cleaning_mode_entity', 'water_box_attached_sensor', 'water_box_attached_attribute', 'water_box_detached_sensor'].some(key => device[key])
+      || Boolean(device.mop_intensity_entity && device.mop_intensity_is_evidence);
+    if (!userRate && device.estimate_basis && device.mop_evidence_required === true && !hasMopSignal) {
+      remainingL = percentRemaining = usedMl = null;
+      stateReason = 'mop_signal_unbound';
+    }
+
     if (tankState.accounting_incomplete) {
       remainingL = percentRemaining = usedMl = null;
       stateReason = 'accounting_incomplete';
@@ -5159,12 +5167,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       consumptionResolution: tankState.consumption_resolution || null,
       reservoirLevels: tankState.reservoir_levels || null,
       accountingV2: tankState.accounting_v2 || null,
-      estimateBasis: device.estimate_basis || null,
+      estimateBasis: userRate ? null : (device.estimate_basis || null),
       mopSystem: device.mop_system || null,
       calibrationLogFactors: Array.isArray(tankState.calibration_log_factors) ? tankState.calibration_log_factors : [],
       calibrationHistory: Array.isArray(tankState.calibration_history) ? tankState.calibration_history : [],
-      uncertaintyPercent: device.estimate_basis
-        ? _vwmUncertainty(device.estimate_basis, tankState.calibration_log_factors)
+      uncertaintyPercent: userRate ? null : device.estimate_basis
+        ? _vwmUncertainty(device.estimate_basis, Array.isArray(tankState.calibration_log_factors)
+          ? tankState.calibration_log_factors
+          : (Number(tankState.calibration_samples) > 0 && Number(tankState.calibration_factor) > 0 ? [Math.log(Number(tankState.calibration_factor))] : []))
         : (Number.isFinite(Number(device.uncertainty_percent)) ? Number(device.uncertainty_percent) : null),
       calibrationFactor: Number.isFinite(Number(tankState.calibration_factor)) ? Number(tankState.calibration_factor) : 1,
       calibrationSamples: Number.isFinite(Number(tankState.calibration_samples)) ? Number(tankState.calibration_samples) : 0,
@@ -5378,6 +5388,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _buildAccountingGuidance(data) {
     const box = (title, text, color = '#64748b') => `<div class="accounting-guidance" style="border-color:${color}"><b>${title}</b><span>${text}</span></div>`;
+    if (data.stateReason === 'mop_signal_unbound') {
+      return box('Mop signal needed.', 'This robot does not expose a signal that shows when it mops (mop attached, mop mode or water level). Map one in Settings \u2192 Signal mapping so water use can be estimated.', '#f59e0b');
+    }
     if (data.stateReason === 'accounting_incomplete') {
       return box('Water balance paused.', 'Water may have been used while a signal was missing, so the remaining volume is unknown until the next refill. Tracking continues automatically after that refill.', '#f59e0b');
     }

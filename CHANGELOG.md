@@ -30,6 +30,12 @@ Beta: labelled estimates from the model database with automatic empty-tank calib
 - Changing mop mode or upgrading the dataset keeps the learned calibration.
 - Missing capacities are shown as "unknown" instead of 0 / `null ml`; Polish labels in the
   English card were translated.
+- A vacuum-only run (water level off) never uses water, and a whole-cycle user rate no longer
+  adds or flags dock washes it already includes.
+- An automatic refill clears an incomplete balance, and a session that ran entirely while the
+  robot or Home Assistant was unavailable is reported as incomplete.
+- Authored refill/anchor settings and a tank capacity that differs from the model are kept as
+  configured; your own calibration replaces the estimate label and accuracy.
 
 
 ## 5.6.0 (2026-09-09)
