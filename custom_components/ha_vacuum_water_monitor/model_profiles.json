@@ -5930,11 +5930,12 @@
           "low": 0.7,
           "medium": 1.0,
           "high": 1.3,
+          "extreme": 1.5,
           "default": 1.0
         },
         "wash_volume_ml": 150,
         "sources": [
-          "Owner-device Home Assistant accounting on a Roborock S8 MaxV Ultra (area x route rate x water-level factor, 150 ml per dock wash), used 2025-2026 and cross-checked against the dock's empty-water events; not metered with a volume sensor. deep_plus extrapolated."
+          "Owner-device Home Assistant accounting on a Roborock S8 MaxV Ultra (area x route rate x water-level factor, 150 ml per dock wash), used 2025-2026 and cross-checked against the dock's empty-water events; not metered with a volume sensor. deep_plus and the extreme water level extrapolated."
         ]
       }
     },
@@ -6019,11 +6020,12 @@
           "low": 0.7,
           "medium": 1.0,
           "high": 1.3,
+          "extreme": 1.5,
           "default": 1.0
         },
         "wash_volume_ml": 150,
         "sources": [
-          "Transferred from the Roborock S8 MaxV Ultra owner-device accounting: same VibraRise sonic pad generation and RockDock wash design; not measured on this model."
+          "Transferred from the Roborock S8 MaxV Ultra owner-device accounting: same VibraRise sonic pad generation and RockDock wash design; not measured on this model. The extreme water level is extrapolated."
         ]
       }
     },

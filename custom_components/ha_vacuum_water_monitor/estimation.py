@@ -34,7 +34,8 @@ BASIS_UNCERTAINTY_PERCENT: dict[str, int] = {
 ESTIMATE_BASES = frozenset(BASIS_UNCERTAINTY_PERCENT)
 MOP_SYSTEMS = frozenset({"pad", "rotating_pads", "roller", "unknown"})
 
-_INTENSITY_FACTOR = {"low": 0.7, "medium": 1.0, "high": 1.3, "default": 1.0}
+# ``extreme`` (Roborock's highest pad flow) is extrapolated one step above high.
+_INTENSITY_FACTOR = {"low": 0.7, "medium": 1.0, "high": 1.3, "extreme": 1.5, "default": 1.0}
 
 # Class priors. The pad prior is the owner-validated Roborock S8 MaxV Ultra DIY
 # accounting (ml/m2 by route x water-level factor, 150 ml per dock wash); other

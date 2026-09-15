@@ -366,6 +366,16 @@ def _tick_device_pass(
         rate_key = cleaning_mode
     usage_per_m2 = _mapping_number(device.get("usage_ml_per_m2"), rate_key)
     intensity_factor = _mapping_number(device.get("intensity_factor"), mop_intensity)
+    intensity_map = device.get("intensity_factor")
+    unmapped_intensity = (
+        mop_intensity
+        if isinstance(intensity_map, dict) and mop_intensity is not None
+        and mop_intensity not in _MOP_INTENSITY_OFF
+        and not any(_positive_number(intensity_map.get(key)) is not None for key in _rate_key_candidates(mop_intensity))
+        else None
+    )
+    if state.get("intensity_unmapped") != unmapped_intensity:
+        state["intensity_unmapped"] = unmapped_intensity
     calibration_factor = _clamp(
         _positive_number(state.get("calibration_factor")) or 1,
         MIN_CALIBRATION_FACTOR,
@@ -733,9 +743,11 @@ def _tick_device_pass(
             # being silently discarded.
             hold_area_baseline = True
             dirty |= _record_accounting(state, "area", None, evidence, "area_delta_below_minimum")
-        elif wash_now:
-            pass  # Wash and floor accounting must not consume the same sample.
-        elif not _is_cleaning(vac_state, curr_status, cleaning_active):
+        elif not (_is_cleaning(vac_state, curr_status, cleaning_active)
+                  or _is_cleaning(None, state.get("last_status"), None)):
+            # Area only grows while cleaning. A tick that already sees the robot
+            # heading to wash or dock still carries the area cleaned since the
+            # previous observation, so it is charged when that one was cleaning.
             dirty |= _record_accounting(state, "area", None, evidence, "not_cleaning")
         elif not mop_active:
             dirty |= _record_accounting(state, "area", None, evidence, "mop_off")
@@ -1680,7 +1692,7 @@ def _rate_key_candidates(key: str) -> tuple[str, ...]:
     """Translate documented integration option tokens to model rate bands."""
     candidates = [key]
     groups = {
-        "low": {"low", "light", "mild", "fast", "level_1", "standard_1"},
+        "low": {"low", "light", "mild", "slight", "min", "fast", "level_1", "standard_1"},
         "medium": {
             "medium",
             "moderate",
@@ -1693,6 +1705,7 @@ def _rate_key_candidates(key: str) -> tuple[str, ...]:
         "high": {
             "high",
             "intense",
+            "extreme",
             "deep",
             "max",
             "maximum",

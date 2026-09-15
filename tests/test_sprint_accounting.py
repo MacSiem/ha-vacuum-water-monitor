@@ -25,9 +25,13 @@ class SprintAccountingTests(unittest.TestCase):
         entries={'vacuum.test': _State(values.pop('vacuum','cleaning')), 'sensor.area':_State(values.pop('area','12'),{'unit_of_measurement':'m²'}), 'sensor.duration':_State(values.pop('duration','120'),{'unit_of_measurement':'s'}),'sensor.status':_State(values.pop('status','cleaning')), 'sensor.volume':_State(values.pop('volume','3900'),{'unit_of_measurement':'mL'})}
         return tick.tick_device(_Hass(entries), {'vacuum_entity':'vacuum.test','area_sensor':'sensor.area','status_sensor':'sensor.status','usage_ml_per_m2':{'default':10},'usage_ml_per_active_minute':{'default':20}, **(device or {})}, {'initialized':True,'used_ml':50,'last_area':10,'last_status':'cleaning','last_tick_ts':60000, **(state or {})},now_ts=120000)[0]
 
-    def test_wash_and_floor_cannot_charge_same_sample(self):
+    def test_wash_and_floor_are_each_charged_once_in_the_same_sample(self):
+        # 2 m² were cleaned before the robot reached the wash (5.7.0-beta.2): the floor
+        # water of that interval and the wash are different water, each counted once.
         s=self.sample(device={'wash_volume_ml':100,'calibration_scope':'floor_only'},status='washing_the_mop')
-        self.assertEqual(s['used_ml'],150)
+        self.assertEqual(s['used_ml'],170)
+        still=self.sample(device={'wash_volume_ml':100,'calibration_scope':'floor_only'},status='washing_the_mop',area='10')
+        self.assertEqual(still['used_ml'],150)
 
     def test_missing_vacuum_breaks_counter_continuity(self):
         s=self.sample(vacuum='unavailable')
@@ -107,7 +111,7 @@ class SprintAccountingTests(unittest.TestCase):
 
     def test_whole_cycle_rate_cannot_add_wash_volume(self):
         s=self.sample(device={'wash_volume_ml':100,'calibration_scope':'whole_cycle'},status='washing_the_mop')
-        self.assertEqual(s['used_ml'],50)
+        self.assertEqual(s['used_ml'],70)
 
     def test_setting_change_does_not_charge_crossing_interval(self):
         device={'vacuum_entity':'vacuum.test','area_sensor':'sensor.area','cleaning_mode_entity':'select.mode','usage_ml_per_m2':{'default':10}}
