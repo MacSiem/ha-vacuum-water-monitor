@@ -170,17 +170,27 @@ def _intensity_water_state(value: str | None) -> bool | None:
 
 
 async def async_tick_water_state(
-    hass: HomeAssistant, storage: VacuumWaterStorage
+    hass: HomeAssistant,
+    storage: VacuumWaterStorage,
+    *,
+    vacuum_entities: set[str] | None = None,
+    delay_save_seconds: float | None = None,
+    on_devices: Any = None,
 ) -> dict[str, dict[str, Any]]:
-    """Tick every known vacuum and persist changed states."""
+    """Tick known vacuums (all, or the given ones) and persist changed states."""
     stored = await storage.async_get_state()
     devices = _devices_to_tick(hass, stored["settings"], stored["tank_states"])
+    if callable(on_devices):
+        on_devices(devices)
     previous = stored["tank_states"]
     changed: dict[str, dict[str, Any]] = {}
+    expected_reset_ts: dict[str, Any] = {}
 
     for device in devices:
         vacuum_entity = device.get("vacuum_entity")
         if not vacuum_entity:
+            continue
+        if vacuum_entities is not None and vacuum_entity not in vacuum_entities:
             continue
         # Respect user's pre-existing DIY automations: if the device config
         # points at an input_number/input_datetime for water tracking AND that
@@ -190,13 +200,16 @@ async def async_tick_water_state(
             continue
         state = VacuumWaterStorage.default_tank_state()
         state.update(previous.get(vacuum_entity) or {})
+        expected_reset_ts[vacuum_entity] = state.get("last_reset_ts")
         new_state, dirty = tick_device(hass, device, state)
         if dirty:
             changed[vacuum_entity] = new_state
 
-    if changed:
-        await storage.async_set_tank_states(changed)
-    return changed
+    if not changed:
+        return changed
+    written = await storage.async_set_tank_states(
+        changed, expected_reset_ts=expected_reset_ts, delay_seconds=delay_save_seconds)
+    return written if isinstance(written, dict) else changed
 
 
 def _digest(values: Any) -> str:
@@ -404,7 +417,7 @@ def _tick_device_pass(
         time_evidence = "device_calibrated"
 
     last_tick = _positive_number(state.get("last_tick_ts"))
-    if last_tick is not None and (now_ts <= last_tick or now_ts - last_tick > MAX_ACTIVE_INTERVAL_SECONDS * 1000):
+    if last_tick is not None and (now_ts < last_tick or now_ts - last_tick > MAX_ACTIVE_INTERVAL_SECONDS * 1000):
         _open_observation_gap(state, min(last_tick, now_ts))
         state.update(last_duration_seconds=None, area_gap=True,
                      duration_gap=True, last_water_volume_ml=None, session_exposure_complete=False,

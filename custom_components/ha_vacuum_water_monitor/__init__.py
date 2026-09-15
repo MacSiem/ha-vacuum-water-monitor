@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant, ServiceCall, callback
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.service import async_extract_entity_ids
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_state_change_event,
+    async_track_time_interval,
+)
 
 from .const import (
     CONF_CRITICAL_THRESHOLD,
@@ -20,13 +28,16 @@ from .const import (
     DATA_FRONTEND_REGISTERED,
     DATA_STORAGE,
     DATA_TICK_UNSUB,
+    DATA_TICKER,
     DATA_WS_REGISTERED,
     DEFAULT_TICK_INTERVAL_SECONDS,
+    SERVICE_MARK_REFILLED,
     DOMAIN,
     EVENT_STATE_CHANGED,
     VERSION,
     signal_vacuum_water_updated,
 )
+from .scheduler import EVENT_SAVE_DELAY_SECONDS, EventTicker
 from .storage import VacuumWaterStorage
 from .tick import async_tick_water_state
 from .websocket_api import async_register_commands
@@ -63,6 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_frontend(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_start_tick(hass, storage, entry.entry_id)
+    _async_register_services(hass)
 
     # Apply option changes immediately. Without this listener the OptionsFlow
     # wrote the new thresholds to the entry but nothing re-read them, so they
@@ -99,6 +111,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unsub := bucket.pop(DATA_TICK_UNSUB, None):
         unsub()
     bucket.pop(DATA_STORAGE, None)
+    if hass.services.has_service(DOMAIN, SERVICE_MARK_REFILLED):
+        hass.services.async_remove(DOMAIN, SERVICE_MARK_REFILLED)
     _LOGGER.debug("Vacuum Water Monitor unloaded (entry_id=%s)", entry.entry_id)
     return True
 
@@ -183,17 +197,13 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
 def _async_start_tick(
     hass: HomeAssistant, storage: VacuumWaterStorage, entry_id: str
 ) -> None:
-    """Start the 60s server-side accounting task."""
+    """Tick on bound entity changes, with a 60 s heartbeat as the fallback."""
     bucket = hass.data.setdefault(DOMAIN, {})
     if bucket.get(DATA_TICK_UNSUB):
         return
+    subscription: dict[str, Any] = {"unsub": None}
 
-    async def _tick(now=None) -> None:
-        try:
-            changed = await async_tick_water_state(hass, storage)
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.exception("Water state tick failed: %s", err)
-            return
+    def _publish(changed: dict[str, Any]) -> None:
         if changed:
             async_dispatcher_send(
                 hass,
@@ -202,7 +212,99 @@ def _async_start_tick(
             )
             hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": changed})
 
-    bucket[DATA_TICK_UNSUB] = async_track_time_interval(
-        hass, _tick, timedelta(seconds=DEFAULT_TICK_INTERVAL_SECONDS)
+    @callback
+    def _on_state_change(event: Event) -> None:
+        data = event.data
+        ticker.handle_change(data.get("entity_id"), data.get("old_state"), data.get("new_state"))
+
+    def _rebind(devices: list[dict[str, Any]]) -> None:
+        if not ticker.update_bindings(devices) and subscription["unsub"] is not None:
+            return
+        if subscription["unsub"] is not None:
+            subscription["unsub"]()
+            subscription["unsub"] = None
+        if ticker.entities:
+            subscription["unsub"] = async_track_state_change_event(
+                hass, sorted(ticker.entities), _on_state_change
+            )
+
+    async def _run(vacuums: set[str] | None) -> None:
+        try:
+            changed = await async_tick_water_state(
+                hass,
+                storage,
+                vacuum_entities=vacuums,
+                delay_save_seconds=EVENT_SAVE_DELAY_SECONDS if vacuums is not None else None,
+                on_devices=_rebind if vacuums is None else None,
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.exception("Water state tick failed: %s", err)
+            return
+        _publish(changed)
+
+    def _schedule(delay: float, action: Any) -> Any:
+        # A plain function would run in the executor; the ticker must stay on the loop.
+        @callback
+        def _fire(now: Any) -> None:
+            action(now)
+
+        return async_call_later(hass, delay, _fire)
+
+    ticker = EventTicker(
+        run_tick=_run,
+        schedule=_schedule,
+        create_task=hass.async_create_task,
     )
-    hass.async_create_task(_tick())
+    bucket[DATA_TICKER] = ticker
+
+    async def _heartbeat(now=None) -> None:
+        await ticker.run(None)
+
+    cancel_interval = async_track_time_interval(
+        hass, _heartbeat, timedelta(seconds=DEFAULT_TICK_INTERVAL_SECONDS)
+    )
+
+    def _unsubscribe() -> None:
+        cancel_interval()
+        ticker.cancel()
+        if subscription["unsub"] is not None:
+            subscription["unsub"]()
+            subscription["unsub"] = None
+
+    bucket[DATA_TICK_UNSUB] = _unsubscribe
+    hass.async_create_task(_heartbeat())
+
+
+def _async_register_services(hass: HomeAssistant) -> None:
+    """Register ``mark_refilled`` for automations, scripts and dashboards."""
+    if hass.services.has_service(DOMAIN, SERVICE_MARK_REFILLED):
+        return
+
+    async def _mark_refilled(call: ServiceCall) -> None:
+        bucket = hass.data.get(DOMAIN, {})
+        storage: VacuumWaterStorage | None = bucket.get(DATA_STORAGE)
+        if storage is None:
+            raise HomeAssistantError("Vacuum Water Monitor is not loaded")
+        try:  # Home Assistant 2025+: (call); older releases: (hass, call)
+            extracted = await async_extract_entity_ids(call)
+        except TypeError:
+            extracted = await async_extract_entity_ids(hass, call)
+        entity_ids = sorted(entity_id for entity_id in extracted if entity_id.startswith("vacuum."))
+        if not entity_ids:
+            raise ServiceValidationError("Select at least one vacuum entity")
+        now = datetime.now(timezone.utc)
+        changed = {}
+        for entity_id in entity_ids:
+            changed[entity_id] = await storage.async_reset_tank(
+                entity_id, now.isoformat(), int(now.timestamp() * 1000), source="service"
+            )
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            async_dispatcher_send(hass, signal_vacuum_water_updated(entry.entry_id), {"tank_states": changed})
+        hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": changed})
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_MARK_REFILLED,
+        _mark_refilled,
+        schema=cv.make_entity_service_schema({}),
+    )

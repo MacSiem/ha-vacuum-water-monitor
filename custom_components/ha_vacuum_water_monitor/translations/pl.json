@@ -25,5 +25,11 @@
         }
       }
     }
+  },
+  "services": {
+    "mark_refilled": {
+      "name": "Oznacz zbiornik jako dolany",
+      "description": "Oznacza śledzony zbiornik czystej wody wybranych odkurzaczy jako pełny, tak jak przycisk Refilled w karcie. Do użycia w automatyzacji, skrypcie lub przycisku na pulpicie."
+    }
   }
 }

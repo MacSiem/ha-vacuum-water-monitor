@@ -11,7 +11,7 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from .const import DOMAIN, EVENT_STATE_CHANGED, signal_vacuum_water_updated
+from .const import DATA_TICKER, DOMAIN, EVENT_STATE_CHANGED, signal_vacuum_water_updated
 from .storage import VacuumWaterStorage
 from .tick import list_vacuums
 from .calibration import build_contribution_draft, select_recorded_cycle
@@ -151,7 +151,7 @@ async def _ws_reset_tank(
         return
     now = datetime.now(timezone.utc)
     state = await _storage(hass).async_reset_tank(
-        msg["vacuum_entity"], now.isoformat(), int(now.timestamp() * 1000)
+        msg["vacuum_entity"], now.isoformat(), int(now.timestamp() * 1000), source="card"
     )
     _notify_store_updated(
         hass, {"tank_states": {msg["vacuum_entity"]: state}}
@@ -233,6 +233,40 @@ async def _ws_save_measurement(hass, connection, msg):
     connection.send_result(msg["id"], result)
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/set_refill_settings",
+        vol.Required("vacuum_entity"): str,
+        vol.Optional("auto_refill"): vol.Any(None, bool),
+        vol.Optional("button_entity"): vol.Any(None, str),
+        vol.Optional("lid_entity"): vol.Any(None, str),
+    }
+)
+@websocket_api.async_response
+async def _ws_set_refill_settings(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Replace one vacuum's refill choices and bind them immediately."""
+    try:
+        settings = await _storage(hass).async_set_refill_settings(
+            msg["vacuum_entity"],
+            auto_refill=msg.get("auto_refill"),
+            button_entity=msg.get("button_entity") or None,
+            lid_entity=msg.get("lid_entity") or None,
+        )
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+    if ticker is not None:
+        # Rebinding subscribes to the new button/lid entities right away.
+        hass.async_create_task(ticker.run(None))
+    _notify_store_updated(hass, {"settings": settings})
+    connection.send_result(msg["id"], {"settings": settings})
+
+
 def async_register_commands(hass: HomeAssistant) -> None:
     """Register all websocket commands."""
     for handler in (
@@ -242,6 +276,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_remove_user_device,
         _ws_reprofile,
         _ws_reset_tank,
+        _ws_set_refill_settings,
         _ws_dismiss_intro,
         _ws_calibration_preview,
         _ws_save_measurement,

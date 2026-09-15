@@ -266,6 +266,8 @@ class LastRefillSensor(VacuumStoreSensor):
             "vacuum_entity": self.vacuum_entity,
             "last_reset_iso": tank_state.get("last_reset_iso"),
             "last_reset_ts": tank_state.get("last_reset_ts"),
+            "refill_source": tank_state.get("last_reset_source"),
+            "recent_refills": list(tank_state.get("refill_history") or [])[:5],
             **setup_guidance(None if refill_at else "awaiting_refill"),
         }
 
@@ -342,6 +344,10 @@ def _water_state_attributes(
         "calibration_factor": estimate.get("calibration_factor"),
         "calibration_samples": estimate.get("calibration_samples"),
         "water_empty_active": bool(tank_state.get("water_empty_active")),
+        "water_empty_acknowledged": bool(tank_state.get("water_empty_acknowledged")),
+        "calibration_pending": tank_state.get("calibration_pending_log_factor") is not None,
+        "intensity_unmapped": tank_state.get("intensity_unmapped"),
+        "bridged_gaps": tank_state.get("bridged_gaps") or 0,
         **setup_guidance(estimate.get("state_reason")),
         "water_anchor_source": tank_state.get("water_anchor_source"),
         "water_anchor_kind": tank_state.get("water_anchor_kind"),
