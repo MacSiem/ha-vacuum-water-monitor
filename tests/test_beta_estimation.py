@@ -197,3 +197,15 @@ class CalibratorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AuthoredContractTests(unittest.TestCase):
+    def test_explicit_anchor_contract_is_not_marked_inferred(self):
+        effective = apply_custom_calibration({"vacuum_entity": "vacuum.s8", "profile_key": "roborock_s8_maxv_ultra",
+                                              "water_anchor_reservoir": "dock_clean", "refill_on_clear": False}, {})
+        self.assertNotIn("water_anchor_reservoir_inferred", effective)
+        self.assertNotIn("refill_on_clear_inferred", effective)
+        self.assertFalse(effective["refill_on_clear"])
+        inferred = apply_custom_calibration({"vacuum_entity": "vacuum.s8", "profile_key": "roborock_s8_maxv_ultra"}, {})
+        self.assertTrue(inferred["water_anchor_reservoir_inferred"])
+        self.assertTrue(inferred["refill_on_clear_inferred"])

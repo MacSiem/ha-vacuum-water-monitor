@@ -280,6 +280,9 @@ def apply_custom_calibration(
     effective = dict(device) if isinstance(device, dict) else {}
     settings = settings if isinstance(settings, dict) else {}
     profile = resolve_profile(effective)
+    # An explicitly configured anchor/refill contract is authoritative and must
+    # not inherit the resolver's "inferred" scope restriction.
+    authored_contract = {key for key in ("water_anchor_reservoir", "refill_on_clear") if key in effective}
     for key in (
         "profile_key",
         "profile_source",
@@ -299,6 +302,10 @@ def apply_custom_calibration(
         "refill_on_clear_inferred",
     ):
         if profile.get(key) is not None:
+            if key == "water_anchor_reservoir_inferred" and "water_anchor_reservoir" in authored_contract:
+                continue
+            if key == "refill_on_clear_inferred" and "refill_on_clear" in authored_contract:
+                continue
             effective.setdefault(key, profile[key])
     if effective.get("tracked_reservoir") and effective.get("tracked_capacity_ml") is None and profile.get(
             "tracked_reservoir") == effective.get("tracked_reservoir"):

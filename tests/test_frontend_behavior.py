@@ -242,7 +242,7 @@ process.stdout.write(JSON.stringify({ dock, dockEmpty, dockMissing, guidance, aw
     def test_diagnostics_use_readable_rows_and_show_calibration(self) -> None:
         diagnostics = self.output["diagnostics"]
         self.assertIn('class="diagnostics-grid"', diagnostics)
-        self.assertIn("2 samples", diagnostics)
+        self.assertIn("2 tanks", diagnostics)
         self.assertIn("60%", diagnostics)
         self.assertIn("roomba", diagnostics)
         self.assertIn("Signal contract", diagnostics)

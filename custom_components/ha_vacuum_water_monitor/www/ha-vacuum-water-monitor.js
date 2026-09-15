@@ -167,7 +167,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -189,7 +191,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -211,7 +215,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -233,7 +239,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -255,7 +263,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -277,7 +287,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -299,7 +311,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -321,7 +335,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -343,7 +359,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -365,7 +383,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums"
@@ -387,7 +407,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://store.dreametech.com/robot-vacuum-and-mop-comparison/"
@@ -409,7 +431,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums",
@@ -432,7 +456,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.dreametech.com/products/dreamebot-l10s-ultra?gQT=1",
@@ -455,7 +481,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://store.dreametech.com/robot-vacuum-and-mop-comparison/"
@@ -477,7 +505,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.dreametech.com/products/l20-ultra?variant=41846212296909",
@@ -500,7 +530,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums"
@@ -522,7 +554,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.dreametech.com/products/l40ultra-robot-vacuum",
@@ -546,7 +580,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.dreametech.com/products/l40-ultra-gen2-robot-vacuum",
@@ -569,7 +605,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -591,7 +629,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -613,7 +653,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.dreametech.com/products/dreame-x30-ultra/",
@@ -636,7 +678,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -658,7 +702,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.dreametech.com/products/dreametech-x40-ultra-robot-vacuum",
@@ -682,7 +728,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
@@ -705,7 +753,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -727,7 +777,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.ecovacs.com/"
@@ -749,7 +801,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://site-static.ecovacs.com/upload/global/file/product_manual_edit/2024/05/20/094053_6297-DEEBOTT30PROOMNI-UserManual.pdf",
@@ -772,7 +826,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.ecovacs.com/"
@@ -794,7 +850,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.home-assistant.io/integrations/ecovacs"
@@ -816,7 +874,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.home-assistant.io/integrations/ecovacs"
@@ -838,7 +898,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://site-static.ecovacs.com/upload/de/file/support/2025/06/24/024923_5962%24DEEBOTX5HYBRIDInstructionManual.pdf"
@@ -860,7 +922,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://site-static.ecovacs.com/upload/file/support/2025/07/04/012124_8335%24X8ProOMNIwithautorefill-EMEA.pdf",
@@ -883,7 +947,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
@@ -905,7 +971,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
@@ -927,7 +995,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
@@ -950,7 +1020,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
@@ -973,7 +1045,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
@@ -995,7 +1069,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
@@ -1017,7 +1093,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
@@ -1039,7 +1117,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1061,7 +1141,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1083,7 +1165,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1105,7 +1189,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1127,7 +1213,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1149,7 +1237,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1171,7 +1261,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1193,7 +1285,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://global.irobot.com/sfsites/c/cms/delivery/media/MCLJTXTOSTTBDWDNWBJ3AEPORTHM",
@@ -1216,7 +1310,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://homesupport.irobot.com/articles/en_US/Knowledge/10009",
@@ -1240,7 +1336,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://answers.irobot.com/nl-NL/knowledge/163",
@@ -1263,7 +1361,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://answers.irobot.com/nl-NL/knowledge/163",
@@ -1286,7 +1386,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://answers.irobot.com/nl-NL/knowledge/163",
@@ -1309,7 +1411,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://answers.irobot.com/nl-NL/knowledge/163",
@@ -1332,7 +1436,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://answers.irobot.com/nl-NL/knowledge/163",
@@ -1355,7 +1461,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mova-tech.com/",
@@ -1378,7 +1486,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.mova.tech/products/mova-p10-pro-ultra-gen2-robot-vacuum"
@@ -1400,7 +1510,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.mova.tech/products/mova-p10-pro-ultra-robot-vacuum-live-only"
@@ -1422,7 +1534,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1444,7 +1558,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mova.tech/products/mova-v50-ultra-robot-vacuum"
@@ -1466,7 +1582,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1488,7 +1606,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mova.tech/products/mova-z50-ultra-robot-vacuum"
@@ -1510,7 +1630,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -1532,7 +1654,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://global.roborock.com/pages/roborock-q5-max-plus"
@@ -2643,7 +2767,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://global.roborock.com/pages/roborock-saros-z70"
@@ -2665,7 +2791,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://news.samsung.com/sg/samsung-sets-new-standards-for-cleanliness-and-hygiene-with-the-new-bespoke-jet-bot-combo"
@@ -2687,7 +2815,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.samsung.com/uk/vacuum-cleaners/robot/70w--jet-bot-combo--all-in-one-clean-station-steam-plus-with-steamwash-satin-greige-vr7md96514g-eu/"
@@ -2709,7 +2839,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2"
@@ -2731,7 +2863,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2"
@@ -2753,7 +2887,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.tapo.com/us/faq/290/"
@@ -2775,7 +2911,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.tapo.com/us/faq/290/"
@@ -2797,7 +2935,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.tapo.com/us/faq/290/"
@@ -2819,7 +2959,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.tapo.com/us/faq/290/"
@@ -2841,7 +2983,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.tapo.com/us/faq/290/"
@@ -2863,7 +3007,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.tapo.com/us/faq/290/"
@@ -2885,7 +3031,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.tapo.com/en/product/robot-vacuum/tapo-rv30-plus/",
@@ -2908,7 +3056,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.tapo.com/pl/faq/834/"
@@ -2930,7 +3080,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/",
@@ -2953,7 +3105,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -2975,7 +3129,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -2997,7 +3153,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -3019,7 +3177,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -3041,7 +3201,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50/"
@@ -3063,7 +3225,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
@@ -3086,7 +3250,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -3108,7 +3274,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-5/"
@@ -3130,7 +3298,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-5-pro/"
@@ -3152,7 +3322,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-s10/specs/"
@@ -3174,7 +3346,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-x10/"
@@ -3196,7 +3370,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20/",
@@ -3219,7 +3395,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20-plus/"
@@ -3241,7 +3419,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20-pro/"
@@ -3263,7 +3443,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -3285,7 +3467,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -3307,7 +3491,9 @@ const CALIBRATION_DATA = {
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
-    "water_per_m2": {},
+    "water_per_m2": {
+      "any mode": 7
+    },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://valetudo.cloud/pages/general/supported-robots/"
@@ -5140,7 +5326,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (calib) {
       const usage = calib.water_per_m2 || {};
       const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${k}:</b> ${v} ml/m²</span>`).join('');
-      const referenceUsage = usage.medium || Object.values(usage)[0] || null;
+      const referenceUsage = usage.standard || usage.medium || usage.default || Object.values(usage)[0] || null;
       const estAreaPerTank = referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / referenceUsage) : null;
       const facts = _calibrationFacts(calib);
       calibHtml = `
@@ -5148,9 +5334,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 Calibration: ${calib.label}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
             <div>🪣 Tank: <b>${calib.tank_ml ? `${Number(calib.tank_ml).toLocaleString('en-US')} ml` : 'unknown'}</b></div>
-            <div>🧹 Mop: <b>${calib.mop_type || "Unknown"}</b></div>
+            <div>🧹 Mop: <b>${_esc(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : 'unknown'))}</b></div>
             ${calib.avg_area_per_charge ? `<div>📏 Est. area/charge: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
-            ${estAreaPerTank ? `<div>📏 Est. area/tank: <b>~${estAreaPerTank} m²</b></div>` : ''}
+            ${estAreaPerTank ? `<div>📏 Est. floor area/tank: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(standard route, excl. washes)</span></div>` : ''}
           </div>
           ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
           ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>Estimated water usage per m²${calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : 'No estimate for this model yet; set the tank capacity to enable tracking.'}</div>`}
@@ -5234,7 +5420,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const accuracy = Number.isFinite(Number(data.uncertaintyPercent)) ? ` About \u00B1${Number(data.uncertaintyPercent)}%.` : '';
     if (samples > 0) {
       const factor = Number.isFinite(Number(data.calibrationFactor)) ? Number(data.calibrationFactor) : 1;
-      return box('Calibrated for this robot.', `Calibrated on ${samples} empty ${samples === 1 ? 'tank' : 'tanks'} (correction \u00D7${factor}).${accuracy} Every empty-tank signal refines it automatically.`, '#22c55e');
+      return box('Calibrated for this robot.', `Calibrated on ${samples} empty ${samples === 1 ? 'tank' : 'tanks'} (correction \u00D7${Number(factor.toFixed(2))}).${accuracy} Every empty-tank signal refines it automatically.`, '#22c55e');
     }
     if (data.estimateBasis) {
       const label = VWM_BASIS_LABEL[data.estimateBasis] || 'Labelled estimate';
@@ -5275,7 +5461,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
       }
     }
     const resolved = data.consumptionResolution;
-    if (resolved && typeof resolved === 'object') {
+    const labelledEstimate = Boolean(data.estimateBasis) && (!resolved || resolved.source === 'unknown');
+    if (labelledEstimate) {
+      rows.push(['Consumption method', 'Labelled estimate: cleaned area \u00D7 route/water level + dock washes']);
+      rows.push(['Evidence tier', Number(data.calibrationSamples) > 0 ? 'Derived estimate, calibrated on this robot' : 'Derived estimate']);
+    }
+    if (resolved && typeof resolved === 'object' && !labelledEstimate) {
       rows.push(['Consumption method', [resolved.source, resolved.method, resolved.reason].filter(Boolean).join(' / ')]);
       if (resolved.source === 'manufacturer_data') {
         rows.push(['Evidence tier', 'Manufacturer data — limited estimate; not used automatically']);
@@ -5314,7 +5505,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent))) rows.push(['Estimated accuracy', `\u00B1${Number(data.uncertaintyPercent)}%`]);
     const tanks = (data.calibrationHistory || []).slice(0, 5);
     if (tanks.length) rows.push(['Last empty tanks', tanks.map(t => `${Number.isFinite(Number(t.error_percent)) ? (Number(t.error_percent) > 0 ? '+' : '') + Number(t.error_percent) + '%' : '?'}${t.accepted ? '' : ' (skipped)'}`).join(', ')]);
-    if (Number(data.calibrationSamples) > 0) rows.push(['Device calibration', `${Number(data.calibrationSamples)} samples / factor ${Number(data.calibrationFactor || 1)}`]);
+    if (Number(data.calibrationSamples) > 0) rows.push(['Device calibration', `${Number(data.calibrationSamples)} ${Number(data.calibrationSamples) === 1 ? 'tank' : 'tanks'} / correction \u00D7${Number(Number(data.calibrationFactor || 1).toFixed(2))}`]);
     if (data.waterAnchorSource || data.waterAnchorKind || data.waterAnchorConfidence) rows.push(['Water anchor', [data.waterAnchorSource, data.waterAnchorKind, data.waterAnchorConfidence].filter(Boolean).join(' / ')]);
     if ((data.tankLevel != null || data.dockTankLevel != null) && !data.tankSemanticsConfirmed) {
       rows.push(['Tank percentages', `available (${[data.tankLevel, data.dockTankLevel].filter(value => value != null).join(' / ')}), not used automatically until the model confirms clean/dirty semantics`]);
@@ -6105,7 +6296,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return `<tr style="${rowBg}">
         <td style="${cellSt}">
           <div style="font-weight:600;font-size:12px">${m.label}${isActive ? ' <span style="color:#3b82f6;font-size:10px">\u2705 active</span>' : ''}</div>
-          <div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${m.mop_type || "Unknown"}</div>
+          <div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${_esc(m.mop_type || (m.mop_system && m.mop_system !== 'unknown' ? String(m.mop_system).replace(/_/g, ' ') : 'mop system unknown'))}</div>
         </td>
         <td style="${cellSt};${numSt}">${m.tank_ml ? `${Number(m.tank_ml).toLocaleString('en-US')} ml` : 'unknown'}</td>
         <td style="${cellSt}">${levelTags ? `${levelTags}${m.estimate_basis ? `<div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${_esc(VWM_BASIS_LABEL[m.estimate_basis] || '')}${m.uncertainty_percent ? ` \u00B7 \u00B1${m.uncertainty_percent}%` : ''}</div>` : ''}` : '<span style="color:var(--vwm-text-muted,#9ca3af)">no estimate</span>'}</td>
@@ -6152,7 +6343,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
                 <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--bento-text-secondary);margin-bottom:4px">${mode}</div>
                 <div style="font-size:16px;font-weight:700;color:var(--bento-text)">${val} <span style="font-size:10px;font-weight:400">ml/m\u00B2</span></div>
                 <div style="margin:4px 0;height:4px;background:rgba(59,130,246,0.12);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;border-radius:2px;background:${val <= 8 ? '#22c55e' : val <= 14 ? '#3b82f6' : val <= 18 ? '#f59e0b' : '#ef4444'}"></div></div>
-                <div style="font-size:10px;color:var(--bento-text-muted)">${area ? `\u2248 ${area} m\u00B2 / tank` : 'capacity unknown'}</div>
+                <div style="font-size:10px;color:var(--bento-text-muted)">${area ? `\u2248 ${area} m\u00B2 / tank (floor only)` : 'capacity unknown'}</div>
               </div>`;
             }).join('') : '<div style="font-size:11px;color:var(--bento-text-secondary)">No estimate for this model yet.</div>'}
           </div>
@@ -6259,7 +6450,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
             <input type="checkbox" id="vwm-share-optin" ${enabled ? 'checked' : ''}> I want to share anonymous calibration summaries
           </label>
           ${enabled ? `
-          <pre id="vwm-share-payload" style="margin:10px 0;padding:10px;max-height:220px;overflow:auto;background:var(--bento-card,#fff);border:1px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:11px;white-space:pre-wrap">${_esc(json)}</pre>
+          <pre id="vwm-share-payload" style="margin:10px 0;padding:10px;max-height:220px;overflow:auto;background:var(--bento-card,#fff);color:var(--bento-text,#1e293b);border:1px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:11px;white-space:pre-wrap">${_esc(json)}</pre>
           ${ready ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn-primary" id="vwm-share-copy" style="padding:6px 12px">Copy summary</button>
             <a class="btn-primary" id="vwm-share-submit" target="_blank" rel="noopener noreferrer" href="${_esc(this._calibrationShareUrl(payload))}" style="padding:6px 12px;text-decoration:none">Submit on GitHub</a>

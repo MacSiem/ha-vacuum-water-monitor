@@ -28,6 +28,15 @@ BASIS_LABELS = {
 }
 
 
+def _display_rates(rates):
+    """Show per-mode bands; a prior with only a default is shown as 'any mode'."""
+    rates = dict(rates or {})
+    bands = {k: v for k, v in rates.items() if k != "default"}
+    if bands:
+        return bands
+    return {"any mode": rates["default"]} if "default" in rates else {}
+
+
 def build_client_catalog():
     catalog = json.loads((PKG / "model_profiles.json").read_text())["profiles"]
     client = {}
@@ -49,7 +58,7 @@ def build_client_catalog():
             "estimate_basis": basis,
             "estimate_label": BASIS_LABELS.get(basis),
             "uncertainty_percent": resolved.get("uncertainty_percent"),
-            "water_per_m2": {k: v for k, v in (resolved.get("usage_ml_per_m2") or {}).items() if k != "default"} if basis else {},
+            "water_per_m2": _display_rates(resolved.get("usage_ml_per_m2")) if basis else {},
             "mop_wash_ml": resolved.get("wash_volume_ml") if basis else None,
             "source_urls": [s["url"] for s in record["provenance"]],
             "data_quality": record["verification_status"],
