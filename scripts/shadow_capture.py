@@ -29,8 +29,106 @@ def modules():
     import importlib
     return [importlib.import_module('vwmshadow.'+name) for name in ('discovery','sensor_calculations','tick')]
 
+def _ms(stamp):
+    return int(datetime.fromisoformat(str(stamp).replace('Z', '+00:00')).timestamp() * 1000)
+
+
+def _minute(ts):
+    return datetime.fromtimestamp(ts / 1000, tz=timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
+
+
+def _increments(series, start_ts, end_ts):
+    """Water counted by a reference counter inside a window; a drop is a reset."""
+    total, previous = 0.0, None
+    for ts, value in series:
+        if ts > end_ts:
+            break
+        if previous is not None and ts >= start_ts and value > previous:
+            total += value - previous
+        previous = value
+    return round(total, 1)
+
+
+def replay(events, devices, calc, tick, *, poll_seconds=0, compare=None, settings=None):
+    """Replay recorded states through the accounting engine.
+
+    ``events`` are (ts_ms, entity_id, state) sorted by time. ``poll_seconds=0``
+    ticks on every change like the event-driven integration; a positive value
+    ticks only on that period, like the heartbeat alone. ``compare`` is an
+    optional [(ts_ms, value)] series of a reference counter (for example the
+    DIY input_number) compared per session.
+    """
+    samples, tanks, reasons = {}, {}, Counter()
+    dock_transitions, levels, modes = [], Counter(), Counter()
+    hass = types.SimpleNamespace(states=types.SimpleNamespace(get=samples.get),
+                                 config=types.SimpleNamespace(units=types.SimpleNamespace(length_unit='km')))
+    effective = [calc.apply_custom_calibration(device, settings or {}) for device in devices]
+
+    def observe(entity, value, ts):
+        previous = samples.get(entity)
+        samples[entity] = value
+        for device in effective:
+            if entity == device.get('dock_error_sensor') and (previous is None or previous.state != value.state):
+                dock_transitions.append({'at': _minute(ts), 'from': previous.state if previous else None, 'to': value.state})
+
+    def run_tick(ts):
+        for device in effective:
+            key = device['vacuum_entity']
+            state, _ = tick.tick_device(hass, device, tanks.get(key, {'used_ml': 0, 'initialized': True}), now_ts=ts)
+            tanks[key] = state
+            reasons[str(state.get('last_accounting_reason') or 'none')] += 1
+            status = samples.get(device.get('status_sensor'))
+            if status is not None and status.state in tick._ACTIVE_CLEANING_STATES:
+                for counter, role in ((levels, 'mop_intensity_entity'), (modes, 'mop_mode_entity')):
+                    sample = samples.get(device.get(role))
+                    if sample is not None:
+                        counter[sample.state] += 1
+
+    if poll_seconds and events:
+        index, ts, last = 0, events[0][0], events[-1][0]
+        while ts <= last + poll_seconds * 1000:
+            while index < len(events) and events[index][0] <= ts:
+                observe(events[index][1], events[index][2], events[index][0])
+                index += 1
+            run_tick(ts)
+            ts += poll_seconds * 1000
+    else:
+        for ts, entity, value in events:
+            observe(entity, value, ts)
+            run_tick(ts)
+
+    result = {'mode': f'poll_{poll_seconds}s' if poll_seconds else 'event_driven', 'vacuums': []}
+    for device in effective:
+        state = tanks.get(device['vacuum_entity'], {})
+        sessions = []
+        for record in reversed(state.get('automatic_sessions') or []):
+            row = {'start': _minute(record['started_ts']), 'minutes': record.get('duration'),
+                   'area_m2': record.get('area'), 'vwm_ml': record.get('water'), 'valid': record.get('accounting_valid')}
+            if compare:
+                row['reference_ml'] = _increments(compare, record['started_ts'], record['ts'])
+                if row['vwm_ml'] is not None and row['reference_ml']:
+                    row['difference_percent'] = round((row['vwm_ml'] - row['reference_ml']) / row['reference_ml'] * 100, 1)
+            sessions.append(row)
+        result['vacuums'].append({
+            'profile': device.get('profile_key'), 'estimate_basis': device.get('estimate_basis'),
+            'final_used_ml': state.get('used_ml'), 'accounting_incomplete': bool(state.get('accounting_incomplete')),
+            'sessions': sessions,
+            'empty_tanks': [{**{k: v for k, v in t.items() if k != 'ts'}, 'at': _minute(t['ts'])} for t in reversed(state.get('calibration_history') or [])],
+            'refills': [{'at': _minute(r['ts']), 'source': r.get('source'), 'used_before_ml': r.get('used_before_ml')} for r in reversed(state.get('refill_history') or [])],
+            'calibration_factor': state.get('calibration_factor'), 'calibration_samples': state.get('calibration_samples'),
+            'bridged_gaps': state.get('bridged_gaps') or 0,
+        })
+    result.update(dock_error_transitions=dock_transitions, water_levels_while_cleaning=dict(levels),
+                  mop_modes_while_cleaning=dict(modes), reason_counts=dict(reasons))
+    return result
+
+
 def main():
-    ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('--secrets-file',required=True);ap.add_argument('--days',type=int,default=7);args=ap.parse_args()
+    ap=argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--secrets-file',required=True);ap.add_argument('--days',type=int,default=7)
+    ap.add_argument('--poll-seconds',type=int,default=0,help='0 = tick on every change (the integration since 5.7.0-beta.2); 60 = heartbeat only')
+    ap.add_argument('--compare-entity',help='numeric reference counter to compare per session, e.g. the DIY input_number (never printed)')
+    args=ap.parse_args()
     env=load_env(args.secrets_file);base=env['HA_URL'].rstrip('/');token=env['HA_TOKEN']
     def get(path):
         if not path.startswith(('/api/states','/api/history/period/')):raise ValueError('read endpoint not allowed')
@@ -65,24 +163,24 @@ def main():
     discovery,calc,tick=modules();descriptors=discovery.discover_descriptors(clean_entities,clean_devices,clean_states)
     effective=calc.build_vacuum_devices({}, {},descriptors)
     start=(datetime.now(timezone.utc)-timedelta(days=max(1,min(args.days,30)))).isoformat()
-    history=get('/api/history/period/'+start+'?'+urlencode({'filter_entity_id':','.join(ids),'significant_changes_only':'false'}))
-    events=[]
+    wanted=list(ids)+([args.compare_entity] if args.compare_entity else [])
+    history=get('/api/history/period/'+start+'?'+urlencode({'filter_entity_id':','.join(wanted),'significant_changes_only':'false'}))
+    events=[];compare=[]
     for series in history:
         for sample in series:
-            if sample.get('entity_id') in ids and sample.get('last_updated'):
-                events.append((sample['last_updated'],ids[sample['entity_id']],sanitized(sample)))
-    events.sort(key=lambda row:row[0]);samples={};tanks={};reasons=Counter();methods=Counter();active=0
-    hass=types.SimpleNamespace(states=types.SimpleNamespace(get=samples.get),config=types.SimpleNamespace(units=types.SimpleNamespace(length_unit='km')))
-    for stamp,entity,value in events:
-        samples[entity]=value
-        for device in effective:
-            device=calc.apply_custom_calibration(device,{})
-            key=device['vacuum_entity'];state=tanks.get(key,{'used_ml':0})
-            state,_=tick.tick_device(hass,device,state,now_ts=int(datetime.fromisoformat(stamp.replace('Z','+00:00')).timestamp()*1000));tanks[key]=state
-            reasons[str(state.get('last_accounting_reason') or 'none')]+=1
-            methods[str(state.get('last_accounting_source') or 'unknown')]+=1
-        active+=value.state in {'cleaning','mopping','segment_mopping','washing_the_mop'}
-    print(json.dumps({'read_only':True,'raw_identifiers_retained':False,'stored_calibration_audit':calibration_audit,'days':args.days,'vacuum_count':len(vacuums),'linked_entities':len(relevant),'history_samples':len(events),'active_samples':active,'adapters':sorted({d.get('integration_adapter','unknown') for d in effective}),'reason_counts':dict(reasons),'method_counts':dict(methods),'predicted_ml':None,'observed_ml':None,'comparison':'blocked_measured_same_reservoir_volume_and_calibration_required'},indent=2))
+            entity=sample.get('entity_id')
+            if not sample.get('last_updated'):
+                continue
+            if entity in ids:
+                events.append((_ms(sample['last_updated']),ids[entity],sanitized(sample)))
+            elif args.compare_entity and entity==args.compare_entity:
+                try:compare.append((_ms(sample['last_updated']),float(sample['state'])))
+                except (TypeError,ValueError):pass
+    events.sort(key=lambda row:row[0]);compare.sort()
+    report=replay(events,effective,calc,tick,poll_seconds=max(0,args.poll_seconds),compare=compare or None)
+    print(json.dumps({'read_only':True,'raw_identifiers_retained':False,'stored_calibration_audit':calibration_audit,'days':args.days,
+                      'vacuum_count':len(vacuums),'linked_entities':len(relevant),'history_samples':len(events),
+                      'adapters':sorted({d.get('integration_adapter','unknown') for d in effective}),**report},indent=2))
 
 if __name__=='__main__':
     try:main()
