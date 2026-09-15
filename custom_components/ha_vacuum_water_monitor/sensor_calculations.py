@@ -356,7 +356,17 @@ def apply_custom_calibration(
     custom_capacity = _positive_optional(
         _custom_for_capacity.get("tracked_capacity_ml", _custom_for_capacity.get("tank_ml"))) if _custom_for_capacity else None
     profile_capacity_value = _positive_optional(profile.get("tracked_capacity_ml"))
-    if any(value is not None and value != profile_capacity_value for value in (configured_capacity, custom_capacity)):
+    # The card's capacity field is labelled with the tracked reservoir and saves
+    # it alongside the value, so a corrected dock-tank size keeps its dock anchor.
+    custom_reservoir = _custom_for_capacity.get("tracked_reservoir") if _custom_for_capacity else None
+    custom_capacity_confirmed = (
+        custom_capacity is not None and custom_reservoir is not None
+        and custom_reservoir == profile.get("tracked_reservoir") == effective.get("tracked_reservoir")
+    )
+    mismatched = [value for value in (configured_capacity, custom_capacity)
+                  if value is not None and value != profile_capacity_value
+                  and not (value == custom_capacity and custom_capacity_confirmed)]
+    if mismatched:
         # A capacity that differs from the model's is not proven to be the dock
         # tank, so the dock-scoped anchor and automatic refill are not inferred.
         for base, flag in (("water_anchor_reservoir", "water_anchor_reservoir_inferred"),
@@ -367,6 +377,7 @@ def apply_custom_calibration(
 
     effective.setdefault("mop_evidence_required", True)
     _apply_signal_overrides(effective, settings)
+    _apply_refill_settings(effective, settings)
 
     modern = settings.get("consumption_calibrations") or {}
     if isinstance(modern, dict) and isinstance(modern.get(effective.get("vacuum_entity")), (dict, list)):
@@ -634,6 +645,38 @@ def _matching_custom_calibration(
         if isinstance(value, dict):
             return value
     return None
+
+
+def refill_choices(settings: dict[str, Any] | None, vacuum_entity: str | None) -> dict[str, Any]:
+    """Return one vacuum's refill choices, falling back to the pre-5.7 card config."""
+    settings = settings if isinstance(settings, dict) else {}
+    stored = settings.get("refill_settings")
+    entry = stored.get(vacuum_entity) if isinstance(stored, dict) and vacuum_entity else None
+    if isinstance(entry, dict):
+        return dict(entry)
+    legacy = settings.get("refill_config")
+    short_id = str(vacuum_entity or "").replace("vacuum.", "", 1)
+    legacy_entry = legacy.get(short_id) if isinstance(legacy, dict) and short_id else None
+    choices: dict[str, Any] = {}
+    if isinstance(legacy_entry, dict):
+        if isinstance(legacy_entry.get("buttonEntity"), str):
+            choices["button_entity"] = legacy_entry["buttonEntity"]
+        if isinstance(legacy_entry.get("sensorEntity"), str):
+            choices["lid_entity"] = legacy_entry["sensorEntity"]
+    return choices
+
+
+def _apply_refill_settings(effective: dict[str, Any], settings: dict[str, Any]) -> None:
+    """Bind the user's refill choices: automatic dock refill, button, tank lid."""
+    choices = refill_choices(settings, effective.get("vacuum_entity"))
+    if isinstance(choices.get("auto_refill"), bool):
+        effective["refill_on_dock_clear"] = choices["auto_refill"]
+    button = choices.get("button_entity")
+    if isinstance(button, str) and button.startswith(("input_button.", "button.")):
+        effective["refill_button_entity"] = button
+    lid = choices.get("lid_entity")
+    if isinstance(lid, str) and lid.startswith("binary_sensor."):
+        effective["reset_door_sensor"] = lid
 
 
 def _merged_custom_calibration(device: dict[str, Any], settings: dict[str, Any]) -> dict[str, Any]:

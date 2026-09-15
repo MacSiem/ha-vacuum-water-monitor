@@ -187,13 +187,22 @@ class CalibratorTests(unittest.TestCase):
         self.assertEqual(uncalibrated["uncertainty_percent"], 50)
         self.assertLess(calibrated["uncertainty_percent"], 10)
 
-    def test_inferred_dock_contract_does_not_trust_robot_error_or_lid(self):
-        device = {**a245_device(), "water_error_sensor": "sensor.robot_error", "reset_door_sensor": "binary_sensor.lid"}
-        h = _Hass({"vacuum.chappie": _State("docked"), "sensor.robot_error": _State("water_tank_empty"),
-                   "binary_sensor.lid": _State("off")})
+    def test_inferred_dock_contract_does_not_trust_robot_error(self):
+        device = {**a245_device(), "water_error_sensor": "sensor.robot_error"}
+        h = _Hass({"vacuum.chappie": _State("docked"), "sensor.robot_error": _State("water_tank_empty")})
+        state, _ = tick.tick_device(h, device, {"initialized": True, "used_ml": 1000, "last_reset_ts": 0},
+                                    now_ts=40_000_000)
+        h = _Hass({"vacuum.chappie": _State("docked"), "sensor.robot_error": _State("ok")})
+        state, _ = tick.tick_device(h, device, state, now_ts=40_120_000)
+        self.assertEqual(state["used_ml"], 1000)
+
+    def test_a_lid_sensor_the_user_bound_is_a_refill_even_with_an_inferred_dock_contract(self):
+        device = {**a245_device(), "reset_door_sensor": "binary_sensor.lid"}
+        h = _Hass({"vacuum.chappie": _State("docked"), "binary_sensor.lid": _State("off")})
         state, _ = tick.tick_device(h, device, {"initialized": True, "used_ml": 1000, "last_door": "on",
                                                 "last_reset_ts": 0}, now_ts=40_000_000)
-        self.assertEqual(state["used_ml"], 1000)
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(state["last_reset_source"], "lid")
 
 
 

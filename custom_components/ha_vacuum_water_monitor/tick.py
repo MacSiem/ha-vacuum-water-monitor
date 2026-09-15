@@ -19,6 +19,7 @@ from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compat
 from . import profiles as consumption_profiles
 from . import accounting_v2
 from . import estimation
+from .refill import apply_refill
 
 MOP_WASH_STATES = {
     "washing",
@@ -217,6 +218,17 @@ def _tick_device_pass(
     """Translate one v4 `_tickWaterState` pass into Python."""
     state = dict(state)
     state[_PASS_REASONS_KEY] = []
+    if now_ts is None:
+        now_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
+    # A refill the user reports through a bound button or tank-lid sensor is
+    # independent of the robot being reachable or the dock's own signals.
+    user_refill_dirty = False
+    user_refill_source = _observe_user_refill_signals(hass, device, state)
+    if user_refill_source is not None:
+        user_refill_dirty = True
+        if (now_ts - int(state.get("last_reset_ts") or 0)) / 1000 > RESET_COOLDOWN_SEC:
+            apply_refill(state, now_ts, user_refill_source, rebaseline=False)
+            _record_accounting(state, "refill", None, None, f"refill_{user_refill_source}")
     vacuum_entity = device.get("vacuum_entity")
     vac = hass.states.get(vacuum_entity) if vacuum_entity else None
     event_sensor = device.get("accounting_event_sensor")
@@ -231,7 +243,7 @@ def _tick_device_pass(
             contracts=accounting_v2.SOURCE_CONTRACTS,
             source_bindings=accounting_v2.SOURCE_BINDINGS,
             source_entity=event_sensor,
-            now_ms=now_ts if now_ts is not None else int(datetime.now(timezone.utc).timestamp() * 1000))
+            now_ms=now_ts)
     if vac is None or _normalized_signal(vac.state) in {None, "unknown", "unavailable"}:
         if state.get("session_start_ts") or state.get("verified_wash_active") or state.get("wash_sequence_active"):
             state["accounting_incomplete"] = True
@@ -246,7 +258,7 @@ def _tick_device_pass(
         _record_accounting(state, "unknown", None, None, "vacuum_unavailable")
         return state, True
 
-    dirty = bool(event_sensor or state.get("accounting_v2"))
+    dirty = bool(event_sensor or state.get("accounting_v2")) or user_refill_dirty
     levels = _read_reservoir_levels(hass, device)
     if state.get("reservoir_levels") != levels:
         state["reservoir_levels"] = levels
@@ -280,11 +292,6 @@ def _tick_device_pass(
     )
     curr_dock_status = _normalized_signal(
         _state_value(hass, device.get("dock_status_sensor"))
-    )
-    curr_door = (
-        _state_value(hass, device.get("reset_door_sensor"))
-        if device.get("reset_door_sensor")
-        else None
     )
 
     vac_state = _normalized_signal(vac.state)
@@ -379,9 +386,6 @@ def _tick_device_pass(
     if int(state.get("calibration_samples") or 0) > 0:
         evidence = "device_calibrated"
         time_evidence = "device_calibrated"
-
-    if now_ts is None:
-        now_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
 
     # Rates calibrated for one setting must not charge the interval spanning
     # a change to another mode/route/wash configuration. Only observed canonical
@@ -778,8 +782,6 @@ def _tick_device_pass(
     )
     do_reset = False
     exact_empty_reset = False
-    if curr_door and state.get("last_door") == "on" and curr_door == "off":
-        do_reset = True
     if (
         state.get("last_dock_err") == "water_empty"
         and curr_dock_err in _DOCK_OK_STATES
@@ -980,27 +982,37 @@ def _tick_device_pass(
             do_reset = True
             exact_empty_reset = exact_empty_reset or state.get("water_anchor_kind") == "empty"
 
-    # Clearing an empty/shortage alarm or closing a lid does not prove a full
-    # refill. Automatic full reset requires an explicitly configured contract.
-    refill_allowed = bool(device.get("refill_on_clear", False))
-    if refill_allowed and device.get("refill_on_clear_inferred") and not exact_empty_reset:
-        refill_allowed = False
-    if do_reset and not refill_allowed:
+    # Clearing an empty/shortage alarm does not by itself prove a full refill.
+    # An exact empty that clears is a refill when the user keeps automatic
+    # refill on (default for an inferred dock contract); a threshold alarm needs
+    # an explicitly authored contract. A refill the user already reported while
+    # the error was showing is not repeated when the error clears.
+    if do_reset and state.get("water_empty_acknowledged"):
         do_reset = False
-        dirty |= _record_accounting(state, "refill", None, evidence, "refill_volume_unmeasured")
+        state["water_empty_active"] = False
+        state["water_empty_acknowledged"] = False
+        dirty = True
+        dirty |= _record_accounting(state, "refill", None, evidence, "refill_already_recorded")
+    elif do_reset:
+        auto_preference = device.get("refill_on_dock_clear")
+        contract = bool(device.get("refill_on_clear", False))
+        if auto_preference is False:
+            refill_allowed = False
+        elif exact_empty_reset:
+            refill_allowed = True if auto_preference is True else contract
+        else:
+            refill_allowed = contract and not device.get("refill_on_clear_inferred")
+        if not refill_allowed:
+            do_reset = False
+            if state.get("water_empty_active"):
+                # The empty condition ended; the tank stays at its anchor until
+                # the user reports the refill.
+                state["water_empty_active"] = False
+                dirty = True
+            dirty |= _record_accounting(state, "refill", None, evidence, "refill_volume_unmeasured")
 
     if do_reset and cooldown_ok:
-        state["accounting_incomplete"] = False
-        state["session_accounting_valid"] = False
-        state["used_ml"] = 0
-        state["initialized"] = True
-        state["last_reset_iso"] = datetime.fromtimestamp(
-            now_ts / 1000, tz=timezone.utc
-        ).isoformat()
-        state["last_reset_ts"] = now_ts
-        state["water_empty_active"] = False
-        state["water_anchor_candidate_source"] = None
-        state["water_anchor_candidate_since_ts"] = 0
+        apply_refill(state, now_ts, "dock_cleared", rebaseline=False)
         dirty = True
         dirty |= _record_accounting(state, "refill", None, evidence, "refill_detected")
 
@@ -1026,8 +1038,6 @@ def _tick_device_pass(
     if state.get("last_dock_status") != curr_dock_status:
         state["last_dock_status"] = curr_dock_status
         dirty = True
-    if state.get("last_door") != curr_door:
-        state["last_door"] = curr_door
         dirty = True
     if state.get("last_tick_ts") != now_ts:
         state["last_tick_ts"] = now_ts
@@ -1541,6 +1551,35 @@ def _water_anchor_states(
         result["dock_error"] = (dock_error_state, dock_error_kind)
 
     return result
+
+
+def _observe_user_refill_signals(
+    hass: HomeAssistant, device: dict[str, Any], state: dict[str, Any]
+) -> str | None:
+    """Return ``button`` or ``lid`` when the user reported a refill this pass.
+
+    ``input_button``/``button`` states are the last press time: any change from
+    a previously observed value is a press. A lid sensor counts when it closes
+    (``on`` → ``off``). Unavailable readings keep the last observed value so a
+    reconnect never looks like a press or a closing lid.
+    """
+    source = None
+    button = device.get("refill_button_entity")
+    if isinstance(button, str) and button:
+        raw = _state_value(hass, button)
+        if raw is not None and raw != "unavailable":
+            previous = state.get("last_refill_button_state")
+            if previous is not None and raw != previous and raw != "unknown":
+                source = "button"
+            state["last_refill_button_state"] = raw
+    lid = device.get("reset_door_sensor")
+    if isinstance(lid, str) and lid:
+        current = _normalized_signal(_state_value(hass, lid))
+        if current in {"on", "off"}:
+            if state.get("last_door") == "on" and current == "off":
+                source = source or "lid"
+            state["last_door"] = current
+    return source
 
 
 def _device_capacity_ml(device: dict[str, Any]) -> float | None:

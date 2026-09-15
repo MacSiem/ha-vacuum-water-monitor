@@ -106,7 +106,8 @@ class RuntimePathTests(unittest.TestCase):
         self.assertNotIn("refill_on_clear_inferred", device)
         state = run(device, {**BASE, "used_ml": 3000},
                     [dict(extra={"binary_sensor.lid": _S("on")}), dict(extra={"binary_sensor.lid": _S("off")})])
-        self.assertEqual(state["last_accounting_reason"], "refill_detected")
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(state["last_reset_source"], "lid")
 
     def test_automatic_refill_clears_an_incomplete_balance_and_calibration_resumes(self):
         device = effective({}, descriptor())
