@@ -6555,7 +6555,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div style="${cardSt}">
         <div style="${labelSt}">⑤ Automation, script or NFC tag</div>
         <div style="${descSt};margin-bottom:6px">Call this action from anything in Home Assistant:</div>
-        <pre style="margin:0;padding:8px 10px;border-radius:8px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere">action: ha_vacuum_water_monitor.mark_refilled
+        <pre style="margin:0;padding:8px 10px;border-radius:8px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));color:var(--vwm-text,#1e293b);font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;user-select:all">action: ha_vacuum_water_monitor.mark_refilled
 target:
   entity_id: ${_esc(vacuum)}</pre>
       </div>
