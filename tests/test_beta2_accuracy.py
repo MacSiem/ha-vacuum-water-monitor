@@ -13,7 +13,7 @@ def floor_ml_before(status, vac):
     state = run(S8, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0"),
                                  dict(status="cleaning", vac="cleaning", area="5")])
     before = state["used_ml"]
-    state = run(S8, state, [dict(status=status, vac=vac, area="7")], ts=10_500_000)
+    state = run(S8, state, [dict(status=status, vac=vac, area="7")], ts=10_120_000)
     return state["used_ml"] - before, state
 
 

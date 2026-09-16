@@ -107,9 +107,10 @@ What happens under the hood:
 1. **Auto-discovery.** The integration finds every `vacuum.*` entity in your Home Assistant
    and creates a device with water sensors for each robot. No YAML, no entity picking.
 2. **Water accounting runs server-side when a bound entity changes** (status, cleaned area, dock
-   error, mop settings, refill button or lid), with a 60-second heartbeat as a fallback. A short
-   gap in the robot's signals with the same mop settings is bridged from the cumulative area
-   counter. It prefers cleaned-area deltas,
+   error, mop settings, refill button or lid), with a 60-second heartbeat as a fallback. A gap of
+   up to 10 minutes in the robot's signals is bridged from the cumulative area counter when the
+   mop settings are unchanged and the cleaned area kept pace with the robot. It prefers
+   cleaned-area deltas,
    then a separately calibrated duration/active-time interval. A configured same-reservoir volume sensor takes precedence over both. Mode, intensity, mop/tank
    attachment and dock-wash signals are applied only when their integration exposes a
    canonical machine key. There is no friendly-name or translated-label guessing.

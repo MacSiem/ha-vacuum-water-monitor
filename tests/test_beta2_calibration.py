@@ -83,11 +83,23 @@ class GapBridgingTests(unittest.TestCase):
         self.assertFalse(state.get("accounting_incomplete"))
         self.assertEqual(state["used_ml"], reference["used_ml"])
 
-    def test_home_assistant_restart_is_bridged(self):
-        reference = self.reference()
-        state = run(S8, dict(BASE), self.START + cleaning((4, 8, 12)) + [dict(status="cleaning", vac="cleaning", area="16", _gap=240_000)])
+    def test_home_assistant_restart_is_bridged_when_cleaning_kept_pace(self):
+        reference = run(S8, dict(BASE), self.START + cleaning((4, 8, 12, 16, 20, 24, 28)))
+        state = run(S8, dict(BASE), self.START + cleaning((4, 8, 12)) + [dict(status="cleaning", vac="cleaning", area="28", _gap=240_000)])
         self.assertFalse(state.get("accounting_incomplete"))
         self.assertEqual(state["used_ml"], reference["used_ml"])
+
+    def test_gap_that_could_hide_a_wash_is_not_bridged(self):
+        # 4 minutes with only 4 m² while the robot cleans 4 m²/min: time went somewhere else.
+        state = run(S8, dict(BASE), self.START + cleaning((4, 8, 12)) + [dict(status="cleaning", vac="cleaning", area="16", _gap=240_000)])
+        self.assertTrue(state["accounting_incomplete"])
+
+    def test_long_home_assistant_downtime_with_the_robot_unavailable_at_startup_is_not_bridged(self):
+        # Review 2026-09-16: the gap must start at the last observation, not at the first unavailable tick.
+        state = run(S8, dict(BASE), self.START + cleaning((4, 8, 10))
+                    + [dict(vac="unavailable", status="unavailable", _gap=1_800_000),
+                       dict(status="charging", vac="docked", area="30")])
+        self.assertTrue(state["accounting_incomplete"])
 
     def test_long_gap_still_marks_the_tank_incomplete(self):
         state = run(S8, dict(BASE), self.START + cleaning((4, 8)) + [dict(vac="unavailable", status="unavailable")]

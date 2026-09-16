@@ -69,6 +69,18 @@ RESET_COOLDOWN_SEC = 60
 # continuous cumulative area counter, is bridged instead of invalidating the tank.
 BRIDGE_GAP_MAX_SECONDS = 600
 AREA_COUNTER_JITTER_M2 = 0.05
+# A gap longer than a mop wash sequence is bridged only when the cleaned area
+# kept pace with the robot's recent cleaning rate, so a hidden wash (no area,
+# 150 ml of water) is not silently skipped.
+BRIDGE_UNCHECKED_SECONDS = 90
+BRIDGE_MIN_AREA_PACE = 0.7
+AREA_RATE_SMOOTHING = 0.3
+# Two refill reports this close together describe one physical refill (a lid
+# closed after the dock already cleared, a button pressed as confirmation).
+USER_REFILL_DEDUPE_SECONDS = 600
+# An empty error first seen this soon after a refill the user reported is the
+# error that preceded that refill, not a tank emptied in minutes.
+REFILL_ACK_WINDOW_SECONDS = 900
 # A dock that reports empty during a wash could not finish it. Half of that
 # wash is the expected water it still drew.
 FAILED_WASH_WINDOW_SECONDS = 300
@@ -207,8 +219,10 @@ async def async_tick_water_state(
 
     if not changed:
         return changed
+    # A refill recorded by this pass (button, lid, dock) is written at once.
+    refilled = any(state.get("last_reset_ts") != expected_reset_ts.get(vacuum) for vacuum, state in changed.items())
     written = await storage.async_set_tank_states(
-        changed, expected_reset_ts=expected_reset_ts, delay_seconds=delay_save_seconds)
+        changed, expected_reset_ts=expected_reset_ts, delay_seconds=None if refilled else delay_save_seconds)
     return written if isinstance(written, dict) else changed
 
 
@@ -247,9 +261,11 @@ def _tick_device_pass(
     user_refill_source = _observe_user_refill_signals(hass, device, state)
     if user_refill_source is not None:
         user_refill_dirty = True
-        if (now_ts - int(state.get("last_reset_ts") or 0)) / 1000 > RESET_COOLDOWN_SEC:
+        if (now_ts - int(state.get("last_reset_ts") or 0)) / 1000 > USER_REFILL_DEDUPE_SECONDS:
             apply_refill(state, now_ts, user_refill_source, rebaseline=False)
             _record_accounting(state, "refill", None, None, f"refill_{user_refill_source}")
+        else:
+            _record_accounting(state, "refill", None, None, "refill_already_recorded")
     vacuum_entity = device.get("vacuum_entity")
     vac = hass.states.get(vacuum_entity) if vacuum_entity else None
     event_sensor = device.get("accounting_event_sensor")
@@ -266,7 +282,7 @@ def _tick_device_pass(
             source_entity=event_sensor,
             now_ms=now_ts)
     if vac is None or _normalized_signal(vac.state) in {None, "unknown", "unavailable"}:
-        _open_observation_gap(state, now_ts)
+        _open_observation_gap(state, int(_positive_number(state.get("last_tick_ts")) or now_ts))
         # The last area is kept so that a change observed after the gap proves
         # unobserved exposure (or bridges it) instead of silently starting a new baseline.
         state.update(last_duration_seconds=None, last_tick_ts=0,
@@ -292,7 +308,7 @@ def _tick_device_pass(
     curr_status = _normalized_signal(curr_status_raw)
 
     if status_sensor and _is_transient_status(curr_status):
-        _open_observation_gap(state, now_ts)
+        _open_observation_gap(state, int(_positive_number(state.get("last_tick_ts")) or now_ts))
         state.update(last_duration_seconds=None, area_gap=True,
                      duration_gap=True, last_tick_ts=0, last_water_volume_ml=None, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
@@ -436,7 +452,12 @@ def _tick_device_pass(
         ceiling_m2 = _positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2
         continuous = (curr_area is not None and last_area_seen is not None
                       and -AREA_COUNTER_JITTER_M2 <= curr_area - last_area_seen <= ceiling_m2)
-        if (gap_exposure and continuous and now_ts - gap_started <= BRIDGE_GAP_MAX_SECONDS * 1000
+        gap_seconds = (now_ts - gap_started) / 1000
+        area_rate = _positive_number(state.get("area_rate_m2_per_s"))
+        kept_pace = gap_seconds <= BRIDGE_UNCHECKED_SECONDS or (
+            continuous and area_rate is not None
+            and curr_area - last_area_seen >= BRIDGE_MIN_AREA_PACE * area_rate * gap_seconds)
+        if (gap_exposure and continuous and kept_pace and gap_seconds <= BRIDGE_GAP_MAX_SECONDS
                 and state.get("last_rate_settings") == rate_settings):
             bridge_area = True
             state["bridged_gaps"] = int(state.get("bridged_gaps") or 0) + 1
@@ -741,6 +762,16 @@ def _tick_device_pass(
             # at zero when a new session starts: the area since restart is new.
             area_baseline = 0.0
             delta = curr_area
+        last_area_ts = _positive_number(state.get("last_area_ts"))
+        if (delta >= AREA_MIN_DELTA and not bridge_area and last_area_ts is not None
+                and _is_cleaning(None, state.get("last_status"), None)
+                and _is_cleaning(vac_state, curr_status, cleaning_active)):
+            interval_seconds = (now_ts - last_area_ts) / 1000
+            if 5 <= interval_seconds <= MAX_ACTIVE_INTERVAL_SECONDS:
+                sample_rate = delta / interval_seconds
+                previous_rate = _positive_number(state.get("area_rate_m2_per_s"))
+                state["area_rate_m2_per_s"] = round(sample_rate if previous_rate is None else
+                    (1 - AREA_RATE_SMOOTHING) * previous_rate + AREA_RATE_SMOOTHING * sample_rate, 6)
         if delta < 0:
             state["session_exposure_complete"] = False
             state["session_accounting_valid"] = False
@@ -948,9 +979,26 @@ def _tick_device_pass(
             active_anchor = None
             water_empty_now = False
 
+    reset_ts = int(state.get("last_reset_ts") or 0)
+    late_error_after_user_refill = (
+        water_empty_now and not water_empty_before
+        and state.get("last_reset_source") in {"card", "service", "button", "lid"}
+        and 0 <= now_ts - reset_ts <= REFILL_ACK_WINDOW_SECONDS * 1000
+        and _number(state.get("used_ml"), 0) < (_device_capacity_ml(device) or 0) * estimation.MIN_CALIBRATION_CYCLE_FRACTION
+    )
+    if late_error_after_user_refill:
+        # The dock reported the empty tank the user has just refilled.
+        state["water_empty_active"] = True
+        state["water_empty_acknowledged"] = True
+        state["water_anchor_source"], state["water_anchor_kind"] = active_anchor
+        water_empty_before = True
+        dirty = True
+        dirty |= _record_accounting(state, "low_water", None, evidence, "empty_error_already_refilled")
     if water_empty_now and not water_empty_before:
         assert active_anchor is not None
         anchor_source, anchor_kind = active_anchor
+        refilled_since_last_anchor = int(state.get("last_empty_anchor_ts") or 0) <= reset_ts
+        state["last_empty_anchor_ts"] = now_ts
         state["water_empty_active"] = True
         state["water_anchor_source"] = anchor_source
         state["water_anchor_kind"] = anchor_kind
@@ -989,7 +1037,15 @@ def _tick_device_pass(
                 and predicted_used >= capacity * max(
                     MIN_CALIBRATION_USAGE_FRACTION, estimation.MIN_CALIBRATION_CYCLE_FRACTION)
             )
-            if cycle_long_enough and state.get("accounting_incomplete"):
+            if cycle_long_enough and not refilled_since_last_anchor:
+                # The dock reported empty again without a refill in between (an
+                # error that flickered while automatic refill is off): one tank.
+                _append_calibration_history(state, now_ts, predicted_used, calibration_target,
+                                            calibration_factor, False, "calibration_sample_no_refill_since_empty", wash_refund)
+                state["used_ml"] = round(calibration_target, 2)
+                dirty |= _record_accounting(state, "low_water", None, evidence,
+                                            "calibration_sample_no_refill_since_empty")
+            elif cycle_long_enough and state.get("accounting_incomplete"):
                 # Water was dispensed while a signal was missing: the tank's
                 # prediction is not a fair sample, but the anchor still applies.
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
@@ -1100,6 +1156,7 @@ def _tick_device_pass(
             next_area = area_baseline if area_baseline is not None else last_area
         if state.get("last_area") != next_area:
             state["last_area"] = next_area
+            state["last_area_ts"] = now_ts
             dirty = True
     if (
         curr_duration_seconds is not None
@@ -1644,10 +1701,10 @@ def _observe_user_refill_signals(
 ) -> str | None:
     """Return ``button`` or ``lid`` when the user reported a refill this pass.
 
-    ``input_button``/``button`` states are the last press time: any change from
-    a previously observed value is a press. A lid sensor counts when it closes
-    (``on`` → ``off``). Unavailable readings keep the last observed value so a
-    reconnect never looks like a press or a closing lid.
+    ``input_button``/``button`` states are the last press time: a press is a
+    newer time than the last one seen on the same entity. A lid sensor counts
+    when it closes (``on`` → ``off``). Binding another entity, an unavailable
+    reading, or a restored older press time never counts as a refill.
     """
     source = None
     button = device.get("refill_button_entity")
@@ -1655,17 +1712,37 @@ def _observe_user_refill_signals(
         raw = _state_value(hass, button)
         if raw is not None and raw != "unavailable":
             previous = state.get("last_refill_button_state")
-            if previous is not None and raw != previous and raw != "unknown":
-                source = "button"
+            same_entity = state.get("last_refill_button_entity") == button
+            if same_entity and previous is not None and raw != previous and raw != "unknown":
+                newer = _press_is_newer(raw, previous)
+                if newer is not False:
+                    source = "button"
+                if newer is False:
+                    raw = previous  # keep the newest press seen
             state["last_refill_button_state"] = raw
+            state["last_refill_button_entity"] = button
     lid = device.get("reset_door_sensor")
     if isinstance(lid, str) and lid:
         current = _normalized_signal(_state_value(hass, lid))
         if current in {"on", "off"}:
-            if state.get("last_door") == "on" and current == "off":
+            same_lid = state.get("last_door_entity") in {None, lid}
+            if same_lid and state.get("last_door") == "on" and current == "off":
                 source = source or "lid"
             state["last_door"] = current
+            state["last_door_entity"] = lid
     return source
+
+
+def _press_is_newer(raw: str, previous: str) -> bool | None:
+    """Compare two press timestamps; None when either is not a timestamp."""
+    try:
+        current_time = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        previous_time = datetime.fromisoformat(str(previous).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if (current_time.tzinfo is None) != (previous_time.tzinfo is None):
+        return None
+    return current_time > previous_time
 
 
 def _device_capacity_ml(device: dict[str, Any]) -> float | None:

@@ -6510,7 +6510,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const legacyIds = [legacy.buttonAutoId, legacy.sensorAutoId].filter(id => typeof id === 'string' && id);
     const legacyNotice = legacyIds.length ? `
       <div style="${cardSt};border-color:rgba(245,158,11,0.4)">
-        <div style="${descSt};margin-bottom:8px">An earlier version created ${legacyIds.map(id => `<code>automation.${_esc(id)}</code>`).join(' and ')}. It only reset old helper entities and is no longer needed; the options above now reset the tank directly.</div>
+        <div style="${descSt};margin-bottom:8px">An earlier version created ${legacyIds.map(id => `<code>automation.${_esc(id)}</code>`).join(' and ')}. The options above now reset the tank directly. That automation also sets <code>input_number.${_esc(vacuum.replace('vacuum.', ''))}_water_used_ml</code> to 0 if such a helper exists: keep it if that helper is your own counter.</div>
         <button id="vwm-refill-legacy-remove" style="${btnSt};background:rgba(239,68,68,0.08);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">Remove old automation</button>
       </div>` : '';
     const refills = (data.refillHistory || []).slice(0, 5);

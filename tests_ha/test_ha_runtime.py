@@ -127,12 +127,31 @@ async def test_refill_settings_bind_a_button_immediately(hass: HomeAssistant, ha
     await hass.async_block_till_done()
     assert "input_button.dock_refilled" in hass.data[DOMAIN]["ticker"].entities
     await storage.async_set_tank_state(VACUUM, {"used_ml": 1800, "initialized": True,
-                                                "last_refill_button_state": "2026-09-01T10:00:00+00:00"})
+                                                "last_refill_button_state": "2026-09-01T10:00:00+00:00",
+                                                "last_refill_button_entity": "input_button.dock_refilled"})
     hass.states.async_set("input_button.dock_refilled", "2026-09-16T07:30:00+00:00")
     await _settle(hass)
     tank = await _tank(storage)
     assert tank["used_ml"] == 0
     assert tank["last_reset_source"] == "button"
+
+
+async def test_a_button_refill_is_written_to_disk_at_once(hass: HomeAssistant, hass_ws_client, hass_storage) -> None:
+    storage = await _setup(hass)
+    hass.states.async_set("input_button.dock_refilled", "2026-09-01T10:00:00+00:00")
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_refill_settings", "vacuum_entity": VACUUM,
+                                    "button_entity": "input_button.dock_refilled"})
+    assert (await client.receive_json())["success"]
+    await hass.async_block_till_done()
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 1800, "initialized": True,
+                                                "last_refill_button_state": "2026-09-01T10:00:00+00:00",
+                                                "last_refill_button_entity": "input_button.dock_refilled"})
+    hass.states.async_set("input_button.dock_refilled", "2026-09-16T07:30:00+00:00")
+    await _settle(hass)
+    stored = hass_storage[DOMAIN]["data"]["tank_states"][VACUUM]
+    assert stored["used_ml"] == 0
+    assert stored["last_reset_source"] == "button"
 
 
 async def test_invalid_refill_binding_is_rejected(hass: HomeAssistant, hass_ws_client) -> None:

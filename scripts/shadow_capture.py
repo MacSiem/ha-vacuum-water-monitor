@@ -93,9 +93,16 @@ def replay(events, devices, calc, tick, *, poll_seconds=0, compare=None, setting
             run_tick(ts)
             ts += poll_seconds * 1000
     else:
+        # Like the integration: a tick on every change plus the 60 s heartbeat.
+        heartbeat = 60_000
+        next_beat = events[0][0] + heartbeat if events else 0
         for ts, entity, value in events:
+            while next_beat < ts:
+                run_tick(next_beat)
+                next_beat += heartbeat
             observe(entity, value, ts)
             run_tick(ts)
+            next_beat = ts + heartbeat
 
     result = {'mode': f'poll_{poll_seconds}s' if poll_seconds else 'event_driven', 'vacuums': []}
     for device in effective:

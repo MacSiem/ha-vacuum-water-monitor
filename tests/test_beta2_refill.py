@@ -134,6 +134,64 @@ class RefillWhileDockStillEmptyTests(unittest.TestCase):
         self.assertFalse(state["water_empty_acknowledged"])
 
 
+class ReviewFollowUpTests(unittest.TestCase):
+    """Independent review of 5.7.0-beta.2 (2026-09-16)."""
+
+    def test_flickering_empty_error_with_auto_refill_off_is_one_tank(self):
+        dev = device({"auto_refill": False})
+        state = run(dev, {**BASE, "used_ml": 3700}, [
+            dict(dock_err="water_empty"), dict(dock_err="ok"), dict(dock_err="water_empty"),
+            dict(dock_err="ok"), dict(dock_err="water_empty")])
+        self.assertEqual(state.get("calibration_samples", 0), 1)
+        self.assertEqual(state["calibration_history"][0]["reason"], "calibration_sample_no_refill_since_empty")
+
+    def test_binding_another_button_is_not_a_refill(self):
+        other = "input_button.other"
+        state = run(device({"button_entity": BUTTON}), {**BASE, "used_ml": 2500},
+                    [dict(extra={BUTTON: _S("2026-09-16T07:00:00+00:00")})] * 2)
+        state = run(device({"button_entity": other}), state, [dict(extra={other: _S("2026-09-01T07:00:00+00:00")})],
+                    ts=10_500_000)
+        self.assertEqual(state["used_ml"], 2500)
+
+    def test_a_restored_older_press_time_is_not_a_refill_but_a_newer_one_is(self):
+        dev = device({"button_entity": BUTTON})
+        state = run(dev, {**BASE, "used_ml": 2500}, [
+            dict(extra={BUTTON: _S("2026-09-16T07:00:00+00:00")}),
+            dict(extra={BUTTON: _S("unavailable")}),
+            dict(extra={BUTTON: _S("2026-09-16T06:40:00+00:00")})])
+        self.assertEqual(state["used_ml"], 2500)
+        state = run(dev, state, [dict(extra={BUTTON: _S("2026-09-16T08:00:00+00:00")})], ts=20_000_000)
+        self.assertEqual(state["used_ml"], 0)
+
+    def test_binding_another_lid_is_not_a_refill(self):
+        state = run(device({"lid_entity": LID}), {**BASE, "used_ml": 2000}, [dict(extra={LID: _S("on")})])
+        state = run(device({"lid_entity": "binary_sensor.other_lid"}), state,
+                    [dict(extra={"binary_sensor.other_lid": _S("off")})], ts=10_500_000)
+        self.assertEqual(state["used_ml"], 2000)
+
+    def test_refilled_before_the_empty_error_was_seen_keeps_the_tank_full(self):
+        dev = device({"auto_refill": False})
+        state = run(dev, {**BASE, "used_ml": 3700}, [dict()])
+        refill.apply_refill(state, 10_060_000, "card", rebaseline=False)
+        state = run(dev, state, [dict(dock_err="water_empty"), dict(dock_err="ok")], ts=10_060_000)
+        self.assertEqual(state["used_ml"], 0)
+        self.assertFalse(state["water_empty_active"])
+        state = run(dev, {**state, "used_ml": 3600}, [dict(dock_err="water_empty")], ts=20_000_000)
+        self.assertTrue(state["water_empty_active"], "the next real empty is still an anchor")
+        self.assertGreater(state["used_ml"], 3700)
+
+    def test_a_lid_closing_after_the_dock_already_cleared_is_the_same_refill(self):
+        dev = device({"lid_entity": LID})
+        state = run(dev, {**BASE, "used_ml": 3700}, [
+            dict(dock_err="water_empty", extra={LID: _S("off")}), dict(extra={LID: _S("on")}),
+            dict(dock_err="ok", extra={LID: _S("on")}, _gap=120_000),
+            dict(status="cleaning", vac="cleaning", area="0", extra={LID: _S("on")}),
+            dict(status="cleaning", vac="cleaning", area="10", extra={LID: _S("on")}),
+            dict(status="cleaning", vac="cleaning", area="10", extra={LID: _S("off")}, _gap=90_000)])
+        self.assertEqual([r["source"] for r in state["refill_history"]], ["dock_cleared"])
+        self.assertGreater(state["used_ml"], 50)
+
+
 class StorageRefillTests(unittest.TestCase):
     def test_reset_records_source_and_history(self):
         async def scenario():
