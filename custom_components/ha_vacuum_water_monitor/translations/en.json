@@ -25,5 +25,11 @@
         }
       }
     }
+  },
+  "services": {
+    "mark_refilled": {
+      "name": "Mark tank refilled",
+      "description": "Marks the tracked clean-water tank of the selected vacuums as full, the same as the Refilled button in the card. Use it from an automation, a script or a dashboard button."
+    }
   }
 }

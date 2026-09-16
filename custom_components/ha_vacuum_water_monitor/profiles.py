@@ -11,6 +11,18 @@ from pathlib import Path
 import re
 from typing import Any
 
+try:
+    from . import estimation
+except ImportError:  # Direct-file loading used by the pure tests.
+    import importlib.util as _importlib_util
+
+    _estimation_spec = _importlib_util.spec_from_file_location(
+        "vwm_standalone_estimation", Path(__file__).with_name("estimation.py")
+    )
+    assert _estimation_spec and _estimation_spec.loader
+    estimation = _importlib_util.module_from_spec(_estimation_spec)
+    _estimation_spec.loader.exec_module(estimation)
+
 
 class CatalogValidationError(ValueError):
     """Raised when the shipped model catalog cannot be used safely."""
@@ -175,6 +187,12 @@ def load_catalog(path: Path | str = _CATALOG_PATH) -> dict[str, dict[str, Any]]:
             )
         if accounting.get("rate_signal") is not None:
             raise CatalogValidationError(f"Profile {key!r} has invalid rate_signal")
+        if record.get("mop_system") is not None and record["mop_system"] not in estimation.MOP_SYSTEMS | {"none"}:
+            raise CatalogValidationError(f"Profile {key!r} has invalid mop_system")
+        if "estimate" in record:
+            error = estimation.validate_estimate(key, record["estimate"])
+            if error:
+                raise CatalogValidationError(error)
         if record.get("capability") not in {"calibration_required", "manual_only"}:
             raise CatalogValidationError(f"Profile {key!r} has invalid capability")
         if record.get("confidence") not in {"high", "medium", "low"}:
@@ -333,7 +351,8 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
     accounting = record["accounting"]
     area_rates = _with_default_rate(dict(accounting["usage_ml_per_m2"]))
     minute_rates = dict(accounting.get("usage_ml_per_active_minute", {}))
-    return {
+    tracked_reservoir, tracked_capacity = _tracked_reservoir(record)
+    resolved = {
         "profile_key": key,
         "profile_source": source,
         "profile_confidence": confidence,
@@ -341,8 +360,8 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
         "evidence": accounting["evidence"],
         "sources": [item["url"] for item in record["provenance"]],
         "provenance": deepcopy(record["provenance"]),
-        "tracked_reservoir": record["tracked_reservoir"],
-        "tracked_capacity_ml": record["tracked_capacity_ml"],
+        "tracked_reservoir": tracked_reservoir,
+        "tracked_capacity_ml": tracked_capacity,
         "reservoirs_ml": dict(record["reservoirs_ml"]),
         "usage_ml_per_m2": area_rates,
         "usage_ml_per_active_minute": minute_rates,
@@ -352,7 +371,46 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
         "rate_signal": None,
         "time_accounting_evidence": "not_published",
         "estimated_m2_per_active_minute": None,
+        "mop_system": record.get("mop_system") or "unknown",
+        "estimate_basis": None,
     }
+    if tracked_reservoir == "dock_clean":
+        # The dock's own empty-water state identifies the dock clean tank, and an
+        # empty tank cleared to OK is a full refill (partial refills are not a
+        # supported usage pattern; the Refilled button remains the override).
+        resolved["water_anchor_reservoir"] = "dock_clean"
+        resolved["water_anchor_reservoir_inferred"] = True
+        resolved["refill_on_clear"] = True
+        resolved["refill_on_clear_inferred"] = True
+    published = bool(area_rates or minute_rates or accounting["wash_volume_ml"] is not None)
+    estimate = None if published else estimation.estimate_for_record(record)
+    if estimate:
+        resolved.update(
+            capability="automatic_estimate",
+            evidence=estimation.LABELED_ESTIMATE,
+            accounting_evidence=estimation.LABELED_ESTIMATE,
+            usage_ml_per_m2=_with_default_rate(estimate["usage_ml_per_m2"]),
+            intensity_factor=estimate["intensity_factor"],
+            wash_volume_ml=estimate["wash_volume_ml"],
+            rate_signal=estimate["rate_signal"],
+            calibration_scope="floor_only",
+            uncertainty_percent=estimate["uncertainty_percent"],
+            estimate_basis=estimate["estimate_basis"],
+            mop_system=estimate["mop_system"],
+            estimate_sources=estimate["estimate_sources"],
+        )
+    return resolved
+
+
+def _tracked_reservoir(record: dict[str, Any]) -> tuple[str | None, float | None]:
+    """Use the declared tracked reservoir, else infer the clean-water supply."""
+    if record.get("tracked_reservoir"):
+        return record["tracked_reservoir"], record["tracked_capacity_ml"]
+    reservoirs = record.get("reservoirs_ml") or {}
+    for reservoir in ("dock_clean", "robot_clean"):
+        if _positive_number(reservoirs.get(reservoir)):
+            return reservoir, reservoirs[reservoir]
+    return None, None
 
 
 def _positive_number(value: Any) -> bool:

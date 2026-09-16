@@ -316,6 +316,78 @@
               },
               "additionalProperties": false
             }
+          },
+          "mop_system": {
+            "enum": [
+              "pad",
+              "rotating_pads",
+              "roller",
+              "unknown",
+              "none"
+            ]
+          },
+          "estimate": {
+            "type": "object",
+            "required": [
+              "basis",
+              "usage_ml_per_m2",
+              "sources"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "basis": {
+                "enum": [
+                  "fleet_posterior",
+                  "owner_device",
+                  "manufacturer_declared",
+                  "review_measured",
+                  "family_transfer",
+                  "class_prior",
+                  "generic_prior"
+                ]
+              },
+              "rate_signal": {
+                "enum": [
+                  "mop_mode",
+                  "mop_intensity",
+                  "cleaning_mode"
+                ]
+              },
+              "usage_ml_per_m2": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "intensity_factor": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "wash_volume_ml": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "sources": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
           }
         },
         "additionalProperties": false

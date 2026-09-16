@@ -162,7 +162,7 @@ class VacuumDiscoveryTests(unittest.TestCase):
         descriptor = descriptors[0]
         self.assertEqual(descriptor["profile_key"], "tapo_rv50_pro_omni")
         self.assertEqual(descriptor["tracked_capacity_ml"], 5000)
-        self.assertEqual(descriptor["capability"], "calibration_required")
+        self.assertEqual(descriptor["capability"], "automatic_estimate")
         self.assertEqual(
             descriptor["signals"],
             {

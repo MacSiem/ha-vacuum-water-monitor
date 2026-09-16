@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 DOMAIN = "ha_vacuum_water_monitor"
-VERSION = "5.6.0"
+VERSION = "5.7.0-beta.2"
 MANUFACTURER = "HA Tools"
 MODEL = "Vacuum Water Monitor"
 
 EVENT_STATE_CHANGED = f"{DOMAIN}_state_changed"
+SERVICE_MARK_REFILLED = "mark_refilled"
 
 CONF_WARNING_THRESHOLD = "warning_threshold"
 CONF_CRITICAL_THRESHOLD = "critical_threshold"
@@ -20,6 +21,7 @@ DATA_FRONTEND_REGISTERED = "_frontend_registered"
 DATA_STORAGE = "storage"
 DATA_TICK_UNSUB = "tick_unsub"
 DATA_TICK_TASK = "tick_task"
+DATA_TICKER = "ticker"
 DATA_WS_REGISTERED = "_ws_registered"
 
 STORAGE_KEY = DOMAIN

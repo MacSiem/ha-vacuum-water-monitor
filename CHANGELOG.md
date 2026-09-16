@@ -1,5 +1,97 @@
 # Changelog
 
+## 5.7.0-beta.2 (2026-09-16)
+
+Beta: every refill option works, calibration survives real-world anchors, accounting follows
+entity changes. Found by a pre-test audit of 5.7.0-beta.1 on a Roborock S8 MaxV Ultra setup.
+
+### Added
+
+- **Refill options that all reset the tank:** the Refilled button, automatic refill when the
+  dock's empty error clears (now with an off switch), an `input_button`/`button` entity, a tank
+  lid or door sensor, and the new `ha_vacuum_water_monitor.mark_refilled` action for
+  automations and scripts. The *Last refill* sensor shows what reported each refill.
+- **Accounting on entity changes:** a vacuum is recalculated about two seconds after any of its
+  bound entities changes, with the 60-second heartbeat as a fallback. Disk writes from these
+  updates are coalesced and flushed on shutdown.
+- **Calibration confirmation:** before three tanks are learned, a tank outside the estimate's
+  accuracy waits for the next tank to confirm it (a lifted tank or an unreported top-up no
+  longer teaches the robot a wrong correction).
+- Diagnostics for a tank awaiting confirmation, a water level without its own factor, bridged
+  signal gaps and recent refills.
+- Read-only shadow replay (`scripts/shadow_capture.py`) reports sessions against a reference
+  counter, empty tanks, refills and dock-error transitions, in event or heartbeat mode.
+- Home Assistant runtime tests (`tests_ha`) run inside a real Home Assistant core.
+
+### Fixed
+
+- The card's button and door-sensor refill methods created automations that only reset DIY
+  helper entities, never the integration's tank; a lid sensor was also blocked by the dock
+  contract. The card no longer creates those automations and offers to remove old ones.
+- Pressing **Refilled** while the dock still showed its empty-tank error emptied the tank again
+  on the next update.
+- One unavailable reading of the robot, its status or its area during cleaning invalidated the
+  whole tank. A gap of up to 5 minutes is now bridged when the mop settings are unchanged and
+  the cleaned area kept pace with the robot (so a hidden wash is not skipped); a longer Home
+  Assistant downtime still marks the tank incomplete.
+- With automatic refill off, an empty error that flickers no longer counts as several tanks;
+  an empty error first seen right after you reported the refill does not empty the tank again.
+- Binding a different button or lid, or a button restoring an older press time after a restart,
+  is not a refill; a lid closed shortly after the dock already cleared is the same refill.
+- Refills reported by a button or lid are written to disk immediately.
+- Area cleaned just before the robot heads to a wash or back to the dock was not counted.
+- A wash the dock could not finish because it ran dry was charged in full (now half).
+- Saving only a tank size in the calibration form switched the estimate to a whole-cycle rate
+  and stopped counting dock washes; a saved scope now applies only to a measured rate.
+- A tank size corrected in the card no longer silently turns off automatic dock refill.
+- Roborock water levels `slight`/`min` map to low and `extreme` gets its own factor; a level
+  without a factor is reported instead of silently averaged.
+- A calibration window left behind by an older version after a rollback is ignored.
+- A calculation that finished after a refill no longer overwrites that refill.
+
+### Note
+
+- Upgrading from 5.7.0-beta.1 restarts a learned correction once, because the estimates gained
+  the `extreme` water level. Upgrading from 5.6 keeps the tank balance.
+
+## 5.7.0-beta.1 (2026-09-15)
+
+Beta: labelled estimates from the model database with automatic empty-tank calibration.
+
+### Added
+
+- **Every recognised model gets a water estimate.** Model records carry a mop system and,
+  where available, a labelled estimate; class priors cover pad, rotating-pad and roller robots
+  and a generic prior covers the rest. Each basis has a fixed, documented accuracy.
+- **Automatic calibration from the dock's empty-water signal.** The median of the last eight
+  tanks becomes the robot's correction; an abnormal tank and tanks with missing signals are
+  skipped. The card shows the accuracy and the last tank results.
+- **Automatic refill** when the dock's `water_empty` error clears to OK (Refilled stays as an override).
+- **Optional anonymous calibration sharing** (off by default, reviewed payload, user-submitted).
+- Roborock S8 MaxV Ultra estimate from owner-device accounting (S8 Pro Ultra by family
+  transfer); Qrevo Curv 2 Flow (`roborock.vacuum.a245`) gains its sourced 4 l / 3 l capacity.
+- Independent physics benchmark and card/backend parity tests in CI.
+
+### Fixed
+
+- Pressing **Refilled** no longer turns the balance incomplete one tick later (#12).
+- A per-session cleaned-area counter restarting at zero is a new baseline, not a gap.
+- Small area increments accumulate instead of being dropped.
+- Restarts or unavailable robots while docked no longer invalidate the balance, and a later
+  reason can no longer hide a missing rate.
+- An unrelated dock error after an empty tank is no longer treated as a refill.
+- A mop wash passing through docking/returning states is counted once.
+- Changing mop mode or upgrading the dataset keeps the learned calibration.
+- Missing capacities are shown as "unknown" instead of 0 / `null ml`; Polish labels in the
+  English card were translated.
+- A vacuum-only run (water level off) never uses water, and a whole-cycle user rate no longer
+  adds or flags dock washes it already includes.
+- An automatic refill clears an incomplete balance, and a session that ran entirely while the
+  robot or Home Assistant was unavailable is reported as incomplete.
+- Authored refill/anchor settings and a tank capacity that differs from the model are kept as
+  configured; your own calibration replaces the estimate label and accuracy.
+
+
 ## 5.6.0 (2026-09-09)
 
 ### Fixed

@@ -21,6 +21,16 @@ except ImportError:  # Supports this module's existing direct-file pure tests.
     resolve_profile = _profile_module.resolve_profile
     legacy_profile_defaults = _profile_module.legacy_profile_defaults
 
+try:
+    from . import estimation
+except ImportError:  # Direct-file loading used by the pure tests.
+    _estimation_spec = importlib.util.spec_from_file_location(
+        "vwm_standalone_estimation_calc", Path(__file__).with_name("estimation.py")
+    )
+    assert _estimation_spec and _estimation_spec.loader
+    estimation = importlib.util.module_from_spec(_estimation_spec)
+    _estimation_spec.loader.exec_module(estimation)
+
 MILLISECONDS_PER_DAY = 86_400_000
 
 
@@ -149,6 +159,9 @@ def estimate_water_state(
     settings = settings if isinstance(settings, dict) else {}
 
     profile = resolve_profile(device)
+    user_rate = (device.get("accounting_evidence") in {"user_calibration", "explicit_user_configuration"}
+                 or bool(device.get("consumption_calibration")))
+    estimate_basis = None if user_rate else (device.get("estimate_basis") or profile.get("estimate_basis"))
     initialized = bool(tank_state.get("initialized")) or parse_refill_datetime(tank_state) is not None
     total_ml = _water_capacity_ml(device, settings)
     metadata = {
@@ -162,9 +175,16 @@ def estimate_water_state(
         "signal_contract_version": device.get("signal_contract_version"),
         "mop_evidence_required": bool(device.get("mop_evidence_required")),
         "accounting_evidence": tank_state.get("last_accounting_evidence") or device.get("accounting_evidence") or profile["accounting_evidence"],
-        "uncertainty_percent": device.get("uncertainty_percent")
-        if device.get("uncertainty_percent") is not None
-        else profile.get("uncertainty_percent"),
+        "estimate_basis": estimate_basis,
+        "mop_system": device.get("mop_system") or profile.get("mop_system"),
+        "uncertainty_percent": estimation.uncertainty_percent(
+            estimate_basis,
+            estimation.uncertainty_log_factors(tank_state),
+        ) if estimate_basis else None if user_rate else (
+            device.get("uncertainty_percent")
+            if device.get("uncertainty_percent") is not None
+            else profile.get("uncertainty_percent")),
+        "calibration_history": list(tank_state.get("calibration_history") or [])[:12],
         "calibration_factor": _number(tank_state.get("calibration_factor"), 1),
         "calibration_samples": max(
             0, int(_number(tank_state.get("calibration_samples"), 0))
@@ -205,6 +225,12 @@ def estimate_water_state(
             **{**metadata, "state_reason": "awaiting_refill"},
         }
 
+    if (metadata.get("estimate_basis") and device.get("mop_evidence_required")
+            and not _has_mop_evidence_signal(device)):
+        return {**metadata, "source": "unknown", "state_reason": "mop_signal_unbound",
+                "total_ml": _format_number(total_ml) if total_ml is not None else None,
+                "used_ml": None, "remaining_ml": None, "remaining_percent": None}
+
     if tank_state.get("accounting_incomplete"):
         return {**metadata, "source": "unknown", "state_reason": "accounting_incomplete",
                 "total_ml": _format_number(total_ml) if total_ml is not None else None,
@@ -223,6 +249,9 @@ def estimate_water_state(
 
     if tank_state.get("water_empty_active"):
         remaining_ml = max(0, total_ml - used_ml)
+        if tank_state.get("water_anchor_kind") == "empty":
+            # The unusable residual stays in the accounting, not in the display.
+            remaining_ml = 0
         percent = _clamp((remaining_ml / total_ml) * 100, 0, 100)
         anchor_kind = tank_state.get("water_anchor_kind")
         return {
@@ -251,6 +280,19 @@ def estimate_water_state(
     }
 
 
+_MOP_EVIDENCE_KEYS = (
+    "mop_attached_sensor", "mop_mode_entity", "cleaning_mode_entity", "water_box_attached_sensor",
+    "water_box_attached_attribute", "water_box_detached_sensor",
+)
+
+
+def _has_mop_evidence_signal(device: dict[str, Any]) -> bool:
+    """True when some bound signal can prove that the robot is mopping."""
+    if any(device.get(key) for key in _MOP_EVIDENCE_KEYS):
+        return True
+    return bool(device.get("mop_intensity_entity") and device.get("mop_intensity_is_evidence"))
+
+
 def apply_custom_calibration(
     device: dict[str, Any] | None,
     settings: dict[str, Any] | None,
@@ -263,6 +305,26 @@ def apply_custom_calibration(
     effective = dict(device) if isinstance(device, dict) else {}
     settings = settings if isinstance(settings, dict) else {}
     profile = resolve_profile(effective)
+    explicit_before_merge = _explicit_fields(effective)
+    # Discovery descriptors carry the resolver's derived fields. They must be
+    # re-derived here, after authored configuration and user calibration are
+    # known, instead of being mistaken for authored values.
+    for base, flag in (("water_anchor_reservoir", "water_anchor_reservoir_inferred"),
+                       ("refill_on_clear", "refill_on_clear_inferred")):
+        if flag in effective and flag not in explicit_before_merge:
+            effective.pop(flag, None)
+            if base not in explicit_before_merge and effective.get(base) == profile.get(base):
+                effective.pop(base, None)
+    if "estimate_basis" in effective and "estimate_basis" not in explicit_before_merge:
+        for key in ("estimate_basis", "estimate_sources", "mop_system"):
+            effective.pop(key, None)
+        for key in ("intensity_factor", "calibration_scope", "capability", "accounting_evidence",
+                    "evidence", "uncertainty_percent", "rate_signal"):
+            if key not in explicit_before_merge and key in effective and effective.get(key) == profile.get(key):
+                effective.pop(key, None)
+    # An explicitly configured anchor/refill contract is authoritative and must
+    # not inherit the resolver's "inferred" scope restriction.
+    authored_contract = {key for key in ("water_anchor_reservoir", "refill_on_clear") if key in effective}
     for key in (
         "profile_key",
         "profile_source",
@@ -273,12 +335,49 @@ def apply_custom_calibration(
         "uncertainty_percent",
         "time_accounting_evidence",
         "estimated_m2_per_active_minute",
+        "mop_system",
+        "tracked_reservoir",
+        "water_anchor_reservoir",
+        "water_anchor_reservoir_inferred",
+        "refill_on_clear",
+        "refill_on_clear_inferred",
     ):
         if profile.get(key) is not None:
+            if key == "water_anchor_reservoir_inferred" and "water_anchor_reservoir" in authored_contract:
+                continue
+            if key == "refill_on_clear_inferred" and "refill_on_clear" in authored_contract:
+                continue
             effective.setdefault(key, profile[key])
+    if effective.get("tracked_reservoir") and effective.get("tracked_capacity_ml") is None and profile.get(
+            "tracked_reservoir") == effective.get("tracked_reservoir"):
+        effective["tracked_capacity_ml"] = profile.get("tracked_capacity_ml")
+    _custom_for_capacity = _merged_custom_calibration(effective, settings)
+    configured_capacity = _positive_optional(effective.get("tracked_capacity_ml"))
+    custom_capacity = _positive_optional(
+        _custom_for_capacity.get("tracked_capacity_ml", _custom_for_capacity.get("tank_ml"))) if _custom_for_capacity else None
+    profile_capacity_value = _positive_optional(profile.get("tracked_capacity_ml"))
+    # The card's capacity field is labelled with the tracked reservoir and saves
+    # it alongside the value, so a corrected dock-tank size keeps its dock anchor.
+    custom_reservoir = _custom_for_capacity.get("tracked_reservoir") if _custom_for_capacity else None
+    custom_capacity_confirmed = (
+        custom_capacity is not None and custom_reservoir is not None
+        and custom_reservoir == profile.get("tracked_reservoir") == effective.get("tracked_reservoir")
+    )
+    mismatched = [value for value in (configured_capacity, custom_capacity)
+                  if value is not None and value != profile_capacity_value
+                  and not (value == custom_capacity and custom_capacity_confirmed)]
+    if mismatched:
+        # A capacity that differs from the model's is not proven to be the dock
+        # tank, so the dock-scoped anchor and automatic refill are not inferred.
+        for base, flag in (("water_anchor_reservoir", "water_anchor_reservoir_inferred"),
+                           ("refill_on_clear", "refill_on_clear_inferred")):
+            if effective.get(flag):
+                effective.pop(flag, None)
+                effective.pop(base, None)
 
     effective.setdefault("mop_evidence_required", True)
     _apply_signal_overrides(effective, settings)
+    _apply_refill_settings(effective, settings)
 
     modern = settings.get("consumption_calibrations") or {}
     if isinstance(modern, dict) and isinstance(modern.get(effective.get("vacuum_entity")), (dict, list)):
@@ -299,6 +398,11 @@ def apply_custom_calibration(
             {} if discovered_usage == profile_usage else discovered_usage
         )
     )
+    profile_is_estimate = profile.get("accounting_evidence") == estimation.LABELED_ESTIMATE
+    if profile_is_estimate and (custom_usage or explicit_usage):
+        # A measured or authored rate replaces the labelled estimate entirely;
+        # merging per key would keep estimate bands the user never measured.
+        profile_usage = {}
     merged_usage = {**profile_usage, **custom_usage, **explicit_usage}
     if merged_usage:
         effective["usage_ml_per_m2"] = merged_usage
@@ -336,6 +440,8 @@ def apply_custom_calibration(
             **_valid_rate_mapping(calibration.get(key)),
             **_valid_rate_mapping(effective.get(key)),
         }
+        if not merged_mapping and profile_is_estimate and profile_usage:
+            merged_mapping = _valid_rate_mapping(profile.get(key))
         if merged_mapping:
             effective[key] = merged_mapping
 
@@ -377,8 +483,21 @@ def apply_custom_calibration(
         and "low_water_anchor_remaining_percent" not in explicit_fields
     ):
         effective["low_water_anchor_remaining_percent"] = low_water_remaining
-    if "calibration_scope" not in effective and calibration.get("calibration_scope") in {"floor_only", "whole_cycle"}:
+    # A saved scope describes the user's own measured rate. Without such a rate
+    # (the 5.7.0-beta.1 card saved one with a capacity alone) it must not turn a
+    # labelled estimate into a whole-cycle rate that stops counting dock washes.
+    if ("calibration_scope" not in effective and calibration.get("calibration_scope") in {"floor_only", "whole_cycle"}
+            and (custom_usage or custom_time_usage)):
         effective["calibration_scope"] = calibration["calibration_scope"]
+    if "calibration_scope" not in effective and profile_is_estimate and profile_usage:
+        effective["calibration_scope"] = profile.get("calibration_scope") or "floor_only"
+    if not (custom_usage or explicit_usage) and profile_is_estimate and profile_usage:
+        effective.setdefault("estimate_basis", profile.get("estimate_basis"))
+    elif profile_is_estimate and (custom_usage or explicit_usage):
+        # The user's own rate replaces the labelled estimate and its accuracy.
+        effective.pop("estimate_basis", None)
+        if effective.get("uncertainty_percent") == profile.get("uncertainty_percent"):
+            effective.pop("uncertainty_percent", None)
     profile_evidence = profile.get("accounting_evidence")
     discovery_evidence = effective.get("accounting_evidence")
     if explicit_usage or explicit_time_usage or explicit_wash:
@@ -530,6 +649,38 @@ def _matching_custom_calibration(
         if isinstance(value, dict):
             return value
     return None
+
+
+def refill_choices(settings: dict[str, Any] | None, vacuum_entity: str | None) -> dict[str, Any]:
+    """Return one vacuum's refill choices, falling back to the pre-5.7 card config."""
+    settings = settings if isinstance(settings, dict) else {}
+    stored = settings.get("refill_settings")
+    entry = stored.get(vacuum_entity) if isinstance(stored, dict) and vacuum_entity else None
+    if isinstance(entry, dict):
+        return dict(entry)
+    legacy = settings.get("refill_config")
+    short_id = str(vacuum_entity or "").replace("vacuum.", "", 1)
+    legacy_entry = legacy.get(short_id) if isinstance(legacy, dict) and short_id else None
+    choices: dict[str, Any] = {}
+    if isinstance(legacy_entry, dict):
+        if isinstance(legacy_entry.get("buttonEntity"), str):
+            choices["button_entity"] = legacy_entry["buttonEntity"]
+        if isinstance(legacy_entry.get("sensorEntity"), str):
+            choices["lid_entity"] = legacy_entry["sensorEntity"]
+    return choices
+
+
+def _apply_refill_settings(effective: dict[str, Any], settings: dict[str, Any]) -> None:
+    """Bind the user's refill choices: automatic dock refill, button, tank lid."""
+    choices = refill_choices(settings, effective.get("vacuum_entity"))
+    if isinstance(choices.get("auto_refill"), bool):
+        effective["refill_on_dock_clear"] = choices["auto_refill"]
+    button = choices.get("button_entity")
+    if isinstance(button, str) and button.startswith(("input_button.", "button.")):
+        effective["refill_button_entity"] = button
+    lid = choices.get("lid_entity")
+    if isinstance(lid, str) and lid.startswith("binary_sensor."):
+        effective["reset_door_sensor"] = lid
 
 
 def _merged_custom_calibration(device: dict[str, Any], settings: dict[str, Any]) -> dict[str, Any]:
