@@ -108,7 +108,7 @@ What happens under the hood:
    and creates a device with water sensors for each robot. No YAML, no entity picking.
 2. **Water accounting runs server-side when a bound entity changes** (status, cleaned area, dock
    error, mop settings, refill button or lid), with a 60-second heartbeat as a fallback. A gap of
-   up to 10 minutes in the robot's signals is bridged from the cumulative area counter when the
+   up to 5 minutes in the robot's signals is bridged from the cumulative area counter when the
    mop settings are unchanged and the cleaned area kept pace with the robot. It prefers
    cleaned-area deltas,
    then a separately calibrated duration/active-time interval. A configured same-reservoir volume sensor takes precedence over both. Mode, intensity, mop/tank

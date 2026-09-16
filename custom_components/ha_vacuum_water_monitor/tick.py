@@ -67,20 +67,20 @@ DEFAULT_AREA_ANOMALY_CEILING_M2 = 25
 RESET_COOLDOWN_SEC = 60
 # An observation gap this short, with the same mop settings on both sides and a
 # continuous cumulative area counter, is bridged instead of invalidating the tank.
-BRIDGE_GAP_MAX_SECONDS = 600
+BRIDGE_GAP_MAX_SECONDS = 300
 AREA_COUNTER_JITTER_M2 = 0.05
 # A gap longer than a mop wash sequence is bridged only when the cleaned area
 # kept pace with the robot's recent cleaning rate, so a hidden wash (no area,
 # 150 ml of water) is not silently skipped.
-BRIDGE_UNCHECKED_SECONDS = 90
-BRIDGE_MIN_AREA_PACE = 0.7
+BRIDGE_UNCHECKED_SECONDS = 60
+BRIDGE_MIN_AREA_PACE = 0.8
 AREA_RATE_SMOOTHING = 0.3
 # Two refill reports this close together describe one physical refill (a lid
 # closed after the dock already cleared, a button pressed as confirmation).
 USER_REFILL_DEDUPE_SECONDS = 600
 # An empty error first seen this soon after a refill the user reported is the
 # error that preceded that refill, not a tank emptied in minutes.
-REFILL_ACK_WINDOW_SECONDS = 900
+REFILL_ACK_WINDOW_SECONDS = 600
 # A dock that reports empty during a wash could not finish it. Half of that
 # wash is the expected water it still drew.
 FAILED_WASH_WINDOW_SECONDS = 300
@@ -456,7 +456,7 @@ def _tick_device_pass(
         area_rate = _positive_number(state.get("area_rate_m2_per_s"))
         kept_pace = gap_seconds <= BRIDGE_UNCHECKED_SECONDS or (
             continuous and area_rate is not None
-            and curr_area - last_area_seen >= BRIDGE_MIN_AREA_PACE * area_rate * gap_seconds)
+            and curr_area - last_area_seen > BRIDGE_MIN_AREA_PACE * area_rate * gap_seconds)
         if (gap_exposure and continuous and kept_pace and gap_seconds <= BRIDGE_GAP_MAX_SECONDS
                 and state.get("last_rate_settings") == rate_settings):
             bridge_area = True
@@ -984,7 +984,8 @@ def _tick_device_pass(
         water_empty_now and not water_empty_before
         and state.get("last_reset_source") in {"card", "service", "button", "lid"}
         and 0 <= now_ts - reset_ts <= REFILL_ACK_WINDOW_SECONDS * 1000
-        and _number(state.get("used_ml"), 0) < (_device_capacity_ml(device) or 0) * estimation.MIN_CALIBRATION_CYCLE_FRACTION
+        # Nothing was cleaned since: the robot has not used this tank yet.
+        and _number(state.get("used_ml"), 0) < (_device_capacity_ml(device) or 0) * MIN_CALIBRATION_USAGE_FRACTION
     )
     if late_error_after_user_refill:
         # The dock reported the empty tank the user has just refilled.

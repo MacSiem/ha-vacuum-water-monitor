@@ -101,6 +101,12 @@ class GapBridgingTests(unittest.TestCase):
                        dict(status="charging", vac="docked", area="30")])
         self.assertTrue(state["accounting_incomplete"])
 
+    def test_short_gap_with_no_cleaning_progress_is_not_bridged(self):
+        # An 85 s dropout while the area stood still: a wash could have happened.
+        state = run(S8, dict(BASE), self.START + cleaning((4, 8)) + [dict(vac="unavailable", status="unavailable", _gap=40_000)]
+                    + [dict(status="cleaning", vac="cleaning", area="8", _gap=45_000)])
+        self.assertTrue(state["accounting_incomplete"])
+
     def test_long_gap_still_marks_the_tank_incomplete(self):
         state = run(S8, dict(BASE), self.START + cleaning((4, 8)) + [dict(vac="unavailable", status="unavailable")]
                     + [dict(status="cleaning", vac="cleaning", area="30", _gap=900_000)])

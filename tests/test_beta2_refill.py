@@ -180,6 +180,14 @@ class ReviewFollowUpTests(unittest.TestCase):
         self.assertTrue(state["water_empty_active"], "the next real empty is still an anchor")
         self.assertGreater(state["used_ml"], 3700)
 
+    def test_a_real_empty_soon_after_a_false_lid_refill_is_still_an_anchor(self):
+        dev = device({"lid_entity": LID})
+        state = run(dev, {**BASE, "used_ml": 1000}, [dict(extra={LID: _S("on")}), dict(extra={LID: _S("off")})])
+        self.assertEqual(state["last_reset_source"], "lid")
+        state = run(dev, {**state, "used_ml": 600}, [dict(dock_err="water_empty", extra={LID: _S("off")})], ts=10_600_000)
+        self.assertTrue(state["water_empty_active"])
+        self.assertFalse(state.get("water_empty_acknowledged"))
+
     def test_a_lid_closing_after_the_dock_already_cleared_is_the_same_refill(self):
         dev = device({"lid_entity": LID})
         state = run(dev, {**BASE, "used_ml": 3700}, [

@@ -31,7 +31,7 @@ entity changes. Found by a pre-test audit of 5.7.0-beta.1 on a Roborock S8 MaxV 
 - Pressing **Refilled** while the dock still showed its empty-tank error emptied the tank again
   on the next update.
 - One unavailable reading of the robot, its status or its area during cleaning invalidated the
-  whole tank. A gap of up to 10 minutes is now bridged when the mop settings are unchanged and
+  whole tank. A gap of up to 5 minutes is now bridged when the mop settings are unchanged and
   the cleaned area kept pace with the robot (so a hidden wash is not skipped); a longer Home
   Assistant downtime still marks the tank incomplete.
 - With automatic refill off, an empty error that flickers no longer counts as several tanks;
