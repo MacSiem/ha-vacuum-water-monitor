@@ -1,5 +1,19 @@
 # Changelog
 
+## 5.7.0-beta.5 (2026-09-23)
+
+Beta: two issues seen right after installing 5.7.0-beta.4 on a live Home Assistant.
+
+### Fixed
+
+- **Smaller state-changed events.** Each accounting update fired an event with the whole tank
+  history; with a full session history it passed the recorder's 32 KB limit ("Event data ...
+  exceed maximum size") and, below it, every event was stored in the database. Events now
+  carry the live balance; the card merges them per vacuum and reads the history as before.
+- **Devices named after an entity id are renamed.** Installs from before 5.7.0-beta.4 keep a
+  device called `vacuum.x` for a robot that was not loaded at start-up; it is renamed to the
+  robot's name. A name set by the user is never changed.
+
 ## 5.7.0-beta.4 (2026-09-23)
 
 Beta: fixes from a full live run of 5.7.0-beta.3 (two tasks, an error in between, eight mop

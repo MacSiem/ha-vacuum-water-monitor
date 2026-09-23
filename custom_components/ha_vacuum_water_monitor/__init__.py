@@ -34,6 +34,7 @@ from .const import (
     SERVICE_MARK_REFILLED,
     DOMAIN,
     EVENT_STATE_CHANGED,
+    event_tank_states,
     VERSION,
     signal_vacuum_water_updated,
 )
@@ -210,7 +211,7 @@ def _async_start_tick(
                 signal_vacuum_water_updated(entry_id),
                 {"tank_states": changed},
             )
-            hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": changed})
+            hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": event_tank_states(changed), "partial": True})
 
     @callback
     def _on_state_change(event: Event) -> None:
@@ -300,7 +301,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
             )
         for entry in hass.config_entries.async_entries(DOMAIN):
             async_dispatcher_send(hass, signal_vacuum_water_updated(entry.entry_id), {"tank_states": changed})
-        hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": changed})
+        hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": event_tank_states(changed), "partial": True})
 
     hass.services.async_register(
         DOMAIN,

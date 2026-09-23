@@ -259,6 +259,26 @@ class DisplayNameTests(unittest.TestCase):
         self.assertEqual(descriptor["name"], "Robotic Vacuum Cleaner")
 
 
+class EventPayloadTests(unittest.TestCase):
+    """Live 2026-09-23: 'Event data for ha_vacuum_water_monitor_state_changed exceed maximum size of 32768 bytes'."""
+
+    def test_event_keeps_the_balance_and_drops_the_history(self):
+        import json
+        const = importlib.import_module("vwmruntimepkg.const")
+        tank = {"used_ml": 12.5, "initialized": True, "last_reset_ts": 5,
+                "automatic_sessions": [{"context": {"pad": "x" * 600}} for _ in range(50)],
+                "refill_history": [{"ts": 1}] * 20, "session_context": {"a": 1}, "consumption_resolution": {"b": 2}}
+        event = const.event_tank_states({"vacuum.a": tank})
+        self.assertEqual(event["vacuum.a"]["used_ml"], 12.5)
+        self.assertNotIn("automatic_sessions", event["vacuum.a"])
+        self.assertLess(len(json.dumps(event)), 2_000)
+        self.assertIn("automatic_sessions", tank)  # the stored state is untouched
+
+    def test_the_card_merges_partial_events_per_vacuum(self):
+        card = (ROOT / "custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js").read_text(encoding="utf-8")
+        self.assertIn("data.partial ? { ...(merged[vacuum] || {}), ...tank } : tank", card)
+
+
 class ShadowReplayToolTests(unittest.TestCase):
     def test_history_request_has_an_end_time(self):
         # Without end_time HA returns one day from start, so --days N replays 24 h.

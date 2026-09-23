@@ -118,6 +118,34 @@ class VacuumSensorManager:
 
         if entities:
             self.async_add_entities(entities, True)
+        self._rename_raw_id_devices(devices)
+
+    def _rename_raw_id_devices(self, devices: list[dict[str, Any]]) -> None:
+        """Replace a device name that is only the vacuum's entity id.
+
+        Before 5.7.0-beta.4 a vacuum whose state was not loaded at start-up got a
+        device named after its entity id, so its sensors read "vacuum.x Water
+        remaining". A name the user set is never touched.
+        """
+        try:
+            from homeassistant.helpers import device_registry as dr
+
+            registry = dr.async_get(self.hass)
+        except Exception:  # noqa: BLE001 - naming must never break sensor setup
+            return
+        for device in devices:
+            vacuum_entity = str(device.get("vacuum_entity") or "")
+            if not vacuum_entity:
+                continue
+            entry = registry.async_get_device(
+                identifiers={(DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(vacuum_entity)}")}
+            )
+            if entry is None or entry.name_by_user or entry.name != vacuum_entity:
+                continue
+            name = (device.get("name") if device.get("name") != vacuum_entity else None) or _vacuum_display_name(
+                self.hass, vacuum_entity)
+            if name and name != vacuum_entity:
+                registry.async_update_device(entry.id, name=name)
 
 
 class VacuumStoreSensor(SensorEntity):

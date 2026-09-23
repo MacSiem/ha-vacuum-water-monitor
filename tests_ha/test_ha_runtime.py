@@ -185,3 +185,42 @@ async def test_unload_removes_the_service_and_listeners(hass: HomeAssistant) -> 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert not hass.services.has_service(DOMAIN, "mark_refilled")
+
+
+async def test_state_changed_event_carries_the_balance_not_the_history(hass: HomeAssistant) -> None:
+    """5.7.0-beta.4: events over 32 KB are dropped by the recorder and bloat the database."""
+    storage = await _setup(hass)
+    await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": VACUUM}, blocking=True)
+    sessions = [{"ts": i, "started_ts": i, "water": 10, "context": {"pad": "x" * 400}} for i in range(50)]
+    await storage.async_set_tank_state(VACUUM, {**(await _tank(storage)), "automatic_sessions": sessions})
+    events = []
+    hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event))
+    _robot_states(hass, status="cleaning", vacuum="cleaning", area="0")
+    await _settle(hass)
+    _robot_states(hass, status="cleaning", vacuum="cleaning", area="5")
+    await _settle(hass)
+    assert events
+    import json
+
+    for event in events:
+        tank = event.data["tank_states"][VACUUM]
+        assert "automatic_sessions" not in tank and "used_ml" in tank
+        assert event.data.get("partial") is True
+        assert len(json.dumps(event.data, default=str)) < 16_384
+    assert len((await _tank(storage))["automatic_sessions"]) >= 50
+
+
+async def test_a_device_named_after_the_entity_id_is_renamed(hass: HomeAssistant) -> None:
+    await _setup(hass)
+    registry = dr.async_get(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    device = registry.async_get_device(identifiers={(DOMAIN, f"{entry.entry_id}_vacuum_robot")})
+    assert device is not None
+    registry.async_update_device(device.id, name=VACUUM)
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get(device.id).name == "Robot"
+    registry.async_update_device(device.id, name_by_user="Kitchen robot", name=VACUUM)
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get(device.id).name == VACUUM  # the user's own name is never overwritten

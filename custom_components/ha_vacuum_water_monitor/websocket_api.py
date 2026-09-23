@@ -11,7 +11,7 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from .const import DATA_TICKER, DOMAIN, EVENT_STATE_CHANGED, signal_vacuum_water_updated
+from .const import DATA_TICKER, DOMAIN, EVENT_STATE_CHANGED, event_tank_states, signal_vacuum_water_updated
 from .storage import VacuumWaterStorage
 from .tick import list_vacuums
 from .calibration import build_contribution_draft, select_recorded_cycle
@@ -32,7 +32,11 @@ def _notify_store_updated(hass: HomeAssistant, payload: dict[str, Any]) -> None:
     async_dispatcher_send(
         hass, signal_vacuum_water_updated(_entry_id(hass)), payload
     )
-    hass.bus.async_fire(EVENT_STATE_CHANGED, payload)
+    event = dict(payload)
+    if isinstance(event.get("tank_states"), dict):
+        event["tank_states"] = event_tank_states(event["tank_states"])
+        event["partial"] = True
+    hass.bus.async_fire(EVENT_STATE_CHANGED, event)
 
 
 # NOTE: no require_admin on any command. The card must work for every
