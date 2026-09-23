@@ -214,7 +214,8 @@ async def test_a_device_named_after_the_entity_id_is_renamed(hass: HomeAssistant
     await _setup(hass)
     registry = dr.async_get(hass)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
-    device = registry.async_get_device(identifiers={(DOMAIN, f"{entry.entry_id}_vacuum_robot")})
+    device = next(d for d in dr.async_entries_for_config_entry(registry, entry.entry_id)
+                  if (DOMAIN, f"{entry.entry_id}_vacuum_robot") in d.identifiers)
     assert device is not None
     registry.async_update_device(device.id, name=VACUUM)
     await hass.config_entries.async_reload(entry.entry_id)

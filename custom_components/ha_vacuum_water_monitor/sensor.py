@@ -133,13 +133,16 @@ class VacuumSensorManager:
             registry = dr.async_get(self.hass)
         except Exception:  # noqa: BLE001 - naming must never break sensor setup
             return
+        # async_get_device(identifiers=...) is deprecated (HA 2026.9); the
+        # entries of this config entry are the only candidates anyway.
+        ours = {identifier: device_entry
+                for device_entry in dr.async_entries_for_config_entry(registry, self.entry.entry_id)
+                for identifier in device_entry.identifiers}
         for device in devices:
             vacuum_entity = str(device.get("vacuum_entity") or "")
             if not vacuum_entity:
                 continue
-            entry = registry.async_get_device(
-                identifiers={(DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(vacuum_entity)}")}
-            )
+            entry = ours.get((DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(vacuum_entity)}"))
             if entry is None or entry.name_by_user or entry.name != vacuum_entity:
                 continue
             name = (device.get("name") if device.get("name") != vacuum_entity else None) or _vacuum_display_name(

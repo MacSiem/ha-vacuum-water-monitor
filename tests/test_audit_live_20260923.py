@@ -279,6 +279,19 @@ class EventPayloadTests(unittest.TestCase):
         self.assertIn("data.partial ? { ...(merged[vacuum] || {}), ...tank } : tank", card)
 
 
+class DeprecatedRegistryApiTests(unittest.TestCase):
+    """HA 2026.9 warns (removal 2027.8/2027.9) on registry mapping access and async_get_device."""
+
+    def test_integration_code_avoids_deprecated_registry_calls(self):
+        package = ROOT / "custom_components" / "ha_vacuum_water_monitor"
+        for path in package.glob("*.py"):
+            source = path.read_text(encoding="utf-8")
+            with self.subTest(file=path.name):
+                self.assertNotIn(".async_get_device(", source)
+                self.assertNotIn('"devices", {}).values()', source)
+                self.assertNotIn(".devices[", source)
+
+
 class ShadowReplayToolTests(unittest.TestCase):
     def test_history_request_has_an_end_time(self):
         # Without end_time HA returns one day from start, so --days N replays 24 h.

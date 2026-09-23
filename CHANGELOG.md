@@ -1,5 +1,14 @@
 # Changelog
 
+## 5.7.0-beta.6 (2026-09-23)
+
+### Fixed
+
+- No deprecated device-registry lookups: Home Assistant 2026.9 warns that
+  `device_registry.async_get_device(identifiers=...)` stops working in 2027.8. The integration
+  now reads its own devices through `async_entries_for_config_entry`, and a test keeps
+  deprecated registry calls out of the integration code.
+
 ## 5.7.0-beta.5 (2026-09-23)
 
 Beta: two issues seen right after installing 5.7.0-beta.4 on a live Home Assistant.

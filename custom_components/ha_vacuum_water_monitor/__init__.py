@@ -163,10 +163,12 @@ async def _async_prune_ghost_devices(
 
     registry = dr.async_get(hass)
     for entry in hass.config_entries.async_entries(DOMAIN):
+        # async_get_device(identifiers=...) is deprecated since HA 2026.9.
+        ours = {identifier: device
+                for device in dr.async_entries_for_config_entry(registry, entry.entry_id)
+                for identifier in device.identifiers}
         for entity in ghost_entities:
-            device = registry.async_get_device(
-                identifiers={(DOMAIN, f"{entry.entry_id}_{vacuum_slug(entity)}")}
-            )
+            device = ours.get((DOMAIN, f"{entry.entry_id}_{vacuum_slug(entity)}"))
             if device:
                 registry.async_remove_device(device.id)
 
