@@ -119,6 +119,28 @@ class VacuumSensorManager:
         if entities:
             self.async_add_entities(entities, True)
         self._rename_raw_id_devices(devices)
+        self._remove_linked_duplicates(settings)
+
+    def _remove_linked_duplicates(self, settings: dict[str, Any]) -> None:
+        """Drop the device (and its sensors) of an entity the user linked to another robot."""
+        links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
+        linked = {str(entity) for entity, target in links.items() if target and target != "distinct"}
+        if not linked:
+            return
+        try:
+            from homeassistant.helpers import device_registry as dr
+
+            registry = dr.async_get(self.hass)
+        except Exception:  # noqa: BLE001
+            return
+        wanted = {(DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(entity)}"): entity for entity in linked}
+        for device_entry in list(dr.async_entries_for_config_entry(registry, self.entry.entry_id)):
+            match = next((wanted[i] for i in device_entry.identifiers if i in wanted), None)
+            if match is None:
+                continue
+            registry.async_remove_device(device_entry.id)
+            for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor):
+                self._known.discard((match, sensor_cls.sensor_key))
 
     def _rename_raw_id_devices(self, devices: list[dict[str, Any]]) -> None:
         """Replace a device name that is only the vacuum's entity id.

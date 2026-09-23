@@ -349,7 +349,7 @@ has been scheduled. Add a maintenance interval in the card settings; `unknown` b
 that means “no schedule”, not a failed vacuum detector.
 
 **I see two devices but I only have one vacuum.**
-The current local implementation groups duplicate entities only with shared registry device identity or a matching non-placeholder MAC. It preserves one history owner and never adds histories together. Ambiguous identities remain separate. On older releases, your robot may be exposed by two integrations at once (e.g. the vendor integration and
+Duplicate entities are grouped automatically only with a shared registry device identity or a matching non-placeholder MAC. It preserves one history owner and never adds histories together. A robot shared over **Matter** and also added through its vendor integration cannot be proven identical from the registry: when it is the only robot of that maker, the card asks *"… looks like the same robot as … Hide the duplicate?"*. **Hide duplicate** removes the Matter copy's sensors and accounting (the native robot keeps its history); **It is another robot** keeps both. A hidden duplicate is listed in the card with **Show** to undo. On older releases, your robot may be exposed by two integrations at once (e.g. the vendor integration and
 Matter — each creates its own `vacuum.*` entity), or you hit a bug fixed in v5.1.7 where a
 ghost "Vacuum" device could be created by the card's default config. Update and restart —
 the ghost is removed automatically. If it persists, remove it in Settings →

@@ -225,3 +225,40 @@ async def test_a_device_named_after_the_entity_id_is_renamed(hass: HomeAssistant
     await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert registry.async_get(device.id).name == VACUUM  # the user's own name is never overwritten
+
+
+async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(hass: HomeAssistant, hass_ws_client) -> None:
+    """5.7.0-beta.7: a robot shared over Matter and added natively."""
+    matter = MockConfigEntry(domain="matter", title="Matter")
+    matter.add_to_hass(hass)
+    bridged = dr.async_get(hass).async_get_or_create(
+        config_entry_id=matter.entry_id, identifiers={("matter", "node-7")},
+        manufacturer="Roborock", model="Robotic Vacuum Cleaner", name="Robotic Vacuum Cleaner")
+    er.async_get(hass).async_get_or_create("vacuum", "matter", "node-7", device_id=bridged.id,
+                                           suggested_object_id="robotic_vacuum_cleaner", config_entry=matter)
+    hass.states.async_set("vacuum.robotic_vacuum_cleaner", "docked", {"friendly_name": "Robotic Vacuum Cleaner"})
+    await _setup(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    registry = dr.async_get(hass)
+
+    def ours():
+        return {i[1] for d in dr.async_entries_for_config_entry(registry, entry.entry_id) for i in d.identifiers}
+
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/list_vacuums"})
+    listed = {v["entity_id"]: v for v in (await client.receive_json())["result"]["vacuums"]}
+    assert listed["vacuum.robotic_vacuum_cleaner"]["possible_duplicate_of"] == VACUUM
+    assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" in ours()  # nothing hidden without the user
+
+    await client.send_json({"id": 2, "type": f"{DOMAIN}/set_settings",
+                            "patch": {"robot_links": {"vacuum.robotic_vacuum_cleaner": VACUUM}}})
+    assert (await client.receive_json())["success"]
+    await hass.async_block_till_done()
+    assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" not in ours()
+    assert f"{entry.entry_id}_vacuum_robot" in ours()
+
+    await client.send_json({"id": 3, "type": f"{DOMAIN}/set_settings",
+                            "patch": {"robot_links": {"vacuum.robotic_vacuum_cleaner": "distinct"}}})
+    assert (await client.receive_json())["success"]
+    await hass.async_block_till_done()
+    assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" in ours()

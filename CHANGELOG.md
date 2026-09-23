@@ -1,5 +1,17 @@
 # Changelog
 
+## 5.7.0-beta.7 (2026-09-23)
+
+### Added
+
+- **One robot, two integrations: the card asks.** A robot shared to Home Assistant over Matter
+  and also added through its vendor integration showed up as two vacuums, the Matter one with
+  empty sensors. The registry cannot prove they are one robot, so when the Matter robot's maker
+  has exactly one native robot the card asks whether to hide the duplicate. Hiding removes the
+  Matter copy's sensors and accounting and keeps the native robot's history; "It is another
+  robot" keeps both, and a hidden duplicate can be shown again from the card. Nothing is hidden
+  without the user's answer, and two native robots of the same maker are never guessed.
+
 ## 5.7.0-beta.6 (2026-09-23)
 
 ### Fixed

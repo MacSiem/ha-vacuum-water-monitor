@@ -49,7 +49,28 @@ def discover_descriptors(
             descriptor["identity_group"] = group
             descriptor["identity_confidence"] = "registry" if keys else "unlinked"
             descriptor["duplicate_entities"] = sorted(d["entity_id"] for d in members if d is not descriptor)
+    _suggest_bridge_duplicates(descriptors)
     return descriptors
+
+
+def _suggest_bridge_duplicates(descriptors: list[dict[str, Any]]) -> None:
+    """Point a Matter vacuum at the one native vacuum of the same maker.
+
+    The registry cannot prove that a robot shared to Home Assistant over Matter
+    is the same physical robot as its native integration, so this is only a
+    suggestion the card asks the user to confirm; nothing is merged here.
+    """
+    def maker(descriptor: dict[str, Any]) -> str:
+        return normalize_identifier(descriptor.get("manufacturer") or "")
+
+    for descriptor in descriptors:
+        if descriptor.get("platform") != "matter" or descriptor.get("duplicate_entities") or not maker(descriptor):
+            continue
+        natives = [other for other in descriptors
+                   if other is not descriptor and other.get("platform") not in (None, "matter")
+                   and maker(other) == maker(descriptor)]
+        if len(natives) == 1:
+            descriptor["possible_duplicate_of"] = natives[0]["entity_id"]
 
 
 def descriptors_from_hass(hass: Any) -> list[dict[str, Any]]:

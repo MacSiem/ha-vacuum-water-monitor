@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.7.0-beta.6 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.7.0-beta.7 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -9,7 +9,7 @@ const _esc = (s) => _escBase(_asText(s));
 const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.7.0-beta.6';
+const VWM_VERSION = '5.7.0-beta.7';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -4921,16 +4921,62 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const devices = this._getDeviceCandidates();
     const groups = new Map();
     const stored = this._serverState?.tank_states || {};
+    const links = this._robotLinks();
+    const groupOf = (d) => this._backendDescriptor(d)?.identity_group || d.vacuum_entity;
+    const byEntity = new Map(devices.map(d => [d.vacuum_entity, d]));
     for (const device of devices) {
       const descriptor = this._backendDescriptor(device);
-      const key = descriptor?.identity_group || device.vacuum_entity;
+      const linked = links[device.vacuum_entity];
+      const key = (linked && linked !== 'distinct' && byEntity.has(linked))
+        ? groupOf(byEntity.get(linked))
+        : (descriptor?.identity_group || device.vacuum_entity);
       const current = groups.get(key);
-      const rank = d => [Object.hasOwn(stored, d.vacuum_entity) ? 0 : 1,
+      const rank = d => [(links[d.vacuum_entity] && links[d.vacuum_entity] !== 'distinct') ? 1 : 0,
+        Object.hasOwn(stored, d.vacuum_entity) ? 0 : 1,
         ['matter', 'generic'].includes(this._backendDescriptor(d)?.integration_adapter) ? 1 : 0,
         d.vacuum_entity || ''].join('|');
       if (!current || rank(device) < rank(current)) groups.set(key, device);
     }
     return [...groups.values()];
+  }
+
+  _robotLinks() {
+    const links = this._serverState?.settings?.robot_links;
+    return links && typeof links === 'object' && !Array.isArray(links) ? links : {};
+  }
+
+  // A Matter-bridged robot of the same maker as one native robot is suggested
+  // as a duplicate; the user decides, and can undo it here.
+  _duplicateNoticeHtml() {
+    const pl = this._lang === 'pl';
+    const links = this._robotLinks();
+    const vacuums = this._discoveredVacuums || [];
+    const nameOf = (id) => {
+      const v = vacuums.find(x => x.entity_id === id);
+      return _esc((v && v.name) || (this._hass?.states?.[id]?.attributes?.friendly_name) || id);
+    };
+    const parts = [];
+    for (const v of vacuums) {
+      const target = v.possible_duplicate_of;
+      if (target && !links[v.entity_id]) {
+        parts.push(`<div class="alert-banner alert-warn dup-banner">${pl
+          ? `„${nameOf(v.entity_id)}” (Matter) wygląda na tego samego robota co „${nameOf(target)}”. Ukryć duplikat?`
+          : `"${nameOf(v.entity_id)}" (Matter) looks like the same robot as "${nameOf(target)}". Hide the duplicate?`}
+          <div class="dup-actions">
+            <button class="dup-btn" data-dup="${_esc(v.entity_id)}" data-target="${_esc(target)}">${pl ? 'Ukryj duplikat' : 'Hide duplicate'}</button>
+            <button class="dup-btn" data-dup="${_esc(v.entity_id)}" data-target="distinct">${pl ? 'To inny robot' : 'It is another robot'}</button>
+          </div></div>`);
+      }
+    }
+    for (const [entity, target] of Object.entries(links)) {
+      if (target && target !== 'distinct') {
+        parts.push(`<div class="dup-hidden">${pl
+          ? `Ukryty duplikat: ${nameOf(entity)} (ten sam robot co ${nameOf(target)}).`
+          : `Hidden duplicate: ${nameOf(entity)} (same robot as ${nameOf(target)}).`}
+          <button class="dup-btn dup-undo" data-dup="${_esc(entity)}" data-target="distinct">${pl ? 'Pokaż' : 'Show'}</button></div>`);
+      }
+    }
+    return parts.join('');
   }
 
   _getDeviceCandidates() {
@@ -7036,6 +7082,9 @@ target:
   font-size: 16px; color: var(--secondary-text-color, #888); opacity: 0.6;
 }
 .tip-banner .tip-dismiss:hover { opacity: 1; }
+.dup-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.dup-btn { border: 1px solid var(--divider-color, #cbd5e1); background: transparent; color: inherit; border-radius: 8px; padding: 4px 10px; cursor: pointer; font: inherit; }
+.dup-hidden { font-size: 0.85em; opacity: 0.8; margin: 4px 0 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .tip-banner.hidden { display: none; }
 
       
@@ -7066,6 +7115,7 @@ target:
             <li><strong>Refill</strong> - resets the water-usage counter after you refill the tank.</li>
           </ul>
         </div>
+        ${this._duplicateNoticeHtml()}
         ${deviceTabsHtml}
         ${deviceHeader}
         ${tabNav}
@@ -7136,6 +7186,20 @@ target:
         });
       }
     }
+
+    sr.querySelectorAll('.dup-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const entity = btn.dataset.dup;
+        const target = btn.dataset.target;
+        if (!entity || !target) return;
+        btn.disabled = true;
+        const result = await this._saveServerSettings({ robot_links: { ...this._robotLinks(), [entity]: target } });
+        if (!result.ok) btn.disabled = false;
+        this._lastHtml = '';
+        this._render({ preserveDraft: true });
+      });
+    });
 
     // Refill button — reset HA Store state for this vacuum.
     sr.querySelectorAll('.refill-btn').forEach(btn => {

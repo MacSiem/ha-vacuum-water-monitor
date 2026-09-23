@@ -106,6 +106,14 @@ def build_vacuum_devices(
         if not device.get("name") or device.get("name") == entity:
             device["name"] = str(name)
 
+    # The user confirmed in the card that a bridged entity (Matter) is the same
+    # robot as a native one: it joins that robot's identity group, so it gets no
+    # second tank, sensors or accounting. "distinct" keeps it separate.
+    links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
+    for entity, target in links.items():
+        if target != "distinct" and entity in devices and target in devices and entity != target:
+            devices[entity]["identity_group"] = str(devices[target].get("identity_group") or target)
+
     grouped: dict[str, list[dict[str, Any]]] = {}
     for device in devices.values():
         grouped.setdefault(str(device.get("identity_group") or device["vacuum_entity"]), []).append(device)
