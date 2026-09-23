@@ -10,7 +10,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
-from .refill import REFILL_SOURCES, apply_refill
+from .refill import REFILL_SOURCES, USER_REFILL_DEDUPE_SECONDS, apply_refill
 from .const import (
     DEFAULT_CRITICAL_THRESHOLD,
     DEFAULT_WARNING_THRESHOLD,
@@ -179,6 +179,14 @@ class VacuumWaterStorage:
             data = await self._ensure_loaded_locked()
             state = self.default_tank_state()
             state.update(data["tank_states"].get(vacuum_entity) or {})
+            # A second report of the same physical refill (a double press, the
+            # button after the dock already cleared) must not erase the water
+            # counted in between or add a second history entry. The tick applies
+            # the same window to lid and button entities.
+            previous_reset = int(state.get("last_reset_ts") or 0)
+            if (state.get("initialized") and not state.get("water_empty_active")
+                    and 0 <= when_ts - previous_reset <= USER_REFILL_DEDUPE_SECONDS * 1000):
+                return deepcopy(state)
             # A refill starts a new baseline; it is not a signal gap.
             apply_refill(state, when_ts, source, rebaseline=True)
             state["last_reset_iso"] = when_iso

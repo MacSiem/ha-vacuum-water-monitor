@@ -105,7 +105,10 @@ def _descriptor(
     }
     descriptor = {
         "entity_id": entity_id,
-        "name": attributes.get("friendly_name") or _value(vacuum, "original_name") or entity_id,
+        # At Home Assistant start-up a vacuum's state (and friendly name) may not
+        # exist yet; the registry device name is known and is what users see.
+        "name": (attributes.get("friendly_name") or _value(vacuum, "name") or _value(vacuum, "original_name")
+                 or _value(device, "name_by_user") or _value(device, "name") or entity_id),
         "state": _state_value(state),
         "battery": attributes.get("battery_level", attributes.get("battery")),
         "platform": _value(vacuum, "platform"),

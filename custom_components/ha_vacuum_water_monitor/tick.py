@@ -19,7 +19,7 @@ from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compat
 from . import profiles as consumption_profiles
 from . import accounting_v2
 from . import estimation
-from .refill import apply_refill
+from .refill import USER_REFILL_DEDUPE_SECONDS, apply_refill
 
 MOP_WASH_STATES = {
     "washing",
@@ -75,9 +75,6 @@ AREA_COUNTER_JITTER_M2 = 0.05
 BRIDGE_UNCHECKED_SECONDS = 60
 BRIDGE_MIN_AREA_PACE = 0.8
 AREA_RATE_SMOOTHING = 0.3
-# Two refill reports this close together describe one physical refill (a lid
-# closed after the dock already cleared, a button pressed as confirmation).
-USER_REFILL_DEDUPE_SECONDS = 600
 # An empty error first seen this soon after a refill the user reported is the
 # error that preceded that refill, not a tank emptied in minutes.
 REFILL_ACK_WINDOW_SECONDS = 600

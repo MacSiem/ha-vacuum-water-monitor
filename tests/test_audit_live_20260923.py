@@ -195,6 +195,45 @@ class RegistryDevicesTests(unittest.TestCase):
         self.assertEqual(discovery._registry_devices(object()), [])
 
 
+class DoubleRefillReportTests(unittest.TestCase):
+    """Live 2026-09-19 06:14:04 and 06:14:44: Refilled pressed twice during a run."""
+
+    def run_resets(self, second_after_ms):
+        import asyncio
+
+        async def go():
+            st = storage.VacuumWaterStorage(None)
+            await st.async_set_tank_state("vacuum.a", {"used_ml": 2296, "initialized": True, "last_reset_ts": 1})
+            await st.async_reset_tank("vacuum.a", "2026-09-19T06:14:04Z", 1_000_000, "card")
+            state = await st.async_get_state()
+            state["tank_states"]["vacuum.a"]["used_ml"] = 7.2
+            await st.async_set_tank_state("vacuum.a", state["tank_states"]["vacuum.a"])
+            return await st.async_reset_tank("vacuum.a", "2026-09-19T06:14:44Z", 1_000_000 + second_after_ms, "card")
+
+        return asyncio.run(go())
+
+    def test_second_press_within_ten_minutes_is_the_same_refill(self):
+        state = self.run_resets(40_000)
+        self.assertEqual(state["used_ml"], 7.2)
+        self.assertEqual(len(state["refill_history"]), 1)
+
+    def test_a_later_press_is_a_new_refill(self):
+        state = self.run_resets(601_000)
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(len(state["refill_history"]), 2)
+
+
+class DisplayNameTests(unittest.TestCase):
+    def test_registry_device_name_when_the_state_is_not_loaded_yet(self):
+        discovery = importlib.import_module("vwmruntimepkg.discovery")
+        entities = [{"entity_id": "vacuum.robotic_vacuum_cleaner", "platform": "matter", "device_id": "d1",
+                     "original_name": None}]
+        devices = [{"id": "d1", "manufacturer": "Roborock", "model": "Robotic Vacuum Cleaner",
+                    "name": "Robotic Vacuum Cleaner", "name_by_user": None}]
+        descriptor = discovery.discover_descriptors(entities, devices, {})[0]
+        self.assertEqual(descriptor["name"], "Robotic Vacuum Cleaner")
+
+
 class ShadowReplayToolTests(unittest.TestCase):
     def test_history_request_has_an_end_time(self):
         # Without end_time HA returns one day from start, so --days N replays 24 h.
