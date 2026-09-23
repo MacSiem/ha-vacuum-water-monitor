@@ -1,5 +1,29 @@
 # Changelog
 
+## 5.7.0-beta.3 (2026-09-23)
+
+Beta: fixes found in a week of live testing of 5.7.0-beta.2 on a Roborock S8 MaxV Ultra. Each
+fix is reproduced on recorded Home Assistant history replayed through the engine.
+
+### Fixed
+
+- **A mop wash could be counted twice at the end of a run.** Roborock's `*_cleaning` task flag
+  stays on while the robot washes and empties the bin at the dock; it was read as "cleaning
+  resumed", so a two-second wash status after the bin emptying was charged as a second wash
+  (+150 ml on a S8 MaxV Ultra). With a status signal bound, only the status ends a wash now.
+- **Sessions disappeared from the water history** when the mop settings changed during a run
+  or the tank was refilled midway. The history keeps the run's water; such a session is still
+  not used as a clean measurement for calibration or sharing. A broken count (counter reset,
+  unbridged gap, missing rate) still leaves the water unknown.
+- **One tank size everywhere.** The capacity entered in the card (`water_total_ml`) was shown by
+  the sensors while calibration anchored to the model's tank. The engine now uses the same
+  number; the dock empty anchor and automatic refill stay enabled. Changing it restarts the
+  device's calibration, as any capacity change does.
+- An idle heartbeat rewrote the whole Store every minute only to update its tick timestamp; such
+  passes stay in memory until the next real write.
+- Home Assistant's deprecated `device_registry.devices` mapping access in discovery.
+- `scripts/shadow_capture.py` requested history without an end time and replayed only one day.
+
 ## 5.7.0-beta.2 (2026-09-16)
 
 Beta: every refill option works, calibration survives real-world anchors, accounting follows

@@ -1,8 +1,7 @@
 """Reproductions of defects seen on the live 5.7.0-beta.2 test (audit 2026-09-23).
 
-Each test states the behaviour stable 5.7.0 must have. Tests marked
-``expectedFailure`` reproduce a live defect in beta.2 and must pass (and lose
-the marker) once it is fixed. Evidence: recorder history of 2026-09-19 on the
+Each test states the behaviour stable 5.7.0 must have. They reproduced live
+defects of beta.2 as expected failures (commit ea97ee8) and pass since beta.3. Evidence: recorder history of 2026-09-19 on the
 owner's S8 MaxV Ultra; see the audit note in the project vault.
 """
 
@@ -66,7 +65,6 @@ class WashSequenceTests(unittest.TestCase):
                 state = runner(S8, state, final_wash_sequence())
                 self.assertAlmostEqual(state["used_ml"] - before, 150, places=1)
 
-    @unittest.expectedFailure
     def test_task_flag_on_at_the_dock_does_not_end_the_wash_sequence(self):
         # Live 2026-09-19 06:52-06:57: Roborock's binary_sensor.*_cleaning stays
         # "on" until the task ends, _is_cleaning() treats that as "resumed", the
@@ -80,7 +78,6 @@ class WashSequenceTests(unittest.TestCase):
 
 
 class SessionHistoryTests(unittest.TestCase):
-    @unittest.expectedFailure
     def test_setting_change_during_a_run_keeps_the_session_water(self):
         # Live 2026-09-19 16:48: mop intensity changed while returning; the whole
         # session was stored with water=None and accounting_valid=False.
@@ -91,23 +88,43 @@ class SessionHistoryTests(unittest.TestCase):
         state = run(S8, dict(BASE), steps)
         self.assertIsNotNone(state["automatic_sessions"][0]["water"])
 
-    @unittest.expectedFailure
-    def test_area_in_the_interval_of_a_setting_change_is_charged(self):
-        state = run(S8, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0", intensity="standard"),
-                                     dict(status="cleaning", vac="cleaning", area="10", intensity="standard")])
-        before = state["used_ml"]
-        state = run(S8, state, [dict(status="cleaning", vac="cleaning", area="14", intensity="extreme")], ts=10_200_000)
-        self.assertGreater(state["used_ml"] - before, 0)
+    def test_refill_during_a_run_keeps_the_whole_run_in_history(self):
+        # Live 2026-09-19 06:14: Refilled pressed mid-run; the session lost its water.
+        refill = importlib.import_module("vwmruntimepkg.refill")
+        state = run(S8, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0", intensity="extreme"),
+                                     dict(status="cleaning", vac="cleaning", area="10", intensity="extreme")])
+        refill.apply_refill(state, 10_130_000, "card", rebaseline=True)
+        state = run(S8, state, [dict(status="cleaning", vac="cleaning", area="10", intensity="extreme"),
+                                dict(status="cleaning", vac="cleaning", area="20", intensity="extreme"),
+                                dict(status="charging", vac="docked", area="20", intensity="extreme")], ts=10_140_000)
+        session = state["automatic_sessions"][0]
+        self.assertAlmostEqual(session["water"], 180, places=1)  # 20 m2 x 6 x 1.5
+        self.assertFalse(session["accounting_valid"])  # not a clean measurement for calibration
+
+    def test_a_broken_count_still_leaves_the_water_unknown(self):
+        steps = [dict(status="cleaning", vac="cleaning", area="0", intensity="extreme"),
+                 dict(status="cleaning", vac="cleaning", area="10", intensity="extreme"),
+                 dict(status="cleaning", vac="cleaning", area="2", intensity="extreme"),  # counter reset mid-run
+                 dict(status="charging", vac="docked", area="2", intensity="extreme")]
+        state = run(S8, dict(BASE), steps)
+        self.assertIsNone(state["automatic_sessions"][0]["water"])
 
 
 class CapacityTests(unittest.TestCase):
-    @unittest.expectedFailure
     def test_sensor_and_engine_use_one_capacity(self):
-        # Live: the card stored water_total_ml 3000; sensors show 3000 while the
-        # engine anchors calibration to the profile's tracked_capacity_ml 4000.
+        # Live: the card stored water_total_ml 3000; sensors showed 3000 while the
+        # engine anchored calibration to the profile's tracked_capacity_ml 4000.
         settings = {"configured_devices": [{"vacuum_entity": "vacuum.robot", "water_total_ml": 3000}]}
         device = effective(settings, descriptor())
-        self.assertEqual(sc._water_capacity_ml(device, settings), device.get("tracked_capacity_ml"))
+        self.assertEqual(sc._water_capacity_ml(device, settings), 3000)
+        self.assertEqual(device.get("tracked_capacity_ml"), 3000)
+        # the user's tank size keeps the dock anchor and automatic refill
+        self.assertTrue(device.get("refill_on_clear"))
+        self.assertEqual(device.get("water_anchor_reservoir"), "dock_clean")
+
+    def test_without_a_card_capacity_both_use_the_model_tank(self):
+        device = effective({}, descriptor())
+        self.assertEqual(sc._water_capacity_ml(device, {}), device.get("tracked_capacity_ml"))
 
 
 class StoreWriteTests(unittest.TestCase):
@@ -125,8 +142,60 @@ class StoreWriteTests(unittest.TestCase):
         self.assertEqual(changed, {"last_tick_ts"})
 
 
+class TickOnlyPersistenceTests(unittest.TestCase):
+    def test_tick_timestamp_only_pass_is_detected(self):
+        state = run(S8, dict(BASE), [dict(status="charging", vac="docked", area="0")] * 3)
+        before = dict(state)
+        after, _ = tick.tick_device(hass(status="charging", vac="docked", area="0"), S8, dict(state), now_ts=10_300_000)
+        self.assertTrue(tick._only_tick_timestamp_changed(before, after))
+        after["used_ml"] = 1
+        self.assertFalse(tick._only_tick_timestamp_changed(before, after))
+
+    def test_store_keeps_a_tick_only_pass_in_memory_without_writing(self):
+        import asyncio
+
+        class Store:
+            saves = 0
+
+            async def async_load(self):
+                return None
+
+            async def async_save(self, data):
+                Store.saves += 1
+
+        async def go():
+            st = storage.VacuumWaterStorage(None)
+            st._store = Store()
+            await st.async_set_tank_states({"vacuum.a": {"used_ml": 1, "last_tick_ts": 5}}, persist=False)
+            state = await st.async_get_state()
+            return state["tank_states"]["vacuum.a"]["last_tick_ts"], Store.saves
+
+        self.assertEqual(asyncio.run(go()), (5, 0))
+
+
+class RegistryDevicesTests(unittest.TestCase):
+    def test_entries_and_legacy_ids_are_both_resolved(self):
+        discovery = importlib.import_module("vwmruntimepkg.discovery")
+
+        class Modern:
+            devices = ["entry-a", "entry-b"]
+
+        entry = object()
+
+        class Legacy:
+            devices = {"d1": entry}
+
+            def async_get(self, device_id):
+                return self.devices.get(device_id)
+
+        modern = Modern()
+        modern.devices = [entry]
+        self.assertEqual(discovery._registry_devices(modern), [entry])
+        self.assertEqual(discovery._registry_devices(Legacy()), [entry])
+        self.assertEqual(discovery._registry_devices(object()), [])
+
+
 class ShadowReplayToolTests(unittest.TestCase):
-    @unittest.expectedFailure
     def test_history_request_has_an_end_time(self):
         # Without end_time HA returns one day from start, so --days N replays 24 h.
         source = (ROOT / "scripts" / "shadow_capture.py").read_text(encoding="utf-8")

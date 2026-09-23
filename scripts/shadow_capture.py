@@ -171,7 +171,7 @@ def main():
     effective=calc.build_vacuum_devices({}, {},descriptors)
     start=(datetime.now(timezone.utc)-timedelta(days=max(1,min(args.days,30)))).isoformat()
     wanted=list(ids)+([args.compare_entity] if args.compare_entity else [])
-    history=get('/api/history/period/'+start+'?'+urlencode({'filter_entity_id':','.join(wanted),'significant_changes_only':'false'}))
+    history=get('/api/history/period/'+start+'?'+urlencode({'filter_entity_id':','.join(wanted),'significant_changes_only':'false','end_time':datetime.now(timezone.utc).isoformat()}))
     events=[];compare=[]
     for series in history:
         for sample in series:

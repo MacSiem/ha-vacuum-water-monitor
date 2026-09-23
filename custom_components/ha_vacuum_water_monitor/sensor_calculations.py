@@ -375,6 +375,16 @@ def apply_custom_calibration(
                 effective.pop(flag, None)
                 effective.pop(base, None)
 
+    # The card's capacity field (water_total_ml) names the tracked tank and the
+    # sensors read it first, so the engine anchors calibration to the same
+    # number. It is the user's tank size, not an unproven reservoir: the
+    # inferred dock anchor and automatic refill stay as resolved above.
+    if ("water_total_ml" in explicit_before_merge and "tracked_capacity_ml" not in explicit_before_merge
+            and effective.get("tracked_reservoir")):
+        direct_capacity = _positive_optional(effective.get("water_total_ml"))
+        if direct_capacity is not None:
+            effective["tracked_capacity_ml"] = direct_capacity
+
     effective.setdefault("mop_evidence_required", True)
     _apply_signal_overrides(effective, settings)
     _apply_refill_settings(effective, settings)
@@ -591,7 +601,10 @@ def _water_capacity_ml(
     device: dict[str, Any], settings: dict[str, Any]
 ) -> float | None:
     direct = _optional_number(device.get("water_total_ml"))
-    if direct and direct > 0:
+    # A generated legacy default must not outrank the tank the engine anchors to.
+    if direct and direct > 0 and (
+            "water_total_ml" in _explicit_fields(device)
+            or not _positive_optional(device.get("tracked_capacity_ml"))):
         return direct
 
     custom = _merged_custom_calibration(device, settings)

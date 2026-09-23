@@ -45,6 +45,14 @@ def apply_refill(
     used_before = state.get("used_ml")
     empty_active = bool(state.get("water_empty_active"))
     acknowledged = empty_active and source != "dock_cleared"
+    # A refill during a run ends the clean measurement but not the session: the
+    # water already counted moves into the start offset so the history keeps
+    # the whole run.
+    session_open = bool(state.get("session_start_ts")) and isinstance(used_before, (int, float))
+    if session_open:
+        start_used = state.get("session_start_used_ml")
+        start_used = float(start_used) if isinstance(start_used, (int, float)) else 0.0
+        state["session_start_used_ml"] = round(start_used - float(used_before), 2)
     if rebaseline:
         state.update(_REBASELINE_FIELDS)
     state.update(

@@ -133,8 +133,13 @@ class VacuumWaterStorage:
         *,
         expected_reset_ts: dict[str, Any] | None = None,
         delay_seconds: float | None = None,
+        persist: bool = True,
     ) -> dict[str, dict[str, Any]]:
         """Persist tick results; never overwrite a refill recorded meanwhile.
+
+        ``persist=False`` updates only the in-memory Store data (a pass that
+        changed nothing but its tick timestamp); the next real write, or a
+        pending delayed write, carries it to disk.
 
         A tick computes from a snapshot. When a refill was recorded after that
         snapshot (``last_reset_ts`` changed), its result is dropped and the next
@@ -150,7 +155,7 @@ class VacuumWaterStorage:
                         continue
                 data["tank_states"][vacuum_entity] = deepcopy(tank_state)
                 written[vacuum_entity] = deepcopy(tank_state)
-            if written:
+            if written and persist:
                 await self._save_locked(data, delay_seconds)
             return written
 

@@ -65,7 +65,20 @@ def descriptors_from_hass(hass: Any) -> list[dict[str, Any]]:
         if entity_id not in known:
             records.append({"entity_id": entity_id, "platform": None, "unique_id": None, "device_id": None})
     states = {entity_id: hass.states.get(entity_id) for entity_id in hass.states.async_entity_ids()}
-    return discover_descriptors(records, getattr(device_registry, "devices", {}).values(), states)
+    return discover_descriptors(records, _registry_devices(device_registry), states)
+
+
+def _registry_devices(device_registry: Any) -> list[Any]:
+    """All device entries without the deprecated mapping API.
+
+    Current Home Assistant yields entries when ``devices`` is iterated; older
+    releases yield ids, which ``async_get`` resolves.
+    """
+    devices = getattr(device_registry, "devices", None)
+    items = list(devices) if devices is not None else []
+    if items and isinstance(items[0], str):
+        return [entry for entry in (device_registry.async_get(item) for item in items) if entry is not None]
+    return items
 
 
 def _descriptor(

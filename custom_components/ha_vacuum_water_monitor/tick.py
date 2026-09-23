@@ -197,6 +197,7 @@ async def async_tick_water_state(
     previous = stored["tank_states"]
     changed: dict[str, dict[str, Any]] = {}
     expected_reset_ts: dict[str, Any] = {}
+    substantive = False
 
     for device in devices:
         vacuum_entity = device.get("vacuum_entity")
@@ -213,17 +214,28 @@ async def async_tick_water_state(
         state = VacuumWaterStorage.default_tank_state()
         state.update(previous.get(vacuum_entity) or {})
         expected_reset_ts[vacuum_entity] = state.get("last_reset_ts")
+        before = deepcopy(state)
         new_state, dirty = tick_device(hass, device, state)
         if dirty:
             changed[vacuum_entity] = new_state
+            if not _only_tick_timestamp_changed(before, new_state):
+                substantive = True
 
     if not changed:
         return changed
     # A refill recorded by this pass (button, lid, dock) is written at once.
     refilled = any(state.get("last_reset_ts") != expected_reset_ts.get(vacuum) for vacuum, state in changed.items())
+    # An idle heartbeat changes only last_tick_ts: keep it in memory instead of
+    # rewriting the whole Store every minute.
     written = await storage.async_set_tank_states(
-        changed, expected_reset_ts=expected_reset_ts, delay_seconds=None if refilled else delay_save_seconds)
+        changed, expected_reset_ts=expected_reset_ts, delay_seconds=None if refilled else delay_save_seconds,
+        persist=substantive or refilled)
     return written if isinstance(written, dict) else changed
+
+
+def _only_tick_timestamp_changed(before: dict[str, Any], after: dict[str, Any]) -> bool:
+    keys = (set(before) | set(after)) - {"last_tick_ts", _PASS_REASONS_KEY}
+    return all(before.get(key) == after.get(key) for key in keys)
 
 
 def _digest(values: Any) -> str:
@@ -464,7 +476,7 @@ def _tick_device_pass(
             _record_accounting(state, "area", None, evidence, "gap_bridged")
         elif gap_exposure:
             state["accounting_incomplete"] = True
-            state["session_accounting_valid"] = False
+            state.update(session_accounting_valid=False, session_water_broken=True)
             _record_accounting(state, "unknown", None, None, "gap_not_bridged")
         state["gap_started_ts"] = None
         state["gap_exposure_possible"] = False
@@ -623,7 +635,7 @@ def _tick_device_pass(
                 state["verified_wash_active"] = False
     if session_running and not state.get("session_start_ts"):
         state.update(session_start_ts=now_ts, session_start_used_ml=_number(state.get("used_ml"),0),
-                     session_start_area=curr_area, session_accounting_valid=True,
+                     session_start_area=curr_area, session_accounting_valid=True, session_water_broken=False,
                      session_context=deepcopy(consumption_context),
                      session_resolution=deepcopy(state.get("consumption_resolution")),
                      session_exposure_complete=curr_area == 0, session_segments=1)
@@ -661,7 +673,11 @@ def _tick_device_pass(
         )
     ):
         if state.get("wash_sequence_active"):
-            resumed = _is_cleaning(vac_state, curr_status, cleaning_active)
+            # A task flag (Roborock binary_sensor.*_cleaning) stays on while the
+            # robot washes, empties the bin and flickers back to a wash state at
+            # the dock. With a bound status signal only the status proves that
+            # floor cleaning resumed.
+            resumed = _is_cleaning(vac_state, curr_status, None if status_sensor else cleaning_active)
             quiet_ms = now_ts - int(state.get("last_wash_seen_ts") or 0)
             if resumed or quiet_ms > WASH_SEQUENCE_GAP_SECONDS * 1000:
                 state["wash_sequence_active"] = False
@@ -707,7 +723,7 @@ def _tick_device_pass(
             if previous_volume is None:
                 reason = "real_sensor_baseline"
             elif volume > previous_volume:
-                state["session_accounting_valid"] = False
+                state.update(session_accounting_valid=False, session_water_broken=True)
                 reason = "real_sensor_refill_observed"
                 # A rise proves added volume, not a completely full reservoir.
                 state["used_ml"] = max(0, _number(state.get("used_ml"), 0) - (volume - previous_volume))
@@ -774,11 +790,11 @@ def _tick_device_pass(
                     (1 - AREA_RATE_SMOOTHING) * previous_rate + AREA_RATE_SMOOTHING * sample_rate, 6)
         if delta < 0:
             state["session_exposure_complete"] = False
-            state["session_accounting_valid"] = False
+            state.update(session_accounting_valid=False, session_water_broken=True)
             dirty |= _record_accounting(state, "area", None, evidence, "area_reset")
         elif delta > ceiling:
             state["session_exposure_complete"] = False
-            state["session_accounting_valid"] = False
+            state.update(session_accounting_valid=False, session_water_broken=True)
             dirty |= _record_accounting(state, "area", None, evidence, "area_anomaly")
         elif delta < AREA_MIN_DELTA and not math.isclose(
             delta, AREA_MIN_DELTA, rel_tol=0, abs_tol=1e-9
@@ -1189,7 +1205,7 @@ def _tick_device_pass(
                 state["session_resolution"] = deepcopy(resolution)
                 _record_accounting(state, "whole_cycle", resolution["coefficient"], "device_calibration", None)
             else:
-                state["session_accounting_valid"] = False
+                state.update(session_accounting_valid=False, session_water_broken=True)
                 state["accounting_incomplete"] = True
                 _record_accounting(state, "unknown", None, None, resolution.get("reason") or "incomplete_cycle")
         dirty = True
@@ -1274,12 +1290,17 @@ def _finish_session(state, running, status, now_ts, area):
         return
     reason = str(state.get("last_accounting_reason") or "")
     if reason.startswith("missing_") or "unavailable" in reason or reason.endswith("gap"):
-        state["session_accounting_valid"] = False
+        state.update(session_accounting_valid=False, session_water_broken=True)
     if running or status not in _SESSION_END_STATES:
         return
     measured = state.get("last_accounting_evidence") in {"measured_volume", "user_calibration", "explicit_user_configuration", "device_calibrated", "verified_model", "device_calibration", estimation.LABELED_ESTIMATE}
     measured = measured or (state.get("session_resolution") or {}).get("source") in {"verified_model", "device_calibration"}
-    water = max(0, _number(state.get("used_ml"),0)-_number(state.get("session_start_used_ml"),0)) if measured and state.get("session_accounting_valid") else None
+    # accounting_valid marks a clean measurement (one context, no refill) for
+    # calibration and sharing. The history keeps the water of any run whose
+    # counting was never broken, including one that changed settings or was
+    # refilled midway (5.7.0-beta.3).
+    counted = state.get("session_accounting_valid") or not state.get("session_water_broken", True)
+    water = max(0, _number(state.get("used_ml"),0)-_number(state.get("session_start_used_ml"),0)) if measured and counted else None
     first_area = _float_or_none(state.get("session_start_area"))
     record = {"ts": now_ts, "started_ts": start, "type": "automatic", "water": water,
               "area": max(0,area-first_area) if area is not None and first_area is not None else None,
