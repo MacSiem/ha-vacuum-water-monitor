@@ -279,6 +279,66 @@ class EventPayloadTests(unittest.TestCase):
         self.assertIn("data.partial ? { ...(merged[vacuum] || {}), ...tank } : tank", card)
 
 
+class EmptyTankTests(unittest.TestCase):
+    """Live 2026-09-23 20:13: after the dock reported water_empty the robot washed its
+    mop once more and 140 ml were added to a tank that had none left."""
+
+    def empty(self):
+        state = run(S8, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0", intensity="extreme"),
+                                     dict(status="cleaning", vac="cleaning", area="10", intensity="extreme"),
+                                     dict(status="cleaning", vac="cleaning", area="10", intensity="extreme",
+                                          dock_err="water_empty"),
+                                     dict(status="cleaning", vac="cleaning", area="10", intensity="extreme",
+                                          dock_err="water_empty", _gap=70_000)])
+        self.assertTrue(state["water_empty_active"])
+        return state
+
+    def test_no_water_is_counted_while_the_tank_is_empty(self):
+        state = self.empty()
+        before = state["used_ml"]
+        state = run(S8, state, [dict(status="cleaning", vac="cleaning", area="14", intensity="extreme", dock_err="water_empty"),
+                                dict(status="washing_the_mop", vac="docked", area="14", intensity="extreme", dock_err="water_empty")],
+                    ts=10_600_000)
+        self.assertEqual(state["used_ml"], before)
+        self.assertEqual(state["last_accounting_reason"], "tank_empty_no_draw")
+
+    def test_a_user_refill_during_the_error_counts_again(self):
+        refill = importlib.import_module("vwmruntimepkg.refill")
+        state = self.empty()
+        refill.apply_refill(state, 10_500_000, "card", rebaseline=True)
+        state = run(S8, state, [dict(status="cleaning", vac="cleaning", area="10", intensity="extreme", dock_err="water_empty"),
+                                dict(status="cleaning", vac="cleaning", area="14", intensity="extreme", dock_err="water_empty")],
+                    ts=10_600_000)
+        self.assertAlmostEqual(state["used_ml"], 4 * 9, places=1)
+
+
+class AnchorInsideSessionTests(unittest.TestCase):
+    def test_the_tank_correction_is_not_charged_to_the_open_run(self):
+        # The S8 test profile's tank anchors at 3800 ml (4000 - 5%). A tank predicted
+        # at 3710 ml is raised by 90 ml at the anchor; the 10 m2 run that emptied it
+        # still shows its own 90 ml, not 180.
+        state = {**BASE, "used_ml": 3620, "initialized": True, "last_reset_ts": 1, "last_dock_err": "ok"}
+        state = run(S8, state, [dict(status="cleaning", vac="cleaning", area="0", intensity="extreme"),
+                                dict(status="cleaning", vac="cleaning", area="10", intensity="extreme"),
+                                dict(status="cleaning", vac="cleaning", area="10", intensity="extreme", dock_err="water_empty"),
+                                dict(status="cleaning", vac="cleaning", area="10", intensity="extreme", dock_err="water_empty",
+                                     _gap=70_000),
+                                dict(status="charging", vac="docked", area="10", intensity="extreme", dock_err="water_empty")])
+        self.assertAlmostEqual(state["used_ml"], 3800, places=1)
+        self.assertAlmostEqual(state["automatic_sessions"][0]["water"], 90, places=1)
+
+
+class SessionEndStateTests(unittest.TestCase):
+    def test_vendor_end_states_close_the_session(self):
+        for end in ("charging_completed", "sleeping", "standby"):
+            with self.subTest(end=end):
+                state = run(S8, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0", intensity="extreme"),
+                                             dict(status="cleaning", vac="cleaning", area="5", intensity="extreme"),
+                                             dict(status=end, vac="idle", area="5", intensity="extreme")])
+                self.assertIsNone(state.get("session_start_ts"))
+                self.assertEqual(len(state["automatic_sessions"]), 1)
+
+
 class DeprecatedRegistryApiTests(unittest.TestCase):
     """HA 2026.9 warns (removal 2027.8/2027.9) on registry mapping access and async_get_device."""
 

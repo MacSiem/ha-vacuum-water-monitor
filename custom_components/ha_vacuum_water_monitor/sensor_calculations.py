@@ -120,7 +120,10 @@ def build_vacuum_devices(
     result = []
     for members in grouped.values():
         # Keep the existing history owner; do not silently add counters together.
+        linked_away = {entity for entity, target in links.items() if target and target != "distinct"}
         members.sort(key=lambda d: (
+            # An entity the user linked to another robot is never the owner.
+            d["vacuum_entity"] in linked_away,
             d["vacuum_entity"] not in tank_states,
             d.get("integration_adapter") in {"matter", "generic", None},
             d["vacuum_entity"],

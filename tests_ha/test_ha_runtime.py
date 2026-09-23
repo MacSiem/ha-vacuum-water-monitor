@@ -256,6 +256,11 @@ async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(
     await hass.async_block_till_done()
     assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" not in ours()
     assert f"{entry.entry_id}_vacuum_robot" in ours()
+    storage = hass.data[DOMAIN]["storage"]
+    await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": "vacuum.robotic_vacuum_cleaner"}, blocking=True)
+    tanks = (await storage.async_get_state())["tank_states"]
+    assert tanks[VACUUM]["last_reset_source"] == "service"  # the owner is refilled, not the hidden copy
+    assert tanks.get("vacuum.robotic_vacuum_cleaner", {}).get("last_reset_source") != "service"
 
     await client.send_json({"id": 3, "type": f"{DOMAIN}/set_settings",
                             "patch": {"robot_links": {"vacuum.robotic_vacuum_cleaner": "distinct"}}})

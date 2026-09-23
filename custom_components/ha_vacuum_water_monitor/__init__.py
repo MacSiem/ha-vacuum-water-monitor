@@ -295,6 +295,13 @@ def _async_register_services(hass: HomeAssistant) -> None:
         entity_ids = sorted(entity_id for entity_id in extracted if entity_id.startswith("vacuum."))
         if not entity_ids:
             raise ServiceValidationError("Select at least one vacuum entity")
+        # A robot the user linked as a duplicate (Matter copy) refills its owner.
+        settings = (await storage.async_get_state()).get("settings") or {}
+        links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
+        entity_ids = sorted({
+            links[entity_id] if links.get(entity_id) and links[entity_id] != "distinct" else entity_id
+            for entity_id in entity_ids
+        })
         now = datetime.now(timezone.utc)
         changed = {}
         for entity_id in entity_ids:

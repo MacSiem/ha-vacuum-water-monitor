@@ -55,7 +55,8 @@ _MISSING_RATE_REASONS = frozenset({"missing_area_rate", "missing_time_rate", "mi
 # incomplete only when water could have been dispensed in that interval.
 _GAP_REASONS = frozenset({"area_gap", "active_time_gap", "area_reset", "area_anomaly"})
 _DOCK_OK_STATES = frozenset({"ok", "none", "no_error", "no_error_detected"})
-_SESSION_END_STATES = frozenset({"docked", "idle", "charging", "completed", "charging_complete"})
+_SESSION_END_STATES = frozenset({"docked", "idle", "charging", "completed", "charging_complete",
+                                  "charging_completed", "sleeping", "standby"})
 _ANCHOR_SOURCE_SCOPE = {"dock_error": "dock_clean", "dock_clean_water": "dock_clean"}
 # Changing any of these makes a learned device scale meaningless.
 _CALIBRATION_IDENTITY_KEYS = (
@@ -230,6 +231,20 @@ async def async_tick_water_state(
     return written if isinstance(written, dict) else changed
 
 
+def _set_used_at_anchor(state: dict[str, Any], target: float) -> None:
+    """Close the tank at its anchor without charging the correction to the run.
+
+    The difference between the prediction and the anchor is the estimate's error
+    over the whole tank, not water used by the open session, so the session's
+    start offset moves by the same amount.
+    """
+    before = _number(state.get("used_ml"), 0)
+    state["used_ml"] = round(target, 2)
+    if state.get("session_start_ts"):
+        state["session_start_used_ml"] = round(
+            _number(state.get("session_start_used_ml"), 0) + (state["used_ml"] - before), 2)
+
+
 def _only_tick_timestamp_changed(before: dict[str, Any], after: dict[str, Any]) -> bool:
     keys = (set(before) | set(after)) - {"last_tick_ts", _PASS_REASONS_KEY}
     return all(before.get(key) == after.get(key) for key in keys)
@@ -247,7 +262,17 @@ def tick_device(
     now_ts: int | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Run one accounting pass and strip pass-local bookkeeping from the result."""
+    # A dock that reported its clean tank empty cannot supply more water until a
+    # refill (a user refill during the error sets water_empty_acknowledged).
+    tank_empty = (bool(state.get("water_empty_active")) and state.get("water_anchor_kind") == "empty"
+                  and not state.get("water_empty_acknowledged") and not device.get("water_volume_sensor"))
+    used_before = _number(state.get("used_ml"), 0)
+    reset_before = state.get("last_reset_ts")
     new_state, dirty = _tick_device_pass(hass, device, state, now_ts=now_ts)
+    if (tank_empty and new_state.get("water_empty_active") and new_state.get("last_reset_ts") == reset_before
+            and _number(new_state.get("used_ml"), 0) > used_before):
+        new_state["used_ml"] = used_before
+        _record_accounting(new_state, "low_water", None, None, "tank_empty_no_draw")
     new_state.pop(_PASS_REASONS_KEY, None)
     return new_state, dirty
 
@@ -1074,7 +1099,7 @@ def _tick_device_pass(
                 # error that flickered while automatic refill is off): one tank.
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
                                             calibration_factor, False, "calibration_sample_no_refill_since_empty", wash_refund)
-                state["used_ml"] = round(calibration_target, 2)
+                _set_used_at_anchor(state, calibration_target)
                 dirty |= _record_accounting(state, "low_water", None, evidence,
                                             "calibration_sample_no_refill_since_empty")
             elif cycle_long_enough and state.get("accounting_incomplete"):
@@ -1082,7 +1107,7 @@ def _tick_device_pass(
                 # prediction is not a fair sample, but the anchor still applies.
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
                                             calibration_factor, False, "calibration_sample_incomplete_cycle", wash_refund)
-                state["used_ml"] = round(calibration_target, 2)
+                _set_used_at_anchor(state, calibration_target)
                 dirty |= _record_accounting(state, "low_water", None, evidence,
                                             "calibration_sample_incomplete_cycle")
             elif cycle_long_enough:
@@ -1107,7 +1132,7 @@ def _tick_device_pass(
                 state["calibration_samples"] = len(window)
                 state["last_calibration_predicted_ml"] = round(predicted_used, 2)
                 state["last_calibration_target_ml"] = round(calibration_target, 2)
-                state["used_ml"] = round(calibration_target, 2)
+                _set_used_at_anchor(state, calibration_target)
                 dirty |= _record_accounting(
                     state,
                     "low_water",
@@ -1116,7 +1141,7 @@ def _tick_device_pass(
                     "low_water_calibrated" if accepted else rejection,
                 )
             else:
-                state["used_ml"] = round(calibration_target, 2)
+                _set_used_at_anchor(state, calibration_target)
                 dirty |= _record_accounting(
                     state,
                     "low_water",
@@ -1313,7 +1338,7 @@ def _finish_session(state, running, status, now_ts, area):
     # accounting_valid marks a clean measurement (one context, no refill) for
     # calibration and sharing. The history keeps the water of any run whose
     # counting was never broken, including one that changed settings or was
-    # refilled midway (5.7.0-beta.3).
+    # refilled midway.
     counted = state.get("session_accounting_valid") or not state.get("session_water_broken", True)
     water = max(0, _number(state.get("used_ml"),0)-_number(state.get("session_start_used_ml"),0)) if measured and counted else None
     first_area = _float_or_none(state.get("session_start_area"))

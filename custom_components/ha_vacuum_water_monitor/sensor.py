@@ -119,12 +119,16 @@ class VacuumSensorManager:
         if entities:
             self.async_add_entities(entities, True)
         self._rename_raw_id_devices(devices)
-        self._remove_linked_duplicates(settings)
+        self._remove_linked_duplicates(settings, devices)
 
-    def _remove_linked_duplicates(self, settings: dict[str, Any]) -> None:
+    def _remove_linked_duplicates(self, settings: dict[str, Any], devices: list[dict[str, Any]]) -> None:
         """Drop the device (and its sensors) of an entity the user linked to another robot."""
         links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
-        linked = {str(entity) for entity, target in links.items() if target and target != "distinct"}
+        tracked = {str(device.get("vacuum_entity")) for device in devices}
+        # The robot the engine tracks keeps its device even when a link points
+        # away from it (a stale or circular link must never remove live sensors).
+        linked = {str(entity) for entity, target in links.items()
+                  if target and target != "distinct" and str(entity) not in tracked}
         if not linked:
             return
         try:

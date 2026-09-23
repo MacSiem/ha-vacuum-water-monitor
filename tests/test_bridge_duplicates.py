@@ -68,6 +68,11 @@ class LinkTests(unittest.TestCase):
         devices = sc.build_vacuum_devices({"robot_links": {"vacuum.robotic_vacuum_cleaner": "vacuum.s8"}}, tanks, registry())
         self.assertEqual([d["vacuum_entity"] for d in devices], ["vacuum.s8"])
 
+    def test_linked_entity_is_never_the_owner_even_with_the_only_history(self):
+        tanks = {"vacuum.robotic_vacuum_cleaner": {"used_ml": 500}}
+        devices = sc.build_vacuum_devices({"robot_links": {"vacuum.robotic_vacuum_cleaner": "vacuum.s8"}}, tanks, registry())
+        self.assertEqual([d["vacuum_entity"] for d in devices], ["vacuum.s8"])
+
     def test_distinct_keeps_them_apart(self):
         self.assertEqual(self.entities({"vacuum.robotic_vacuum_cleaner": "distinct"}),
                          ["vacuum.robotic_vacuum_cleaner", "vacuum.s8"])

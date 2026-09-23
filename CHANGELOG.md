@@ -1,5 +1,70 @@
 # Changelog
 
+## 5.7.0 (2026-09-23)
+
+Water estimates for every recognised robot that learn from your dock, every refill method,
+and accounting that follows the robot as it happens. Tested for a week and over a full tank
+on a live Roborock S8 MaxV Ultra (first tank: estimate 7.4% above the usable volume before
+any calibration; recorded history replayed through the engine matches the live counter).
+
+### Added
+
+- **An estimate for every recognised model.** Model records carry tank capacities and a mop
+  system; the estimate is labelled with its basis (fleet, owner device, manufacturer, related
+  model, mop-system class or generic) and a fixed accuracy.
+- **Automatic calibration from the dock's empty-tank signal.** Each empty tank compares the
+  prediction with the tank's usable volume; the median of recent tanks becomes the robot's
+  correction. A tank far outside the estimate waits for the next one to confirm it, and tanks
+  with missing signals or with no refill since the last empty are not learned.
+- **Every refill method resets the tank:** the Refilled button, automatic refill when the
+  dock's empty error clears (with an off switch), an `input_button`/`button`, a tank lid or door
+  sensor, and the new `ha_vacuum_water_monitor.mark_refilled` action. Reports within 10 minutes
+  count as one refill. The *Last refill* sensor shows what reported it.
+- **Accounting on entity changes** about two seconds after a bound entity changes, with the
+  60-second heartbeat as a fallback.
+- **Session history with water, area, duration and settings** for the last 50 runs; a run keeps
+  its water through setting changes, a refill midway or a new task after an error.
+- **One robot, two integrations:** a robot shared over Matter and added natively is suggested
+  as a duplicate in the card; hiding it removes the empty copy, and it can be shown again.
+- Optional anonymous calibration sharing (off by default, reviewed payload).
+
+### Changed
+
+- **One tank size everywhere.** The capacity in the card now drives the percentage and the
+  calibration (before, sensors used the card value while calibration used the model's tank).
+  Enter the volume you actually fill.
+- State-changed events carry the live balance only; history is read by the card on load
+  (keeps events under the recorder's 32 KB limit and out of the database).
+- An idle heartbeat no longer rewrites the Store every minute, and an open dashboard no longer
+  reloads the full state on every Home Assistant state change.
+
+### Fixed
+
+- A mop wash is counted once per wash sequence, including Roborock's short wash status after
+  emptying the bin and a task flag that stays on at the dock.
+- Nothing is counted after the dock reports the clean tank empty until the refill, and the
+  run that emptied the tank keeps its own water (the tank-level correction is not charged to it).
+- Refilled no longer turns the balance incomplete or empties the tank again on the next update.
+- Short unavailable readings are bridged instead of invalidating the tank; area cleaned just
+  before a wash or the return to the dock is counted; small area steps accumulate.
+- A vacuum-only run (water level off) uses no water; Roborock `extreme`, `slight` and `min`
+  water levels are mapped.
+- Vendor end states `charging_completed`, `sleeping` and `standby` close a run.
+- Sensors of a robot not loaded at start-up get its registry name instead of `vacuum.x`.
+- No deprecated device-registry calls (removed in Home Assistant 2027.8/2027.9).
+
+### Upgrading from 5.6
+
+- The tank balance and learned calibration are kept. A tank that 5.6 left without a baseline
+  shows "unknown" until you press **Refilled** once.
+- If you had typed a tank size in the card that differs from the model's, calibration now uses
+  it and restarts once.
+- Old card-generated refill automations only reset DIY helpers; the card offers to remove them.
+
+---
+
+The entries below are the 5.7.0 pre-releases, kept for reference.
+
 ## 5.7.0-beta.7 (2026-09-23)
 
 ### Added

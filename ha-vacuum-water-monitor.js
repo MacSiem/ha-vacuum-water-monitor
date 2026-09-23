@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.7.0-beta.7 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.7.0 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -9,7 +9,7 @@ const _esc = (s) => _escBase(_asText(s));
 const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.7.0-beta.7';
+const VWM_VERSION = '5.7.0';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -4278,7 +4278,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._applyServerSettings();
     const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
     if (configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices });
-    this._ensureServerState();
+    this._ensureServerState(true);
   }
 
   // Drop config devices whose vacuum_entity does not exist in HA: persisting
@@ -4293,8 +4293,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   getGridOptions() { return { rows: 8, columns: 12, min_rows: 3, min_columns: 6 }; }
 
-  async _ensureServerState() {
+  // Home Assistant calls the hass setter on every state change in the house.
+  // Once loaded, the card follows Store changes through events; a full reload
+  // (get_state, list_vacuums) happens at most every 5 minutes or on setConfig.
+  async _ensureServerState(force = false) {
     if (!this._hass || this._serverLoadPromise) return this._serverLoadPromise;
+    if (!force && this._serverReady && Date.now() - (this._serverLoadedAt || 0) < 300000) return null;
+    this._serverLoadedAt = Date.now();
     this._serverLoadPromise = (async () => {
       try {
         const [state, listed] = await Promise.all([
@@ -4308,7 +4313,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._discoveredVacuums = (listed && listed.vacuums) || [];
         this._applyServerSettings();
         const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
-        if (configuredDevices.length) {
+        const unchanged = JSON.stringify(configuredDevices) === JSON.stringify(this._serverState.settings.configured_devices || []);
+        if (configuredDevices.length && !unchanged) {
           const saved = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch: { configured_devices: configuredDevices } });
           if (saved && saved.settings) {
             this._serverState.settings = saved.settings;
