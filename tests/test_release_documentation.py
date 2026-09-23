@@ -13,7 +13,7 @@ class ReleaseDocumentationTests(unittest.TestCase):
         self.assertIn("Unknown remains unknown.", readme)
 
     def test_release_version_is_consistent_across_all_public_surfaces(self):
-        version = "5.7.0-beta.3"
+        version = "5.7.0-beta.4"
         self.assertIn(f'"version": "{version}"',
                       (ROOT / "custom_components/ha_vacuum_water_monitor/manifest.json").read_text(encoding="utf-8"))
         self.assertIn(f'VERSION = "{version}"',

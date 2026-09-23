@@ -1,5 +1,24 @@
 # Changelog
 
+## 5.7.0-beta.4 (2026-09-23)
+
+Beta: fixes from a full live run of 5.7.0-beta.3 (two tasks, an error in between, eight mop
+washes, each counted once; replay of the recorded run reproduces the live counter to 0.1 ml).
+
+### Fixed
+
+- **A run that restarts its area counter keeps its whole area in the history.** Robots with a
+  per-task counter (Roborock `cleaning_area`) start a new task at zero when they resume after
+  an error. The session now carries the area covered before the restart (46.8 m² instead of
+  the last task's 23.4 m²) and keeps its water. A whole-cycle calibrated dose still treats a
+  restart as an interruption, and a drop to a non-zero value is still a counter anomaly.
+- **One refill, one history entry.** Pressing Refilled twice (or after the dock already cleared
+  the tank) within ten minutes no longer erases the water counted in between; lid and button
+  entities already used this window.
+- **Readable names from the first start.** A vacuum whose state is not loaded yet when Home
+  Assistant starts (Matter, slow integrations) got sensors named after its raw entity id; the
+  registry name is used instead.
+
 ## 5.7.0-beta.3 (2026-09-23)
 
 Beta: fixes found in a week of live testing of 5.7.0-beta.2 on a Roborock S8 MaxV Ultra. Each

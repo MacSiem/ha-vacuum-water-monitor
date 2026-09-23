@@ -32,9 +32,9 @@ class FrontendRegistrationTests(unittest.TestCase):
         ).read_bytes()
 
         self.assertEqual(hacs["homeassistant"], "2024.7.0")
-        self.assertEqual(manifest["version"], "5.7.0-beta.3")
-        self.assertIn('VERSION = "5.7.0-beta.3"', (ROOT / "custom_components/ha_vacuum_water_monitor/const.py").read_text(encoding="utf-8"))
-        self.assertIn(b"v5.7.0-beta.3", card[:100])
+        self.assertEqual(manifest["version"], "5.7.0-beta.4")
+        self.assertIn('VERSION = "5.7.0-beta.4"', (ROOT / "custom_components/ha_vacuum_water_monitor/const.py").read_text(encoding="utf-8"))
+        self.assertIn(b"v5.7.0-beta.4", card[:100])
         self.assertEqual((ROOT / "ha-vacuum-water-monitor.js").read_bytes(), card)
 
     def test_card_does_not_install_a_cross_card_injector(self) -> None:

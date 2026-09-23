@@ -110,6 +110,31 @@ class SessionHistoryTests(unittest.TestCase):
         self.assertIsNone(state["automatic_sessions"][0]["water"])
 
 
+class TaskRestartInsideSessionTests(unittest.TestCase):
+    """Live 2026-09-23 15:20: after bumper_stuck the robot resumed as a new task and
+    cleaning_area restarted 23.4 -> 0 inside one session."""
+
+    def test_area_counter_restart_keeps_the_whole_run(self):
+        steps = [dict(status="cleaning", vac="cleaning", area="0", intensity="extreme"),
+                 dict(status="cleaning", vac="cleaning", area="10", intensity="extreme"),
+                 dict(status="cleaning", vac="cleaning", area="0.2", intensity="extreme"),
+                 dict(status="cleaning", vac="cleaning", area="5", intensity="extreme"),
+                 dict(status="charging", vac="docked", area="5", intensity="extreme")]
+        state = run(S8, dict(BASE), steps)
+        session = state["automatic_sessions"][0]
+        self.assertAlmostEqual(session["area"], 15, places=1)
+        self.assertAlmostEqual(session["water"], 15 * 9, places=1)
+        self.assertAlmostEqual(state["used_ml"], 15 * 9, places=1)
+
+    def test_a_large_drop_to_a_non_zero_value_is_still_a_counter_anomaly(self):
+        steps = [dict(status="cleaning", vac="cleaning", area="0", intensity="extreme"),
+                 dict(status="cleaning", vac="cleaning", area="10", intensity="extreme"),
+                 dict(status="cleaning", vac="cleaning", area="2", intensity="extreme"),
+                 dict(status="charging", vac="docked", area="2", intensity="extreme")]
+        state = run(S8, dict(BASE), steps)
+        self.assertIsNone(state["automatic_sessions"][0]["water"])
+
+
 class CapacityTests(unittest.TestCase):
     def test_sensor_and_engine_use_one_capacity(self):
         # Live: the card stored water_total_ml 3000; sensors showed 3000 while the

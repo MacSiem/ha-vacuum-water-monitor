@@ -331,6 +331,19 @@ def _tick_device_pass(
             device.get("area_attribute_unit"),
             hass,
         )
+    # A per-task area counter (Roborock cleaning_area) restarts at zero when the
+    # robot starts a new task inside one session, for example after it resumes
+    # from an error. Carry the area already covered so the session history
+    # keeps the whole run instead of only the last task.
+    _previous_area = _float_or_none(state.get("last_area"))
+    task_restarted = False
+    if (state.get("session_start_ts") and curr_area is not None and _previous_area is not None
+            and curr_area + AREA_COUNTER_JITTER_M2 < _previous_area and curr_area < 1.0):
+        start_area = _float_or_none(state.get("session_start_area")) or 0.0
+        state["session_area_carry"] = round(
+            (_float_or_none(state.get("session_area_carry")) or 0.0) + max(0.0, _previous_area - start_area), 2)
+        state["session_start_area"] = 0.0
+        task_restarted = True
     curr_dock_err = _normalized_signal(
         _state_value(hass, device.get("dock_error_sensor"))
     )
@@ -633,6 +646,7 @@ def _tick_device_pass(
     if session_running and not state.get("session_start_ts"):
         state.update(session_start_ts=now_ts, session_start_used_ml=_number(state.get("used_ml"),0),
                      session_start_area=curr_area, session_accounting_valid=True, session_water_broken=False,
+                     session_area_carry=0.0,
                      session_context=deepcopy(consumption_context),
                      session_resolution=deepcopy(state.get("consumption_resolution")),
                      session_exposure_complete=curr_area == 0, session_segments=1)
@@ -770,7 +784,11 @@ def _tick_device_pass(
         ceiling = _positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2
         previously_active = (_is_cleaning(None, state.get("last_status"), None)
                              or bool(state.get("wash_sequence_active")))
-        if delta < 0 and not previously_active and not had_open_session:
+        # A whole-cycle dose needs the complete exposure of one task, so a
+        # restart inside it stays an interruption; per-area accounting simply
+        # continues from the new task's zero.
+        if delta < 0 and ((task_restarted and whole_cycle_calibration is None)
+                          or (not previously_active and not had_open_session)):
             # Per-session counters (for example Roborock cleaning_area) restart
             # at zero when a new session starts: the area since restart is new.
             area_baseline = 0.0
@@ -1300,7 +1318,8 @@ def _finish_session(state, running, status, now_ts, area):
     water = max(0, _number(state.get("used_ml"),0)-_number(state.get("session_start_used_ml"),0)) if measured and counted else None
     first_area = _float_or_none(state.get("session_start_area"))
     record = {"ts": now_ts, "started_ts": start, "type": "automatic", "water": water,
-              "area": max(0,area-first_area) if area is not None and first_area is not None else None,
+              "area": (round(max(0, area - first_area) + (_float_or_none(state.get("session_area_carry")) or 0.0), 2)
+                       if area is not None and first_area is not None else None),
               "duration": round(max(0,now_ts-start)/60000,1), "method":state.get("last_accounting_source"),
               "evidence":state.get("last_accounting_evidence"),
               "context": deepcopy(state.get("session_context")),
