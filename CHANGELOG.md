@@ -33,8 +33,8 @@ any calibration; recorded history replayed through the engine matches the live c
 - **One tank size everywhere.** The capacity in the card now drives the percentage and the
   calibration (before, sensors used the card value while calibration used the model's tank).
   Enter the volume you actually fill.
-- State-changed events carry the live balance only; history is read by the card on load
-  (keeps events under the recorder's 32 KB limit and out of the database).
+- State-changed events carry the live balance only (keeps them under the recorder's 32 KB limit
+  and out of the database); the card reloads the history when a refill or a run starts or ends.
 - An idle heartbeat no longer rewrites the Store every minute, and an open dashboard no longer
   reloads the full state on every Home Assistant state change.
 
@@ -58,7 +58,7 @@ any calibration; recorded history replayed through the engine matches the live c
 - The tank balance and learned calibration are kept. A tank that 5.6 left without a baseline
   shows "unknown" until you press **Refilled** once.
 - If you had typed a tank size in the card that differs from the model's, calibration now uses
-  it and restarts once.
+  it; a correction learned before is kept and adjusts from the next empty tank.
 - Old card-generated refill automations only reset DIY helpers; the card offers to remove them.
 
 ---

@@ -295,7 +295,10 @@ def _tick_device_pass(
     user_refill_source = _observe_user_refill_signals(hass, device, state)
     if user_refill_source is not None:
         user_refill_dirty = True
-        if (now_ts - int(state.get("last_reset_ts") or 0)) / 1000 > USER_REFILL_DEDUPE_SECONDS:
+        # A report while the dock shows its tank empty again is a new refill even
+        # inside the window (the dock cleared, emptied again, the user refilled).
+        if ((now_ts - int(state.get("last_reset_ts") or 0)) / 1000 > USER_REFILL_DEDUPE_SECONDS
+                or state.get("water_empty_active")):
             apply_refill(state, now_ts, user_refill_source, rebaseline=False)
             _record_accounting(state, "refill", None, None, f"refill_{user_refill_source}")
         else:

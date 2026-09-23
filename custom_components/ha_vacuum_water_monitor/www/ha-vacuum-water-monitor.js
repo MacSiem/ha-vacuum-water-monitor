@@ -4342,6 +4342,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._serverState.settings = data.settings;
         this._applyServerSettings();
       }
+      if (data.tank_states && data.partial) {
+        // A refill or a run starting/ending changes the history the event leaves
+        // out: reload the full state instead of waiting for the 5-minute refresh.
+        const old = this._serverState.tank_states || {};
+        const historyMoved = Object.entries(data.tank_states).some(([vacuum, tank]) =>
+          (old[vacuum] || {}).last_reset_ts !== tank.last_reset_ts
+          || (old[vacuum] || {}).session_start_ts !== tank.session_start_ts);
+        if (historyMoved) setTimeout(() => this._ensureServerState(true), 0);
+      }
       if (data.tank_states) {
         // Events carry the live balance only (history stays out of the
         // recorder); merge per vacuum so sessions and refills are kept.

@@ -274,6 +274,10 @@ class EventPayloadTests(unittest.TestCase):
         self.assertLess(len(json.dumps(event)), 2_000)
         self.assertIn("automatic_sessions", tank)  # the stored state is untouched
 
+    def test_the_card_reloads_history_when_a_refill_or_run_moves_it(self):
+        card = (ROOT / "custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js").read_text(encoding="utf-8")
+        self.assertIn("if (historyMoved) setTimeout(() => this._ensureServerState(true), 0);", card)
+
     def test_the_card_merges_partial_events_per_vacuum(self):
         card = (ROOT / "custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js").read_text(encoding="utf-8")
         self.assertIn("data.partial ? { ...(merged[vacuum] || {}), ...tank } : tank", card)
@@ -326,6 +330,20 @@ class AnchorInsideSessionTests(unittest.TestCase):
                                 dict(status="charging", vac="docked", area="10", intensity="extreme", dock_err="water_empty")])
         self.assertAlmostEqual(state["used_ml"], 3800, places=1)
         self.assertAlmostEqual(state["automatic_sessions"][0]["water"], 90, places=1)
+
+
+class LidDuringEmptyErrorTests(unittest.TestCase):
+    def test_lid_refill_inside_the_window_counts_when_the_tank_is_empty_again(self):
+        cfg = {"vacuum_entity": "vacuum.robot", "reset_door_sensor": "binary_sensor.lid",
+               "config_provenance": {"authored_fields": ["vacuum_entity", "reset_door_sensor"]}}
+        device = effective({"configured_devices": [cfg]}, descriptor())
+        # The dock cleared (auto refill) 5 minutes ago and reports empty again.
+        state = {**BASE, "used_ml": 900, "initialized": True, "last_reset_ts": 10_000_000, "last_reset_source": "dock_cleared",
+                 "water_empty_active": True, "water_anchor_kind": "empty", "last_dock_err": "water_empty"}
+        state = run(device, state, [dict(dock_err="water_empty", extra={"binary_sensor.lid": _S("on")}),
+                                    dict(dock_err="water_empty", extra={"binary_sensor.lid": _S("off")})], ts=10_180_000)
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(state["last_reset_source"], "lid")
 
 
 class SessionEndStateTests(unittest.TestCase):
