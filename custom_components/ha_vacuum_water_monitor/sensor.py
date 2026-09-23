@@ -118,6 +118,63 @@ class VacuumSensorManager:
 
         if entities:
             self.async_add_entities(entities, True)
+        self._rename_raw_id_devices(devices)
+        self._remove_linked_duplicates(settings, devices)
+
+    def _remove_linked_duplicates(self, settings: dict[str, Any], devices: list[dict[str, Any]]) -> None:
+        """Drop the device (and its sensors) of an entity the user linked to another robot."""
+        links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
+        tracked = {str(device.get("vacuum_entity")) for device in devices}
+        # The robot the engine tracks keeps its device even when a link points
+        # away from it (a stale or circular link must never remove live sensors).
+        linked = {str(entity) for entity, target in links.items()
+                  if target and target != "distinct" and str(entity) not in tracked}
+        if not linked:
+            return
+        try:
+            from homeassistant.helpers import device_registry as dr
+
+            registry = dr.async_get(self.hass)
+        except Exception:  # noqa: BLE001
+            return
+        wanted = {(DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(entity)}"): entity for entity in linked}
+        for device_entry in list(dr.async_entries_for_config_entry(registry, self.entry.entry_id)):
+            match = next((wanted[i] for i in device_entry.identifiers if i in wanted), None)
+            if match is None:
+                continue
+            registry.async_remove_device(device_entry.id)
+            for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor):
+                self._known.discard((match, sensor_cls.sensor_key))
+
+    def _rename_raw_id_devices(self, devices: list[dict[str, Any]]) -> None:
+        """Replace a device name that is only the vacuum's entity id.
+
+        Before 5.7.0-beta.4 a vacuum whose state was not loaded at start-up got a
+        device named after its entity id, so its sensors read "vacuum.x Water
+        remaining". A name the user set is never touched.
+        """
+        try:
+            from homeassistant.helpers import device_registry as dr
+
+            registry = dr.async_get(self.hass)
+        except Exception:  # noqa: BLE001 - naming must never break sensor setup
+            return
+        # async_get_device(identifiers=...) is deprecated (HA 2026.9); the
+        # entries of this config entry are the only candidates anyway.
+        ours = {identifier: device_entry
+                for device_entry in dr.async_entries_for_config_entry(registry, self.entry.entry_id)
+                for identifier in device_entry.identifiers}
+        for device in devices:
+            vacuum_entity = str(device.get("vacuum_entity") or "")
+            if not vacuum_entity:
+                continue
+            entry = ours.get((DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(vacuum_entity)}"))
+            if entry is None or entry.name_by_user or entry.name != vacuum_entity:
+                continue
+            name = (device.get("name") if device.get("name") != vacuum_entity else None) or _vacuum_display_name(
+                self.hass, vacuum_entity)
+            if name and name != vacuum_entity:
+                registry.async_update_device(entry.id, name=name)
 
 
 class VacuumStoreSensor(SensorEntity):
@@ -148,7 +205,7 @@ class VacuumStoreSensor(SensorEntity):
             self._device.get("name")
             or self._device.get("device_name")
             or self._device.get("label")
-            or self.vacuum_entity
+            or _vacuum_display_name(self.hass, self.vacuum_entity)
         )
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.entry.entry_id}_{self.vacuum_slug}")},
@@ -266,6 +323,8 @@ class LastRefillSensor(VacuumStoreSensor):
             "vacuum_entity": self.vacuum_entity,
             "last_reset_iso": tank_state.get("last_reset_iso"),
             "last_reset_ts": tank_state.get("last_reset_ts"),
+            "refill_source": tank_state.get("last_reset_source"),
+            "recent_refills": list(tank_state.get("refill_history") or [])[:5],
             **setup_guidance(None if refill_at else "awaiting_refill"),
         }
 
@@ -323,6 +382,28 @@ def _storage(hass: HomeAssistant) -> VacuumWaterStorage:
     return hass.data[DOMAIN][DATA_STORAGE]
 
 
+def _vacuum_display_name(hass: HomeAssistant, vacuum_entity: str) -> str:
+    """The name users know the robot by, never a raw entity id when avoidable."""
+    state = hass.states.get(vacuum_entity)
+    friendly = state.attributes.get("friendly_name") if state is not None else None
+    if friendly:
+        return str(friendly)
+    try:
+        from homeassistant.helpers import device_registry as dr
+        from homeassistant.helpers import entity_registry as er
+
+        entry = er.async_get(hass).async_get(vacuum_entity)
+        if entry is not None:
+            if entry.name or entry.original_name:
+                return str(entry.name or entry.original_name)
+            device = dr.async_get(hass).async_get(entry.device_id) if entry.device_id else None
+            if device is not None and (device.name_by_user or device.name):
+                return str(device.name_by_user or device.name)
+    except Exception:  # noqa: BLE001 - naming must never break sensor setup
+        pass
+    return vacuum_entity
+
+
 def _water_state_attributes(
     estimate: dict[str, Any], tank_state: dict[str, Any]
 ) -> dict[str, Any]:
@@ -342,6 +423,10 @@ def _water_state_attributes(
         "calibration_factor": estimate.get("calibration_factor"),
         "calibration_samples": estimate.get("calibration_samples"),
         "water_empty_active": bool(tank_state.get("water_empty_active")),
+        "water_empty_acknowledged": bool(tank_state.get("water_empty_acknowledged")),
+        "calibration_pending": tank_state.get("calibration_pending_log_factor") is not None,
+        "intensity_unmapped": tank_state.get("intensity_unmapped"),
+        "bridged_gaps": tank_state.get("bridged_gaps") or 0,
         **setup_guidance(estimate.get("state_reason")),
         "water_anchor_source": tank_state.get("water_anchor_source"),
         "water_anchor_kind": tank_state.get("water_anchor_kind"),

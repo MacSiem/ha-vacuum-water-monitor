@@ -38,6 +38,83 @@ not by itself prove a per-cycle consumption value. See the [model support and ev
 matrix](docs/model-support-matrix.md) for detection, available data, estimate scope and
 calibration limits, plus a privacy-safe partial-session template.
 
+## How water estimates work
+
+The integration always starts from the best data available for your model and then corrects
+itself on your robot:
+
+1. **Model database.** Each model record carries its tank capacities and a mop system (pad,
+   rotating pads or roller). Water use is estimated from what Home Assistant reports: cleaned
+   area per route and water level, and every dock mop-wash sequence.
+2. **Labelled basis and accuracy.** Each estimate says what it is based on, from most to least
+   specific: learned from calibrated robots of the same model, an owner's measured accounting
+   on that model, manufacturer or review data, a closely related model, the typical values for
+   the mop system, or a generic mopping estimate. Each basis has a fixed starting accuracy
+   (±15% to ±65%).
+3. **Automatic calibration.** When the dock reports an empty clean-water tank, the prediction
+   for that tank is compared with the tank capacity. The median of recent tanks becomes the
+   robot's correction. Until three tanks are learned, a tank far outside the estimate's accuracy
+   (a tank lifted mid-cycle, a top-up nobody reported) waits for the next tank to confirm it;
+   after that an abnormal tank is ignored. A tank whose signals were missing for more than a
+   short, bridgeable gap does not teach the robot. An estimated dock tank is closed at capacity
+   minus a 5% unusable residual (the water the pump cannot draw). The accuracy shown narrows as
+   tanks agree; the last results are in Diagnostics.
+4. **Your data wins.** A volume sensor or your own calibration replaces the estimate.
+5. **No mopping, no water.** A run with the water level off or the mop detached uses no water.
+   A robot that exposes no signal showing when it mops asks you to map one instead of showing
+   a full tank.
+
+The method was chosen on an independent physics benchmark (tests/test_estimation_benchmark.py):
+with the owner-device estimate a pad robot reaches about ±3–4% median error (P90 about ±7–11%)
+from the fourth tank, and a roller robot that starts from the wrong class recovers to about ±5%.
+With 15% of tanks anchored at the wrong point, the confirmation step keeps the second and third
+tank within about ±14% at P90 instead of ±46%. These are simulation results for method
+quality, not a guarantee for a specific robot. On the first live tank of a Roborock S8 MaxV
+Ultra (three runs, about 71 m²) the uncalibrated estimate was 7.4% above the tank's
+usable volume when the dock reported it empty; that tank then became the robot's first
+calibration sample.
+
+### Tank size
+
+The tank size used for the percentage **and** for calibration is the capacity in the card
+(⚙️ Settings), or the model's clean-water tank when you have not entered one. Enter the
+volume you actually fill, not the brand's maximum: calibration assumes the tank is empty when
+the dock says so, so a size that is too large makes the robot learn to count too much water.
+
+### Sessions and history
+
+Each cleaning run is stored with its area, duration, water and settings (the last 50 runs).
+A run keeps its water when you change the mop settings or refill midway, and when the robot
+resumes after an error as a new task. Water stays unknown only when counting was really
+interrupted (a signal gap it could not bridge, a missing rate). After the dock reports the
+clean tank empty, nothing more is counted until the refill.
+
+### Refill options
+
+Every option marks the tracked tank full and they can be combined (⚙️ Settings → *Tank reset
+methods*):
+
+| Option | How |
+|---|---|
+| **Refilled** button | Press it in the Water tab after filling the tank. |
+| Automatic from the dock | On by default when the dock reports an empty clean-water tank: the error clearing counts as a refill. Switch it off if that error sometimes clears without a refill. |
+| Dashboard or physical button | Pick an `input_button` or `button` entity; pressing it marks the tank refilled. |
+| Tank lid or door sensor | Pick a contact sensor; closing it counts as a full refill. |
+| Automation or script | Call `ha_vacuum_water_monitor.mark_refilled` with the vacuum as target. |
+
+```yaml
+action: ha_vacuum_water_monitor.mark_refilled
+target:
+  entity_id: vacuum.roborock_s8_maxv_ultra
+```
+
+Pressing **Refilled** while the dock still shows its empty-tank error keeps the tank full; the
+error clearing later is not counted a second time. Refill reports within 10 minutes of each
+other count as one refill (a double press, the button after the dock already cleared the
+error), so the water counted in between is kept. The *Last refill* sensor shows what reported
+each refill. Refill methods created by versions before 5.7 generated automations that only reset
+DIY helpers; the card offers to remove them.
+
 ## How it works
 
 **The card labels measured volume separately from calibrated estimates.** After you
@@ -49,7 +126,11 @@ What happens under the hood:
 
 1. **Auto-discovery.** The integration finds every `vacuum.*` entity in your Home Assistant
    and creates a device with water sensors for each robot. No YAML, no entity picking.
-2. **Water accounting runs server-side every 60 seconds.** It prefers cleaned-area deltas,
+2. **Water accounting runs server-side when a bound entity changes** (status, cleaned area, dock
+   error, mop settings, refill button or lid), with a 60-second heartbeat as a fallback. A gap of
+   up to 5 minutes in the robot's signals is bridged from the cumulative area counter when the
+   mop settings are unchanged and the cleaned area kept pace with the robot. It prefers
+   cleaned-area deltas,
    then a separately calibrated duration/active-time interval. A configured same-reservoir volume sensor takes precedence over both. Mode, intensity, mop/tank
    attachment and dock-wash signals are applied only when their integration exposes a
    canonical machine key. There is no friendly-name or translated-label guessing.
@@ -73,14 +154,16 @@ What happens under the hood:
 | Automatic | Manual (optional) |
 |---|---|
 | Discovering vacuums | Pressing **Refilled** after you fill the tank |
-| Water usage estimation when same-device signals and a model/user rate exist | Calibrating tank size, measured low-water reserve or ml/min |
+| Water usage estimation for every recognised model (labelled estimate + automatic calibration) | Your own measured ml/m² or tank size, which replace the estimate |
+| Detecting a refill when the dock's empty-water error clears (can be switched off) | Pressing **Refilled**, a bound button, a tank lid sensor or the `mark_refilled` action |
 | Tank capacity for known models | Wiring extra sensors (dock errors, tank door) |
 | Sensors + card registration | Maintenance schedule entries |
 
-> **Estimates, not measurements.** Most robot vacuums do not report actual water volume.
-> Published tank capacities and integration signals are kept separate from empirical
-> ml/m², ml/min and wash measurements. No model ships a consumption rate, and no
-> assumed travel speed converts area into time. Unknown remains unknown.
+> **Labelled estimates that calibrate themselves.** Most robot vacuums do not report actual
+> water volume. A recognised model therefore starts from a labelled estimate (see below) and
+> learns its own correction from the dock's empty-water signal. Every number shows where it
+> came from and how accurate it is. A value with no basis at all (an unrecognised model with
+> no capacity) is never invented: Unknown remains unknown.
 
 ### Manual-only models and the refill baseline
 
@@ -176,7 +259,7 @@ Each discovered vacuum gets its own device with these sensors:
 |---|---:|---|---|
 | Water remaining | `%` | normal | Estimated water left in the tank |
 | Water used since refill | `mL` | normal | Usage accumulated since the last refill |
-| Last refill | timestamp | diagnostic | When you last pressed Refilled (or auto-reset fired) |
+| Last refill | timestamp | diagnostic | When the tank was last refilled; attributes show what reported it and recent refills |
 | Next maintenance due | `d` | diagnostic | Days until the next custom maintenance item |
 
 Use them like any other sensor — dashboards, template sensors, and automations.
@@ -251,7 +334,7 @@ These optional keys let you wire additional entities into the water accounting
 | `dock_clean_water_sensor` / `dock_dirty_water_sensor` | `sensor.robot_..._water_tank_clean` | Uses canonical enum semantics. `missing` is never treated as consumption. |
 | `dock_status_sensor` | `sensor.robot_..._station_state` | Detects one dock mop-wash cycle without confusing robot cleaning with dock cleaning. |
 | `water_error_sensor` | `sensor.robot_..._operational_error` | Accepts only exact machine-readable clean-water-empty states. |
-| `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. Closing the lid does not prove full refill. Automatic reset requires an explicitly verified `refill_on_clear: true` contract. |
+| `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. Closing it counts as a full refill (the same choice as the card's lid option). |
 
 ### Advanced — bring your own counter
 
@@ -286,7 +369,7 @@ has been scheduled. Add a maintenance interval in the card settings; `unknown` b
 that means “no schedule”, not a failed vacuum detector.
 
 **I see two devices but I only have one vacuum.**
-The current local implementation groups duplicate entities only with shared registry device identity or a matching non-placeholder MAC. It preserves one history owner and never adds histories together. Ambiguous identities remain separate. On older releases, your robot may be exposed by two integrations at once (e.g. the vendor integration and
+Duplicate entities are grouped automatically only with a shared registry device identity or a matching non-placeholder MAC. It preserves one history owner and never adds histories together. A robot shared over **Matter** and also added through its vendor integration cannot be proven identical from the registry: when it is the only robot of that maker, the card asks *"… looks like the same robot as … Hide the duplicate?"*. **Hide duplicate** removes the Matter copy's sensors and accounting and keeps tracking the native robot; histories are never merged, so if you had tracked the robot only through Matter, press **Refilled** once on the native robot after hiding. **It is another robot** keeps both. A hidden duplicate is listed in the card with **Show** to undo, and `mark_refilled` on the hidden copy refills the native robot. On older releases, your robot may be exposed by two integrations at once (e.g. the vendor integration and
 Matter — each creates its own `vacuum.*` entity), or you hit a bug fixed in v5.1.7 where a
 ghost "Vacuum" device could be created by the card's default config. Update and restart —
 the ghost is removed automatically. If it persists, remove it in Settings →
@@ -320,10 +403,15 @@ Browser-only v4 tank counters are not automatically imported. After installing v
 
 ## Privacy
 
-- No telemetry, analytics, or tracking.
+- No telemetry, analytics, or tracking. Nothing is sent automatically.
 - No CDN-hosted assets.
-- No maps, room names, entity states, registry identifiers or calibration history leave
-  Home Assistant.
+- No maps, room names, entity states or registry identifiers leave Home Assistant.
+- **Optional calibration sharing (off by default).** In ⚙️ Settings → *Help improve estimates*
+  you can enable a calibration summary for your robot model. The card then shows the exact
+  JSON: model, mop system, integration, tank capacity (rounded), correction factor and
+  per-tank results (rounded). It never contains entity or device names, identifiers, account
+  data, timestamps, rooms, maps, areas or firmware. You copy it or submit it yourself through
+  a public GitHub issue, which shows your GitHub username. Turning the option off hides it again.
 - Tank state is stored locally by Home Assistant in its normal storage area and is included
   in Home Assistant backups.
 
@@ -340,31 +428,16 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 MIT, see [LICENSE](LICENSE).
 
-## Evidence-gated catalog and diagnostics (unreleased)
+## Evidence, diagnostics and data
 
-See [dated per-model and per-integration coverage](docs/coverage-report-2026-09-05.md),
-[measurement and Diagnostics instructions](docs/diagnostics-and-calibration.md), and
-[the sprint ledger](docs/app-sprint-ledger.json). The catalogue lists researched candidates,
-not a promise of hardware-verified support for every SKU.
+See [per-model and per-integration coverage](docs/coverage-report-2026-09-05.md),
+[measurement and Diagnostics instructions](docs/diagnostics-and-calibration.md) and the
+[runtime consumption contract](docs/runtime-consumption-contract.md). The catalogue lists
+researched candidates, not a promise of hardware-verified support for every SKU; per-model
+consumption data grows through the [open dataset](docs/consumption-database.md).
 
-The panel now keeps bounded automatic session history (50 sessions), preserves unknown
-water values, and offers **Refresh detected profile** in Maintenance → Custom calibration.
-This releases profile locks while preserving authored settings, calibration and history.
-
-For an actual volume sensor configure `water_volume_sensor`, its
-`water_volume_reservoir`, and matching `tracked_reservoir`. Only mL/L are accepted;
-percent, mode enums and an unknown sensor unit cannot masquerade as volume. The legacy
-card-only `water_sensor` never overrides backend accounting; migrate real input sensors
-to these explicit fields. Measurement gaps fail closed instead of falling back to estimates.
-
-### Consumption research status (2026-09-05)
-
-Universal per-model/per-mode consumption remains incomplete. Published action quantities, public MIoT settings and unresolved integration bindings are tracked in [the consumption research report](docs/consumption-research-2026-09-05.md). They are not automatically promoted to runtime rates. `python3 scripts/check_consumption_coverage.py --require-complete` is the separate acceptance gate; passing local tests does not imply this gate passes.
-
-### Runtime selection and private measurements
-
-The replacement sprint adds strict context-based consumption selection, historical context,
-private measured calibration, independent reservoir readings and explicit accuracy diagnostics.
-See [runtime contract and limitations](docs/runtime-consumption-contract.md). The shipped
-snapshot still has no approved consumption profiles; local tests do not establish worldwide
-coverage or physical accuracy. Production HA has not been modified by this sprint.
+For a real volume sensor configure `water_volume_sensor`, its `water_volume_reservoir` and a
+matching `tracked_reservoir`. Only mL/L are accepted; percent, mode enums and an unknown unit
+cannot masquerade as volume, and measurement gaps fail closed instead of falling back to
+estimates. **Refresh detected profile** (Maintenance → Custom calibration) releases a profile
+lock while keeping your settings, calibration and history.

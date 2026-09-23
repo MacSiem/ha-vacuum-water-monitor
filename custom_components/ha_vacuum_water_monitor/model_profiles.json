@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1.0",
-  "dataset_version": "6.0.0",
-  "cutoff_date": "2026-09-05",
+  "dataset_version": "6.1.0",
+  "cutoff_date": "2026-09-15",
   "profiles": {
     "cecotec_conga_3290": {
       "identifiers": [
@@ -3790,7 +3790,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "roborock_q_revo": {
       "identifiers": [
@@ -3859,7 +3860,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_2_pro": {
       "identifiers": [
@@ -3921,7 +3923,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_5ae": {
       "identifiers": [
@@ -4002,7 +4005,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "capacity_verified"
+      "verification_status": "capacity_verified",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_curv": {
       "identifiers": [
@@ -4064,7 +4068,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_curv_2_flow": {
       "identifiers": [
@@ -4104,8 +4109,8 @@
       ],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
-        "dock_dirty": null,
+        "dock_clean": 4000,
+        "dock_dirty": 3000,
         "robot_clean": null,
         "robot_dirty": null,
         "detergent": null
@@ -4134,22 +4139,34 @@
           "url": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/12",
           "claim": "Reporter supplied model identifier; not manufacturer capacity evidence.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "independent_review",
+          "url": "https://www.notebookcheck.net/Roborock-now-also-mops-with-a-roller-Roborock-Qrevo-Curv-2-Flow-review.1234769.0.html",
+          "claim": "Review specification table lists water / dirty water tanks as 4 l / 3 l; roller is constantly rinsed with fresh water.",
+          "last_verified": "2026-09-15",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq",
+          "claim": "Manufacturer FAQ publishes an approximately 4 L clean-water tank (adopted in 5.4.0).",
+          "last_verified": "2026-09-15"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-09-15",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
         "Firmware-specific HA feature presence unverified",
         "All consumption rates and wash volumes unmeasured",
         "Reservoir null means unknown, not zero or absent",
-        "Unknown dock_clean capacity",
-        "Unknown dock_dirty capacity",
         "Unknown robot_clean capacity",
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "roller"
     },
     "roborock_qrevo_curv_2_pro": {
       "identifiers": [
@@ -4211,7 +4228,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_curv_5xc": {
       "identifiers": [
@@ -4273,7 +4291,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_curvc": {
       "identifiers": [
@@ -4335,7 +4354,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_curvx": {
       "identifiers": [
@@ -4397,7 +4417,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_edge": {
       "identifiers": [
@@ -4459,7 +4480,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_edge_2": {
       "identifiers": [
@@ -4521,7 +4543,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_edge_2_flow": {
       "identifiers": [
@@ -4583,7 +4606,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "roller"
     },
     "roborock_qrevo_edge_2_pro": {
       "identifiers": [
@@ -4645,7 +4669,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_edge_3_pro": {
       "identifiers": [
@@ -4707,7 +4732,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_edge_5v1": {
       "identifiers": [
@@ -4769,7 +4795,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_edge_s5a": {
       "identifiers": [
@@ -4831,7 +4858,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_edgec": {
       "identifiers": [
@@ -4893,7 +4921,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_edget": {
       "identifiers": [
@@ -4955,7 +4984,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_master": {
       "identifiers": [
@@ -5017,7 +5047,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_maxv": {
       "identifiers": [
@@ -5079,7 +5110,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_plus": {
       "identifiers": [
@@ -5141,7 +5173,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_pro": {
       "identifiers": [
@@ -5203,7 +5236,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_s": {
       "identifiers": [
@@ -5265,7 +5299,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_s_pro": {
       "identifiers": [
@@ -5327,7 +5362,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_qrevo_slim": {
       "identifiers": [
@@ -5389,7 +5425,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_s5": {
       "identifiers": [
@@ -5444,7 +5481,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "roborock_s5_max": {
       "identifiers": [
@@ -5499,7 +5537,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "roborock_s6": {
       "identifiers": [
@@ -5554,7 +5593,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "roborock_s6_pure": {
       "identifiers": [
@@ -5609,7 +5649,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "roborock_s7": {
       "identifiers": [
@@ -5684,7 +5725,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "capacity_verified"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "roborock_s7_maxv": {
       "identifiers": [
@@ -5753,7 +5795,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "roborock_s7_pro_ultra": {
       "identifiers": [
@@ -5808,7 +5851,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "roborock_s8_maxv_ultra": {
       "identifiers": [
@@ -5870,7 +5914,30 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "capacity_verified"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad",
+      "estimate": {
+        "basis": "owner_device",
+        "rate_signal": "mop_mode",
+        "usage_ml_per_m2": {
+          "fast": 4,
+          "standard": 6,
+          "deep": 9,
+          "deep_plus": 11,
+          "default": 6
+        },
+        "intensity_factor": {
+          "low": 0.7,
+          "medium": 1.0,
+          "high": 1.3,
+          "extreme": 1.5,
+          "default": 1.0
+        },
+        "wash_volume_ml": 150,
+        "sources": [
+          "Owner-device Home Assistant accounting on a Roborock S8 MaxV Ultra (area x route rate x water-level factor, 150 ml per dock wash), used 2025-2026 and cross-checked against the dock's empty-water events; not metered with a volume sensor. deep_plus and the extreme water level extrapolated."
+        ]
+      }
     },
     "roborock_s8_pro_ultra": {
       "identifiers": [
@@ -5937,7 +6004,30 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "capacity_verified"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad",
+      "estimate": {
+        "basis": "family_transfer",
+        "rate_signal": "mop_mode",
+        "usage_ml_per_m2": {
+          "fast": 4,
+          "standard": 6,
+          "deep": 9,
+          "deep_plus": 11,
+          "default": 6
+        },
+        "intensity_factor": {
+          "low": 0.7,
+          "medium": 1.0,
+          "high": 1.3,
+          "extreme": 1.5,
+          "default": 1.0
+        },
+        "wash_volume_ml": 150,
+        "sources": [
+          "Transferred from the Roborock S8 MaxV Ultra owner-device accounting: same VibraRise sonic pad generation and RockDock wash design; not measured on this model. The extreme water level is extrapolated."
+        ]
+      }
     },
     "roborock_saros_10": {
       "identifiers": [
@@ -5999,7 +6089,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "roborock_saros_10r": {
       "identifiers": [
@@ -6061,7 +6152,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_saros_20": {
       "identifiers": [
@@ -6123,7 +6215,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "roborock_saros_20_flow": {
       "identifiers": [
@@ -6185,7 +6278,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "roller"
     },
     "roborock_saros_20_sonic": {
       "identifiers": [
@@ -6247,7 +6341,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "roborock_saros_z70": {
       "identifiers": [

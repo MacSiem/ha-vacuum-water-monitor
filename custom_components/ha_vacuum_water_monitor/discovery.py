@@ -49,7 +49,28 @@ def discover_descriptors(
             descriptor["identity_group"] = group
             descriptor["identity_confidence"] = "registry" if keys else "unlinked"
             descriptor["duplicate_entities"] = sorted(d["entity_id"] for d in members if d is not descriptor)
+    _suggest_bridge_duplicates(descriptors)
     return descriptors
+
+
+def _suggest_bridge_duplicates(descriptors: list[dict[str, Any]]) -> None:
+    """Point a Matter vacuum at the one native vacuum of the same maker.
+
+    The registry cannot prove that a robot shared to Home Assistant over Matter
+    is the same physical robot as its native integration, so this is only a
+    suggestion the card asks the user to confirm; nothing is merged here.
+    """
+    def maker(descriptor: dict[str, Any]) -> str:
+        return normalize_identifier(descriptor.get("manufacturer") or "")
+
+    for descriptor in descriptors:
+        if descriptor.get("platform") != "matter" or descriptor.get("duplicate_entities") or not maker(descriptor):
+            continue
+        natives = [other for other in descriptors
+                   if other is not descriptor and other.get("platform") not in (None, "matter")
+                   and maker(other) == maker(descriptor)]
+        if len(natives) == 1:
+            descriptor["possible_duplicate_of"] = natives[0]["entity_id"]
 
 
 def descriptors_from_hass(hass: Any) -> list[dict[str, Any]]:
@@ -65,7 +86,20 @@ def descriptors_from_hass(hass: Any) -> list[dict[str, Any]]:
         if entity_id not in known:
             records.append({"entity_id": entity_id, "platform": None, "unique_id": None, "device_id": None})
     states = {entity_id: hass.states.get(entity_id) for entity_id in hass.states.async_entity_ids()}
-    return discover_descriptors(records, getattr(device_registry, "devices", {}).values(), states)
+    return discover_descriptors(records, _registry_devices(device_registry), states)
+
+
+def _registry_devices(device_registry: Any) -> list[Any]:
+    """All device entries without the deprecated mapping API.
+
+    Current Home Assistant yields entries when ``devices`` is iterated; older
+    releases yield ids, which ``async_get`` resolves.
+    """
+    devices = getattr(device_registry, "devices", None)
+    items = list(devices) if devices is not None else []
+    if items and isinstance(items[0], str):
+        return [entry for entry in (device_registry.async_get(item) for item in items) if entry is not None]
+    return items
 
 
 def _descriptor(
@@ -92,7 +126,10 @@ def _descriptor(
     }
     descriptor = {
         "entity_id": entity_id,
-        "name": attributes.get("friendly_name") or _value(vacuum, "original_name") or entity_id,
+        # At Home Assistant start-up a vacuum's state (and friendly name) may not
+        # exist yet; the registry device name is known and is what users see.
+        "name": (attributes.get("friendly_name") or _value(vacuum, "name") or _value(vacuum, "original_name")
+                 or _value(device, "name_by_user") or _value(device, "name") or entity_id),
         "state": _state_value(state),
         "battery": attributes.get("battery_level", attributes.get("battery")),
         "platform": _value(vacuum, "platform"),

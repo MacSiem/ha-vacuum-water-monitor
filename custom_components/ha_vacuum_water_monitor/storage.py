@@ -10,6 +10,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
+from .refill import REFILL_SOURCES, USER_REFILL_DEDUPE_SECONDS, apply_refill
 from .const import (
     DEFAULT_CRITICAL_THRESHOLD,
     DEFAULT_WARNING_THRESHOLD,
@@ -29,6 +30,7 @@ def _default_state() -> dict[str, Any]:
             "user_devices": [],
             "maintenance_items": [],
             "refill_config": {},
+            "refill_settings": {},
             "custom_calibration": {},
             "sessions": {},
             "intro_dismissed": {},
@@ -126,37 +128,109 @@ class VacuumWaterStorage:
             await self._store.async_save(data)
 
     async def async_set_tank_states(
-        self, tank_states: dict[str, dict[str, Any]]
-    ) -> None:
-        """Persist all supplied tank states."""
+        self,
+        tank_states: dict[str, dict[str, Any]],
+        *,
+        expected_reset_ts: dict[str, Any] | None = None,
+        delay_seconds: float | None = None,
+        persist: bool = True,
+    ) -> dict[str, dict[str, Any]]:
+        """Persist tick results; never overwrite a refill recorded meanwhile.
+
+        ``persist=False`` updates only the in-memory Store data (a pass that
+        changed nothing but its tick timestamp); the next real write, or a
+        pending delayed write, carries it to disk.
+
+        A tick computes from a snapshot. When a refill was recorded after that
+        snapshot (``last_reset_ts`` changed), its result is dropped and the next
+        pass starts from the refilled state. Returns the states actually written.
+        """
         async with self._lock:
             data = await self._ensure_loaded_locked()
-            data["tank_states"].update(deepcopy(tank_states))
-            await self._store.async_save(data)
+            written: dict[str, dict[str, Any]] = {}
+            for vacuum_entity, tank_state in tank_states.items():
+                if expected_reset_ts is not None and vacuum_entity in expected_reset_ts:
+                    current = data["tank_states"].get(vacuum_entity) or {}
+                    if int(current.get("last_reset_ts") or 0) != int(expected_reset_ts[vacuum_entity] or 0):
+                        continue
+                data["tank_states"][vacuum_entity] = deepcopy(tank_state)
+                written[vacuum_entity] = deepcopy(tank_state)
+            if written and persist:
+                await self._save_locked(data, delay_seconds)
+            return written
+
+    async def _save_locked(self, data: dict[str, Any], delay_seconds: float | None = None) -> None:
+        """Write now, or coalesce frequent event-driven writes (flushed on shutdown)."""
+        delay_save = getattr(self._store, "async_delay_save", None)
+        if delay_seconds and callable(delay_save):
+            delay_save(lambda: data, delay_seconds)
+            return
+        await self._store.async_save(data)
 
     async def async_reset_tank(
-        self, vacuum_entity: str, when_iso: str, when_ts: int
+        self, vacuum_entity: str, when_iso: str, when_ts: int, source: str = "card"
     ) -> dict[str, Any]:
-        """Reset one tank counter and return the new tank state."""
+        """Mark one tank refilled and return the new tank state."""
         if not vacuum_entity.startswith("vacuum.") or len(vacuum_entity) <= 7:
             raise ValueError("Select a vacuum entity")
+        if source not in REFILL_SOURCES:
+            raise ValueError("Unknown refill source")
         async with self._lock:
             data = await self._ensure_loaded_locked()
             state = self.default_tank_state()
             state.update(data["tank_states"].get(vacuum_entity) or {})
-            state.update(last_area=None, last_duration_seconds=None, last_tick_ts=0,
-                         last_water_volume_ml=None, area_gap=True, duration_gap=True,
-                         water_empty_active=False, water_anchor_candidate_source=None,
-                         session_accounting_valid=False, session_exposure_complete=False,
-                         verified_wash_active=False, last_completed_wash_count=None)
-            state["used_ml"] = 0
-            state["accounting_incomplete"] = False
-            state["initialized"] = True
+            # A second report of the same physical refill (a double press, the
+            # button after the dock already cleared) must not erase the water
+            # counted in between or add a second history entry. The tick applies
+            # the same window to lid and button entities.
+            previous_reset = int(state.get("last_reset_ts") or 0)
+            if (state.get("initialized") and not state.get("water_empty_active")
+                    and 0 <= when_ts - previous_reset <= USER_REFILL_DEDUPE_SECONDS * 1000):
+                return deepcopy(state)
+            # A refill starts a new baseline; it is not a signal gap.
+            apply_refill(state, when_ts, source, rebaseline=True)
             state["last_reset_iso"] = when_iso
-            state["last_reset_ts"] = when_ts
             data["tank_states"][vacuum_entity] = state
             await self._store.async_save(data)
             return deepcopy(state)
+
+    async def async_set_refill_settings(
+        self,
+        vacuum_entity: str,
+        *,
+        auto_refill: bool | None,
+        button_entity: str | None,
+        lid_entity: str | None,
+    ) -> dict[str, Any]:
+        """Replace one vacuum's refill choices and return all settings."""
+        if not isinstance(vacuum_entity, str) or not vacuum_entity.startswith("vacuum.") or len(vacuum_entity) <= 7:
+            raise ValueError("Select a vacuum entity")
+        if auto_refill is not None and not isinstance(auto_refill, bool):
+            raise ValueError("auto_refill must be true, false or null")
+        if button_entity is not None and (
+            not isinstance(button_entity, str) or not button_entity.startswith(("input_button.", "button."))
+        ):
+            raise ValueError("Refill button must be an input_button or button entity")
+        if lid_entity is not None and (
+            not isinstance(lid_entity, str) or not lid_entity.startswith("binary_sensor.")
+        ):
+            raise ValueError("Tank lid sensor must be a binary_sensor entity")
+        entry = {
+            key: value
+            for key, value in (("auto_refill", auto_refill), ("button_entity", button_entity), ("lid_entity", lid_entity))
+            if value is not None
+        }
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            settings = data["settings"]
+            all_settings = dict(settings.get("refill_settings") or {})
+            if entry:
+                all_settings[vacuum_entity] = entry
+            else:
+                all_settings.pop(vacuum_entity, None)
+            settings["refill_settings"] = all_settings
+            await self._store.async_save(data)
+            return deepcopy(settings)
 
     async def async_save_measurement(self, vacuum_entity, index, expected_ts, values):
         """Select and save a measured cycle under one lock; never retarget a stale UI."""

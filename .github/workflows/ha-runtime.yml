@@ -1,0 +1,20 @@
+name: ha-runtime
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  ha-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install Home Assistant test harness
+        run: |
+          pip install pytest-homeassistant-custom-component
+          pip install "$(python -c 'import json, os, homeassistant; m = json.load(open(os.path.join(os.path.dirname(homeassistant.__file__), "components/frontend/manifest.json"))); print(next(r for r in m["requirements"] if r.startswith("home-assistant-frontend")))')"
+      - name: Integration inside a real Home Assistant core
+        run: python -m pytest tests_ha -o asyncio_mode=auto -p no:cacheprovider

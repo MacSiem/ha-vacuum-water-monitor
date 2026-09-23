@@ -25,7 +25,7 @@ def main() -> int:
     except CatalogValidationError as error:
         print(f"invalid catalog: {error}", file=sys.stderr)
         return 1
-    print(f"catalog valid: {len(catalog)} profiles; no shipped consumption rates")
+    print(f"catalog valid: {len(catalog)} profiles; labelled estimates only, no published rates")
     return 0
 
 
