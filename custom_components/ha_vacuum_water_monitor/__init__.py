@@ -39,7 +39,13 @@ from .const import (
     signal_vacuum_water_updated,
 )
 from .scheduler import EVENT_SAVE_DELAY_SECONDS, EventTicker
-from .robots import async_clear_issues, async_mark_refilled, async_schedule_issue_sync, resolve_link
+from .robots import (
+    ISSUE_SYNC_TICK_DELAY_SECONDS,
+    async_clear_issues,
+    async_mark_refilled,
+    async_schedule_issue_sync,
+    resolve_link,
+)
 from .storage import VacuumWaterStorage
 from .tick import async_tick_water_state
 from .websocket_api import async_register_commands
@@ -218,7 +224,7 @@ def _async_start_tick(
                 {"tank_states": changed},
             )
             hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": event_tank_states(changed), "partial": True})
-            async_schedule_issue_sync(hass)
+            async_schedule_issue_sync(hass, ISSUE_SYNC_TICK_DELAY_SECONDS)
 
     @callback
     def _on_state_change(event: Event) -> None:
@@ -293,7 +299,10 @@ def _async_register_services(hass: HomeAssistant) -> None:
         storage: VacuumWaterStorage | None = bucket.get(DATA_STORAGE)
         if storage is None:
             raise HomeAssistantError("Vacuum Water Monitor is not loaded")
-        extracted = await async_extract_entity_ids(call)
+        try:  # Home Assistant 2025.10+: (call); 2025.1-2025.9: (hass, call)
+            extracted = await async_extract_entity_ids(call)
+        except TypeError:
+            extracted = await async_extract_entity_ids(hass, call)
         entity_ids = sorted(entity_id for entity_id in extracted if entity_id.startswith("vacuum."))
         if not entity_ids:
             raise ServiceValidationError("Select at least one vacuum entity")

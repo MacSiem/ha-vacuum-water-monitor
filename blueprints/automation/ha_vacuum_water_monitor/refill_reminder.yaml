@@ -12,7 +12,9 @@ blueprint:
   input:
     water_remaining:
       name: Water remaining
-      description: The robot's "Water remaining" sensor created by Vacuum Water Monitor.
+      description: >-
+        The robot's "Water remaining" sensor (in %) created by Vacuum Water
+        Monitor, not "Water used since refill".
       selector:
         entity:
           filter:
@@ -54,5 +56,9 @@ triggers:
     entity_id: !input water_remaining
     below: !input threshold
     for: "00:01:00"
+
+conditions:
+  - condition: template
+    value_template: "{{ state_attr(water_remaining_entity, 'unit_of_measurement') == '%' }}"
 
 actions: !input reminder_actions

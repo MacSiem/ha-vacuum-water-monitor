@@ -11,14 +11,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 
 from .device_options import CAPACITY_MAX_ML, CAPACITY_MIN_ML, CAPACITY_STEP_ML
-from .entity import RobotEntity, RobotEntityManager
+from .entity import RobotEntity, RobotEntityManager, robot_tracks_water
 from .robots import async_set_options
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     await RobotEntityManager(
         hass, entry, async_add_entities,
-        lambda device, _settings: [TankCapacityNumber(hass, entry, device)],
+        lambda device, settings: [TankCapacityNumber(hass, entry, device)]
+        if robot_tracks_water(hass, device, settings) else [],
     ).async_setup()
 
 

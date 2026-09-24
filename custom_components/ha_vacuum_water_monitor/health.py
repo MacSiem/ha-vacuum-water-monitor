@@ -27,13 +27,16 @@ _SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
 
 _EMPTY_ANCHOR_KEYS = ("dock_error_sensor", "dock_clean_water_sensor", "water_error_sensor",
                       "water_shortage_sensor", "water_volume_sensor")
+# Entities that exist only on mopping robots. Attribute names an adapter maps
+# (for example Roomba's water-box attributes) are evidence only when the robot's
+# state actually carries them; the caller checks that (``mop_attribute_present``).
 _MOP_KEYS = ("mop_attached_sensor", "mop_mode_entity", "cleaning_mode_entity", "water_box_attached_sensor",
-             "water_box_attached_attribute", "water_box_detached_sensor", "mop_intensity_entity",
-             "mop_drying_sensor", "dock_clean_water_sensor")
+             "water_box_detached_sensor", "mop_intensity_entity", "mop_drying_sensor", "dock_clean_water_sensor")
+MOP_ATTRIBUTE_KEYS = ("water_box_attached_attribute", "mop_intensity_attribute")
 
 
 def refill_method(effective: dict[str, Any]) -> str:
-    """How a refill is recognised: ``dock_auto``, ``button``, ``lid`` or ``manual``."""
+    """How a refill is recognised: ``measured``, ``dock_auto``, ``button``, ``lid`` or ``manual``."""
     if effective.get("water_volume_sensor"):
         return "measured"
     if effective.get("refill_on_dock_clear") is not False and effective.get("refill_on_clear") and any(
@@ -52,8 +55,11 @@ def supports_auto_refill(effective: dict[str, Any]) -> bool:
         effective.get(key) for key in ("dock_error_sensor", "dock_clean_water_sensor", "water_error_sensor"))
 
 
-def tracks_water(device: dict[str, Any], effective: dict[str, Any], estimate: dict[str, Any]) -> bool:
+def tracks_water(device: dict[str, Any], effective: dict[str, Any], estimate: dict[str, Any],
+                 mop_attribute_present: bool = False) -> bool:
     """The robot mops (or the user said it has a tank), so water tracking applies."""
+    if mop_attribute_present or device.get("capacity_option_ml"):
+        return True
     if estimate.get("total_ml") or estimate.get("estimate_basis") or effective.get("tracked_reservoir"):
         return True
     if estimate.get("capability") not in (None, "", "unknown"):
@@ -71,13 +77,14 @@ def robot_health(
     model_capacity_ml: float | None = None,
     duplicate_of: str | None = None,
     duplicate_of_name: str | None = None,
+    mop_attribute_present: bool = False,
 ) -> dict[str, Any]:
     """Build one robot's report; ``checks`` is ordered most important first."""
     device = device if isinstance(device, dict) else {}
     effective = effective if isinstance(effective, dict) else {}
     tank_state = tank_state if isinstance(tank_state, dict) else {}
     estimate = estimate if isinstance(estimate, dict) else {}
-    tracked = tracks_water(device, effective, estimate)
+    tracked = tracks_water(device, effective, estimate, mop_attribute_present)
     method = refill_method(effective)
     samples = int(estimate.get("calibration_samples") or 0)
     can_calibrate = any(effective.get(key) for key in _EMPTY_ANCHOR_KEYS)

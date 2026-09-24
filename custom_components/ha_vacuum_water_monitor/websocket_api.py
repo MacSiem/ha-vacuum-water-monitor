@@ -37,6 +37,9 @@ def _notify_store_updated(hass: HomeAssistant, payload: dict[str, Any]) -> None:
         event["tank_states"] = event_tank_states(event["tank_states"])
         event["partial"] = True
     hass.bus.async_fire(EVENT_STATE_CHANGED, event)
+    from .robots import async_schedule_issue_sync
+
+    async_schedule_issue_sync(hass)
 
 
 # NOTE: no require_admin on any command. The card must work for every

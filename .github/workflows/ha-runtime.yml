@@ -7,6 +7,19 @@ permissions:
 jobs:
   ha-runtime:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: latest
+            harness: pytest-homeassistant-custom-component
+            extra: ""
+          # The oldest supported Home Assistant (hacs.json): 2025.1.
+          - name: minimum-2025.1
+            harness: pytest-homeassistant-custom-component==0.13.201
+            # pycares 5 leaves a resolver thread the 2025.1 test harness rejects.
+            extra: "pycares<5"
+    name: ha-runtime (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -14,7 +27,7 @@ jobs:
           python-version: '3.13'
       - name: Install Home Assistant test harness
         run: |
-          pip install pytest-homeassistant-custom-component
+          pip install "${{ matrix.harness }}" ${{ matrix.extra && format('"{0}"', matrix.extra) || '' }}
           pip install "$(python -c 'import json, os, homeassistant; m = json.load(open(os.path.join(os.path.dirname(homeassistant.__file__), "components/frontend/manifest.json"))); print(next(r for r in m["requirements"] if r.startswith("home-assistant-frontend")))')"
       - name: Integration inside a real Home Assistant core
         run: python -m pytest tests_ha -o asyncio_mode=auto -p no:cacheprovider

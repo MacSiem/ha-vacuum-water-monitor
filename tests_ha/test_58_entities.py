@@ -177,3 +177,12 @@ async def test_refill_reminder_blueprint_is_valid_in_home_assistant(hass: HomeAs
     config["id"] = "refill_reminder_test"
     validated = await async_validate_config_item(hass, "refill_reminder_test", config)
     assert validated is not None and getattr(validated, "validation_error", None) is None
+
+
+async def test_the_cards_refilled_button_clears_the_repair(hass: HomeAssistant, hass_ws_client) -> None:
+    await _setup(hass)
+    assert "awaiting_refill_vacuum_robot" in await _issues(hass)
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM})
+    assert (await client.receive_json())["success"]
+    assert "awaiting_refill_vacuum_robot" not in await _issues(hass)

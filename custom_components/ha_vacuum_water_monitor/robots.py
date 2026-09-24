@@ -25,7 +25,7 @@ from .const import (
     event_tank_states,
     signal_vacuum_water_updated,
 )
-from .health import REPAIR_CHECKS, robot_health
+from .health import MOP_ATTRIBUTE_KEYS, REPAIR_CHECKS, robot_health
 from .sensor_calculations import (
     _model_tank_ml,
     apply_custom_calibration,
@@ -43,7 +43,10 @@ DATA_ISSUES = "issues"
 DATA_ISSUE_SYNC = "issue_sync"
 # Issues wait until integrations have loaded their robots after a restart.
 ISSUE_STARTUP_GRACE_SECONDS = 120
-ISSUE_SYNC_DELAY_SECONDS = 5
+ISSUE_SYNC_DELAY_SECONDS = 3
+# While a robot runs, ticks change the Store every few seconds; Repairs follow
+# at most once a minute then (user actions still sync within seconds).
+ISSUE_SYNC_TICK_DELAY_SECONDS = 60
 
 _FIXABLE = {"awaiting_refill", "accounting_paused", "unknown_capacity", "possible_duplicate"}
 
@@ -133,6 +136,10 @@ def build_reports(hass: HomeAssistant, stored: dict[str, Any], discovered: list[
         effective = apply_custom_calibration(device, settings)
         estimate = estimate_water_state(device, tank, settings)
         _capacity, source = water_capacity(device, settings)
+        state = hass.states.get(entity)
+        attributes = getattr(state, "attributes", None) or {}
+        mop_attribute_present = any(
+            isinstance(effective.get(key), str) and effective.get(key) in attributes for key in MOP_ATTRIBUTE_KEYS)
         suggestion = (by_entity.get(entity) or {}).get("possible_duplicate_of")
         duplicate_of = suggestion if suggestion and not links.get(entity) and suggestion in by_entity else None
         report = robot_health(
@@ -141,8 +148,8 @@ def build_reports(hass: HomeAssistant, stored: dict[str, Any], discovered: list[
             model_capacity_ml=_model_tank_ml(device),
             duplicate_of=duplicate_of,
             duplicate_of_name=(by_entity.get(duplicate_of) or {}).get("name") if duplicate_of else None,
+            mop_attribute_present=mop_attribute_present,
         )
-        state = hass.states.get(entity)
         report["available"] = state is not None and state.state != STATE_UNAVAILABLE
         reports.append(report)
     return reports
@@ -160,10 +167,16 @@ def issue_id(check_id: str, vacuum_entity: str) -> str:
 
 @callback
 def async_schedule_issue_sync(hass: HomeAssistant, delay: float = ISSUE_SYNC_DELAY_SECONDS) -> None:
-    """Coalesce Repairs updates: at most one sync per few seconds."""
+    """Coalesce Repairs updates; a sooner request replaces a later pending one."""
     bucket = hass.data.get(DOMAIN)
-    if bucket is None or bucket.get(DATA_ISSUE_SYNC):
+    if bucket is None:
         return
+    pending = bucket.get(DATA_ISSUE_SYNC)
+    if pending:
+        cancel, due = pending
+        if due <= hass.loop.time() + delay:
+            return
+        cancel()
 
     @callback
     def _run(_now: Any) -> None:
@@ -171,7 +184,7 @@ def async_schedule_issue_sync(hass: HomeAssistant, delay: float = ISSUE_SYNC_DEL
         if DATA_STORAGE in bucket:
             hass.async_create_task(async_sync_issues(hass))
 
-    bucket[DATA_ISSUE_SYNC] = async_call_later(hass, delay, _run)
+    bucket[DATA_ISSUE_SYNC] = (async_call_later(hass, delay, _run), hass.loop.time() + delay)
 
 
 async def async_sync_issues(hass: HomeAssistant) -> None:
@@ -235,8 +248,8 @@ async def async_sync_issues(hass: HomeAssistant) -> None:
 @callback
 def async_clear_issues(hass: HomeAssistant) -> None:
     bucket = hass.data.get(DOMAIN) or {}
-    if cancel := bucket.pop(DATA_ISSUE_SYNC, None):
-        cancel()
+    if pending := bucket.pop(DATA_ISSUE_SYNC, None):
+        pending[0]()
     for key in list((bucket.get(DATA_ISSUES) or {})):
         ir.async_delete_issue(hass, DOMAIN, key)
     bucket.pop(DATA_ISSUES, None)

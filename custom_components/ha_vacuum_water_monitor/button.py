@@ -9,14 +9,15 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 
-from .entity import RobotEntity, RobotEntityManager
+from .entity import RobotEntity, RobotEntityManager, robot_tracks_water
 from .robots import async_mark_refilled
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     await RobotEntityManager(
         hass, entry, async_add_entities,
-        lambda device, _settings: [RefilledButton(hass, entry, device)],
+        lambda device, settings: [RefilledButton(hass, entry, device)]
+        if robot_tracks_water(hass, device, settings) else [],
     ).async_setup()
 
 

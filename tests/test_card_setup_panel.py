@@ -42,6 +42,8 @@ const reports = JSON.parse(process.argv[1]);
   const data = card._calcDeviceData({ vacuum_entity: 'vacuum.robot', water_total_ml: 4000, config_provenance: { authored_fields: ['vacuum_entity', 'water_total_ml'] } });
   out.totalMl = data.totalMl; out.percent = data.percentRemaining;
   out.throttled = card._refreshHealth(false) === null;
+  out.trailingScheduled = Boolean(card._healthTimer);
+  clearTimeout(card._healthTimer);
   out.calls = calls.map(c => c.type);
   console.log(JSON.stringify(out));
 })().catch(err => { console.error(err); process.exit(1); });
@@ -108,6 +110,7 @@ class CardSetupPanelTests(unittest.TestCase):
     def test_health_is_loaded_and_throttled(self):
         self.assertEqual(self.out["healthLoaded"], ["vacuum.robot"])
         self.assertTrue(self.out["throttled"])
+        self.assertTrue(self.out["trailingScheduled"])
         self.assertEqual(self.out["calls"], ["ha_vacuum_water_monitor/health"])
 
 

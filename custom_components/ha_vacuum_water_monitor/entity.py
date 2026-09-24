@@ -70,6 +70,21 @@ async def async_tracked_devices(hass: HomeAssistant) -> tuple[dict[str, Any], li
     return settings, [device for device in devices if device.get("vacuum_entity")]
 
 
+def robot_tracks_water(hass: HomeAssistant, device: dict[str, Any], settings: dict[str, Any]) -> bool:
+    """Whether a robot gets water settings entities (it mops, or has a tank size set)."""
+    from .health import MOP_ATTRIBUTE_KEYS, tracks_water
+    from .sensor_calculations import apply_custom_calibration, estimate_water_state
+    from .storage import VacuumWaterStorage
+
+    effective = apply_custom_calibration(device, settings)
+    estimate = estimate_water_state(device, VacuumWaterStorage.default_tank_state(), settings)
+    state = hass.states.get(str(device.get("vacuum_entity")))
+    attributes = getattr(state, "attributes", None) or {}
+    attribute = any(isinstance(effective.get(key), str) and effective.get(key) in attributes
+                    for key in MOP_ATTRIBUTE_KEYS)
+    return tracks_water(device, effective, estimate, attribute)
+
+
 class RobotEntityManager:
     """Add a platform's entities for every robot, now and when robots appear."""
 
@@ -85,6 +100,7 @@ class RobotEntityManager:
         self.async_add_entities = async_add_entities
         self.factory = factory
         self._known: dict[str, str] = {}
+        self._seen: set[str] = set()
 
     async def async_setup(self) -> None:
         self.entry.async_on_unload(async_dispatcher_connect(
@@ -92,12 +108,17 @@ class RobotEntityManager:
         await self.async_sync()
 
     @callback
-    def _handle_update(self, _payload: dict[str, Any] | None = None) -> None:
+    def _handle_update(self, payload: dict[str, Any] | None = None) -> None:
+        # Ticks of robots that already have entities change nothing here.
+        if isinstance(payload, dict) and "settings" not in payload:
+            if all(vacuum in self._seen for vacuum in payload.get("tank_states") or {}):
+                return
         self.hass.async_create_task(self.async_sync())
 
     async def async_sync(self) -> None:
         settings, devices = await async_tracked_devices(self.hass)
         present = {str(device["vacuum_entity"]) for device in devices}
+        self._seen = present
         # A robot that left (linked as a duplicate, removed) may come back later.
         self._known = {uid: vacuum for uid, vacuum in self._known.items() if vacuum in present}
         new: list[Entity] = []

@@ -4432,7 +4432,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
         }
         this._serverState.tank_states = merged;
       }
-      this._refreshHealth(Boolean(data.settings));
+      // A refill, a paused count or a finished setup changes what the panel asks.
+      const setupMoved = Boolean(data.tank_states) && Object.values(data.tank_states).some(tank => tank
+        && ('initialized' in tank || 'accounting_incomplete' in tank || 'last_reset_ts' in tank));
+      this._refreshHealth(Boolean(data.settings) || setupMoved);
       this._lastHtml = '';
       this._render({ preserveDraft: true });
     }, VWM_EVENT).then((unsub) => { this._serverUnsub = unsub; }).catch((err) => {
@@ -4443,8 +4446,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // One report per robot from the server (the same one Repairs uses): tank size
   // and its source, accuracy, refill method and what needs the user.
   _refreshHealth(force = false) {
-    if (!this._hass || this._healthPromise) return this._healthPromise;
-    if (!force && Date.now() - (this._healthAt || 0) < 30000) return null;
+    if (!this._hass) return null;
+    if (this._healthPromise) {
+      if (force) this._healthAgain = true;
+      return this._healthPromise;
+    }
+    const wait = 30000 - (Date.now() - (this._healthAt || 0));
+    if (!force && wait > 0) {
+      // Throttled, not dropped: one trailing refresh picks up the change.
+      if (!this._healthTimer) this._healthTimer = setTimeout(() => { this._healthTimer = null; this._refreshHealth(true); }, wait);
+      return null;
+    }
     this._healthAt = Date.now();
     this._healthPromise = this._hass.callWS({ type: `${VWM_DOMAIN}/health` })
       .then((result) => {
@@ -4457,7 +4469,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
         if (changed) { this._lastHtml = ''; this._render({ preserveDraft: true }); }
       })
       .catch((err) => { console.debug('[ha-vacuum-water-monitor] health report unavailable:', err); })
-      .finally(() => { this._healthPromise = null; });
+      .finally(() => {
+        this._healthPromise = null;
+        if (this._healthAgain) { this._healthAgain = false; this._refreshHealth(true); }
+      });
     return this._healthPromise;
   }
 
@@ -6370,6 +6385,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return false;
     }
     this._customCalib = custom;
+    // The newest tank size wins: a size typed here replaces one set in Home Assistant.
+    const optionEntity = activeDevice && activeDevice.vacuum_entity;
+    if (custom.tracked_capacity_ml && optionEntity && this._serverState?.settings?.device_options?.[optionEntity]?.capacity_ml) {
+      try {
+        const cleared = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_device_options`, vacuum_entity: optionEntity, options: { capacity_ml: null } });
+        if (cleared && cleared.settings) { this._serverState.settings = cleared.settings; this._applyServerSettings(); }
+      } catch (err) { console.debug('[ha-vacuum-water-monitor] tank size option not cleared:', err); }
+    }
     if (currentStatus) { currentStatus.textContent = '\u2705 Saved in Home Assistant for this device.'; currentStatus.style.color = '#22c55e'; }
     return true;
   }

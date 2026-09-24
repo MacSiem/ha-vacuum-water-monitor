@@ -677,12 +677,18 @@ def _tick_device_pass(
             if completed is None or (before_completed is not None and completed != before_completed):
                 state["verified_wash_active"] = False
     really_cleaning = _is_cleaning(vac_state, curr_status, None)
+    resumed_after_idle = bool(state.get("session_idle_closed"))
     if really_cleaning:
         state["session_idle_closed"] = False
     if session_running and not state.get("session_start_ts") and (really_cleaning or not state.get("session_idle_closed")):
         state.update(session_idle_since_ts=None)
         state.update(session_start_ts=now_ts, session_start_used_ml=_number(state.get("used_ml"),0),
-                     session_start_area=curr_area, session_accounting_valid=True, session_water_broken=False,
+                     # A run resumed after an idle close starts where the robot paused.
+                     session_start_area=(_float_or_none(state.get("last_area"))
+                                         if resumed_after_idle and _float_or_none(state.get("last_area")) is not None
+                                         and curr_area is not None and _float_or_none(state.get("last_area")) <= curr_area
+                                         else curr_area),
+                     session_accounting_valid=True, session_water_broken=False,
                      session_area_carry=0.0,
                      session_context=deepcopy(consumption_context),
                      session_resolution=deepcopy(state.get("consumption_resolution")),
@@ -1271,7 +1277,10 @@ def _tick_device_pass(
         state["consumption_resolution"] = deepcopy(completed_wash_resolution)
         _record_accounting(state, "wash", completed_wash_resolution["coefficient"],
                            completed_wash_resolution["source"], None)
-    idle_close_ts = _idle_close_ts(state, vac_state, curr_status, wash_now, now_ts)
+    # A whole-cycle calibration charges the run when it ends at the dock, so
+    # such a run is never closed early.
+    idle_close_ts = (_idle_close_ts(state, vac_state, curr_status, wash_now, now_ts)
+                     if whole_cycle_calibration is None else None)
     if idle_close_ts is not None:
         _finish_session(state, False, "idle", idle_close_ts, curr_area)
         state.update(session_idle_closed=True, session_idle_since_ts=None)

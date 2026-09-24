@@ -129,6 +129,16 @@ class HealthReportTests(unittest.TestCase):
         self.assertEqual(result["status"], "ok")
         self.assertFalse(any(check["repair"] for check in result["checks"]))
 
+    def test_adapter_attribute_names_alone_do_not_mean_a_mop(self):
+        """5.8.0 review: Roomba maps water-box attributes even on sweep-only models."""
+        entities = [{"entity_id": "vacuum.plain", "platform": "roomba", "device_id": "d9"}]
+        devices = [{"id": "d9", "manufacturer": "iRobot", "model": "Roomba 980"}]
+        desc = discovery.discover_descriptors(entities, devices, {"vacuum.plain": {"state": "docked", "attributes": {}}})[0]
+        result = report(desc=desc)
+        self.assertFalse(any(check["repair"] for check in result["checks"]), result["checks"])
+        present = report(desc=desc, mop_attribute_present=True)
+        self.assertTrue(present["tracks_water"])
+
     def test_suspected_duplicate_raises_only_that_question(self):
         result = report(duplicate_of="vacuum.s8", duplicate_of_name="S8")
         self.assertEqual(ids(result), ["possible_duplicate"])
@@ -172,9 +182,10 @@ class IdleOffDockSessionTests(unittest.TestCase):
         # Still paused with the flag on: no new run is opened.
         state = run(self.device, state, [self.step("paused", "idle", 10)])
         self.assertIsNone(state.get("session_start_ts"))
-        # Cleaning again opens a new run.
+        # Cleaning again opens a new run that starts where the robot paused.
         state = run(self.device, state, [self.step("cleaning", "cleaning", 12)])
         self.assertIsNotNone(state.get("session_start_ts"))
+        self.assertEqual(state.get("session_start_area"), 10)
 
     def test_a_short_pause_keeps_one_run(self):
         steps = ([self.step("cleaning", "cleaning", a) for a in (0, 5)] + [self.step("paused", "idle", 5, gap=5 * 60_000)]
