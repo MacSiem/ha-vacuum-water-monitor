@@ -1,0 +1,64 @@
+blueprint:
+  name: Vacuum Water Monitor - refill reminder
+  description: >-
+    Reminds you to refill a robot's clean-water tank when the Vacuum Water
+    Monitor estimate drops below a threshold. The reminder repeats only after
+    the tank was refilled and ran low again.
+  domain: automation
+  author: MacSiem
+  source_url: https://github.com/MacSiem/ha-vacuum-water-monitor/blob/main/blueprints/automation/ha_vacuum_water_monitor/refill_reminder.yaml
+  homeassistant:
+    min_version: 2025.1.0
+  input:
+    water_remaining:
+      name: Water remaining
+      description: >-
+        The robot's "Water remaining" sensor (in %) created by Vacuum Water
+        Monitor, not "Water used since refill".
+      selector:
+        entity:
+          filter:
+            - integration: ha_vacuum_water_monitor
+              domain: sensor
+    threshold:
+      name: Remind below
+      description: Send the reminder when the estimated water left drops below this level.
+      default: 20
+      selector:
+        number:
+          min: 5
+          max: 80
+          step: 5
+          unit_of_measurement: "%"
+    reminder_actions:
+      name: Reminder
+      description: >-
+        What to do, for example send a notification to your phone. By default
+        a notification appears in Home Assistant.
+      default:
+        - action: persistent_notification.create
+          data:
+            title: Refill the robot's water tank
+            message: >-
+              {{ state_attr(water_remaining_entity, 'friendly_name') }}:
+              about {{ states(water_remaining_entity) | float(0) | round(0) }}% of the water is left.
+      selector:
+        action: {}
+
+mode: single
+max_exceeded: silent
+
+variables:
+  water_remaining_entity: !input water_remaining
+
+triggers:
+  - trigger: numeric_state
+    entity_id: !input water_remaining
+    below: !input threshold
+    for: "00:01:00"
+
+conditions:
+  - condition: template
+    value_template: "{{ state_attr(water_remaining_entity, 'unit_of_measurement') == '%' }}"
+
+actions: !input reminder_actions

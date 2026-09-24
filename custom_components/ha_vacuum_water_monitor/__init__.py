@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +39,13 @@ from .const import (
     signal_vacuum_water_updated,
 )
 from .scheduler import EVENT_SAVE_DELAY_SECONDS, EventTicker
+from .robots import (
+    ISSUE_SYNC_TICK_DELAY_SECONDS,
+    async_clear_issues,
+    async_mark_refilled,
+    async_schedule_issue_sync,
+    resolve_link,
+)
 from .storage import VacuumWaterStorage
 from .tick import async_tick_water_state
 from .websocket_api import async_register_commands
@@ -49,7 +56,7 @@ _CARD_URL_PATH = f"/{DOMAIN}/ha-vacuum-water-monitor.js"
 _CARD_FILENAME = "ha-vacuum-water-monitor.js"
 _CARD_PACKAGE_DIR = "www"
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.SWITCH, Platform.BUTTON]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -76,6 +83,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_start_tick(hass, storage, entry.entry_id)
     _async_register_services(hass)
+    # Repairs wait for Home Assistant to finish starting (robots load late).
+    async_schedule_issue_sync(hass)
 
     # Apply option changes immediately. Without this listener the OptionsFlow
     # wrote the new thresholds to the entry but nothing re-read them, so they
@@ -111,6 +120,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     bucket = hass.data.get(DOMAIN, {})
     if unsub := bucket.pop(DATA_TICK_UNSUB, None):
         unsub()
+    async_clear_issues(hass)
     bucket.pop(DATA_STORAGE, None)
     if hass.services.has_service(DOMAIN, SERVICE_MARK_REFILLED):
         hass.services.async_remove(DOMAIN, SERVICE_MARK_REFILLED)
@@ -214,6 +224,7 @@ def _async_start_tick(
                 {"tank_states": changed},
             )
             hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": event_tank_states(changed), "partial": True})
+            async_schedule_issue_sync(hass, ISSUE_SYNC_TICK_DELAY_SECONDS)
 
     @callback
     def _on_state_change(event: Event) -> None:
@@ -288,7 +299,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
         storage: VacuumWaterStorage | None = bucket.get(DATA_STORAGE)
         if storage is None:
             raise HomeAssistantError("Vacuum Water Monitor is not loaded")
-        try:  # Home Assistant 2025+: (call); older releases: (hass, call)
+        try:  # Home Assistant 2025.10+: (call); 2025.1-2025.9: (hass, call)
             extracted = await async_extract_entity_ids(call)
         except TypeError:
             extracted = await async_extract_entity_ids(hass, call)
@@ -297,20 +308,8 @@ def _async_register_services(hass: HomeAssistant) -> None:
             raise ServiceValidationError("Select at least one vacuum entity")
         # A robot the user linked as a duplicate (Matter copy) refills its owner.
         settings = (await storage.async_get_state()).get("settings") or {}
-        links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
-        entity_ids = sorted({
-            links[entity_id] if links.get(entity_id) and links[entity_id] != "distinct" else entity_id
-            for entity_id in entity_ids
-        })
-        now = datetime.now(timezone.utc)
-        changed = {}
-        for entity_id in entity_ids:
-            changed[entity_id] = await storage.async_reset_tank(
-                entity_id, now.isoformat(), int(now.timestamp() * 1000), source="service"
-            )
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            async_dispatcher_send(hass, signal_vacuum_water_updated(entry.entry_id), {"tank_states": changed})
-        hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": event_tank_states(changed), "partial": True})
+        for entity_id in sorted({resolve_link(settings, entity_id) for entity_id in entity_ids}):
+            await async_mark_refilled(hass, entity_id, "service")
 
     hass.services.async_register(
         DOMAIN,

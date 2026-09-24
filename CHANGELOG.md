@@ -1,5 +1,61 @@
 # Changelog
 
+## 5.9.0-beta.1 (2026-09-24)
+
+Accuracy you can see: how long the water lasts, how far the estimate was on the last tanks,
+and learning for robots whose dock cannot report an empty tank. Includes everything from
+5.8.0-beta.1.
+
+### Added
+
+- **Cleanings left** sensor: how many cleanings the water left lasts at this robot's usual use
+  (median of the last mopping runs), with *days left* as an attribute. Unknown until three
+  mopping runs are recorded.
+- **Tank empty** button on each robot (and in the setup panel for robots whose dock cannot report
+  an empty tank): pressing it when the robot runs dry anchors the tank and teaches the estimate,
+  like the dock's own signal. The next refill clears it.
+- **Track record in the card:** the last empty tank (how far the estimate was before it learned),
+  the typical error of recent tanks, and plain reasons when a tank is not learned (for example a
+  partly filled tank).
+
+### Fixed
+
+- A robot device named "Vacuum" by an old single-device card configuration now gets the robot's
+  real name (a name you set in Home Assistant is kept).
+
+## 5.8.0-beta.1 (2026-09-24)
+
+Set up without reading anything: every robot says what it needs, in the card and in Home
+Assistant itself. Requires Home Assistant 2025.1 or newer.
+
+### Added
+
+- **Setup panel in the card.** For each robot the Water tab shows what was detected (model, tank
+  size and where it comes from, expected accuracy, how refills are recognised) and asks only
+  what is needed: is the tank full now, the tank size of an unknown model, or the mop signal.
+  When nothing is needed it collapses to *Everything is working*.
+- **Repairs.** The same questions appear in Settings → Repairs with one-step fixes: confirm a
+  full tank, enter the tank size, or say whether a Matter robot is a copy of a native one. A
+  missing mop signal is reported there too.
+- **Entities on each robot's device:** *Tank size* (number), *Refill from dock automatically*
+  (switch, only for docks that report refills) and *Refilled* (button). They work without the
+  card, in the mobile app and in automations.
+- **Diagnostics download** with the health report, detected signals and recent history; robot
+  names are removed.
+- **Refill reminder blueprint** (threshold and action of your choice).
+
+### Changed
+
+- **One tank size, newest choice first:** the *Tank size* entity (or the setup panel or Repairs)
+  wins over the card configuration and the model database. The card, the sensors and the
+  calibration all use it.
+- **A run that waits off the dock ends.** When the robot's task flag stays on while it is paused,
+  stuck or stopped away from the dock, the run is recorded as finished after 20 minutes idle
+  (ending when the pause began); a new run starts when it really cleans again. A recharge at the
+  dock in the middle of a task still keeps one run.
+- First-run tip in the card rewritten (Polish and English).
+- Minimum Home Assistant version is now 2025.1.
+
 ## 5.7.0 (2026-09-23)
 
 Water estimates for every recognised robot that learn from your dock, every refill method,
