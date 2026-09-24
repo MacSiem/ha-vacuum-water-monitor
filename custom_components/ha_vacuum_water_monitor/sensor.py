@@ -20,8 +20,6 @@ from homeassistant.helpers.event import async_track_time_change
 from .const import (
     DATA_STORAGE,
     DOMAIN,
-    MANUFACTURER,
-    MODEL,
     signal_vacuum_water_updated,
 )
 from .sensor_calculations import (
@@ -33,6 +31,7 @@ from .sensor_calculations import (
     setup_guidance,
     vacuum_slug,
 )
+from .entity import robot_device_info, vacuum_display_name
 from .storage import VacuumWaterStorage
 from .tick import list_vacuums
 
@@ -200,19 +199,8 @@ class VacuumStoreSensor(SensorEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Return a per-vacuum device."""
-        name = (
-            self._device.get("name")
-            or self._device.get("device_name")
-            or self._device.get("label")
-            or _vacuum_display_name(self.hass, self.vacuum_entity)
-        )
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self.entry.entry_id}_{self.vacuum_slug}")},
-            manufacturer=str(self._device.get("manufacturer") or MANUFACTURER),
-            model=str(self._device.get("brand_profile") or MODEL),
-            name=str(name),
-        )
+        """Return a per-vacuum device (shared with the settings entities)."""
+        return robot_device_info(self.hass, self.entry, self._device)
 
     @property
     def _storage(self) -> VacuumWaterStorage:
@@ -382,26 +370,7 @@ def _storage(hass: HomeAssistant) -> VacuumWaterStorage:
     return hass.data[DOMAIN][DATA_STORAGE]
 
 
-def _vacuum_display_name(hass: HomeAssistant, vacuum_entity: str) -> str:
-    """The name users know the robot by, never a raw entity id when avoidable."""
-    state = hass.states.get(vacuum_entity)
-    friendly = state.attributes.get("friendly_name") if state is not None else None
-    if friendly:
-        return str(friendly)
-    try:
-        from homeassistant.helpers import device_registry as dr
-        from homeassistant.helpers import entity_registry as er
-
-        entry = er.async_get(hass).async_get(vacuum_entity)
-        if entry is not None:
-            if entry.name or entry.original_name:
-                return str(entry.name or entry.original_name)
-            device = dr.async_get(hass).async_get(entry.device_id) if entry.device_id else None
-            if device is not None and (device.name_by_user or device.name):
-                return str(device.name_by_user or device.name)
-    except Exception:  # noqa: BLE001 - naming must never break sensor setup
-        pass
-    return vacuum_entity
+_vacuum_display_name = vacuum_display_name
 
 
 def _water_state_attributes(

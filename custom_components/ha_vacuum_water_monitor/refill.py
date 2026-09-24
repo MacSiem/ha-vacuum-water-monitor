@@ -14,7 +14,8 @@ REFILL_HISTORY_LIMIT = 20
 # Two refill reports this close together describe one physical refill (a lid
 # closed after the dock already cleared, a button pressed twice or as confirmation).
 USER_REFILL_DEDUPE_SECONDS = 600
-REFILL_SOURCES = frozenset({"card", "service", "button", "lid", "dock_cleared", "legacy"})
+# "entity": the Refilled button entity of the robot; "repair": confirmed in Settings > Repairs.
+REFILL_SOURCES = frozenset({"card", "service", "button", "lid", "dock_cleared", "legacy", "entity", "repair"})
 
 # Fields that restart exposure accounting from the next observation.
 _REBASELINE_FIELDS = {

@@ -271,6 +271,51 @@ async def _ws_set_refill_settings(
     connection.send_result(msg["id"], {"settings": settings})
 
 
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/health"})
+@websocket_api.async_response
+async def _ws_health(hass, connection, msg):
+    """One report per robot: tank size and source, accuracy, refill method, checks."""
+    from .robots import async_reports
+
+    connection.send_result(msg["id"], {"robots": await async_reports(hass)})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/set_device_options",
+    vol.Required("vacuum_entity"): str,
+    vol.Required("options"): dict,
+})
+@websocket_api.async_response
+async def _ws_set_device_options(hass, connection, msg):
+    """Store a robot's options (tank size); ``null`` restores the default."""
+    from .robots import async_set_options
+
+    try:
+        settings = await async_set_options(hass, msg["vacuum_entity"], msg["options"])
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    connection.send_result(msg["id"], {"settings": settings})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/set_robot_link",
+    vol.Required("vacuum_entity"): str,
+    vol.Required("target"): vol.Any(None, str),
+})
+@websocket_api.async_response
+async def _ws_set_robot_link(hass, connection, msg):
+    """Hide a duplicate robot (target = the real robot), keep it (\"distinct\") or forget (null)."""
+    from .robots import async_set_link
+
+    try:
+        settings = await async_set_link(hass, msg["vacuum_entity"], msg["target"])
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    connection.send_result(msg["id"], {"settings": settings})
+
+
 def async_register_commands(hass: HomeAssistant) -> None:
     """Register all websocket commands."""
     for handler in (
@@ -284,5 +329,8 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_dismiss_intro,
         _ws_calibration_preview,
         _ws_save_measurement,
+        _ws_health,
+        _ws_set_device_options,
+        _ws_set_robot_link,
     ):
         websocket_api.async_register_command(hass, handler)

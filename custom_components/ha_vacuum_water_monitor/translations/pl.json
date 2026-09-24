@@ -31,5 +31,94 @@
       "name": "Oznacz zbiornik jako dolany",
       "description": "Oznacza śledzony zbiornik czystej wody wybranych odkurzaczy jako pełny, tak jak przycisk Refilled w karcie. Do użycia w automatyzacji, skrypcie lub przycisku na pulpicie."
     }
+  },
+  "entity": {
+    "number": {
+      "tank_capacity": {
+        "name": "Pojemność zbiornika"
+      }
+    },
+    "switch": {
+      "auto_refill": {
+        "name": "Automatyczne dolanie z doku"
+      }
+    },
+    "button": {
+      "refilled": {
+        "name": "Dolane"
+      }
+    }
+  },
+  "issues": {
+    "awaiting_refill": {
+      "title": "{name}: potwierdź, że zbiornik czystej wody jest pełny",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Czy zbiornik czystej wody robota {name} jest teraz pełny?",
+            "description": "Liczenie wody zaczyna się od pełnego zbiornika. Jeśli właśnie go napełniono (albo nie był używany od ostatniego napełnienia), wybierz Zatwierdź. Jeśli nie jest pełny, najpierw go napełnij. Roboty, których stacja zgłasza dolanie, zaczną liczyć same po najbliższym dolaniu."
+          }
+        },
+        "abort": {
+          "robot_missing": "Tego robota nie ma już w Home Assistant."
+        }
+      }
+    },
+    "accounting_paused": {
+      "title": "{name}: liczenie wody wstrzymane do pełnego zbiornika",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Czy zbiornik czystej wody robota {name} jest teraz pełny?",
+            "description": "Brakowało sygnału z robota w chwili, gdy mógł zużywać wodę, więc pozostała ilość jest nieznana. Napełnij zbiornik i wybierz Zatwierdź, a liczenie wróci od pełnego. To, czego robot nauczył się o zużyciu wody, zostaje."
+          }
+        },
+        "abort": {
+          "robot_missing": "Tego robota nie ma już w Home Assistant."
+        }
+      }
+    },
+    "unknown_capacity": {
+      "title": "{name}: nieznana pojemność zbiornika",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Pojemność zbiornika czystej wody: {name}",
+            "description": "Baza modeli nie zna zbiornika tego robota. Wpisz użyteczną pojemność zbiornika czystej wody (dla stacji z samodolewaniem: zbiornik w stacji). Później zmienisz ją encją Pojemność zbiornika robota.",
+            "data": {
+              "capacity_ml": "Pojemność zbiornika"
+            }
+          }
+        },
+        "error": {
+          "invalid_capacity": "Wpisz wartość od 100 do 10000 ml."
+        },
+        "abort": {
+          "robot_missing": "Tego robota nie ma już w Home Assistant."
+        }
+      }
+    },
+    "possible_duplicate": {
+      "title": "{name} może być kopią robota {target_name}",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Czy {name} to ten sam robot co {target_name}?",
+            "description": "{name} jest połączony przez Matter i wygląda na tego samego robota co {target_name}. Ukrycie kopii zostawia jedno liczenie wody na robota. Możesz to cofnąć w karcie.",
+            "menu_options": {
+              "hide": "Ten sam robot: ukryj kopię",
+              "distinct": "Inny robot: zostaw oba"
+            }
+          }
+        },
+        "abort": {
+          "robot_missing": "Tego robota nie ma już w Home Assistant."
+        }
+      }
+    },
+    "mop_signal_unbound": {
+      "title": "{name}: brak sygnału, kiedy robot mopuje",
+      "description": "Integracja robota {name} nie mówi, kiedy robot mopuje (mop założony, tryb mopowania albo poziom wody), więc nie da się jeszcze oszacować zużycia wody. Otwórz kartę Vacuum Water Monitor, przejdź do Ustawienia > Mapowanie sygnałów i wybierz encję, która pokazuje mopowanie."
+    }
   }
 }

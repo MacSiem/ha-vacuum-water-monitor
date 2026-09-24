@@ -31,5 +31,94 @@
       "name": "Mark tank refilled",
       "description": "Marks the tracked clean-water tank of the selected vacuums as full, the same as the Refilled button in the card. Use it from an automation, a script or a dashboard button."
     }
+  },
+  "entity": {
+    "number": {
+      "tank_capacity": {
+        "name": "Tank size"
+      }
+    },
+    "switch": {
+      "auto_refill": {
+        "name": "Refill from dock automatically"
+      }
+    },
+    "button": {
+      "refilled": {
+        "name": "Refilled"
+      }
+    }
+  },
+  "issues": {
+    "awaiting_refill": {
+      "title": "{name}: confirm the clean-water tank is full",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Is the clean-water tank of {name} full now?",
+            "description": "Water tracking starts from a full tank. If you filled it just now (or it has not been used since the last fill), select Submit. If it is not full, fill it first. Robots whose dock reports refills start counting on their own after the next refill."
+          }
+        },
+        "abort": {
+          "robot_missing": "This robot is no longer available in Home Assistant."
+        }
+      }
+    },
+    "accounting_paused": {
+      "title": "{name}: water count paused until the next full tank",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Is the clean-water tank of {name} full now?",
+            "description": "A signal from the robot was missing while it could have used water, so the remaining amount is unknown. Fill the tank and select Submit, and counting continues from full. What the robot has learned about its water use is kept."
+          }
+        },
+        "abort": {
+          "robot_missing": "This robot is no longer available in Home Assistant."
+        }
+      }
+    },
+    "unknown_capacity": {
+      "title": "{name}: tank size is unknown",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Clean-water tank size of {name}",
+            "description": "The model database does not know this robot's tank. Enter the usable clean-water tank size (the dock tank for robots with a self-refilling dock). You can change it later with the Tank size entity of the robot.",
+            "data": {
+              "capacity_ml": "Tank size"
+            }
+          }
+        },
+        "error": {
+          "invalid_capacity": "Enter a size between 100 and 10000 ml."
+        },
+        "abort": {
+          "robot_missing": "This robot is no longer available in Home Assistant."
+        }
+      }
+    },
+    "possible_duplicate": {
+      "title": "{name} may be a second copy of {target_name}",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Is {name} the same robot as {target_name}?",
+            "description": "{name} is connected through Matter and looks like the same robot as {target_name}. Hiding the copy keeps one water count per robot. You can undo this in the card.",
+            "menu_options": {
+              "hide": "Same robot: hide the copy",
+              "distinct": "Another robot: keep both"
+            }
+          }
+        },
+        "abort": {
+          "robot_missing": "This robot is no longer available in Home Assistant."
+        }
+      }
+    },
+    "mop_signal_unbound": {
+      "title": "{name}: no signal shows when it mops",
+      "description": "The integration of {name} does not tell when the robot mops (mop attached, mop mode or water level), so water use cannot be estimated yet. Open the Vacuum Water Monitor card, go to Settings > Signal mapping and choose the entity that shows mopping."
+    }
   }
 }

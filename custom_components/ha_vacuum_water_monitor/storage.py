@@ -34,6 +34,7 @@ def _default_state() -> dict[str, Any]:
             "custom_calibration": {},
             "sessions": {},
             "intro_dismissed": {},
+            "device_options": {},
         },
         "tank_states": {},
     }
@@ -229,6 +230,50 @@ class VacuumWaterStorage:
             else:
                 all_settings.pop(vacuum_entity, None)
             settings["refill_settings"] = all_settings
+            await self._store.async_save(data)
+            return deepcopy(settings)
+
+    async def async_set_device_options(self, vacuum_entity: str, patch: dict[str, Any]) -> dict[str, Any]:
+        """Validate and store one robot's options; return all settings."""
+        from .device_options import merge_options
+
+        if not isinstance(vacuum_entity, str) or not vacuum_entity.startswith("vacuum.") or len(vacuum_entity) <= 7:
+            raise ValueError("Select a vacuum entity")
+        if not isinstance(patch, dict):
+            raise ValueError("Options must be an object")
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            settings = data["settings"]
+            all_options = dict(settings.get("device_options") or {})
+            merged = merge_options(dict(all_options.get(vacuum_entity) or {}), patch)
+            if merged:
+                all_options[vacuum_entity] = merged
+            else:
+                all_options.pop(vacuum_entity, None)
+            settings["device_options"] = all_options
+            await self._store.async_save(data)
+            return deepcopy(settings)
+
+    async def async_set_robot_link(self, vacuum_entity: str, target: str | None) -> dict[str, Any]:
+        """Record whether a (bridged) robot is the same as another one.
+
+        ``target`` is the robot it duplicates, ``"distinct"`` for a separate
+        robot, or ``None`` to forget the decision.
+        """
+        for entity in (vacuum_entity, target if target not in (None, "distinct") else None):
+            if entity is not None and (not isinstance(entity, str) or not entity.startswith("vacuum.") or len(entity) <= 7):
+                raise ValueError("Select a vacuum entity")
+        if target == vacuum_entity:
+            raise ValueError("A robot cannot duplicate itself")
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            settings = data["settings"]
+            links = dict(settings.get("robot_links") or {})
+            if target is None:
+                links.pop(vacuum_entity, None)
+            else:
+                links[vacuum_entity] = target
+            settings["robot_links"] = links
             await self._store.async_save(data)
             return deepcopy(settings)
 

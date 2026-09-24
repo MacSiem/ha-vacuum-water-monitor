@@ -224,7 +224,10 @@ async def test_a_device_named_after_the_entity_id_is_renamed(hass: HomeAssistant
     registry.async_update_device(device.id, name_by_user="Kitchen robot", name=VACUUM)
     await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
-    assert registry.async_get(device.id).name == VACUUM  # the user's own name is never overwritten
+    # The user's own name is never overwritten (Home Assistant shows name_by_user
+    # first; since 5.8.0 the settings entities also refresh the default name).
+    assert registry.async_get(device.id).name_by_user == "Kitchen robot"
+    assert registry.async_get(device.id).name in {VACUUM, "Robot"}
 
 
 async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(hass: HomeAssistant, hass_ws_client) -> None:
