@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.8.0-beta.1 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.9.0-beta.1 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -9,7 +9,7 @@ const _esc = (s) => _escBase(_asText(s));
 const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.8.0-beta.1';
+const VWM_VERSION = '5.9.0-beta.1';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -89,9 +89,14 @@ const VWM_SETUP_TEXT = {
     openSignals: 'Choose the mop signal',
     invalidSize: 'Enter a tank size between 100 and 10000 ml.',
     failed: 'Could not save. Please try again.',
+    supply: (n, d) => `Enough for about ${n} ${n === 1 ? 'cleaning' : 'cleanings'}${d != null ? ` (about ${d} ${d === 1 ? 'day' : 'days'})` : ''}`,
+    lastTank: (e, note) => `Last empty tank: the estimate was ${e > 0 ? '+' : ''}${e}%${note ? ` (${note})` : ' off, then learned'}`,
+    typical: (e) => `Typical error of recent tanks: \u00B1${e}%`,
+    markEmpty: 'The tank is empty now',
+    markedEmpty: 'Marked empty; the estimate learns from this tank.',
     info: {
       manual_refill: 'Tip: the robot\u2019s device page has a Refilled button you can put on a dashboard or an NFC tag.',
-      no_empty_signal: 'This robot does not report an empty tank, so the estimate cannot calibrate itself.',
+      no_empty_signal: 'This robot does not report an empty tank. When it runs out of water, press the button below (or the robot\u2019s Tank empty button) so the estimate learns.',
       signal_unavailable: 'A robot signal is unavailable right now; counting resumes when it is back.',
       not_tracked: 'This robot does not report mopping. If it has a water tank, enter its size to start tracking.',
     },
@@ -120,18 +125,30 @@ const VWM_SETUP_TEXT = {
     openSignals: 'Wybierz sygna\u0142 mopowania',
     invalidSize: 'Wpisz pojemno\u015B\u0107 od 100 do 10000 ml.',
     failed: 'Nie uda\u0142o si\u0119 zapisa\u0107. Spr\u00F3buj ponownie.',
+    supply: (n, d) => `Wystarczy na ok. ${n} ${n === 1 ? 'sprz\u0105tanie' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 'sprz\u0105tania' : 'sprz\u0105ta\u0144')}${d != null ? ` (ok. ${d} ${d === 1 ? 'dzie\u0144' : 'dni'})` : ''}`,
+    lastTank: (e, note) => `Ostatni pusty zbiornik: szacunek ${e > 0 ? '+' : ''}${e}%${note ? ` (${note})` : ', potem nauczony'}`,
+    typical: (e) => `Typowy b\u0142\u0105d ostatnich zbiornik\u00F3w: \u00B1${e}%`,
+    markEmpty: 'Zbiornik jest teraz pusty',
+    markedEmpty: 'Oznaczono jako pusty; szacunek uczy si\u0119 z tego zbiornika.',
     info: {
       manual_refill: 'Wskaz\u00F3wka: strona urz\u0105dzenia robota ma przycisk Dolane, kt\u00F3ry mo\u017Cesz doda\u0107 do panelu albo tagu NFC.',
-      no_empty_signal: 'Ten robot nie zg\u0142asza pustego zbiornika, wi\u0119c szacunek nie skalibruje si\u0119 sam.',
+      no_empty_signal: 'Ten robot nie zg\u0142asza pustego zbiornika. Gdy sko\u0144czy mu si\u0119 woda, naci\u015Bnij przycisk poni\u017Cej (albo przycisk Zbiornik pusty robota), a szacunek si\u0119 nauczy.',
       signal_unavailable: 'Sygna\u0142 robota jest chwilowo niedost\u0119pny; liczenie wr\u00F3ci, gdy si\u0119 pojawi.',
       not_tracked: 'Ten robot nie zg\u0142asza mopowania. Je\u015Bli ma zbiornik wody, wpisz jego pojemno\u015B\u0107, aby zacz\u0105\u0107 liczenie.',
     },
   },
 };
 const VWM_TANK_REASON_LABEL = {
-  calibration_sample_unconfirmed: 'waiting for the next tank',
-  calibration_sample_outlier: 'outlier',
-  calibration_sample_incomplete_cycle: 'signals missing',
+  calibration_sample_unconfirmed: 'unusual, waiting for the next tank to confirm',
+  calibration_sample_outlier: 'not learned: far from the usual (for example a partly filled tank)',
+  calibration_sample_incomplete_cycle: 'not learned: signals were missing',
+  calibration_sample_no_refill_since_empty: 'not learned: no refill since the last empty tank',
+};
+const VWM_TANK_REASON_LABEL_PL = {
+  calibration_sample_unconfirmed: 'nietypowy, czeka na potwierdzenie przy nast\u0119pnym zbiorniku',
+  calibration_sample_outlier: 'nienauczony: daleko od zwyk\u0142ego (np. zbiornik nape\u0142niony cz\u0119\u015Bciowo)',
+  calibration_sample_incomplete_cycle: 'nienauczony: brakowa\u0142o sygna\u0142\u00F3w',
+  calibration_sample_no_refill_since_empty: 'nienauczony: bez dolania od poprzedniego pustego zbiornika',
 };
 const VWM_EVENT = 'ha_vacuum_water_monitor_state_changed';
 
@@ -4519,6 +4536,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
       Number.isFinite(Number(report.uncertainty_percent)) && report.uncertainty_percent !== null ? `${L.accuracy}: \u00B1${Number(report.uncertainty_percent)}%` : '',
       Number(report.calibration_samples) > 0 ? L.calibrated(Number(report.calibration_samples)) : (report.can_calibrate ? L.learns : ''),
       L.refill[report.refill_method] || '',
+      report.supply && report.supply.cleanings_left != null ? L.supply(Number(report.supply.cleanings_left), report.supply.days_left != null ? Number(report.supply.days_left) : null) : '',
+      report.last_tank && Number.isFinite(Number(report.last_tank.error_percent))
+        ? L.lastTank(Number(report.last_tank.error_percent), report.last_tank.accepted ? '' : ((this._lang === 'pl' ? VWM_TANK_REASON_LABEL_PL : VWM_TANK_REASON_LABEL)[report.last_tank.reason] || ''))
+        : '',
+      Number(report.calibration_samples) >= 3 && report.typical_error_percent != null ? L.typical(Number(report.typical_error_percent)) : '',
     ].filter(Boolean);
     const needsSize = blocking.some(c => c.id === 'unknown_capacity') || (report.tracks_water === false);
     const editing = this._capacityEdit === device.vacuum_entity || needsSize;
@@ -4537,7 +4559,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (check.id === 'mop_signal_unbound') return step(L.mopSignal, '', `<button class="vwm-setup-btn" data-setup="open-signals" data-vacuum="${entity}">${L.openSignals}</button>`);
       return '';
     }).join('');
-    const hints = infos.map(c => L.info[c.id] ? `<div class="vwm-hint">${L.info[c.id]}</div>` : '').join('');
+    const hints = infos.map(c => L.info[c.id] ? `<div class="vwm-hint">${L.info[c.id]}</div>` : '').join('')
+      + (infos.some(c => c.id === 'no_empty_signal') && report.initialized
+        ? `<button class="vwm-setup-btn" data-setup="mark-empty" data-vacuum="${entity}">${L.markEmpty}</button>` : '');
     const factsHtml = `<div class="vwm-facts">${facts.map(f => `<span>${f}</span>`).join('')}</div>`;
     if (!blocking.length) {
       return `<details class="vwm-health"${editing ? ' open' : ''}><summary>\u2705 ${L.allGood}</summary>${factsHtml}${capacityEditor}${hints}</details>`;
@@ -7443,6 +7467,10 @@ target:
         try {
           if (action === 'confirm-full') {
             await this._resetWaterState({ vacuum_entity: vacuum });
+          } else if (action === 'mark-empty') {
+            const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/mark_empty`, vacuum_entity: vacuum });
+            if (result && result.state) this._saveWaterState({ vacuum_entity: vacuum }, result.state);
+            this._toast(L.markedEmpty);
           } else if (action === 'save-capacity' || action === 'reset-capacity') {
             const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_device_options`, vacuum_entity: vacuum, options: { capacity_ml: value } });
             if (result && result.settings) { this._serverState.settings = result.settings; this._applyServerSettings(); }

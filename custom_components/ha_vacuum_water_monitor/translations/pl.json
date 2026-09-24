@@ -46,6 +46,14 @@
     "button": {
       "refilled": {
         "name": "Dolane"
+      },
+      "tank_empty": {
+        "name": "Zbiornik pusty"
+      }
+    },
+    "sensor": {
+      "cleanings_left": {
+        "name": "Pozostało sprzątań"
       }
     }
   },

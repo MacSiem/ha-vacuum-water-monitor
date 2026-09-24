@@ -195,6 +195,21 @@ class VacuumWaterStorage:
             await self._store.async_save(data)
             return deepcopy(state)
 
+    async def async_mark_empty(self, vacuum_entity: str) -> dict[str, Any]:
+        """The user reports the tracked tank empty; the next tick anchors it."""
+        if not isinstance(vacuum_entity, str) or not vacuum_entity.startswith("vacuum.") or len(vacuum_entity) <= 7:
+            raise ValueError("Select a vacuum entity")
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            state = self.default_tank_state()
+            state.update(data["tank_states"].get(vacuum_entity) or {})
+            if state.get("water_empty_active") or state.get("user_empty_active"):
+                return deepcopy(state)  # already empty until the next refill
+            state["user_empty_active"] = True
+            data["tank_states"][vacuum_entity] = state
+            await self._store.async_save(data)
+            return deepcopy(state)
+
     async def async_set_refill_settings(
         self,
         vacuum_entity: str,

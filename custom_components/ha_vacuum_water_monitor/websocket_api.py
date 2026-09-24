@@ -302,6 +302,26 @@ async def _ws_set_device_options(hass, connection, msg):
 
 
 @websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/mark_empty",
+    vol.Required("vacuum_entity"): str,
+})
+@websocket_api.async_response
+async def _ws_mark_empty(hass, connection, msg):
+    """The robot ran out of water (robots whose dock cannot say so)."""
+    from .robots import async_mark_empty
+
+    if not msg["vacuum_entity"].startswith("vacuum.") or hass.states.get(msg["vacuum_entity"]) is None:
+        connection.send_error(msg["id"], "invalid_payload", "Select an existing vacuum entity")
+        return
+    try:
+        state = await async_mark_empty(hass, msg["vacuum_entity"])
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    connection.send_result(msg["id"], {"state": state})
+
+
+@websocket_api.websocket_command({
     vol.Required("type"): f"{DOMAIN}/set_robot_link",
     vol.Required("vacuum_entity"): str,
     vol.Required("target"): vol.Any(None, str),
@@ -335,5 +355,6 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_health,
         _ws_set_device_options,
         _ws_set_robot_link,
+        _ws_mark_empty,
     ):
         websocket_api.async_register_command(hass, handler)

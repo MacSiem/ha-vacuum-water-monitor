@@ -1,5 +1,28 @@
 # Changelog
 
+## 5.9.0-beta.1 (2026-09-24)
+
+Accuracy you can see: how long the water lasts, how far the estimate was on the last tanks,
+and learning for robots whose dock cannot report an empty tank. Includes everything from
+5.8.0-beta.1.
+
+### Added
+
+- **Cleanings left** sensor: how many cleanings the water left lasts at this robot's usual use
+  (median of the last mopping runs), with *days left* as an attribute. Unknown until three
+  mopping runs are recorded.
+- **Tank empty** button on each robot (and in the setup panel for robots whose dock cannot report
+  an empty tank): pressing it when the robot runs dry anchors the tank and teaches the estimate,
+  like the dock's own signal. The next refill clears it.
+- **Track record in the card:** the last empty tank (how far the estimate was before it learned),
+  the typical error of recent tanks, and plain reasons when a tank is not learned (for example a
+  partly filled tank).
+
+### Fixed
+
+- A robot device named "Vacuum" by an old single-device card configuration now gets the robot's
+  real name (a name you set in Home Assistant is kept).
+
 ## 5.8.0-beta.1 (2026-09-24)
 
 Set up without reading anything: every robot says what it needs, in the card and in Home

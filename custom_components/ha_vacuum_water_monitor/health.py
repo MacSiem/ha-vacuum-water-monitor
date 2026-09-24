@@ -11,7 +11,19 @@ Pure module: no Home Assistant imports.
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+import time
 from typing import Any
+
+try:
+    from .forecast import estimate_track_record, supply_forecast
+except ImportError:  # direct-file loading in the pure tests
+    _spec = importlib.util.spec_from_file_location("vwm_standalone_forecast", Path(__file__).with_name("forecast.py"))
+    assert _spec and _spec.loader
+    _forecast = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_forecast)
+    estimate_track_record, supply_forecast = _forecast.estimate_track_record, _forecast.supply_forecast
 
 # Checks the user can fix in one step (card button or Repairs flow).
 FIX_CONFIRM_FULL = "confirm_full"
@@ -78,6 +90,7 @@ def robot_health(
     duplicate_of: str | None = None,
     duplicate_of_name: str | None = None,
     mop_attribute_present: bool = False,
+    now_ts: int | None = None,
 ) -> dict[str, Any]:
     """Build one robot's report; ``checks`` is ordered most important first."""
     device = device if isinstance(device, dict) else {}
@@ -143,6 +156,9 @@ def robot_health(
         "auto_refill": method == "dock_auto",
         "initialized": bool(estimate.get("initialized")),
         "remaining_percent": estimate.get("remaining_percent"),
+        "supply": supply_forecast(tank_state, estimate.get("remaining_ml"),
+                                  now_ts if now_ts is not None else int(time.time() * 1000)),
+        **estimate_track_record(tank_state),
         "status": "action_needed" if blocking else "ok",
         "checks": checks,
     }

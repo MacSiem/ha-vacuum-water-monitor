@@ -92,6 +92,19 @@ async def async_mark_refilled(hass: HomeAssistant, vacuum_entity: str, source: s
     return state
 
 
+async def async_mark_empty(hass: HomeAssistant, vacuum_entity: str) -> dict[str, Any]:
+    """The user says the tank ran dry: anchor and learn from it right away."""
+    settings = (await storage(hass).async_get_state()).get("settings") or {}
+    vacuum_entity = resolve_link(settings, vacuum_entity)
+    state = await storage(hass).async_mark_empty(vacuum_entity)
+    ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+    if ticker is not None:
+        await ticker.run({vacuum_entity})
+        state = await storage(hass).async_get_tank_state(vacuum_entity)
+    async_notify(hass, {"tank_states": {vacuum_entity: state}})
+    return state
+
+
 async def async_set_options(hass: HomeAssistant, vacuum_entity: str, patch: dict[str, Any]) -> dict[str, Any]:
     settings = await storage(hass).async_set_device_options(vacuum_entity, patch)
     _rebind(hass)

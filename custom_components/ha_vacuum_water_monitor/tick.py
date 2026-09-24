@@ -959,7 +959,7 @@ def _tick_device_pass(
         do_reset = True
         exact_empty_reset = True
 
-    water_anchor_states = _water_anchor_states(hass, device, curr_dock_err)
+    water_anchor_states = _water_anchor_states(hass, device, curr_dock_err, state)
     active_anchors = [
         (source, kind)
         for source, (is_empty, kind) in water_anchor_states.items()
@@ -969,7 +969,10 @@ def _tick_device_pass(
         (anchor for anchor in active_anchors if anchor[1] == "empty"),
         active_anchors[0] if active_anchors else None,
     )
-    if active_anchor is not None:
+    if active_anchor is not None and active_anchor[0] == "user_empty":
+        # The user reported the tracked tank itself empty: no scope to verify.
+        pass
+    elif active_anchor is not None:
         reservoir = device.get("tracked_reservoir")
         declared_reservoir = device.get("water_anchor_reservoir")
         # An inferred anchor reservoir only covers signals scoped to that
@@ -1724,6 +1727,7 @@ def _water_anchor_states(
     hass: HomeAssistant,
     device: dict[str, Any],
     dock_error: str | None,
+    state: dict[str, Any] | None = None,
 ) -> dict[str, tuple[bool | None, str]]:
     """Classify only canonical machine states suitable for calibration.
 
@@ -1733,6 +1737,11 @@ def _water_anchor_states(
     internal robot refill.  Enum ``empty`` (for example Valetudo MQTT) is safe.
     """
     result: dict[str, tuple[bool | None, str]] = {}
+
+    # "Tank empty" pressed by the user (robots without an empty-tank signal):
+    # an exact empty anchor that lasts until the next refill.
+    if state is not None and state.get("user_empty_active"):
+        result["user_empty"] = (True, "empty")
 
     shortage_entity = device.get("water_shortage_sensor")
     if shortage_entity:

@@ -292,6 +292,8 @@ Settings entities on each robot's device:
 | Tank size | number (mL, config) | The usable clean-water tank; setting it overrides the model database |
 | Refill from dock automatically | switch (config) | Only for docks that report their clean tank empty and refilled |
 | Refilled | button | Marks the tracked tank full (a second press within 10 minutes is ignored) |
+| Tank empty | button | Press when the robot ran out of water; the estimate learns from it (for docks that cannot report an empty tank) |
+| Cleanings left | sensor | Cleanings the water left lasts at the robot's usual use; `days_left` attribute |
 
 **Diagnostics:** Settings → Devices & services → Vacuum Water Monitor → ⋮ → *Download
 diagnostics* gives a file with the health report, the detected signals and the recent history

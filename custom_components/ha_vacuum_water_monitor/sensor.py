@@ -109,6 +109,7 @@ class VacuumSensorManager:
                 WaterUsedSensor,
                 LastRefillSensor,
                 NextMaintenanceDueSensor,
+                CleaningsLeftSensor,
             ):
                 sensor_id = (str(vacuum_entity), sensor_cls.sensor_key)
                 if sensor_id in self._known:
@@ -143,7 +144,8 @@ class VacuumSensorManager:
             if match is None:
                 continue
             registry.async_remove_device(device_entry.id)
-            for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor):
+            for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor,
+                               CleaningsLeftSensor):
                 self._known.discard((match, sensor_cls.sensor_key))
 
     def _rename_raw_id_devices(self, devices: list[dict[str, Any]]) -> None:
@@ -198,7 +200,8 @@ class VacuumStoreSensor(SensorEntity):
         self._device = dict(device)
         self._fallback_device = dict(device)
         self._attr_unique_id = f"{entry.entry_id}_{self.vacuum_slug}_{self.sensor_key}"
-        self._attr_name = self.sensor_name
+        if self.sensor_name:
+            self._attr_name = self.sensor_name
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -366,6 +369,34 @@ class NextMaintenanceDueSensor(VacuumStoreSensor):
             "interval_days": due["interval_days"],
             "last_done_at": due["last_done_at"],
             "due_at": due["due_at"],
+        }
+
+
+class CleaningsLeftSensor(VacuumStoreSensor):
+    """Cleanings the water left lasts at this robot's usual use (days as an attribute)."""
+
+    sensor_key = "cleanings_left"
+    sensor_name = ""
+    _attr_translation_key = "cleanings_left"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:calendar-clock"
+
+    async def async_update(self) -> None:
+        from datetime import datetime, timezone
+
+        from .forecast import supply_forecast
+
+        settings, tank_state = await self._store_context()
+        estimate = estimate_water_state(self._device, tank_state, settings)
+        forecast = supply_forecast(tank_state, estimate.get("remaining_ml"),
+                                   int(datetime.now(timezone.utc).timestamp() * 1000))
+        self._attr_native_value = forecast["cleanings_left"]
+        self._attr_extra_state_attributes = {
+            "vacuum_entity": self.vacuum_entity,
+            "days_left": forecast["days_left"],
+            "water_per_cleaning_ml": forecast["water_per_cleaning_ml"],
+            "water_per_day_ml": forecast["water_per_day_ml"],
+            "basis_runs": forecast["basis_runs"],
         }
 
 

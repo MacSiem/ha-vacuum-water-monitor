@@ -34,6 +34,10 @@ const reports = JSON.parse(process.argv[1]);
   card._lang = 'en';
   out.freshEn = card._buildSetupPanel(device, reports.fresh);
   out.ok = card._buildSetupPanel(device, reports.ok);
+  out.partial = card._buildSetupPanel(device, reports.partial);
+  card._lang = 'pl';
+  out.okPl = card._buildSetupPanel(device, reports.ok);
+  card._lang = 'en';
   out.unknown = card._buildSetupPanel(device, reports.unknown);
   out.duplicateOnly = card._buildSetupPanel(device, reports.duplicate);
   // A tank size chosen in Home Assistant wins in the card's own numbers.
@@ -55,7 +59,11 @@ BASE = {"vacuum_entity": "vacuum.robot", "name": "Robot S8", "model": "roborock.
 REPORTS = {
     "fresh": {**BASE, "status": "action_needed", "checks": [
         {"id": "awaiting_refill", "severity": "warning", "fix": "confirm_full", "params": {"auto_refill": True}}]},
-    "ok": {**BASE, "status": "ok", "calibration_samples": 2, "checks": []},
+    "ok": {**BASE, "status": "ok", "calibration_samples": 3, "checks": [], "typical_error_percent": 4.2,
+           "supply": {"cleanings_left": 4, "days_left": 6.5},
+           "last_tank": {"error_percent": 7.4, "accepted": True, "reason": None}},
+    "partial": {**BASE, "status": "ok", "initialized": True, "checks": [{"id": "no_empty_signal", "severity": "info", "params": {}}],
+                "last_tank": {"error_percent": 38.0, "accepted": False, "reason": "calibration_sample_outlier"}},
     "unknown": {**BASE, "capacity_ml": None, "capacity_source": None, "model_capacity_ml": None, "status": "action_needed",
                 "checks": [{"id": "unknown_capacity", "severity": "error", "fix": "set_capacity", "params": {}}]},
     "duplicate": {**BASE, "status": "action_needed", "checks": [
@@ -92,7 +100,16 @@ class CardSetupPanelTests(unittest.TestCase):
         html = self.out["ok"]
         self.assertTrue(html.startswith("<details"))
         self.assertIn("Everything is working", html)
-        self.assertIn("Calibrated on 2 empty tanks", html)
+        self.assertIn("Calibrated on 3 empty tanks", html)
+        self.assertIn("Enough for about 4 cleanings (about 6.5 days)", html)
+        self.assertIn("Last empty tank: the estimate was +7.4% off, then learned", html)
+        self.assertIn("Typical error of recent tanks: \u00b14.2%", html)
+        self.assertIn("Wystarczy na ok. 4 sprzątania (ok. 6.5 dni)", self.out["okPl"])
+
+    def test_partial_fill_and_tank_empty_button(self):
+        html = self.out["partial"]
+        self.assertIn("for example a partly filled tank", html)
+        self.assertIn('data-setup="mark-empty"', html)
         self.assertNotIn("confirm-full", html)
 
     def test_unknown_tank_size_opens_the_editor(self):

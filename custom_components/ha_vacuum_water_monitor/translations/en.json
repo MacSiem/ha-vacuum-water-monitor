@@ -46,6 +46,14 @@
     "button": {
       "refilled": {
         "name": "Refilled"
+      },
+      "tank_empty": {
+        "name": "Tank empty"
+      }
+    },
+    "sensor": {
+      "cleanings_left": {
+        "name": "Cleanings left"
       }
     }
   },
