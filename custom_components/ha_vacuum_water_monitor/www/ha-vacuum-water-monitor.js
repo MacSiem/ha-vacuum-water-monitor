@@ -5207,7 +5207,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
         return this._withBackendDescriptor(this._decorateLegacyProfile(d));
       });
     }
-    single.name = single.device_name || this._config.device_name || 'Vacuum';
+    const discoveredSingle = (this._discoveredVacuums || []).find(v => v.entity_id === single.vacuum_entity);
+    single.name = single.device_name || this._config.device_name
+      || (discoveredSingle && discoveredSingle.name)
+      || this._hass?.states?.[single.vacuum_entity]?.attributes?.friendly_name || 'Vacuum';
     // Merge config single device + user-added devices
     const userDevs = (this._userDevices || []).filter(ud => ud.vacuum_entity !== single.vacuum_entity).map(d => {
       return this._decorateLegacyProfile(d);

@@ -43,6 +43,9 @@ except ImportError:  # Direct-file loading used by the pure tests.
     apply_device_options = _options_module.apply_device_options
 
 MILLISECONDS_PER_DAY = 86_400_000
+# Cards before 5.8.0 saved this placeholder as the name of a single-device
+# configuration; it is replaced by the robot's real name.
+PLACEHOLDER_ROBOT_NAMES = frozenset({"Vacuum"})
 
 
 def setup_guidance(state_reason: Any) -> dict[str, str]:
@@ -114,7 +117,7 @@ def build_vacuum_devices(
         if not entity or not name or entity not in devices:
             continue
         device = devices[entity]
-        if not device.get("name") or device.get("name") == entity:
+        if not device.get("name") or device.get("name") == entity or device.get("name") in PLACEHOLDER_ROBOT_NAMES:
             device["name"] = str(name)
 
     # The user confirmed in the card that a bridged entity (Matter) is the same

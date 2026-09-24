@@ -23,6 +23,7 @@ from .const import (
     signal_vacuum_water_updated,
 )
 from .sensor_calculations import (
+    PLACEHOLDER_ROBOT_NAMES,
     build_vacuum_devices,
     estimate_water_state,
     filter_active_devices,
@@ -168,9 +169,11 @@ class VacuumSensorManager:
             if not vacuum_entity:
                 continue
             entry = ours.get((DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(vacuum_entity)}"))
-            if entry is None or entry.name_by_user or entry.name != vacuum_entity:
+            if entry is None or entry.name_by_user or (entry.name != vacuum_entity
+                                                          and entry.name not in PLACEHOLDER_ROBOT_NAMES):
                 continue
-            name = (device.get("name") if device.get("name") != vacuum_entity else None) or _vacuum_display_name(
+            name = (device.get("name") if device.get("name") not in {vacuum_entity, *PLACEHOLDER_ROBOT_NAMES}
+                    else None) or _vacuum_display_name(
                 self.hass, vacuum_entity)
             if name and name != vacuum_entity:
                 registry.async_update_device(entry.id, name=name)
