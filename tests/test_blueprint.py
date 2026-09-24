@@ -5,7 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
-import yaml
+try:
+    import yaml
+except ImportError:  # the "validate" workflow runs without PyYAML; "tests" has it
+    yaml = None
 
 ROOT = Path(__file__).resolve().parents[1]
 BLUEPRINT = ROOT / "blueprints/automation/ha_vacuum_water_monitor/refill_reminder.yaml"
@@ -15,13 +18,14 @@ class _Input(str):
     pass
 
 
-class _Loader(yaml.SafeLoader):
-    pass
+if yaml is not None:
+    class _Loader(yaml.SafeLoader):
+        pass
+
+    _Loader.add_constructor("!input", lambda loader, node: _Input(loader.construct_scalar(node)))
 
 
-_Loader.add_constructor("!input", lambda loader, node: _Input(loader.construct_scalar(node)))
-
-
+@unittest.skipIf(yaml is None, "PyYAML not installed")
 class BlueprintTests(unittest.TestCase):
     def setUp(self):
         self.data = yaml.load(BLUEPRINT.read_text(encoding="utf-8"), Loader=_Loader)
