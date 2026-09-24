@@ -10,14 +10,26 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 
 from .entity import RobotEntity, RobotEntityManager, robot_tracks_water
+from .health import has_empty_signal
 from .robots import async_mark_empty, async_mark_refilled
+from .sensor_calculations import apply_custom_calibration
+
+
+def _entities(hass: HomeAssistant, entry: ConfigEntry, device: dict[str, Any], settings: dict[str, Any]) -> list:
+    if not robot_tracks_water(hass, device, settings):
+        return []
+    entities = [RefilledButton(hass, entry, device)]
+    # Only robots that cannot report an empty tank themselves: on a dock robot
+    # the button would anchor the dock tank when the small robot tank runs dry.
+    if not has_empty_signal(apply_custom_calibration(device, settings)):
+        entities.append(TankEmptyButton(hass, entry, device))
+    return entities
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     await RobotEntityManager(
         hass, entry, async_add_entities,
-        lambda device, settings: [RefilledButton(hass, entry, device), TankEmptyButton(hass, entry, device)]
-        if robot_tracks_water(hass, device, settings) else [],
+        lambda device, settings: _entities(hass, entry, device, settings),
     ).async_setup()
 
 

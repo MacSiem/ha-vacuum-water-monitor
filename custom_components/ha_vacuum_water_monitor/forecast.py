@@ -40,8 +40,10 @@ def supply_forecast(tank_state: dict[str, Any] | None, remaining_ml: Any, now_ts
     recent = [run for run in runs if now_ts - run["ts"] <= DAYS_WINDOW * MS_PER_DAY]
     if len(recent) >= MIN_RUNS:
         oldest = min(run.get("started_ts") or run["ts"] for run in recent)
-        span_days = max(MIN_SPAN_DAYS, (now_ts - oldest) / MS_PER_DAY)
-        result["water_per_day_ml"] = round(sum(float(run["water"]) for run in recent) / span_days, 1)
+        span_days = (now_ts - oldest) / MS_PER_DAY
+        # Daily use needs a week of history; a first busy week would mislead.
+        if span_days >= MIN_SPAN_DAYS:
+            result["water_per_day_ml"] = round(sum(float(run["water"]) for run in recent) / span_days, 1)
     if not isinstance(remaining_ml, (int, float)) or isinstance(remaining_ml, bool) or remaining_ml < 0:
         return result
     result["cleanings_left"] = int(remaining_ml // per_run) if per_run > 0 else None

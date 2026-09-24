@@ -93,6 +93,7 @@ const VWM_SETUP_TEXT = {
     lastTank: (e, note) => `Last empty tank: the estimate was ${e > 0 ? '+' : ''}${e}%${note ? ` (${note})` : ' off, then learned'}`,
     typical: (e) => `Typical error of recent tanks: \u00B1${e}%`,
     markEmpty: 'The tank is empty now',
+    confirmAgain: 'Tap again to confirm',
     markedEmpty: 'Marked empty; the estimate learns from this tank.',
     info: {
       manual_refill: 'Tip: the robot\u2019s device page has a Refilled button you can put on a dashboard or an NFC tag.',
@@ -129,6 +130,7 @@ const VWM_SETUP_TEXT = {
     lastTank: (e, note) => `Ostatni pusty zbiornik: szacunek ${e > 0 ? '+' : ''}${e}%${note ? ` (${note})` : ', potem nauczony'}`,
     typical: (e) => `Typowy b\u0142\u0105d ostatnich zbiornik\u00F3w: \u00B1${e}%`,
     markEmpty: 'Zbiornik jest teraz pusty',
+    confirmAgain: 'Naci\u015Bnij ponownie, aby potwierdzi\u0107',
     markedEmpty: 'Oznaczono jako pusty; szacunek uczy si\u0119 z tego zbiornika.',
     info: {
       manual_refill: 'Wskaz\u00F3wka: strona urz\u0105dzenia robota ma przycisk Dolane, kt\u00F3ry mo\u017Cesz doda\u0107 do panelu albo tagu NFC.',
@@ -4560,7 +4562,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return '';
     }).join('');
     const hints = infos.map(c => L.info[c.id] ? `<div class="vwm-hint">${L.info[c.id]}</div>` : '').join('')
-      + (infos.some(c => c.id === 'no_empty_signal') && report.initialized
+      + (infos.some(c => c.id === 'no_empty_signal') && report.initialized && !report.tank_empty
         ? `<button class="vwm-setup-btn" data-setup="mark-empty" data-vacuum="${entity}">${L.markEmpty}</button>` : '');
     const factsHtml = `<div class="vwm-facts">${facts.map(f => `<span>${f}</span>`).join('')}</div>`;
     if (!blocking.length) {
@@ -7454,6 +7456,13 @@ target:
           return;
         }
         if (action === 'open-signals') { this.setActiveTab('settings'); return; }
+        if (action === 'mark-empty' && btn.dataset.armed !== '1') {
+          // Two taps: an accidental press would anchor a tank that still has water.
+          btn.dataset.armed = '1';
+          btn.textContent = L.confirmAgain;
+          setTimeout(() => { if (btn.isConnected !== false) { btn.dataset.armed = ''; btn.textContent = L.markEmpty; } }, 5000);
+          return;
+        }
         let value;
         if (action === 'save-capacity' || action === 'reset-capacity') {
           const input = sr.getElementById('vwm-capacity-input');

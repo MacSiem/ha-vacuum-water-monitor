@@ -188,31 +188,35 @@ async def test_the_cards_refilled_button_clears_the_repair(hass: HomeAssistant, 
     assert "awaiting_refill_vacuum_robot" not in await _issues(hass)
 
 
-async def test_tank_empty_button_and_cleanings_left_sensor(hass: HomeAssistant, hass_ws_client) -> None:
-    """5.9: learning from a user-reported empty tank; supply forecast sensor."""
+async def test_tank_empty_is_only_for_robots_without_an_empty_signal(hass: HomeAssistant, hass_ws_client) -> None:
+    """5.9: the dock robot reports empty itself, so it gets no Tank empty button and the command is refused."""
     storage = await _setup(hass)
-    runs = [{"ts": 1_900_000_000_000 - i * 86_400_000, "started_ts": 1_900_000_000_000 - i * 86_400_000 - 3_600_000,
-             "water": 400.0} for i in range(4)]
-    await storage.async_set_tank_state(VACUUM, {"used_ml": 3000, "initialized": True, "last_reset_ts": 1,
-                                                "automatic_sessions": runs})
-    await hass.services.async_call("button", "press", {"entity_id": _entity(hass, "button", "tank_empty")},
-                                   blocking=True)
-    await hass.async_block_till_done()
-    tank = await _tank(storage)
-    assert tank["water_empty_active"] and tank["water_anchor_source"] == "user_empty"
-    assert tank["calibration_history"][0]["target_ml"] > 0
+    with pytest.raises(AssertionError):
+        _entity(hass, "button", "tank_empty")
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 3000, "initialized": True, "last_reset_ts": 1})
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/mark_empty", "vacuum_entity": VACUUM})
+    response = await client.receive_json()
+    assert not response["success"] and response["error"]["code"] == "invalid_payload"
+    assert not (await _tank(storage)).get("user_empty_active")
 
+
+async def test_cleanings_left_sensor_and_health_track_record(hass: HomeAssistant, hass_ws_client) -> None:
+    storage = await _setup(hass)
+    now = dt_util.utcnow().timestamp() * 1000
+    runs = [{"ts": now - i * 2 * 86_400_000, "started_ts": now - i * 2 * 86_400_000 - 3_600_000, "water": 400.0}
+            for i in range(5)]
+    history = [{"ts": now, "error_percent": 7.4, "accepted": True, "reason": None, "predicted_ml": 3061, "target_ml": 2850}]
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 1000, "initialized": True, "last_reset_ts": 1,
+                                                "automatic_sessions": runs, "calibration_history": history})
+    await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": VACUUM}, blocking=True)
+    await hass.async_block_till_done()
     client = await hass_ws_client(hass)
     await client.send_json_auto_id({"type": f"{DOMAIN}/health"})
     robot = next(r for r in (await client.receive_json())["result"]["robots"] if r["vacuum_entity"] == VACUUM)
-    assert robot["last_tank"]["target_ml"] > 0
+    assert robot["last_tank"]["error_percent"] == 7.4
     assert robot["supply"]["water_per_cleaning_ml"] == 400
-
-    await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": VACUUM}, blocking=True)
-    await hass.async_block_till_done()
-    tank = await _tank(storage)
-    assert not tank["water_empty_active"] and not tank.get("user_empty_active")
-    sensor = next(state for state in hass.states.async_all("sensor")
-                  if state.entity_id.endswith("cleanings_left") or state.attributes.get("basis_runs") is not None)
+    assert robot["supply"]["days_left"] is not None
+    sensor = next(state for state in hass.states.async_all("sensor") if state.attributes.get("basis_runs") is not None)
     assert sensor.attributes["water_per_cleaning_ml"] == 400
     assert int(sensor.state) >= 1

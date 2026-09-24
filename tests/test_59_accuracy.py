@@ -39,6 +39,11 @@ class SupplyForecastTests(unittest.TestCase):
         self.assertAlmostEqual(result["water_per_day_ml"], 2000 / (8 + 1 / 24), places=0)
         self.assertAlmostEqual(result["days_left"], 1000 / result["water_per_day_ml"], places=0)
 
+    def test_no_daily_rate_in_the_first_week(self):
+        result = forecast.supply_forecast({"automatic_sessions": runs(400, 400, 400, every_days=1)}, 3000, NOW)
+        self.assertEqual(result["cleanings_left"], 7)
+        self.assertIsNone(result["days_left"])
+
     def test_unknown_remaining_gives_rates_only(self):
         result = forecast.supply_forecast({"automatic_sessions": runs(400, 400, 400)}, None, NOW)
         self.assertIsNone(result["cleanings_left"])
@@ -88,6 +93,14 @@ class UserEmptyAnchorTests(unittest.TestCase):
         refill.apply_refill(state, 99_000_000, "card", rebaseline=True)
         self.assertFalse(state["user_empty_active"])
         self.assertFalse(state["water_empty_active"])
+
+    def test_tank_empty_right_after_a_mistaken_refill_is_not_swallowed(self):
+        state = {**BASE, "used_ml": 0, "initialized": True, "last_reset_ts": 9_990_000,
+                 "last_reset_source": "card", "user_empty_active": True}
+        state = run(self.device, state, [dict()])
+        self.assertTrue(state["water_empty_active"])
+        self.assertFalse(state.get("water_empty_acknowledged"))
+        self.assertEqual(state["water_anchor_source"], "user_empty")
 
     def test_a_short_tank_is_anchored_but_not_learned(self):
         capacity = tick._device_capacity_ml(self.device)

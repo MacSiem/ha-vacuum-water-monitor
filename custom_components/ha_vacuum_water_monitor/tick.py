@@ -1059,6 +1059,8 @@ def _tick_device_pass(
     reset_ts = int(state.get("last_reset_ts") or 0)
     late_error_after_user_refill = (
         water_empty_now and not water_empty_before
+        # The user's own "Tank empty" is never the dock echoing a refilled tank.
+        and active_anchor is not None and active_anchor[0] != "user_empty"
         and state.get("last_reset_source") in {"card", "service", "button", "lid"}
         and 0 <= now_ts - reset_ts <= REFILL_ACK_WINDOW_SECONDS * 1000
         # Nothing was cleaned since: the robot has not used this tank yet.
@@ -1090,7 +1092,7 @@ def _tick_device_pass(
         capacity = _device_capacity_ml(device)
         wash_refund = 0.0
         charged_ts = _positive_number(state.get("last_wash_charged_ts"))
-        if (anchor_kind == "empty" and charged_ts is not None
+        if (anchor_kind == "empty" and anchor_source != "user_empty" and charged_ts is not None
                 and 0 <= now_ts - charged_ts <= FAILED_WASH_WINDOW_SECONDS * 1000):
             wash_refund = _number(state.get("last_wash_charged_ml"), 0) * FAILED_WASH_REFUND_FRACTION
             state["last_wash_charged_ts"] = 0

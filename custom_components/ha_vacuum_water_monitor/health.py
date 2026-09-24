@@ -61,6 +61,11 @@ def refill_method(effective: dict[str, Any]) -> str:
     return "manual"
 
 
+def has_empty_signal(effective: dict[str, Any]) -> bool:
+    """The robot or dock reports an empty tank itself (no Tank empty button needed)."""
+    return any(effective.get(key) for key in _EMPTY_ANCHOR_KEYS)
+
+
 def supports_auto_refill(effective: dict[str, Any]) -> bool:
     """The dock can report that its clean tank was refilled."""
     return bool(effective.get("refill_on_clear")) and any(
@@ -100,7 +105,7 @@ def robot_health(
     tracked = tracks_water(device, effective, estimate, mop_attribute_present)
     method = refill_method(effective)
     samples = int(estimate.get("calibration_samples") or 0)
-    can_calibrate = any(effective.get(key) for key in _EMPTY_ANCHOR_KEYS)
+    can_calibrate = has_empty_signal(effective)
     checks: list[dict[str, Any]] = []
 
     def add(check_id: str, severity: str, fix: str | None = None, **params: Any) -> None:
@@ -155,6 +160,7 @@ def robot_health(
         "auto_refill_supported": supports_auto_refill(effective),
         "auto_refill": method == "dock_auto",
         "initialized": bool(estimate.get("initialized")),
+        "tank_empty": bool(tank_state.get("water_empty_active")),
         "remaining_percent": estimate.get("remaining_percent"),
         "supply": supply_forecast(tank_state, estimate.get("remaining_ml"),
                                   now_ts if now_ts is not None else int(time.time() * 1000)),

@@ -96,6 +96,9 @@ async def async_mark_empty(hass: HomeAssistant, vacuum_entity: str) -> dict[str,
     """The user says the tank ran dry: anchor and learn from it right away."""
     settings = (await storage(hass).async_get_state()).get("settings") or {}
     vacuum_entity = resolve_link(settings, vacuum_entity)
+    report = next((r for r in await async_reports(hass) if r.get("vacuum_entity") == vacuum_entity), None)
+    if report is not None and report.get("can_calibrate"):
+        raise ValueError("This robot reports an empty tank itself; Tank empty is for robots that cannot")
     state = await storage(hass).async_mark_empty(vacuum_entity)
     ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
     if ticker is not None:
