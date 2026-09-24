@@ -17,8 +17,8 @@ jobs:
           # The oldest supported Home Assistant (hacs.json): 2025.1.
           - name: minimum-2025.1
             harness: pytest-homeassistant-custom-component==0.13.201
-            # pycares 5 leaves a resolver thread the 2025.1 test harness rejects.
-            extra: "pycares<5"
+            # Newer pycares leaves a resolver thread the 2025.1 test harness rejects (4.8 verified).
+            extra: "pycares<4.9"
     name: ha-runtime (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
