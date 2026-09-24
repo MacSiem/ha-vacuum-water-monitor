@@ -155,3 +155,25 @@ async def test_unload_removes_issues(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert not {k for (d, k) in ir.async_get(hass).issues if d == DOMAIN}
     await _settle(hass)
+
+
+async def test_refill_reminder_blueprint_is_valid_in_home_assistant(hass: HomeAssistant) -> None:
+    from pathlib import Path
+
+    from homeassistant.components.automation.config import async_validate_config_item
+    from homeassistant.components.blueprint import models
+    from homeassistant.setup import async_setup_component
+    from homeassistant.util import yaml as yaml_util
+
+    assert await async_setup_component(hass, "automation", {})
+    path = Path(__file__).resolve().parents[1] / "blueprints/automation/ha_vacuum_water_monitor/refill_reminder.yaml"
+    from homeassistant.components.blueprint.schemas import BLUEPRINT_SCHEMA
+
+    blueprint = models.Blueprint(yaml_util.load_yaml(str(path)), expected_domain="automation", schema=BLUEPRINT_SCHEMA)
+    inputs = models.BlueprintInputs(blueprint, {"use_blueprint": {
+        "path": "refill_reminder.yaml", "input": {"water_remaining": "sensor.robot_water_remaining"}}})
+    inputs.validate()
+    config = inputs.async_substitute()
+    config["id"] = "refill_reminder_test"
+    validated = await async_validate_config_item(hass, "refill_reminder_test", config)
+    assert validated is not None and getattr(validated, "validation_error", None) is None

@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.7.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.8.0-beta.1 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -9,7 +9,7 @@ const _esc = (s) => _escBase(_asText(s));
 const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.7.0';
+const VWM_VERSION = '5.8.0-beta.1';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -60,6 +60,73 @@ const VWM_REFILL_SOURCE_LABEL = {
   lid: 'tank lid',
   dock_cleared: 'dock reported refilled',
   legacy: 'earlier version',
+  entity: 'Refilled button (device page)',
+  repair: 'confirmed in Repairs',
+};
+// 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
+const VWM_SETUP_TEXT = {
+  en: {
+    setupTitle: (name) => `Set up water tracking: ${name}`,
+    allGood: 'Everything is working',
+    model: 'Model', tank: 'Tank', accuracy: 'Accuracy', unknown: 'unknown',
+    change: 'Change', save: 'Save', tankSize: 'Tank size', useModel: 'Use the model size',
+    source: { user_option: 'your setting', card: 'card setting', calibration: 'calibration form', configured: 'configuration', model: 'model database' },
+    calibrated: (n) => `Calibrated on ${n} empty ${n === 1 ? 'tank' : 'tanks'}`,
+    learns: 'Calibrates itself each time the dock reports an empty tank',
+    refill: {
+      dock_auto: 'Refill: recognised automatically when the dock clears its empty-water error',
+      button: 'Refill: your refill button', lid: 'Refill: tank lid sensor', measured: 'Level: measured by a sensor',
+      manual: 'Refill: press Refilled after filling (card, device page or automation)',
+    },
+    fullQ: 'Is the clean-water tank full now?',
+    fullAuto: 'Yes: tracking starts now. Not sure: do nothing, tracking starts by itself after the next refill at the dock.',
+    fullManual: 'Yes: tracking starts now. Not full: fill it first, then confirm.',
+    pausedQ: 'The water count is paused: a signal was missing while water could have been used.',
+    pausedHint: 'Fill the tank and confirm, and counting continues from full. What the robot learned is kept.',
+    yesFull: 'Yes, the tank is full',
+    needSize: 'The model database does not know this robot\u2019s tank. Enter the usable clean-water tank size.',
+    mopSignal: 'No signal shows when this robot mops, so water use cannot be estimated yet.',
+    openSignals: 'Choose the mop signal',
+    invalidSize: 'Enter a tank size between 100 and 10000 ml.',
+    failed: 'Could not save. Please try again.',
+    info: {
+      manual_refill: 'Tip: the robot\u2019s device page has a Refilled button you can put on a dashboard or an NFC tag.',
+      no_empty_signal: 'This robot does not report an empty tank, so the estimate cannot calibrate itself.',
+      signal_unavailable: 'A robot signal is unavailable right now; counting resumes when it is back.',
+      not_tracked: 'This robot does not report mopping. If it has a water tank, enter its size to start tracking.',
+    },
+  },
+  pl: {
+    setupTitle: (name) => `Konfiguracja liczenia wody: ${name}`,
+    allGood: 'Wszystko dzia\u0142a',
+    model: 'Model', tank: 'Zbiornik', accuracy: 'Dok\u0142adno\u015B\u0107', unknown: 'nieznany',
+    change: 'Zmie\u0144', save: 'Zapisz', tankSize: 'Pojemno\u015B\u0107 zbiornika', useModel: 'U\u017Cyj pojemno\u015Bci modelu',
+    source: { user_option: 'Twoje ustawienie', card: 'ustawienie karty', calibration: 'formularz kalibracji', configured: 'konfiguracja', model: 'baza modeli' },
+    calibrated: (n) => `Skalibrowane na ${n} ${n === 1 ? 'pustym zbiorniku' : 'pustych zbiornikach'}`,
+    learns: 'Kalibruje si\u0119 samo za ka\u017Cdym razem, gdy stacja zg\u0142osi pusty zbiornik',
+    refill: {
+      dock_auto: 'Dolanie: rozpoznawane automatycznie, gdy stacja skasuje b\u0142\u0105d braku wody',
+      button: 'Dolanie: Tw\u00F3j przycisk dolania', lid: 'Dolanie: czujnik klapy zbiornika', measured: 'Poziom: mierzony czujnikiem',
+      manual: 'Dolanie: po napełnieniu naci\u015Bnij Dolane (karta, strona urz\u0105dzenia albo automatyzacja)',
+    },
+    fullQ: 'Czy zbiornik czystej wody jest teraz pe\u0142ny?',
+    fullAuto: 'Tak: liczenie startuje teraz. Nie wiesz: nic nie r\u00F3b, liczenie zacznie si\u0119 samo po najbli\u017Cszym dolaniu w stacji.',
+    fullManual: 'Tak: liczenie startuje teraz. Nie jest pe\u0142ny: najpierw go napełnij, potem potwierd\u017A.',
+    pausedQ: 'Liczenie wody jest wstrzymane: brakowa\u0142o sygna\u0142u, gdy robot m\u00F3g\u0142 zu\u017Cywa\u0107 wod\u0119.',
+    pausedHint: 'Napełnij zbiornik i potwierd\u017A, a liczenie wr\u00F3ci od pe\u0142nego. To, czego robot si\u0119 nauczy\u0142, zostaje.',
+    yesFull: 'Tak, zbiornik jest pe\u0142ny',
+    needSize: 'Baza modeli nie zna zbiornika tego robota. Wpisz u\u017Cyteczn\u0105 pojemno\u015B\u0107 zbiornika czystej wody.',
+    mopSignal: 'Brak sygna\u0142u, kiedy robot mopuje, wi\u0119c nie da si\u0119 jeszcze oszacowa\u0107 zu\u017Cycia wody.',
+    openSignals: 'Wybierz sygna\u0142 mopowania',
+    invalidSize: 'Wpisz pojemno\u015B\u0107 od 100 do 10000 ml.',
+    failed: 'Nie uda\u0142o si\u0119 zapisa\u0107. Spr\u00F3buj ponownie.',
+    info: {
+      manual_refill: 'Wskaz\u00F3wka: strona urz\u0105dzenia robota ma przycisk Dolane, kt\u00F3ry mo\u017Cesz doda\u0107 do panelu albo tagu NFC.',
+      no_empty_signal: 'Ten robot nie zg\u0142asza pustego zbiornika, wi\u0119c szacunek nie skalibruje si\u0119 sam.',
+      signal_unavailable: 'Sygna\u0142 robota jest chwilowo niedost\u0119pny; liczenie wr\u00F3ci, gdy si\u0119 pojawi.',
+      not_tracked: 'Ten robot nie zg\u0142asza mopowania. Je\u015Bli ma zbiornik wody, wpisz jego pojemno\u015B\u0107, aby zacz\u0105\u0107 liczenie.',
+    },
+  },
 };
 const VWM_TANK_REASON_LABEL = {
   calibration_sample_unconfirmed: 'waiting for the next tank',
@@ -4103,6 +4170,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._serverReady = false;
     this._serverLoadPromise = null;
     this._serverUnsub = null;
+    this._health = {};
+    this._healthAt = 0;
+    this._healthPromise = null;
+    this._capacityEdit = null;
   }
 
   set hass(hass) {
@@ -4322,6 +4393,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           }
         }
         this._subscribeServerEvents();
+        this._refreshHealth(true);
         this._serverReady = true;
         this._lastHtml = '';
         this._render({ preserveDraft: true });
@@ -4360,11 +4432,102 @@ class HAVacuumWaterMonitor extends HTMLElement {
         }
         this._serverState.tank_states = merged;
       }
+      this._refreshHealth(Boolean(data.settings));
       this._lastHtml = '';
       this._render({ preserveDraft: true });
     }, VWM_EVENT).then((unsub) => { this._serverUnsub = unsub; }).catch((err) => {
       console.debug('[ha-vacuum-water-monitor] event subscription failed:', err);
     });
+  }
+
+  // One report per robot from the server (the same one Repairs uses): tank size
+  // and its source, accuracy, refill method and what needs the user.
+  _refreshHealth(force = false) {
+    if (!this._hass || this._healthPromise) return this._healthPromise;
+    if (!force && Date.now() - (this._healthAt || 0) < 30000) return null;
+    this._healthAt = Date.now();
+    this._healthPromise = this._hass.callWS({ type: `${VWM_DOMAIN}/health` })
+      .then((result) => {
+        const map = {};
+        for (const report of (result && result.robots) || []) {
+          if (report && report.vacuum_entity) map[report.vacuum_entity] = report;
+        }
+        const changed = JSON.stringify(map) !== JSON.stringify(this._health || {});
+        this._health = map;
+        if (changed) { this._lastHtml = ''; this._render({ preserveDraft: true }); }
+      })
+      .catch((err) => { console.debug('[ha-vacuum-water-monitor] health report unavailable:', err); })
+      .finally(() => { this._healthPromise = null; });
+    return this._healthPromise;
+  }
+
+  _healthFor(device) {
+    return (device && (this._health || {})[device.vacuum_entity]) || null;
+  }
+
+  // Short first-run explanation; the setup panel asks the actual questions.
+  _tipHtml() {
+    const pl = this._lang === 'pl';
+    const items = pl ? [
+      'Roboty s\u0105 wykrywane automatycznie, bez YAML.',
+      'Dla ka\u017Cdego robota odpowiedz na pytanie w zak\u0142adce Woda (zwykle: czy zbiornik jest teraz pe\u0142ny?).',
+      'Dolanie w stacji z samodolewaniem jest rozpoznawane samo; w innym przypadku naci\u015Bnij Dolane (jest te\u017C na stronie urz\u0105dzenia robota).',
+      'Szacunek kalibruje si\u0119 sam za ka\u017Cdym razem, gdy stacja zg\u0142osi pusty zbiornik.',
+      'To, co wymaga uwagi, pojawia si\u0119 te\u017C w Ustawienia \u2192 Naprawy.',
+    ] : [
+      'Robots are found automatically, with no YAML.',
+      'For each robot, answer the question in the Water tab (usually: is the tank full now?).',
+      'A refill at a self-refilling dock is recognised on its own; otherwise press Refilled (also on the robot\u2019s device page).',
+      'The estimate calibrates itself every time the dock reports an empty tank.',
+      'Anything that needs you also appears in Settings \u2192 Repairs.',
+    ];
+    return `<div class="tip-banner-title">\uD83D\uDCA1 ${pl ? 'Jak to dzia\u0142a' : 'How it works'}</div><ul>${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
+  }
+
+  _setupText() {
+    return VWM_SETUP_TEXT[this._lang] || VWM_SETUP_TEXT.en;
+  }
+
+  _buildSetupPanel(device, report) {
+    if (!report) return '';
+    const L = this._setupText();
+    const entity = _esc(device.vacuum_entity || '');
+    const checks = Array.isArray(report.checks) ? report.checks : [];
+    // The duplicate question has its own banner above the robot tabs.
+    const blocking = checks.filter(c => c.severity !== 'info' && c.id !== 'possible_duplicate');
+    const infos = checks.filter(c => c.severity === 'info');
+    const locale = this._lang === 'pl' ? 'pl-PL' : 'en-US';
+    const capacity = Number(report.capacity_ml) > 0 ? `${Number(report.capacity_ml).toLocaleString(locale)} ml` : L.unknown;
+    const facts = [
+      report.model ? `${L.model}: ${_esc(report.model)}` : '',
+      `${L.tank}: <b>${capacity}</b>${report.capacity_source ? ` (${_esc(L.source[report.capacity_source] || report.capacity_source)})` : ''} <button class="vwm-link" data-setup="edit-capacity" data-vacuum="${entity}">${L.change}</button>`,
+      Number.isFinite(Number(report.uncertainty_percent)) && report.uncertainty_percent !== null ? `${L.accuracy}: \u00B1${Number(report.uncertainty_percent)}%` : '',
+      Number(report.calibration_samples) > 0 ? L.calibrated(Number(report.calibration_samples)) : (report.can_calibrate ? L.learns : ''),
+      L.refill[report.refill_method] || '',
+    ].filter(Boolean);
+    const needsSize = blocking.some(c => c.id === 'unknown_capacity') || (report.tracks_water === false);
+    const editing = this._capacityEdit === device.vacuum_entity || needsSize;
+    const modelSize = Number(report.model_capacity_ml) > 0 ? Number(report.model_capacity_ml) : null;
+    const capacityEditor = editing ? `
+      <div class="vwm-setup-row"><label>${L.tankSize} <input id="vwm-capacity-input" type="number" min="100" max="10000" step="50" value="${_esc(report.capacity_ml || modelSize || '')}"> ml</label>
+        <button class="vwm-setup-btn" data-setup="save-capacity" data-vacuum="${entity}">${L.save}</button>
+        ${report.capacity_source === 'user_option' ? `<button class="vwm-link" data-setup="reset-capacity" data-vacuum="${entity}">${L.useModel}${modelSize ? ` (${modelSize.toLocaleString(locale)} ml)` : ''}</button>` : ''}
+      </div>` : '';
+    const step = (text, hint, button) => `<div class="vwm-step"><b>${text}</b>${hint ? `<div class="vwm-hint">${hint}</div>` : ''}${button || ''}</div>`;
+    const confirmBtn = `<button class="vwm-setup-btn primary" data-setup="confirm-full" data-vacuum="${entity}">${L.yesFull}</button>`;
+    const steps = blocking.map((check) => {
+      if (check.id === 'awaiting_refill') return step(L.fullQ, check.params && check.params.auto_refill ? L.fullAuto : L.fullManual, confirmBtn);
+      if (check.id === 'accounting_paused') return step(L.pausedQ, L.pausedHint, confirmBtn);
+      if (check.id === 'unknown_capacity') return step(L.needSize, '', '');
+      if (check.id === 'mop_signal_unbound') return step(L.mopSignal, '', `<button class="vwm-setup-btn" data-setup="open-signals" data-vacuum="${entity}">${L.openSignals}</button>`);
+      return '';
+    }).join('');
+    const hints = infos.map(c => L.info[c.id] ? `<div class="vwm-hint">${L.info[c.id]}</div>` : '').join('');
+    const factsHtml = `<div class="vwm-facts">${facts.map(f => `<span>${f}</span>`).join('')}</div>`;
+    if (!blocking.length) {
+      return `<details class="vwm-health"${editing ? ' open' : ''}><summary>\u2705 ${L.allGood}</summary>${factsHtml}${capacityEditor}${hints}</details>`;
+    }
+    return `<div class="vwm-setup"><div class="vwm-setup-title">${L.setupTitle(_esc(report.name || device.vacuum_entity))}</div>${factsHtml}${capacityEditor}${steps}${hints}</div>`;
   }
 
   _applyServerSettings() {
@@ -5076,7 +5239,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const resolvedCapacity = lockedProfile
       ? (Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : null)
       : (Number.isFinite(backendCapacity) && backendCapacity > 0 ? backendCapacity : null);
-    const totalMl = configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
+    // The tank size chosen in Home Assistant (entity, Repairs, setup panel) wins.
+    const optionCapacity = Number(this._serverState?.settings?.device_options?.[device.vacuum_entity]?.capacity_ml);
+    const totalMl = (Number.isFinite(optionCapacity) && optionCapacity > 0 ? optionCapacity : 0) || configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
     const legacyResetTs = Number(tankState.last_reset_ts);
@@ -5350,7 +5515,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     // Refill button resets the integration's HA Store state.
     const refillBtn = (cfg.show_refill_button !== false)
-      ? `<button class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">\uD83D\uDCA7 Refilled</button>` : '';
+      ? `<button class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolane' : 'Refilled'}</button>` : '';
 
     const alertBanner = (data.waterEmpty || data.waterShortage)
       ? `<div class="alert-banner">\u26A0\uFE0F Water shortage! Please refill now.</div>`
@@ -5369,7 +5534,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
         </div>`
       : '';
 
-    const accountingHtml = this._buildAccountingGuidance(data);
+    const healthReport = this._healthFor(device);
+    const setupHtml = this._buildSetupPanel(device, healthReport);
+    const setupBlocking = Boolean(healthReport && healthReport.status === 'action_needed');
+    // The setup panel asks the question the guidance box would only describe.
+    const accountingHtml = setupBlocking && ['awaiting_refill', 'accounting_incomplete', 'mop_signal_unbound'].includes(data.stateReason)
+      ? '' : this._buildAccountingGuidance(data);
     const diagnosticsHtml = this._buildDiagnostics(data);
 
     const dockHtml = (cfg.show_dock_status !== false) ? this._buildDockSection(device, data) : '';
@@ -5412,6 +5582,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div class="tab-content">
         ${alertBanner}
         ${configMissingBanner}
+        ${setupBlocking ? setupHtml : ''}
         ${accountingHtml}
         ${noWaterTracking ? `<div class="no-water-note">\uD83D\uDCCC This device doesn't track water levels</div>` : `
         <div class="device-body">
@@ -5426,6 +5597,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           </div>
         </div>
         ${refillBtn ? `<div class="refill-wrap">${refillBtn}</div>` : ''}`}
+        ${setupBlocking ? '' : setupHtml}
         ${noWaterTracking && data.charge !== null ? `<div class="details">${this._buildBatteryBar(data.charge)}</div>` : ''}
         ${dockHtml}
         ${diagnosticsHtml}
@@ -7098,6 +7270,20 @@ target:
 }
 .tip-banner .tip-dismiss:hover { opacity: 1; }
 .dup-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.vwm-setup { border: 1.5px solid #6366f1; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: rgba(99,102,241,0.06); }
+.vwm-setup-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.vwm-facts { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; margin: 6px 0; color: var(--bento-text-secondary, #64748b); }
+.vwm-step { margin-top: 10px; font-size: 13px; }
+.vwm-step .vwm-setup-btn { margin-top: 8px; }
+.vwm-hint { font-size: 12px; color: var(--bento-text-secondary, #64748b); margin-top: 4px; }
+.vwm-setup-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; font-size: 13px; }
+.vwm-setup-row input { width: 90px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--divider-color, #cbd5e1); background: transparent; color: inherit; font: inherit; }
+.vwm-setup-btn { border: 1px solid #6366f1; background: transparent; color: inherit; border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-weight: 600; }
+.vwm-setup-btn.primary { background: #6366f1; color: #fff; }
+.vwm-setup-btn:disabled { opacity: 0.6; cursor: default; }
+.vwm-link { border: none; background: none; color: #6366f1; cursor: pointer; font: inherit; padding: 0 2px; text-decoration: underline; }
+.vwm-health { margin: 12px 0; font-size: 13px; border: 1px solid var(--bento-border, #e2e8f0); border-radius: 10px; padding: 8px 12px; }
+.vwm-health summary { cursor: pointer; font-weight: 600; }
 .dup-btn { border: 1px solid var(--divider-color, #cbd5e1); background: transparent; color: inherit; border-radius: 8px; padding: 4px 10px; cursor: pointer; font: inherit; }
 .dup-hidden { font-size: 0.85em; opacity: 0.8; margin: 4px 0 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .tip-banner.hidden { display: none; }
@@ -7121,14 +7307,7 @@ target:
         <div class="card-title">${_esc(this._config.title)}</div>
         <div class="tip-banner" id="tip-banner">
           <button class="tip-dismiss" id="tip-dismiss" aria-label="Dismiss">\u2715</button>
-          <div class="tip-banner-title">💡 Setup</div>
-          <ul>
-            <li><strong>Brand Profile</strong> - pick a profile (Roborock, Dreame, iRobot, Ecovacs) to auto-fill sensor names.</li>
-            <li><strong>Required entities:</strong> vacuum.*. Water sensors and input_number are optional; without them the integration tracks the counter.</li>
-            <li><strong>Multi-device</strong> - add multiple vacuums in config (the <code>devices</code> array).</li>
-            <li><strong>Tabs:</strong> Water (water level), Consumables (brushes, filters), Stats (cleaning stats), History (session history).</li>
-            <li><strong>Refill</strong> - resets the water-usage counter after you refill the tank.</li>
-          </ul>
+          ${this._tipHtml()}
         </div>
         ${this._duplicateNoticeHtml()}
         ${deviceTabsHtml}
@@ -7169,14 +7348,7 @@ target:
           <div class="err-msg">Required entities or sensors are unavailable.</div>
         </div>
         <div class="tip-banner">
-          <div class="tip-banner-title">💡 Setup</div>
-          <ul>
-            <li><strong>Brand Profile</strong> - pick a profile (Roborock, Dreame, iRobot, Ecovacs) to auto-fill sensor names.</li>
-            <li><strong>Required entities:</strong> vacuum.*. Water sensors and input_number are optional; without them the integration tracks the counter.</li>
-            <li><strong>Multi-device</strong> - add multiple vacuums in config (the <code>devices</code> array).</li>
-            <li><strong>Tabs:</strong> Water (water level), Consumables (brushes, filters), Stats (cleaning stats), History (session history).</li>
-            <li><strong>Refill</strong> - resets the water-usage counter after you refill the tank.</li>
-          </ul>
+          ${this._tipHtml()}
         </div>
       </div>`;
     console.warn('[VacuumWaterMonitor] Render error:', err);
@@ -7216,18 +7388,63 @@ target:
       });
     });
 
+    // Setup panel: confirm a full tank, set or reset the tank size, open signal mapping.
+    sr.querySelectorAll('[data-setup]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const L = this._setupText();
+        const action = btn.dataset.setup;
+        const vacuum = btn.dataset.vacuum;
+        if (!vacuum) return;
+        if (action === 'edit-capacity') {
+          this._capacityEdit = this._capacityEdit === vacuum ? null : vacuum;
+          this._lastHtml = '';
+          this._render({ preserveDraft: true });
+          return;
+        }
+        if (action === 'open-signals') { this.setActiveTab('settings'); return; }
+        let value;
+        if (action === 'save-capacity' || action === 'reset-capacity') {
+          const input = sr.getElementById('vwm-capacity-input');
+          value = action === 'reset-capacity' ? null : Number(input && input.value);
+          if (value !== null && !(Number.isFinite(value) && value >= 100 && value <= 10000)) {
+            this._toast(L.invalidSize, true);
+            return;
+          }
+        }
+        btn.disabled = true;
+        try {
+          if (action === 'confirm-full') {
+            await this._resetWaterState({ vacuum_entity: vacuum });
+          } else if (action === 'save-capacity' || action === 'reset-capacity') {
+            const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_device_options`, vacuum_entity: vacuum, options: { capacity_ml: value } });
+            if (result && result.settings) { this._serverState.settings = result.settings; this._applyServerSettings(); }
+            this._capacityEdit = null;
+          }
+          await this._refreshHealth(true);
+        } catch (err) {
+          console.error('[ha-vacuum-water-monitor] setup action failed:', err);
+          this._toast((err && err.message) || L.failed, true);
+        }
+        btn.disabled = false;
+        this._lastHtml = '';
+        this._render({ preserveDraft: true });
+      });
+    });
+
     // Refill button — reset HA Store state for this vacuum.
     sr.querySelectorAll('.refill-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const vacuumId = btn.dataset.vacuum;
         const ok = () => {
           btn.textContent = '\u2705 Done!'; btn.style.color = '#22c55e';
-          setTimeout(() => { btn.textContent = '\uD83D\uDCA7 Refilled'; btn.style.color = '#60a5fa'; }, 2000);
+          setTimeout(() => { btn.textContent = `\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolane' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 2000);
         };
         const fail = (err) => {
           console.error('[ha-vacuum-water-monitor] refill failed:', err);
           btn.textContent = '\u274C Error!'; btn.style.color = '#ef4444';
-          setTimeout(() => { btn.textContent = '\uD83D\uDCA7 Refilled'; btn.style.color = '#60a5fa'; }, 3000);
+          setTimeout(() => { btn.textContent = `\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolane' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 3000);
         };
         if (vacuumId) {
           try {
