@@ -168,6 +168,7 @@ What happens under the hood:
 > required signals are mapped; it learns a correction only when the tracked reservoir has
 > a verified empty-tank signal. The displayed uncertainty is not a guarantee of accuracy.
 > Without a usable signal or refill baseline, remaining water stays Unknown.
+> Unknown remains unknown.
 
 ### Manual-only models and the refill baseline
 
