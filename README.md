@@ -46,8 +46,8 @@ itself on your robot:
 1. **Model database.** A model record may contain a verified capacity and mop system (pad,
    rotating pads or roller); many records have neither. When the robot exposes usable mop
    state and cleaned area, the labelled estimate uses route and water level. A dock wash is
-   counted only when its completion is observed. Unknown output levels stop floor accounting
-   until mapped, instead of silently using the medium level.
+   counted only when its completion is observed. Unknown output levels stop floor accounting,
+   including the time fallback, until mapped instead of silently using the medium level.
 2. **Labelled basis and uncertainty.** Each estimate says what it is based on, from most to least
    specific: learned from calibrated robots of the same model, an owner's measured accounting
    on that model, manufacturer or review data, a closely related model, the typical values for
@@ -59,8 +59,8 @@ itself on your robot:
    (a tank lifted mid-cycle, a top-up nobody reported) waits for the next tank to confirm it;
    after that an abnormal tank is ignored. A tank whose signals were missing for more than a
    short, bridgeable gap does not teach the robot. An estimated dock tank is closed at capacity
-   minus a 5% unusable residual (the water the pump cannot draw). The accuracy shown narrows as
-   tanks agree; the last results are in Diagnostics.
+   minus a 5% unusable residual (the water the pump cannot draw). The indicative uncertainty
+   narrows as tanks agree; the last results are in Diagnostics.
 4. **Your data wins.** A volume sensor or your own calibration replaces the estimate.
 5. **No mopping, no water.** A run with the water level off or the mop detached uses no water.
    A robot that exposes no signal showing when it mops asks you to map one instead of showing

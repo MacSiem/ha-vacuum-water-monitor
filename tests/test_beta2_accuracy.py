@@ -70,6 +70,15 @@ class WaterLevelTests(unittest.TestCase):
                 self.assertEqual(state["intensity_unmapped"], level)
                 self.assertTrue(state.get("accounting_incomplete"))
 
+    def test_unmapped_level_does_not_escape_through_time_fallback(self):
+        device = {**S8, "area_sensor": None,
+                  "usage_ml_per_active_minute": {"default": 2},
+                  "time_accounting_evidence": "user_measured"}
+        state = run(device, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0",
+                                             intensity="custom_water_flow")])
+        self.assertEqual(state["used_ml"], 0)
+        self.assertTrue(state.get("accounting_incomplete"))
+
 
 if __name__ == "__main__":
     unittest.main()

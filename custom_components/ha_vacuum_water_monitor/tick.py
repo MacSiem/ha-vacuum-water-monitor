@@ -922,6 +922,10 @@ def _tick_device_pass(
             dirty |= _record_accounting(
                 state, "active_time", None, time_evidence, "mop_inactive"
             )
+        elif isinstance(device.get("intensity_factor"), dict) and intensity_factor is None:
+            dirty |= _record_accounting(
+                state, "active_time", None, time_evidence, "missing_intensity_factor"
+            )
         elif usage_per_minute is None:
             dirty |= _record_accounting(
                 state, "active_time", None, time_evidence, "missing_time_rate"
