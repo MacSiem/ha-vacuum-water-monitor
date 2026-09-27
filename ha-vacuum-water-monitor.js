@@ -7084,7 +7084,9 @@ target:
       </div>` : '';
 
     let tabContent = '';
-    if (this._activeTab === 'water') tabContent = this._buildWaterTab(device, data);
+    if (this._activeTab === 'water') tabContent = devices.length
+      ? this._buildWaterTab(device, data)
+      : `<div class="empty-state">${this._t.noDevices}<br>${this._t.addVacuum}</div>`;
     else if (this._activeTab === 'maintenance') tabContent = this._buildMaintenanceTab(device, data);
     else if (this._activeTab === 'history') tabContent = this._buildHistoryTab(device, data);
     else if (this._activeTab === 'stats') tabContent = this._buildStatsTab(devices);
