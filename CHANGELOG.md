@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.9.0-beta.2 (unreleased)
+
+- Show a clear first-run message instead of fabricated water readings when no vacuum is available.
+- Improve the empty-state contrast in light and dark themes.
+- Keep unknown output intensity and unknown uncertainty explicitly unknown; describe calibration only for verified signals.
+- Bump the integration and card version together so Home Assistant requests the corrected card instead of its cached beta.1 URL.
+
 ## 5.9.0-beta.1 (2026-09-24)
 
 Accuracy you can see: how long the water lasts, how far the estimate was on the last tanks,
