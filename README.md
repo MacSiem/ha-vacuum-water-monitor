@@ -43,17 +43,19 @@ calibration limits, plus a privacy-safe partial-session template.
 The integration always starts from the best data available for your model and then corrects
 itself on your robot:
 
-1. **Model database.** Each model record carries its tank capacities and a mop system (pad,
-   rotating pads or roller). Water use is estimated from what Home Assistant reports: cleaned
-   area per route and water level, and every dock mop-wash sequence.
-2. **Labelled basis and accuracy.** Each estimate says what it is based on, from most to least
+1. **Model database.** A model record may contain a verified capacity and mop system (pad,
+   rotating pads or roller); many records have neither. When the robot exposes usable mop
+   state and cleaned area, the labelled estimate uses route and water level. A dock wash is
+   counted only when its completion is observed. Unknown output levels stop floor accounting
+   until mapped, instead of silently using the medium level.
+2. **Labelled basis and uncertainty.** Each estimate says what it is based on, from most to least
    specific: learned from calibrated robots of the same model, an owner's measured accounting
    on that model, manufacturer or review data, a closely related model, the typical values for
-   the mop system, or a generic mopping estimate. Each basis has a fixed starting accuracy
-   (±15% to ±65%).
+   the mop system, or a generic mopping estimate. The initial 15–65% uncertainty labels
+   describe the chosen prior; they are not measured error bounds for a particular robot.
 3. **Automatic calibration.** When the dock reports an empty clean-water tank, the prediction
    for that tank is compared with the tank capacity. The median of recent tanks becomes the
-   robot's correction. Until three tanks are learned, a tank far outside the estimate's accuracy
+   robot's correction. Until three tanks are learned, a tank far outside the estimate's uncertainty band
    (a tank lifted mid-cycle, a top-up nobody reported) waits for the next tank to confirm it;
    after that an abnormal tank is ignored. A tank whose signals were missing for more than a
    short, bridgeable gap does not teach the robot. An estimated dock tank is closed at capacity
@@ -156,16 +158,16 @@ What happens under the hood:
 | Automatic | Manual (optional) |
 |---|---|
 | Discovering vacuums | Pressing **Refilled** after you fill the tank |
-| Water usage estimation for every recognised model (labelled estimate + automatic calibration) | Your own measured ml/m² or tank size, which replace the estimate |
+| Labelled water-use estimate when mop/exposure signals are usable; automatic calibration only with a verified empty-tank signal | Your own measured ml/m² or tank size, which replace the estimate |
 | Detecting a refill when the dock's empty-water error clears (can be switched off) | Pressing **Refilled**, a bound button, a tank lid sensor or the `mark_refilled` action |
 | Tank capacity for known models | Wiring extra sensors (dock errors, tank door) |
 | Sensors + card registration | Maintenance schedule entries |
 
 > **Labelled estimates that calibrate themselves.** Most robot vacuums do not report actual
-> water volume. A recognised model therefore starts from a labelled estimate (see below) and
-> learns its own correction from the dock's empty-water signal. Every number shows where it
-> came from and how accurate it is. A value with no basis at all (an unrecognised model with
-> no capacity) is never invented: Unknown remains unknown.
+> water volume. A recognised mopping model can start from a labelled estimate when the
+> required signals are mapped; it learns a correction only when the tracked reservoir has
+> a verified empty-tank signal. The displayed uncertainty is not a guarantee of accuracy.
+> Without a usable signal or refill baseline, remaining water stays Unknown.
 
 ### Manual-only models and the refill baseline
 
@@ -218,13 +220,14 @@ silently.
 |---|---|
 | ![Water tab, light theme](docs/screenshots/card-water-light.png) | ![Water tab, dark theme](docs/screenshots/card-water-dark.png) |
 
-*The Water tab: estimated tank level, usage since refill, and the Refilled button. Dark
-mode follows your Home Assistant theme automatically.*
+*The Water tab with synthetic robot data: labelled estimate, indicative uncertainty,
+usage since a simulated refill, and the Refilled button. No household history or
+device identifiers are shown. Dark mode follows your Home Assistant theme.*
 
 ![Settings tab](docs/screenshots/card-settings.png)
 
-*Vacuums are auto-discovered — the ⚙️ Settings tab lets you add discovered robots, tune
-calibration, and manage the maintenance schedule.*
+*The ⚙️ Settings tab lets you add discovered robots, map signals, tune calibration,
+and manage maintenance. This screenshot also uses synthetic device data.*
 
 ## Installation
 

@@ -62,13 +62,13 @@ class WaterLevelTests(unittest.TestCase):
                 self.assertAlmostEqual(state["used_ml"], ml, places=1)
                 self.assertIsNone(state.get("intensity_unmapped"))
 
-    def test_levels_without_a_factor_are_reported(self):
+    def test_levels_without_a_factor_are_not_billed_as_medium(self):
         for level in ("smart_mode", "custom_water_flow", "custom"):
             with self.subTest(level=level):
                 state = self.ml_for(level)
-                self.assertAlmostEqual(state["used_ml"], 60, places=1)
+                self.assertEqual(state["used_ml"], 0)
                 self.assertEqual(state["intensity_unmapped"], level)
-                self.assertFalse(state.get("accounting_incomplete"))
+                self.assertTrue(state.get("accounting_incomplete"))
 
 
 if __name__ == "__main__":

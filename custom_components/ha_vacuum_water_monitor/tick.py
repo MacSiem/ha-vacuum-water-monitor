@@ -458,6 +458,10 @@ def _tick_device_pass(
         and not any(_positive_number(intensity_map.get(key)) is not None for key in _rate_key_candidates(mop_intensity))
         else None
     )
+    # An explicit but unrecognized output level is not the declared default.
+    # Charging it at the medium rate hides a settings mismatch as precise water.
+    if unmapped_intensity is not None:
+        intensity_factor = None
     if state.get("intensity_unmapped") != unmapped_intensity:
         state["intensity_unmapped"] = unmapped_intensity
     calibration_factor = _clamp(

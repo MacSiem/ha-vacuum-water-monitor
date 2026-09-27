@@ -38,7 +38,12 @@ const data = { profileKey: 'roborock_qrevo_curv_2_flow', mopSystem: 'roller', in
 const payload = card._buildCalibrationSharePayload(device, data);
 const html = card._buildCalibrationSharingSection(device, data);
 const url = card._calibrationShareUrl(payload);
-console.log(JSON.stringify({ u: cases.map(([b, f]) => card._estimateUncertainty(b, f)), payload, html, url }));
+const guidance = (uncertaintyPercent) => card._buildAccountingGuidance({
+  capability: 'automatic_estimate', initialized: true, accountingSource: 'area', accountingRate: 6,
+  stateReason: null, uncertaintyPercent, calibrationSamples: 0,
+});
+console.log(JSON.stringify({ u: cases.map(([b, f]) => card._estimateUncertainty(b, f)), payload, html, url,
+  guidanceNull: guidance(null), guidance20: guidance(20) }));
 """
 
 
@@ -52,6 +57,10 @@ class CardEstimateTests(unittest.TestCase):
     def test_card_uncertainty_matches_backend(self):
         expected = [estimation.uncertainty_percent(basis, factors) for basis, factors in CASES]
         self.assertEqual(self.result["u"], expected)
+
+    def test_missing_uncertainty_is_not_rendered_as_zero_percent(self):
+        self.assertNotIn("0%", self.result["guidanceNull"])
+        self.assertIn("20%", self.result["guidance20"])
 
     def test_share_payload_contains_no_identifiers_or_timestamps(self):
         payload = self.result["payload"]

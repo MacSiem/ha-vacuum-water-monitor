@@ -5689,18 +5689,19 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return box('Unavailable signal.', 'Automatic estimate is waiting for a usable configured same-device status or area signal.', '#f59e0b');
     }
     const active = Boolean(data.accountingSource && Number.isFinite(Number(data.accountingRate)) && Number(data.accountingRate) > 0 && !data.stateReason);
-    const uncertainty = Number.isFinite(Number(data.uncertaintyPercent))
+    const hasUncertainty = data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent));
+    const uncertainty = hasUncertainty
       ? ` Initial uncertainty: approximately ${Number(data.uncertaintyPercent)}%.`
       : '';
     const samples = Math.max(0, Number(data.calibrationSamples) || 0);
-    const accuracy = Number.isFinite(Number(data.uncertaintyPercent)) ? ` About \u00B1${Number(data.uncertaintyPercent)}%.` : '';
+    const accuracy = hasUncertainty ? ` Indicative uncertainty: about \u00B1${Number(data.uncertaintyPercent)}%.` : '';
     if (samples > 0) {
       const factor = Number.isFinite(Number(data.calibrationFactor)) ? Number(data.calibrationFactor) : 1;
       return box('Calibrated for this robot.', `Calibrated on ${samples} empty ${samples === 1 ? 'tank' : 'tanks'} (correction \u00D7${Number(factor.toFixed(2))}).${accuracy} Every empty-tank signal refines it automatically.`, '#22c55e');
     }
     if (data.estimateBasis) {
       const label = VWM_BASIS_LABEL[data.estimateBasis] || 'Labelled estimate';
-      return box(active ? 'Estimating now.' : 'Estimated usage.', `${_esc(label)}.${accuracy} It calibrates automatically the first time the dock reports an empty clean-water tank; no manual measurement is needed.`, '#22c55e');
+      return box(active ? 'Estimating now.' : 'Estimated usage.', `${_esc(label)}.${accuracy} A verified empty signal for the tracked tank can calibrate this estimate; otherwise add a measured calibration.`, '#22c55e');
     }
     if (data.capability === 'manual_only' && active && data.accountingEvidence === 'user_calibration') {
       return box('Measured calibration active.', 'This manual-only model is currently accounting from your measured calibration and same-device signal.', '#22c55e');

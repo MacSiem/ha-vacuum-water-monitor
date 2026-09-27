@@ -4,6 +4,12 @@ The application now has a consumption resolver separate from the capacity/model 
 The pinned snapshot still contains **zero approved profiles**. Synthetic tests establish
 code behavior, not firmware compatibility, completeness or physical accuracy.
 
+This strict dataset resolver is separate from the live catalog's labelled class/model
+priors. The latter can estimate floor use for a mapped mopping robot even when the shared
+dataset has no approved empirical profile. Its basis and provisional uncertainty stay
+visible; missing or unrecognized water-output settings stop accounting rather than being
+silently treated as a medium setting. Neither path proves real-device accuracy.
+
 ## Applicability and precedence
 
 `profiles.resolve_consumption_profile(context, signals, calibration, dataset)` returns
