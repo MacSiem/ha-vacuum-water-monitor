@@ -45,6 +45,7 @@ const reports = JSON.parse(process.argv[1]);
   card._config = { devices: [] };
   const data = card._calcDeviceData({ vacuum_entity: 'vacuum.robot', water_total_ml: 4000, config_provenance: { authored_fields: ['vacuum_entity', 'water_total_ml'] } });
   out.totalMl = data.totalMl; out.percent = data.percentRemaining;
+  out.waterTab = card._buildWaterTab({ vacuum_entity: 'vacuum.robot', brand_profile: 'roborock_s8_maxv_ultra' }, data);
   out.throttled = card._refreshHealth(false) === null;
   out.trailingScheduled = Boolean(card._healthTimer);
   clearTimeout(card._healthTimer);
@@ -123,6 +124,11 @@ class CardSetupPanelTests(unittest.TestCase):
     def test_tank_size_option_wins_in_card_numbers(self):
         self.assertEqual(self.out["totalMl"], 3000)
         self.assertEqual(self.out["percent"], 50)
+
+    def test_calibration_panel_distinguishes_tracked_capacity_from_model_reference(self):
+        html = self.out["waterTab"]
+        self.assertIn("Tracked tank: <b>3,000 ml</b>", html)
+        self.assertIn("Model reference: <b>4,000 ml</b>", html)
 
     def test_health_is_loaded_and_throttled(self):
         self.assertEqual(self.out["healthLoaded"], ["vacuum.robot"])

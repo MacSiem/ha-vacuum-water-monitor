@@ -5599,12 +5599,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${k}:</b> ${v} ml/m²</span>`).join('');
       const referenceUsage = usage.standard || usage.medium || usage.default || Object.values(usage)[0] || null;
       const estAreaPerTank = referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / referenceUsage) : null;
+      const trackedCapacity = Number(data.totalMl) > 0 ? Number(data.totalMl) : null;
+      const modelCapacity = Number(calib.tank_ml) > 0 ? Number(calib.tank_ml) : null;
       const facts = _calibrationFacts(calib);
       calibHtml = `
         <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
           <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 Calibration: ${calib.label}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
-            <div>🪣 Tank: <b>${calib.tank_ml ? `${Number(calib.tank_ml).toLocaleString('en-US')} ml` : 'unknown'}</b></div>
+            <div>🪣 Tracked tank: <b>${trackedCapacity ? `${trackedCapacity.toLocaleString('en-US')} ml` : 'unknown'}</b></div>
+            ${modelCapacity && modelCapacity !== trackedCapacity ? `<div>📚 Model reference: <b>${modelCapacity.toLocaleString('en-US')} ml</b></div>` : ''}
             <div>🧹 Mop: <b>${_esc(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : 'unknown'))}</b></div>
             ${calib.avg_area_per_charge ? `<div>📏 Est. area/charge: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
             ${estAreaPerTank ? `<div>📏 Est. floor area/tank: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(standard route, excl. washes)</span></div>` : ''}
