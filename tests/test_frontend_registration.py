@@ -47,7 +47,7 @@ class FrontendRegistrationTests(unittest.TestCase):
         self.assertIn("const _esc = (s) => _escBase(_asText(s));", source)
         self.assertIn('data-source="own-card"', source)
         self.assertIn("buymeacoffee.com/macsiem", source)
-        self.assertIn("${ownDonateFooter()}", source)
+        self.assertIn("ownDonateFooter() : ''", source)
 
 
 if __name__ == "__main__":
