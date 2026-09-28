@@ -1,8 +1,8 @@
 # Changelog
 
-## 5.9.0-beta.3 (unreleased)
+## 5.9.0-beta.4 (unreleased)
 
-- Show the configured tracked tank capacity separately from the model reference in the calibration panel; refresh the card asset URL for existing HA browsers.
+- Use the integration's configured tank capacity in the card, ahead of stale panel or model values. Show that tracked capacity separately from the model reference in the calibration panel, and refresh the card asset URL for existing HA browsers.
 
 ## 5.9.0-beta.2 (unreleased)
 

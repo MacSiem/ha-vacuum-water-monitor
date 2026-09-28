@@ -46,6 +46,10 @@ const reports = JSON.parse(process.argv[1]);
   const data = card._calcDeviceData({ vacuum_entity: 'vacuum.robot', water_total_ml: 4000, config_provenance: { authored_fields: ['vacuum_entity', 'water_total_ml'] } });
   out.totalMl = data.totalMl; out.percent = data.percentRemaining;
   out.waterTab = card._buildWaterTab({ vacuum_entity: 'vacuum.robot', brand_profile: 'roborock_s8_maxv_ultra' }, data);
+  card._serverState.settings = { configured_devices: [{ vacuum_entity: 'vacuum.robot', water_total_ml: 3000 }] };
+  const fromServer = card._calcDeviceData({ vacuum_entity: 'vacuum.robot', water_total_ml: 4000, config_provenance: { authored_fields: ['vacuum_entity', 'water_total_ml'] }, brand_profile: 'roborock_s8_maxv_ultra' });
+  out.configuredTotalMl = fromServer.totalMl;
+  out.configuredWaterTab = card._buildWaterTab({ vacuum_entity: 'vacuum.robot', brand_profile: 'roborock_s8_maxv_ultra' }, fromServer);
   out.throttled = card._refreshHealth(false) === null;
   out.trailingScheduled = Boolean(card._healthTimer);
   clearTimeout(card._healthTimer);
@@ -126,7 +130,8 @@ class CardSetupPanelTests(unittest.TestCase):
         self.assertEqual(self.out["percent"], 50)
 
     def test_calibration_panel_distinguishes_tracked_capacity_from_model_reference(self):
-        html = self.out["waterTab"]
+        html = self.out["configuredWaterTab"]
+        self.assertEqual(self.out["configuredTotalMl"], 3000)
         self.assertIn("Tracked tank: <b>3,000 ml</b>", html)
         self.assertIn("Model reference: <b>4,000 ml</b>", html)
 

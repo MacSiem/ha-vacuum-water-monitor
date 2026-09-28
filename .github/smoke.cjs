@@ -640,7 +640,7 @@ async function smokeFinalFixContracts(target) {
     }
 
     const legacyLocked = el._withBackendDescriptor(el._decorateLegacyProfile({
-      vacuum_entity: 'vacuum.a170',
+      vacuum_entity: 'vacuum.legacy_locked',
       brand_profile: 'roborock_s8_maxv_ultra',
       profile_locked: true,
     }));
