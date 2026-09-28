@@ -6,7 +6,9 @@
 const _asText = (s) => String(s ?? '');
 const _escBase = (s) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const _esc = (s) => _escBase(_asText(s));
-const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><div class="donate-text"><h3>❤️ Support HA Tools Development</h3><p>If this tool makes your Home Assistant life easier, consider supporting the project.</p></div><div class="donate-buttons"><a class="donate-btn coffee" href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a><a class="donate-btn paypal" href="https://www.paypal.com/donate/?hosted_button_id=Y967H4PLRBN8W" target="_blank" rel="noopener noreferrer">💳 PayPal</a></div></section>`;
+const SUPPORT_DISMISSED_KEY = 'ha-vacuum-water-monitor-support-dismissed';
+const supportDismissed = () => { try { return localStorage.getItem(SUPPORT_DISMISSED_KEY) === '1'; } catch (_) { return false; } };
+const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">Optional support for HA Tools</a><button type="button" class="support-dismiss" aria-label="Dismiss support link">×</button></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
 const VWM_VERSION = '5.9.0-beta.4';
@@ -7107,22 +7109,9 @@ target:
 /* === HA Tools split — premium banners (donate / intro / prereq) === */
 
 /* Donation footer — diamond top */
-.donate-section {  margin: 24px 0 4px; padding: 20px 24px; position: relative; overflow: hidden;  background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(236,72,153,0.06));  border: 1px solid rgba(99,102,241,0.18); border-radius: var(--bento-radius-md, 18px);  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px;  font-family: 'Inter', -apple-system, sans-serif;}
-.donate-section::before {  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;  background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);}
-.donate-section .donate-text { flex: 1; min-width: 240px; }
-.donate-section h3 {  margin: 0 0 6px; font-size: 16px; font-weight: 700; letter-spacing: -0.02em;  background: linear-gradient(135deg, #6366f1, #ec4899);  -webkit-background-clip: text; background-clip: text; color: transparent;}
-.donate-section p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--bento-text-secondary, #57534e); letter-spacing: -0.005em; }
-.donate-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
-.donate-btn {  display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px;  border-radius: 12px; font-weight: 700; font-size: 13px; letter-spacing: -0.005em;  text-decoration: none; transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s, filter 0.2s;  border: 1px solid transparent;}
-.donate-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
-.donate-btn.coffee {  background: linear-gradient(135deg, #FFDD00, #FFC700); color: #000;  box-shadow: 0 4px 14px -2px rgba(255, 221, 0, 0.4);}
-.donate-btn.coffee:hover { box-shadow: 0 8px 24px -4px rgba(255, 221, 0, 0.55); }
-.donate-btn.paypal {  background: linear-gradient(135deg, #0070ba, #005ea6); color: #fff;  box-shadow: 0 4px 14px -2px rgba(0, 112, 186, 0.45);}
-.donate-btn.paypal:hover { box-shadow: 0 8px 24px -4px rgba(0, 112, 186, 0.6); }
-:host(.bento-dark) .donate-section { background: linear-gradient(135deg, rgba(129,140,248,0.10), rgba(244,114,182,0.10)); border-color: rgba(129,140,248,0.25); }
-:host(.bento-dark) .donate-section h3 { background: linear-gradient(135deg, #a5b4fc, #f9a8d4); -webkit-background-clip: text; background-clip: text; color: transparent; }
-:host(.bento-dark) .donate-section p { color: #d6d3d1; }
-@media (max-width: 600px) {  .donate-section { flex-direction: column; text-align: center; padding: 18px; }  .donate-buttons { justify-content: center; width: 100%; } }
+.donate-section { margin:8px 0 0; padding:4px 0; background:none; border:0; box-shadow:none; min-height:0; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.donate-section a { font-size:11px; color:var(--secondary-text-color,#64748b); font-weight:400; text-decoration:underline; }
+.donate-section .support-dismiss { margin-left:auto; padding:2px 6px; border:0; background:none; color:var(--secondary-text-color,#64748b); cursor:pointer; }
 
 /* Prereq banner — premium */
 .prereq-banner {  display: flex; align-items: flex-start; gap: 14px; padding: 16px 20px;  border-radius: var(--bento-radius-sm, 12px); margin: 0 0 16px;  font-size: 13px; line-height: 1.55; border: 1px solid;  font-family: 'Inter', sans-serif; letter-spacing: -0.005em;  position: relative; overflow: hidden;}
@@ -7377,7 +7366,7 @@ target:
         ${tabNav}
         ${tabContent}
 
-        ${ownDonateFooter()}
+        ${this._hass?.user?.is_admin && this._config.show_support !== false && !supportDismissed() ? ownDonateFooter() : ''}
 
       
         </div>`;
@@ -7419,6 +7408,10 @@ target:
 
   _attachListeners(devices, device) {
     const sr = this.shadowRoot;
+    sr.querySelector('.support-dismiss')?.addEventListener('click', () => {
+      try { localStorage.setItem(SUPPORT_DISMISSED_KEY, '1'); } catch (_) {}
+      sr.querySelector('.donate-section[data-source="own-card"]')?.remove();
+    });
     // Tip banner dismiss
     const _tipB = this.shadowRoot.querySelector('#tip-banner');
     if (_tipB) {
