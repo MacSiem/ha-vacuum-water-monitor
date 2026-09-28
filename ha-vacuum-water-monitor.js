@@ -4381,7 +4381,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   getCardSize() { return 4; }
 
-  getGridOptions() { return { rows: 8, columns: 12, min_rows: 3, min_columns: 6 }; }
+  getGridOptions() { return { columns: 12, min_rows: 3, min_columns: 6 }; }
 
   // Home Assistant calls the hass setter on every state change in the house.
   // Once loaded, the card follows Store changes through events; a full reload
