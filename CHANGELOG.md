@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.9.0-beta.3 (unreleased)
+
+- Show the configured tracked tank capacity separately from the model reference in the calibration panel; refresh the card asset URL for existing HA browsers.
+
 ## 5.9.0-beta.2 (unreleased)
 
 - Show a clear first-run message instead of fabricated water readings when no vacuum is available.
