@@ -117,6 +117,28 @@ async function smokeHostileIcons(target) {
   }
 }
 
+async function smokeEmptyFirstRun(target) {
+  const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+    runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/'
+  });
+  try {
+    const { window } = dom;
+    stub(window);
+    window.eval(fs.readFileSync(target.file, 'utf8'));
+    const el = window.document.createElement(target.tag);
+    el.setConfig({ type: 'custom:' + target.tag });
+    window.document.body.appendChild(el);
+    el.hass = mockHass();
+    await el._ensureServerState();
+    const root = el.shadowRoot;
+    if (!root.textContent.includes('No configured devices.')) throw new Error('missing no-vacuum empty state');
+    if (!root.textContent.includes('Settings')) throw new Error('empty state does not explain setup');
+    if (root.querySelector('.battery-pct') || root.querySelector('.refill-btn') || root.textContent.includes('Needs a refill baseline.')) {
+      throw new Error('no-vacuum first run renders device accounting');
+    }
+  } finally { dom.window.close(); }
+}
+
 async function smokeDraftAndCalibration(target) {
   const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
     runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/'
@@ -618,7 +640,7 @@ async function smokeFinalFixContracts(target) {
     }
 
     const legacyLocked = el._withBackendDescriptor(el._decorateLegacyProfile({
-      vacuum_entity: 'vacuum.a170',
+      vacuum_entity: 'vacuum.legacy_locked',
       brand_profile: 'roborock_s8_maxv_ultra',
       profile_locked: true,
     }));
@@ -707,6 +729,14 @@ async function smokeFinalFixContracts(target) {
     if (problem) fail.push(`${t.tag}  (${path.basename(t.file)})  -> ${problem}`); else pass++;
   }
 
+  for (const t of targets.filter(t => t.tag === 'ha-vacuum-water-monitor')) {
+    try {
+      await smokeEmptyFirstRun(t);
+      pass++;
+    } catch (e) {
+      fail.push(`${t.tag} empty-first-run (${path.basename(t.file)}) -> ${(e && e.message) ? e.message : String(e)}`);
+    }
+  }
   for (const t of targets.filter(t => t.tag === 'ha-vacuum-water-monitor')) {
     try {
       await smokeHostileIcons(t);

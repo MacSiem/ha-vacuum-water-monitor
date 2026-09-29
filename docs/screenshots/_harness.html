@@ -18,7 +18,7 @@
   // Dismiss the first-run intro banner for clean screenshots
   try { localStorage.setItem('ha-intro-dismissed-ha-vacuum-water-monitor', '1'); } catch (e) {}
 </script>
-<script src="../../ha-vacuum-water-monitor.js"></script>
+<script src="../../ha-vacuum-water-monitor.js?screenshot=20260927"></script>
 <script>
 (function () {
   const params = new URLSearchParams(location.search);
@@ -26,7 +26,7 @@
   const tab = params.get('tab') || 'water';
   document.body.className = theme;
 
-  const VAC = 'vacuum.roborock_s8_maxv_ultra';
+  const VAC = 'vacuum.demo_mop_robot';
   const now = Date.now();
   const dayMs = 86400000;
 
@@ -37,10 +37,18 @@
     user_devices: [
       {
         vacuum_entity: VAC,
-        name: 'Roborock S8 MaxV Ultra',
+        name: 'Demo Mop Robot',
         icon: '🤖',
         brand_profile: 'roborock_s8_maxv_ultra',
         water_total_ml: 4000,
+        profile_key: 'roborock_s8_maxv_ultra',
+        profile_source: 'catalog',
+        capability: 'automatic_estimate',
+        estimate_basis: 'owner_device',
+        uncertainty_percent: 20,
+        accounting_evidence: 'labeled_estimate',
+        tracked_reservoir: 'dock_clean',
+        tracked_capacity_ml: 4000,
       },
     ],
     maintenance_items: [
@@ -62,6 +70,10 @@
     last_area: 32.5,
     last_dock_err: null,
     last_door: null,
+    initialized: true,
+    last_accounting_source: 'area',
+    last_accounting_rate_ml: 6,
+    last_accounting_evidence: 'labeled_estimate',
   };
 
   if (params.get('calibration') === '1') {
@@ -72,14 +84,14 @@
     entity_id: VAC,
     state: 'docked',
     attributes: {
-      friendly_name: 'Roborock S8 MaxV Ultra',
+      friendly_name: 'Demo Mop Robot',
       battery_level: 100,
       status: 'docked',
     },
     last_changed: new Date(now - 3600000).toISOString(),
   };
-  states['sensor.roborock_s8_maxv_ultra_cleaning_area'] = {
-    entity_id: 'sensor.roborock_s8_maxv_ultra_cleaning_area',
+  states['sensor.demo_mop_robot_cleaning_area'] = {
+    entity_id: 'sensor.demo_mop_robot_cleaning_area',
     state: '32.5',
     attributes: { friendly_name: 'Cleaning area', unit_of_measurement: 'm²' },
   };
@@ -95,7 +107,7 @@
     callWS: async (msg) => {
       const type = String(msg && msg.type || '');
       if (type.endsWith('/list_vacuums')) {
-        return { vacuums: [{ entity_id: VAC, name: 'Roborock S8 MaxV Ultra', state: 'docked', battery: 100 }] };
+        return { vacuums: [{ entity_id: VAC, name: 'Demo Mop Robot', state: 'docked', battery: 100 }] };
       }
       if (type.endsWith('/get_state')) {
         return { settings, tank_states: tankStates };

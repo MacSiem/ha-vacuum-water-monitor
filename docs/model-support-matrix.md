@@ -9,6 +9,7 @@ tracked reservoir, or that a consumption rate applies.
 | Model row status | Detection | Data available | Estimate scope | Limits and calibration |
 |---|---|---|---|---|
 | Recognized candidate | Catalog identifier or a source names the model | Identity and possibly capacity/options | None by identity alone | Confirm the exact integration, firmware, reservoir and settings. A capacity is not consumption. |
+| Labelled catalog estimate | Mopping model plus usable mop/exposure signals | Class or explicit model prior, with basis and uncertainty label | Provisional per-area floor use and observed dock washes; remaining percentage also needs a refill baseline and capacity | A prior is not a measured device rate. An unmapped water-output level or accounting gap makes the current balance incomplete. |
 | Integration mapped | Same-device Home Assistant roles resolve without ambiguity | Area, duration, state or settings only when actually exposed | A local/user calibration may use its matching exposure | Missing or changed signals keep accounting unknown; an ID match never fills gaps. |
 | Physical volume available | Explicit same-reservoir mL/L sensor | Current measured volume and unit | Direct remaining/used volume for that reservoir | Unit, range and reservoir must match. A percent or generic tank enum is not volume. |
 | Local calibration | User's complete, measured refill cycles | Measured refill, area or duration, context and validation history | Only the recorded device/context and declared scope | It stays private; changing firmware, settings, reservoir or exposure invalidates applicability. |
@@ -20,7 +21,7 @@ tracked reservoir, or that a consumption rate applies.
 |---|---|---|
 | Measured | Physical volume or a repeatable user measurement with known context | Yes, within the stated device, reservoir and scope. |
 | Manufacturer data | A dated manufacturer claim such as capacity, supported mode or declared action quantity | Only for the exact stated claim; it is not silently converted into a per-cycle rate. |
-| Derived estimate | A clearly labelled calculation from disclosed assumptions and inputs | Yes when a future dataset contract explicitly supplies it, always with its source and limits. It is never presented as measured. |
+| Derived estimate | A clearly labelled catalog prior or calculation from disclosed assumptions and inputs | Yes when the live signal path supports it, with its source and limits. It is never presented as measured. |
 | Unknown | Identity, signal, unit, context or evidence is missing | No. The card keeps the value unknown instead of inventing a fallback. |
 
 The shipped v0.2.0 snapshot contains two **Manufacturer data** entries for Xiaomi H50 Pro:
@@ -37,9 +38,10 @@ they do not imply the other columns are supported.
 The private read-only shadow review established that Water Monitor can inspect local event
 history without operating the household robots. It did **not** contain a physical measured
 water volume, an approved shared profile or a hardware-verified live source contract.
-Therefore the Roborock evidence is useful for discovery and replay diagnostics, while
-consumption remains local-calibration, explicit source-contract or unknown. It must not be
-turned into a universal Roborock rate.
+Therefore the Roborock evidence is useful for discovery and replay diagnostics. The
+catalog's labelled priors may produce a provisional estimate for a mapped robot; this
+review does not validate their physical accuracy or turn them into a universal Roborock
+rate. Device calibration still needs a real full-to-empty tracked tank cycle.
 
 ## Contributing a partial session
 

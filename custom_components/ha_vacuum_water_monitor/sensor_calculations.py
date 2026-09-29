@@ -31,7 +31,21 @@ except ImportError:  # Direct-file loading used by the pure tests.
     estimation = importlib.util.module_from_spec(_estimation_spec)
     _estimation_spec.loader.exec_module(estimation)
 
+try:
+    from .device_options import apply_device_options
+except ImportError:  # Direct-file loading used by the pure tests.
+    _options_spec = importlib.util.spec_from_file_location(
+        "vwm_standalone_device_options", Path(__file__).with_name("device_options.py")
+    )
+    assert _options_spec and _options_spec.loader
+    _options_module = importlib.util.module_from_spec(_options_spec)
+    _options_spec.loader.exec_module(_options_module)
+    apply_device_options = _options_module.apply_device_options
+
 MILLISECONDS_PER_DAY = 86_400_000
+# Cards before 5.8.0 saved this placeholder as the name of a single-device
+# configuration; it is replaced by the robot's real name.
+PLACEHOLDER_ROBOT_NAMES = frozenset({"Vacuum"})
 
 
 def setup_guidance(state_reason: Any) -> dict[str, str]:
@@ -103,7 +117,7 @@ def build_vacuum_devices(
         if not entity or not name or entity not in devices:
             continue
         device = devices[entity]
-        if not device.get("name") or device.get("name") == entity:
+        if not device.get("name") or device.get("name") == entity or device.get("name") in PLACEHOLDER_ROBOT_NAMES:
             device["name"] = str(name)
 
     # The user confirmed in the card that a bridged entity (Matter) is the same
@@ -130,6 +144,9 @@ def build_vacuum_devices(
         ))
         primary = members[0]
         primary["duplicate_entities"] = [d["vacuum_entity"] for d in members[1:]]
+        # Choices made in Home Assistant (tank size entity, Repairs) are the
+        # newest explicit configuration for this robot.
+        apply_device_options(primary, settings)
         result.append(primary)
     return result
 
@@ -611,12 +628,28 @@ def _normalize_device(vacuum_entity: str, item: dict[str, Any]) -> dict[str, Any
 def _water_capacity_ml(
     device: dict[str, Any], settings: dict[str, Any]
 ) -> float | None:
+    return water_capacity(device, settings)[0]
+
+
+def water_capacity(
+    device: dict[str, Any], settings: dict[str, Any]
+) -> tuple[float | None, str | None]:
+    """The tracked tank size and where it comes from.
+
+    Sources: ``user_option`` (Home Assistant entity or Repairs), ``card``
+    (the card's tank size field), ``calibration`` (the calibration form),
+    ``configured`` (an authored engine capacity) and ``model`` (database).
+    """
+    device = device if isinstance(device, dict) else {}
+    settings = settings if isinstance(settings, dict) else {}
     direct = _optional_number(device.get("water_total_ml"))
     # A generated legacy default must not outrank the tank the engine anchors to.
     if direct and direct > 0 and (
             "water_total_ml" in _explicit_fields(device)
             or not _positive_optional(device.get("tracked_capacity_ml"))):
-        return direct
+        if device.get("capacity_option_ml") == direct:
+            return direct, "user_option"
+        return direct, "card" if "water_total_ml" in _explicit_fields(device) else "model"
 
     custom = _merged_custom_calibration(device, settings)
     tracked = _optional_number(device.get("tracked_capacity_ml"))
@@ -628,14 +661,15 @@ def _water_capacity_ml(
             "tracked_capacity_ml" not in explicit_fields
             and (not tracked or tracked == profile_capacity)
         ):
-            return tank_ml
+            return tank_ml, "calibration"
 
     if tracked and tracked > 0:
-        return tracked
+        return tracked, "configured" if "tracked_capacity_ml" in explicit_fields else "model"
 
     # Model database fallback: capacity known from the vacuum model without any
     # manual calibration, mirroring the card's auto-detected brand_profile.
-    return _model_tank_ml(device)
+    model = _model_tank_ml(device)
+    return model, "model" if model else None
 
 
 def _model_tank_ml(device: dict[str, Any]) -> float | None:

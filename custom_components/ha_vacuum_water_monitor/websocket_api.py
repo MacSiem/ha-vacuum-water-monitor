@@ -37,6 +37,9 @@ def _notify_store_updated(hass: HomeAssistant, payload: dict[str, Any]) -> None:
         event["tank_states"] = event_tank_states(event["tank_states"])
         event["partial"] = True
     hass.bus.async_fire(EVENT_STATE_CHANGED, event)
+    from .robots import async_schedule_issue_sync
+
+    async_schedule_issue_sync(hass)
 
 
 # NOTE: no require_admin on any command. The card must work for every
@@ -271,6 +274,71 @@ async def _ws_set_refill_settings(
     connection.send_result(msg["id"], {"settings": settings})
 
 
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/health"})
+@websocket_api.async_response
+async def _ws_health(hass, connection, msg):
+    """One report per robot: tank size and source, accuracy, refill method, checks."""
+    from .robots import async_reports
+
+    connection.send_result(msg["id"], {"robots": await async_reports(hass)})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/set_device_options",
+    vol.Required("vacuum_entity"): str,
+    vol.Required("options"): dict,
+})
+@websocket_api.async_response
+async def _ws_set_device_options(hass, connection, msg):
+    """Store a robot's options (tank size); ``null`` restores the default."""
+    from .robots import async_set_options
+
+    try:
+        settings = await async_set_options(hass, msg["vacuum_entity"], msg["options"])
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    connection.send_result(msg["id"], {"settings": settings})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/mark_empty",
+    vol.Required("vacuum_entity"): str,
+})
+@websocket_api.async_response
+async def _ws_mark_empty(hass, connection, msg):
+    """The robot ran out of water (robots whose dock cannot say so)."""
+    from .robots import async_mark_empty
+
+    if not msg["vacuum_entity"].startswith("vacuum.") or hass.states.get(msg["vacuum_entity"]) is None:
+        connection.send_error(msg["id"], "invalid_payload", "Select an existing vacuum entity")
+        return
+    try:
+        state = await async_mark_empty(hass, msg["vacuum_entity"])
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    connection.send_result(msg["id"], {"state": state})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/set_robot_link",
+    vol.Required("vacuum_entity"): str,
+    vol.Required("target"): vol.Any(None, str),
+})
+@websocket_api.async_response
+async def _ws_set_robot_link(hass, connection, msg):
+    """Hide a duplicate robot (target = the real robot), keep it (\"distinct\") or forget (null)."""
+    from .robots import async_set_link
+
+    try:
+        settings = await async_set_link(hass, msg["vacuum_entity"], msg["target"])
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    connection.send_result(msg["id"], {"settings": settings})
+
+
 def async_register_commands(hass: HomeAssistant) -> None:
     """Register all websocket commands."""
     for handler in (
@@ -284,5 +352,9 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_dismiss_intro,
         _ws_calibration_preview,
         _ws_save_measurement,
+        _ws_health,
+        _ws_set_device_options,
+        _ws_set_robot_link,
+        _ws_mark_empty,
     ):
         websocket_api.async_register_command(hass, handler)

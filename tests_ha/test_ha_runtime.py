@@ -224,7 +224,10 @@ async def test_a_device_named_after_the_entity_id_is_renamed(hass: HomeAssistant
     registry.async_update_device(device.id, name_by_user="Kitchen robot", name=VACUUM)
     await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
-    assert registry.async_get(device.id).name == VACUUM  # the user's own name is never overwritten
+    # The user's own name is never overwritten (Home Assistant shows name_by_user
+    # first; since 5.8.0 the settings entities also refresh the default name).
+    assert registry.async_get(device.id).name_by_user == "Kitchen robot"
+    assert registry.async_get(device.id).name in {VACUUM, "Robot"}
 
 
 async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(hass: HomeAssistant, hass_ws_client) -> None:
@@ -267,3 +270,17 @@ async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(
     assert (await client.receive_json())["success"]
     await hass.async_block_till_done()
     assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" in ours()
+
+
+async def test_a_device_with_the_old_placeholder_name_gets_the_robots_name(hass: HomeAssistant) -> None:
+    """5.8.0: single-device cards saved "Vacuum" as the robot's name."""
+    storage = await _setup(hass)
+    await storage.async_set_settings({"configured_devices": [{"vacuum_entity": VACUUM, "name": "Vacuum"}]})
+    registry = dr.async_get(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    device = next(d for d in dr.async_entries_for_config_entry(registry, entry.entry_id)
+                  if (DOMAIN, f"{entry.entry_id}_vacuum_robot") in d.identifiers)
+    registry.async_update_device(device.id, name="Vacuum")
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get(device.id).name == "Robot"

@@ -85,6 +85,23 @@ class RuntimeConsumptionTests(unittest.TestCase):
         s=run('docked',10,s,300000)
         self.assertEqual(s['used_ml'],120)
 
+    def test_whole_cycle_run_paused_off_the_dock_is_still_charged(self):
+        """5.8.0 review: the idle close must not end a whole-cycle run uncharged."""
+        r=profile();r.update(scope='whole_cycle',device_id='vacuum.test',coefficient=12)
+        r['context']=context()
+        device={'vacuum_entity':'vacuum.test','area_sensor':'sensor.area','consumption_context':context(),
+                'consumption_calibration':r,'wash_volume_ml':100}
+        def run(status,area,state,now):
+            h=_Hass({'vacuum.test':_State(status),'sensor.area':_State(str(area),{'unit_of_measurement':'m²'})})
+            return tick.tick_device(h,device,state,now_ts=now)[0]
+        s=run('cleaning',0,{'used_ml':0,'last_status':'docked'},60000)
+        s=run('cleaning',10,s,120000)
+        for minute in range(3, 30):  # paused 27 minutes, observed every minute
+            s=run('paused',10,s,minute*60000)
+        self.assertIsNotNone(s.get('session_start_ts'))
+        s=run('docked',10,s,30*60000)
+        self.assertEqual(s['used_ml'],120)
+
     def test_physical_sensor_wins_over_whole_cycle_calibration(self):
         r=profile();r.update(scope='whole_cycle',device_id='vacuum.test')
         device={'vacuum_entity':'vacuum.test','consumption_context':context(),'consumption_calibration':r,

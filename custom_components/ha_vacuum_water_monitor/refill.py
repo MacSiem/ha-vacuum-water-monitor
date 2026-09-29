@@ -14,7 +14,8 @@ REFILL_HISTORY_LIMIT = 20
 # Two refill reports this close together describe one physical refill (a lid
 # closed after the dock already cleared, a button pressed twice or as confirmation).
 USER_REFILL_DEDUPE_SECONDS = 600
-REFILL_SOURCES = frozenset({"card", "service", "button", "lid", "dock_cleared", "legacy"})
+# "entity": the Refilled button entity of the robot; "repair": confirmed in Settings > Repairs.
+REFILL_SOURCES = frozenset({"card", "service", "button", "lid", "dock_cleared", "legacy", "entity", "repair"})
 
 # Fields that restart exposure accounting from the next observation.
 _REBASELINE_FIELDS = {
@@ -47,7 +48,9 @@ def apply_refill(
     """
     used_before = state.get("used_ml")
     empty_active = bool(state.get("water_empty_active"))
-    acknowledged = empty_active and source != "dock_cleared"
+    # A "Tank empty" the user pressed ends with the refill; only a dock error
+    # can still be showing afterwards.
+    acknowledged = empty_active and source != "dock_cleared" and state.get("water_anchor_source") != "user_empty"
     # A refill during a run ends the clean measurement but not the session: the
     # water already counted moves into the start offset so the history keeps
     # the whole run.
@@ -68,6 +71,7 @@ def apply_refill(
         last_reset_source=source,
         water_empty_active=acknowledged,
         water_empty_acknowledged=acknowledged,
+        user_empty_active=False,
         water_anchor_candidate_source=None,
         water_anchor_candidate_since_ts=0,
         last_wash_charged_ts=0,
