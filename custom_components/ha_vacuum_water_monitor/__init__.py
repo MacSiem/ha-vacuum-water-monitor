@@ -39,6 +39,7 @@ from .const import (
     signal_vacuum_water_updated,
 )
 from .scheduler import EVENT_SAVE_DELAY_SECONDS, EventTicker
+from .frontend_resource import async_register_card_resource
 from .robots import (
     ISSUE_SYNC_TICK_DELAY_SECONDS,
     async_clear_issues,
@@ -202,9 +203,12 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
             )
         ]
     )
-    add_extra_js_url(hass, f"{_CARD_URL_PATH}?v={VERSION}")
+    card_url = f"{_CARD_URL_PATH}?v={VERSION}"
+    registration = await async_register_card_resource(hass, card_url, _CARD_FILENAME)
+    if registration == "extra_js_url":
+        add_extra_js_url(hass, card_url)
     bucket[DATA_FRONTEND_REGISTERED] = True
-    _LOGGER.debug("Registered Lovelace card at %s", _CARD_URL_PATH)
+    _LOGGER.debug("Registered Lovelace card at %s via %s", _CARD_URL_PATH, registration)
 
 
 def _async_start_tick(
