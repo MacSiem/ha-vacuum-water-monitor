@@ -1,5 +1,9 @@
 name: tests
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 jobs:
   python-tests:
     runs-on: ubuntu-latest
