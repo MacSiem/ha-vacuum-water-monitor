@@ -1,8 +1,10 @@
 # Changelog
 
-## 5.9.0-beta.4 (unreleased)
+## 5.9.0-beta.4 (2026-09-29)
 
 - Use the integration's configured tank capacity in the card, ahead of stale panel or model values. Show that tracked capacity separately from the model reference in the calibration panel, and refresh the card asset URL for existing HA browsers.
+- Keep the card within Home Assistant Sections and replace the prominent support panel with a compact administrator-only link.
+- Preserve unknown water-use and intensity states when the connected robot does not expose reliable signals; show a clear first-run state when no vacuum is configured.
 
 ## 5.9.0-beta.2 (unreleased)
 
