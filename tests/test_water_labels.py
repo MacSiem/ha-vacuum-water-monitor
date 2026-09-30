@@ -18,14 +18,14 @@ for (const file of ['ha-vacuum-water-monitor.js', 'custom_components/ha_vacuum_w
   const card = dom.window.document.createElement('ha-vacuum-water-monitor');
   card._config = {show_dock_status:false};
   const device = {vacuum_entity:'vacuum.demo', profile_key:'tapo_rv50_pro_omni'};
-  const data = {totalMl:5000, remainingL:4, usedMl:1000, percentRemaining:80, initialized:true, lastReset:new Date().toISOString(), charge:null, profileKey:'tapo_rv50_pro_omni', integrationAdapter:'matter'};
-  for (const [lang,labels] of [['pl',['Pozostało','Zużyto','Ostatnie dolanie','Diagnostyka']],['en',['Remaining','Used','Last refill','Diagnostics']]]) {
+  const data = {totalMl:5000, remainingL:4, usedMl:1000, percentRemaining:80, initialized:true, vacState:'cleaning', isCleaning:true, lastResetSource:'manual', accountingSource:'active_time', accountingRate:7, estimatedM2PerActiveMinute:2, estimateBasis:'generic_prior', uncertaintyPercent:65, calibrationSamples:1, lastReset:new Date().toISOString(), charge:null, profileKey:'tapo_rv50_pro_omni', integrationAdapter:'matter'};
+  for (const [lang,labels] of [['pl',['Pozostało','Zużyto','Ostatnie dolanie','Diagnostyka','Sprzątanie','Metoda zużycia','Poziom dowodów','Adapter integracji','Profil','Rozliczanie','Przelicznik czasu pracy','Szacowana dokładność','Kalibracja robota']],['en',['Remaining','Used','Last refill','Diagnostics','Cleaning','Consumption method','Evidence tier','Integration adapter','Profile','Accounting','Active-time conversion','Estimated accuracy','Device calibration']]]) {
     card._lang = lang;
     const html = card._buildWaterTab(device,data);
     const container = dom.window.document.createElement('div');
     container.innerHTML = html;
     for (const label of labels) assert.ok(container.textContent.includes(label), `${file} ${lang}: missing ${label}`);
-    if (lang === 'pl') for (const label of ['Remaining','Last refill','Diagnostics']) assert.ok(!container.textContent.includes(label), `${file}: English label ${label}`);
+    if (lang === 'pl') for (const label of ['Remaining','Last refill','Diagnostics','Cleaning','Consumption method','Evidence tier','Integration adapter','Active-time conversion','Estimated accuracy','Device calibration']) assert.ok(!container.textContent.includes(label), `${file}: English label ${label}`);
   }
   dom.window.close();
 }
