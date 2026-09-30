@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.9.0-beta.4 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.9.0-beta.5 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -11,7 +11,7 @@ const supportDismissed = () => { try { return localStorage.getItem(SUPPORT_DISMI
 const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">Optional support for HA Tools</a><button type="button" class="support-dismiss" aria-label="Dismiss support link">×</button></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.9.0-beta.4';
+const VWM_VERSION = '5.9.0-beta.5';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -70,6 +70,7 @@ const VWM_SETUP_TEXT = {
   en: {
     setupTitle: (name) => `Set up water tracking: ${name}`,
     allGood: 'Everything is working',
+    remaining: 'Remaining', used: 'Used', lastRefill: 'Last refill', diagnostics: 'Diagnostics',
     model: 'Model', tank: 'Tank', accuracy: 'Accuracy', unknown: 'unknown',
     change: 'Change', save: 'Save', tankSize: 'Tank size', useModel: 'Use the model size',
     source: { user_option: 'your setting', card: 'card setting', calibration: 'calibration form', configured: 'configuration', model: 'model database' },
@@ -107,6 +108,7 @@ const VWM_SETUP_TEXT = {
   pl: {
     setupTitle: (name) => `Konfiguracja liczenia wody: ${name}`,
     allGood: 'Wszystko dzia\u0142a',
+    remaining: 'Pozostało', used: 'Zużyto', lastRefill: 'Ostatnie dolanie', diagnostics: 'Diagnostyka',
     model: 'Model', tank: 'Zbiornik', accuracy: 'Dok\u0142adno\u015B\u0107', unknown: 'nieznany',
     change: 'Zmie\u0144', save: 'Zapisz', tankSize: 'Pojemno\u015B\u0107 zbiornika', useModel: 'U\u017Cyj pojemno\u015Bci modelu',
     source: { user_option: 'Twoje ustawienie', card: 'ustawienie karty', calibration: 'formularz kalibracji', configured: 'konfiguracja', model: 'baza modeli' },
@@ -5518,7 +5520,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <text x="${cx}" y="${cy - 3}" text-anchor="middle" fill="var(--vwm-text, #1a1a2e)" font-size="17" font-weight="700" font-family="Inter,sans-serif">
           ${percent !== null ? Math.round(clampedPct) + '%' : '--'}
         </text>
-        <text x="${cx}" y="${cy + 13}" text-anchor="middle" fill="var(--vwm-text-secondary, #6b7280)" font-size="9" font-family="Inter,sans-serif">remaining</text>
+        <text x="${cx}" y="${cy + 13}" text-anchor="middle" fill="var(--vwm-text-secondary, #6b7280)" font-size="9" font-family="Inter,sans-serif">${this._setupText().remaining.toLocaleLowerCase(this._lang)}</text>
       </svg>`;
   }
 
@@ -5536,6 +5538,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // ── TAB: WATER ─────────────────────────────────────────────────────────────
 
   _buildWaterTab(device, data) {
+    const L = this._setupText();
     const cfg = this._config;
     const status = this._getStatus(data, cfg);
     const gaugeSvg = data.totalMl > 0 ? this._buildGaugeSVG(data.percentRemaining, status.color) : '';
@@ -5557,7 +5560,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     if (data.lastReset) {
       const refillSource = data.lastResetSource && VWM_REFILL_SOURCE_LABEL[data.lastResetSource] ? ` \u00B7 ${VWM_REFILL_SOURCE_LABEL[data.lastResetSource]}` : '';
-      extraRows += `<div class="row"><span class="row-label">\uD83D\uDD04 Last refill</span><span class="row-val">${_esc(this._formatReset(data.lastReset) + refillSource)}</span></div>`;
+      extraRows += `<div class="row"><span class="row-label">\uD83D\uDD04 ${L.lastRefill}</span><span class="row-val">${_esc(this._formatReset(data.lastReset) + refillSource)}</span></div>`;
     }
     if (data.charge !== null && data.charge !== undefined) {
       extraRows += this._buildBatteryBar(data.charge);
@@ -5644,8 +5647,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
             ${vacStateChip}
           </div>
           <div class="details">
-            <div class="row"><span class="row-label">\uD83D\uDD30 Remaining</span><span class="row-val">${remainingText} / ${data.totalMl > 0 ? (data.totalMl / 1000).toFixed(1) : "--"} L</span></div>
-            <div class="row"><span class="row-label">\uD83D\uDCA6 Used</span><span class="row-val">${usedText}</span></div>
+            <div class="row"><span class="row-label">\uD83D\uDD30 ${L.remaining}</span><span class="row-val">${remainingText} / ${data.totalMl > 0 ? (data.totalMl / 1000).toFixed(1) : "--"} L</span></div>
+            <div class="row"><span class="row-label">\uD83D\uDCA6 ${L.used}</span><span class="row-val">${usedText}</span></div>
             ${extraRows}
           </div>
         </div>
@@ -5802,7 +5805,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       rows.push(['Tank percentages', `available (${[data.tankLevel, data.dockTankLevel].filter(value => value != null).join(' / ')}), not used automatically until the model confirms clean/dirty semantics`]);
     }
     if (!rows.length) return '';
-    return `<details class="diagnostics"><summary>Diagnostics</summary><div class="diagnostics-grid">${rows.map(([label, value]) => `<span class="diagnostics-label">${_esc(label)}</span><span class="diagnostics-value">${_esc(value)}</span>`).join('')}</div></details>`;
+    return `<details class="diagnostics"><summary>${this._setupText().diagnostics}</summary><div class="diagnostics-grid">${rows.map(([label, value]) => `<span class="diagnostics-label">${_esc(label)}</span><span class="diagnostics-value">${_esc(value)}</span>`).join('')}</div></details>`;
   }
 
   _formatMl(value) {

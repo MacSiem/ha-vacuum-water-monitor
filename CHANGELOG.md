@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.9.0-beta.5 (unreleased)
+
+- Localize the primary water labels and diagnostics heading for Polish Home Assistant users in both bundled card copies. English labels remain available for other languages.
+- Keep integration, cache URL and card versions aligned for the corrected asset.
+- Add security reporting and license notices.
+
 ## 5.9.0-beta.4 (2026-09-29)
 
 - Register the bundled card as a Lovelace resource in storage mode so dashboard cards load after a fresh HA session. Reuse or update the existing resource, avoid double-loading a HACS copy, and keep the extra-JS fallback for YAML mode.
