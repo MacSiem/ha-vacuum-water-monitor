@@ -6,7 +6,7 @@
 - Keep integration, cache URL and card versions aligned for the corrected asset.
 - Add security reporting and license notices.
 
-- Translate Polish cleaning/idle status and diagnostics field names. Preserve integration identifiers and evidence codes.
+- Translate Polish cleaning/idle status, dock status, calibration/refill labels and diagnostics field names. Preserve integration identifiers and evidence codes.
 
 ## 5.9.0-beta.4 (2026-09-29)
 

@@ -123,7 +123,39 @@ const VWM_WATER_TEXT_PL = {
   "Not measured": "Nie zmierzono",
   "affirmative mop mode or attachment required": "wymagany potwierdzony tryb mopowania lub założony mop",
   "An unusual tank result waits for the next tank to confirm it": "Nietypowy wynik zbiornika czeka na potwierdzenie następnym zbiornikiem",
-  "Labelled estimate: cleaned area × route/water level + dock washes": "Opisane oszacowanie: umyta powierzchnia × trasa/poziom wody + mycia w stacji"
+  "Labelled estimate: cleaned area × route/water level + dock washes": "Opisane oszacowanie: umyta powierzchnia × trasa/poziom wody + mycia w stacji",
+  "Refilled button": "przycisk Dolane",
+  "automation / script": "automatyzacja / skrypt",
+  "refill button": "przycisk dolania",
+  "tank lid": "pokrywa zbiornika",
+  "dock reported refilled": "stacja potwierdziła dolanie",
+  "earlier version": "wcześniejsza wersja",
+  "Refilled button (device page)": "przycisk Dolane (strona urządzenia)",
+  "confirmed in Repairs": "potwierdzono w Naprawach",
+  "Calibration": "Kalibracja",
+  "Tracked tank": "Śledzony zbiornik",
+  "Model reference": "Dane modelu",
+  "Mop": "Mop",
+  "Est. area/charge": "Szac. powierzchnia na ładowanie",
+  "Est. floor area/tank": "Szac. powierzchnia na zbiornik",
+  "standard route, excl. washes": "standardowa trasa, bez mycia mopów",
+  "Estimated water usage per m²": "Szacowane zużycie wody na m²",
+  "Dock Status": "Stan stacji",
+  "Clean Water Box": "Zbiornik czystej wody",
+  "Dirty Water Box": "Zbiornik brudnej wody",
+  "Water Shortage": "Niedobór wody",
+  "Mop Pad": "Nakładka mopa",
+  "Empty": "Pusty",
+  "Not installed": "Nie zamontowano",
+  "Out / not installed": "Pusty / nie zamontowano",
+  "Full — empty it": "Pełny — opróżnij",
+  "Shortage!": "Brakuje wody!",
+  "Normal": "W normie",
+  "Drying...": "Suszenie…",
+  "Attached": "Założona",
+  "Detached": "Zdjęta",
+  "Physical": "Fizyczny",
+  "Balanced": "Zbilansowany"
 };
 
 const VWM_SETUP_TEXT = {
@@ -5624,7 +5656,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       extraRows += `<div class="row"><span class="row-label">\uD83D\uDD0D ${this._waterText('Filter life')}</span><span class="row-val" style="color:${filterColor}">${(data.filterDays || 0).toFixed(0)} ${this._waterText('days')}</span></div>`;
     }
     if (data.lastReset) {
-      const refillSource = data.lastResetSource && VWM_REFILL_SOURCE_LABEL[data.lastResetSource] ? ` \u00B7 ${VWM_REFILL_SOURCE_LABEL[data.lastResetSource]}` : '';
+      const refillSource = data.lastResetSource && VWM_REFILL_SOURCE_LABEL[data.lastResetSource] ? ` \u00B7 ${this._waterText(VWM_REFILL_SOURCE_LABEL[data.lastResetSource])}` : '';
       extraRows += `<div class="row"><span class="row-label">\uD83D\uDD04 ${L.lastRefill}</span><span class="row-val">${_esc(this._formatReset(data.lastReset) + refillSource)}</span></div>`;
     }
     if (data.charge !== null && data.charge !== undefined) {
@@ -5678,16 +5710,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const facts = _calibrationFacts(calib);
       calibHtml = `
         <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
-          <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 Calibration: ${calib.label}</div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 ${this._waterText('Calibration')}: ${calib.label}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
-            <div>🪣 Tracked tank: <b>${trackedCapacity ? `${trackedCapacity.toLocaleString('en-US')} ml` : 'unknown'}</b></div>
-            ${modelCapacity && modelCapacity !== trackedCapacity ? `<div>📚 Model reference: <b>${modelCapacity.toLocaleString('en-US')} ml</b></div>` : ''}
-            <div>🧹 Mop: <b>${_esc(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : 'unknown'))}</b></div>
-            ${calib.avg_area_per_charge ? `<div>📏 Est. area/charge: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
-            ${estAreaPerTank ? `<div>📏 Est. floor area/tank: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(standard route, excl. washes)</span></div>` : ''}
+            <div>🪣 ${this._waterText('Tracked tank')}: <b>${trackedCapacity ? `${trackedCapacity.toLocaleString('en-US')} ml` : 'unknown'}</b></div>
+            ${modelCapacity && modelCapacity !== trackedCapacity ? `<div>📚 ${this._waterText('Model reference')}: <b>${modelCapacity.toLocaleString('en-US')} ml</b></div>` : ''}
+            <div>🧹 ${this._waterText('Mop')}: <b>${_esc(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : 'unknown'))}</b></div>
+            ${calib.avg_area_per_charge ? `<div>📏 ${this._waterText('Est. area/charge')}: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
+            ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText('standard route, excl. washes')})</span></div>` : ''}
           </div>
           ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>Estimated water usage per m²${calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : 'No estimate for this model yet; set the tank capacity to enable tracking.'}</div>`}
+          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText('Estimated water usage per m²')}${calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : 'No estimate for this model yet; set the tank capacity to enable tracking.'}</div>`}
           ${calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + calib.notes + '</div>' : ''}
         </div>`;
     }
@@ -5798,7 +5830,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   _buildDiagnostics(data) {
     const rows = [];
     for (const [name, level] of Object.entries(data.reservoirLevels || {})) {
-      if (level && typeof level === 'object') rows.push([`Physical ${name}`, level.volume_ml == null
+      if (level && typeof level === 'object') rows.push([`${this._waterText('Physical')} ${name}`, level.volume_ml == null
         ? `Unknown: ${level.reason || 'no measurement'}` : this._formatMl(level.volume_ml)]);
     }
     const balance = data.accountingV2;
@@ -5807,7 +5839,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (balance.status === 'known') {
         if (balance.source_contract_id) rows.push(['Transfer source', balance.source_contract_id]);
         for (const [name, ml] of Object.entries(balance.balances_ml || {})) {
-          if (typeof ml === 'number' && Number.isFinite(ml) && ml >= 0) rows.push([`Balanced ${name}`, this._formatMl(ml)]);
+          if (typeof ml === 'number' && Number.isFinite(ml) && ml >= 0) rows.push([`${this._waterText('Balanced')} ${name}`, this._formatMl(ml)]);
         }
         for (const [label, ml] of [['External supply', balance.external_supply_ml], ['External drain', balance.external_drain_ml]]) {
           if (typeof ml === 'number' && Number.isFinite(ml) && ml >= 0) rows.push([label, this._formatMl(ml)]);
@@ -5863,7 +5895,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.intensityUnmapped) rows.push(['Water level', `\u201C${data.intensityUnmapped}\u201D has no own factor; the average level is used`]);
     if (Number(data.bridgedGaps) > 0) rows.push(['Signal gaps bridged', String(Number(data.bridgedGaps))]);
     const refills = (data.refillHistory || []).slice(0, 5);
-    if (refills.length) rows.push(['Recent refills', refills.map(r => `${this._formatReset(r.ts)} (${VWM_REFILL_SOURCE_LABEL[r.source] || r.source})`).join(', ')]);
+    if (refills.length) rows.push(['Recent refills', refills.map(r => `${this._formatReset(r.ts)} (${this._waterText(VWM_REFILL_SOURCE_LABEL[r.source] || r.source)})`).join(', ')]);
     if (Number(data.calibrationSamples) > 0) rows.push(['Device calibration', `${Number(data.calibrationSamples)} ${Number(data.calibrationSamples) === 1 ? 'tank' : 'tanks'} / correction \u00D7${Number(Number(data.calibrationFactor || 1).toFixed(2))}`]);
     if (data.waterAnchorSource || data.waterAnchorKind || data.waterAnchorConfidence) rows.push(['Water anchor', [data.waterAnchorSource, data.waterAnchorKind, data.waterAnchorConfidence].filter(Boolean).join(' / ')]);
     if ((data.tankLevel != null || data.dockTankLevel != null) && !data.tankSemanticsConfirmed) {
@@ -5887,24 +5919,24 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const value = data.dockCleanWaterState === 'empty' ? 'Empty'
         : data.dockCleanWaterState === 'missing' ? 'Not installed'
         : problem ? 'Out / not installed' : 'OK';
-      items.push({ label: '\uD83D\uDCA7 Clean Water Box', value, color: problem ? '#ef4444' : '#22c55e', icon: problem ? '\u26A0\uFE0F' : '\u2705' });
+      items.push({ label: '\uD83D\uDCA7 ' + this._waterText('Clean Water Box'), value, color: problem ? '#ef4444' : '#22c55e', icon: problem ? '\u26A0\uFE0F' : '\u2705' });
     }
     if (device.dock_dirty_water_sensor) {
       const problem = data.dockDirtyWaterProblem ?? data.dockDirtyWaterFull;
       const value = data.dockDirtyWaterState === 'full' ? 'Full — empty it'
         : data.dockDirtyWaterState === 'missing' ? 'Not installed'
         : problem ? 'Full — empty it' : 'OK';
-      items.push({ label: '\uD83E\uDEA3 Dirty Water Box', value, color: problem ? '#ef4444' : '#22c55e', icon: problem ? '\uD83D\uDEA8' : '\u2705' });
+      items.push({ label: '\uD83E\uDEA3 ' + this._waterText('Dirty Water Box'), value, color: problem ? '#ef4444' : '#22c55e', icon: problem ? '\uD83D\uDEA8' : '\u2705' });
     }
     if (device.water_shortage_sensor) {
-      items.push({ label: '\uD83D\uDD30 Water Shortage', value: data.waterShortage ? 'Shortage!' : 'Normal', color: data.waterShortage ? '#ef4444' : '#22c55e', icon: data.waterShortage ? '\u26A0\uFE0F' : '\u2705' });
+      items.push({ label: '\uD83D\uDD30 ' + this._waterText('Water Shortage'), value: data.waterShortage ? 'Shortage!' : 'Normal', color: data.waterShortage ? '#ef4444' : '#22c55e', icon: data.waterShortage ? '\u26A0\uFE0F' : '\u2705' });
     }
     if (device.mop_attached_sensor) {
-      items.push({ label: '\uD83E\uDDF9 Mop Pad', value: data.mopAttached ? (data.mopDrying ? 'Drying...' : 'Attached') : 'Detached', color: data.mopAttached ? (data.mopDrying ? '#f59e0b' : '#22c55e') : '#6b7280', icon: data.mopAttached ? (data.mopDrying ? '\uD83C\uDF2C\uFE0F' : '\u2705') : '\u274C' });
+      items.push({ label: '\uD83E\uDDF9 ' + this._waterText('Mop Pad'), value: data.mopAttached ? (data.mopDrying ? 'Drying...' : 'Attached') : 'Detached', color: data.mopAttached ? (data.mopDrying ? '#f59e0b' : '#22c55e') : '#6b7280', icon: data.mopAttached ? (data.mopDrying ? '\uD83C\uDF2C\uFE0F' : '\u2705') : '\u274C' });
     }
     if (items.length === 0) return '';
-    return `<div class="section-block"><div class="section-title">\uD83C\uDFE0 Dock Status</div>
-      ${items.map(item => `<div class="dock-row"><span class="row-label">${item.label}</span><span class="dock-val" style="color:${item.color}">${item.icon} ${item.value}</span></div>`).join('')}
+    return `<div class="section-block"><div class="section-title">\uD83C\uDFE0 ${this._waterText('Dock Status')}</div>
+      ${items.map(item => `<div class="dock-row"><span class="row-label">${item.label}</span><span class="dock-val" style="color:${item.color}">${item.icon} ${this._waterText(item.value)}</span></div>`).join('')}
     </div>`;
   }
 
