@@ -5520,7 +5520,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _waterText(value) {
-    return this._lang === 'pl' ? (VWM_WATER_TEXT_PL[value] || value) : value;
+    return this._lang === 'pl' && typeof value === 'string' && Object.hasOwn(VWM_WATER_TEXT_PL, value)
+      ? VWM_WATER_TEXT_PL[value] : value;
   }
 
   _getStatus(data, cfg) {

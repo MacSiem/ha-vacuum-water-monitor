@@ -6,6 +6,8 @@
 - Keep integration, cache URL and card versions aligned for the corrected asset.
 - Add security reporting and license notices.
 
+- Translate Polish cleaning/idle status and diagnostics field names. Preserve integration identifiers and evidence codes.
+
 ## 5.9.0-beta.4 (2026-09-29)
 
 - Register the bundled card as a Lovelace resource in storage mode so dashboard cards load after a fresh HA session. Reuse or update the existing resource, avoid double-loading a HACS copy, and keep the extra-JS fallback for YAML mode.
