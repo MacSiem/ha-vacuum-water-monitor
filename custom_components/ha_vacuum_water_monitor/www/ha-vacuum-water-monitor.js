@@ -66,6 +66,66 @@ const VWM_REFILL_SOURCE_LABEL = {
   repair: 'confirmed in Repairs',
 };
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
+// Translate display labels; preserve integration identifiers and evidence codes.
+const VWM_WATER_TEXT_PL = {
+  "No Water": "Brak zbiornika",
+  "EMPTY": "PUSTY",
+  "LOW WATER": "MAŁO WODY",
+  "Unknown": "Nieznane",
+  "Critical": "Krytycznie mało",
+  "Low": "Mało",
+  "Cleaning": "Sprzątanie",
+  "Idle": "Bezczynny",
+  "Last session": "Ostatnia sesja",
+  "Filter life": "Żywotność filtra",
+  "days": "dni",
+  "Never": "Nigdy",
+  "Just now": "Przed chwilą",
+  "Physical transfer balance": "Bilans przepływu fizycznego",
+  "Transfer source": "Źródło przepływu",
+  "External supply": "Dopływ zewnętrzny",
+  "External drain": "Odpływ zewnętrzny",
+  "Consumption method": "Metoda zużycia",
+  "Evidence tier": "Poziom dowodów",
+  "Estimate label": "Opis oszacowania",
+  "Declared quantity": "Deklarowana ilość",
+  "Estimate basis": "Podstawa oszacowania",
+  "Estimate limitations": "Ograniczenia oszacowania",
+  "Consumption profile": "Profil zużycia",
+  "Dataset version": "Wersja zbioru danych",
+  "Consumption evidence": "Dowody zużycia",
+  "Observed holdout maximum error": "Zaobserwowany maksymalny błąd walidacji",
+  "Independent accuracy": "Niezależna dokładność",
+  "Applicable exposure": "Zakres zastosowania",
+  "Integration adapter": "Adapter integracji",
+  "Signal contract": "Kontrakt sygnałów",
+  "Mop accounting gate": "Warunek rozliczania mopowania",
+  "Profile": "Profil",
+  "Resolution": "Rozpoznanie",
+  "Tracked reservoir": "Śledzony zbiornik",
+  "Accounting": "Rozliczanie",
+  "Active-time conversion": "Przelicznik czasu pracy",
+  "Mop system": "System mopowania",
+  "Estimated accuracy": "Szacowana dokładność",
+  "Last empty tanks": "Ostatnie puste zbiorniki",
+  "Calibration check": "Sprawdzenie kalibracji",
+  "Water level": "Poziom wody",
+  "Signal gaps bridged": "Uzupełnione przerwy sygnału",
+  "Recent refills": "Ostatnie dolania",
+  "Device calibration": "Kalibracja robota",
+  "Water anchor": "Punkt odniesienia wody",
+  "Tank percentages": "Procenty zbiorników",
+  "Measured event stream": "Zmierzony strumień zdarzeń",
+  "Derived estimate, calibrated on this robot": "Oszacowanie pochodne skalibrowane dla tego robota",
+  "Derived estimate": "Oszacowanie pochodne",
+  "Measured calibration": "Zmierzona kalibracja",
+  "Measured": "Zmierzone",
+  "Not measured": "Nie zmierzono",
+  "affirmative mop mode or attachment required": "wymagany potwierdzony tryb mopowania lub założony mop",
+  "An unusual tank result waits for the next tank to confirm it": "Nietypowy wynik zbiornika czeka na potwierdzenie następnym zbiornikiem",
+  "Labelled estimate: cleaned area × route/water level + dock washes": "Opisane oszacowanie: umyta powierzchnia × trasa/poziom wody + mycia w stacji"
+};
+
 const VWM_SETUP_TEXT = {
   en: {
     setupTitle: (name) => `Set up water tracking: ${name}`,
@@ -5459,26 +5519,30 @@ class HAVacuumWaterMonitor extends HTMLElement {
     };
   }
 
+  _waterText(value) {
+    return this._lang === 'pl' ? (VWM_WATER_TEXT_PL[value] || value) : value;
+  }
+
   _getStatus(data, cfg) {
-    if (data.totalMl === 0) return { label: 'No Water', color: '#6b7280', icon: '\uD83D\uDCA7' };
-    if (data.waterEmpty) return { label: 'EMPTY', color: '#ef4444', icon: '\u26A0\uFE0F' };
-    if (data.waterLow || data.waterShortage) return { label: 'LOW WATER', color: '#f59e0b', icon: '\u26A0\uFE0F' };
-    if (data.percentRemaining === null) return { label: 'Unknown', color: '#6b7280', icon: '\u2753' };
-    if (data.percentRemaining <= (cfg.critical_threshold || 10)) return { label: 'Critical', color: '#ef4444', icon: '\uD83D\uDEA8' };
-    if (data.percentRemaining <= (cfg.warning_threshold || 20)) return { label: 'Low', color: '#f59e0b', icon: '\u26A0\uFE0F' };
+    if (data.totalMl === 0) return { label: this._waterText('No Water'), color: '#6b7280', icon: '\uD83D\uDCA7' };
+    if (data.waterEmpty) return { label: this._waterText('EMPTY'), color: '#ef4444', icon: '\u26A0\uFE0F' };
+    if (data.waterLow || data.waterShortage) return { label: this._waterText('LOW WATER'), color: '#f59e0b', icon: '\u26A0\uFE0F' };
+    if (data.percentRemaining === null) return { label: this._waterText('Unknown'), color: '#6b7280', icon: '\u2753' };
+    if (data.percentRemaining <= (cfg.critical_threshold || 10)) return { label: this._waterText('Critical'), color: '#ef4444', icon: '\uD83D\uDEA8' };
+    if (data.percentRemaining <= (cfg.warning_threshold || 20)) return { label: this._waterText('Low'), color: '#f59e0b', icon: '\u26A0\uFE0F' };
     return { label: 'OK', color: '#22c55e', icon: '\u2705' };
   }
 
   _formatReset(dt) {
-    if (!dt || dt === 'unknown') return 'Never';
+    if (!dt || dt === 'unknown') return this._waterText('Never');
     try {
       const d = new Date(dt);
       if (isNaN(d.getTime())) return dt;
       const now = new Date();
       const diffH = (now - d) / 3600000;
-      if (diffH < 1) return 'Just now';
-      if (diffH < 24) return Math.round(diffH) + 'h ago';
-      return Math.round(diffH / 24) + ' days ago';
+      if (diffH < 1) return this._waterText('Just now');
+      if (diffH < 24) return this._lang === 'pl' ? Math.round(diffH) + ' godz. temu' : Math.round(diffH) + 'h ago';
+      return this._lang === 'pl' ? Math.round(diffH / 24) + ' dni temu' : Math.round(diffH / 24) + ' days ago';
     } catch { return dt; }
   }
 
@@ -5547,16 +5611,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const usedText = data.usedMl != null ? `${(Number(data.usedMl) / 1000).toFixed(2)} L` : '--';
 
     const vacStateChip = data.vacState
-      ? `<span class="chip ${data.isCleaning ? 'chip-active' : 'chip-idle'}">${data.isCleaning ? '\uD83E\uDDF9 Cleaning' : '\uD83D\uDECC Idle'}</span>`
+      ? `<span class="chip ${data.isCleaning ? 'chip-active' : 'chip-idle'}">${data.isCleaning ? '\uD83E\uDDF9 ' + this._waterText('Cleaning') : '\uD83D\uDECC ' + this._waterText('Idle')}</span>`
       : '';
 
     let extraRows = '';
     if (cfg.show_session !== false && data.sessionMl != null && !isNaN(data.sessionMl)) {
-      extraRows += `<div class="row"><span class="row-label">\uD83D\uDCA7 Last session</span><span class="row-val">${data.sessionMl} ml</span></div>`;
+      extraRows += `<div class="row"><span class="row-label">\uD83D\uDCA7 ${this._waterText('Last session')}</span><span class="row-val">${data.sessionMl} ml</span></div>`;
     }
     if (cfg.show_filter !== false && data.filterDays != null && !isNaN(data.filterDays)) {
       const filterColor = data.filterDays < 7 ? '#ef4444' : data.filterDays < 30 ? '#f59e0b' : '#22c55e';
-      extraRows += `<div class="row"><span class="row-label">\uD83D\uDD0D Filter life</span><span class="row-val" style="color:${filterColor}">${(data.filterDays || 0).toFixed(0)} days</span></div>`;
+      extraRows += `<div class="row"><span class="row-label">\uD83D\uDD0D ${this._waterText('Filter life')}</span><span class="row-val" style="color:${filterColor}">${(data.filterDays || 0).toFixed(0)} ${this._waterText('days')}</span></div>`;
     }
     if (data.lastReset) {
       const refillSource = data.lastResetSource && VWM_REFILL_SOURCE_LABEL[data.lastResetSource] ? ` \u00B7 ${VWM_REFILL_SOURCE_LABEL[data.lastResetSource]}` : '';
@@ -5805,7 +5869,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       rows.push(['Tank percentages', `available (${[data.tankLevel, data.dockTankLevel].filter(value => value != null).join(' / ')}), not used automatically until the model confirms clean/dirty semantics`]);
     }
     if (!rows.length) return '';
-    return `<details class="diagnostics"><summary>${this._setupText().diagnostics}</summary><div class="diagnostics-grid">${rows.map(([label, value]) => `<span class="diagnostics-label">${_esc(label)}</span><span class="diagnostics-value">${_esc(value)}</span>`).join('')}</div></details>`;
+    return `<details class="diagnostics"><summary>${this._setupText().diagnostics}</summary><div class="diagnostics-grid">${rows.map(([label, value]) => `<span class="diagnostics-label">${_esc(this._waterText(label))}</span><span class="diagnostics-value">${_esc(this._waterText(value))}</span>`).join('')}</div></details>`;
   }
 
   _formatMl(value) {
