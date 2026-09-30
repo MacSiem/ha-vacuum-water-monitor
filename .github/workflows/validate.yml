@@ -15,6 +15,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - name: Install frontend test dependencies
+        run: npm ci --ignore-scripts
       - name: Python compile and unit tests
         run: |
           python -m compileall -q custom_components tests
@@ -30,7 +32,7 @@ jobs:
         run: cmp -s ha-vacuum-water-monitor.js custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js
       - name: Theming invariant (no OS prefers-color-scheme)
         run: |
-          if grep -rln "@media (prefers-color-scheme" --include='*.js' .; then
+          if git grep -n "@media (prefers-color-scheme" -- '*.js'; then
             echo "FAIL: OS prefers-color-scheme present — cards must follow HA theme via :host(.bento-dark) luminance"
             exit 1
           fi
@@ -46,7 +48,6 @@ jobs:
           echo "a11y check done"
       - name: Runtime smoke (jsdom render)
         run: |
-          npm ci --ignore-scripts
           npm run test:smoke
       - name: Evidence catalog and sprint regressions
         run: |
