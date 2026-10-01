@@ -4522,8 +4522,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _subscribeServerEvents() {
-    if (this._serverUnsub || !this._hass?.connection?.subscribeEvents) return;
-    this._hass.connection.subscribeEvents((event) => {
+    if (this._serverUnsub || !this._hass?.connection?.subscribeMessage) return;
+    this._hass.connection.subscribeMessage((event) => {
       const data = (event && event.data) || {};
       if (data.settings) {
         this._serverState.settings = data.settings;
@@ -4553,7 +4553,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       this._refreshHealth(Boolean(data.settings) || setupMoved);
       this._lastHtml = '';
       this._render({ preserveDraft: true });
-    }, VWM_EVENT).then((unsub) => { this._serverUnsub = unsub; }).catch((err) => {
+    }, { type: `${VWM_DOMAIN}/subscribe` }).then((unsub) => { this._serverUnsub = unsub; }).catch((err) => {
       console.debug('[ha-vacuum-water-monitor] event subscription failed:', err);
     });
   }

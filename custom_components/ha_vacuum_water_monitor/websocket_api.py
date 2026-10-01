@@ -8,7 +8,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import DATA_TICKER, DOMAIN, EVENT_STATE_CHANGED, event_tank_states, signal_vacuum_water_updated
@@ -46,6 +46,24 @@ def _notify_store_updated(hass: HomeAssistant, payload: dict[str, Any]) -> None:
 # logged-in HA user (household members are rarely admins); WS already
 # enforces authentication, and none of these commands expose secrets or
 # perform privileged operations (issue #1 follow-up, v5.1.6).
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/subscribe"})
+@callback
+def _ws_subscribe(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Stream the same domain data as get_state to authenticated household users."""
+    @callback
+    def forward(event) -> None:
+        connection.send_event(msg["id"], {"data": event.data})
+
+    connection.subscriptions[msg["id"]] = hass.bus.async_listen(
+        EVENT_STATE_CHANGED, forward
+    )
+    connection.send_result(msg["id"])
+
+
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/list_vacuums"})
 @websocket_api.async_response
 async def _ws_list_vacuums(
@@ -342,6 +360,7 @@ async def _ws_set_robot_link(hass, connection, msg):
 def async_register_commands(hass: HomeAssistant) -> None:
     """Register all websocket commands."""
     for handler in (
+        _ws_subscribe,
         _ws_list_vacuums,
         _ws_get_state,
         _ws_set_settings,
