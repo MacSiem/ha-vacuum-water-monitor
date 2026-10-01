@@ -155,6 +155,9 @@ const VWM_WATER_TEXT_PL = {
   "Attached": "Założona",
   "Detached": "Zdjęta",
   "Physical": "Fizyczny",
+  "Recorded estimate (incomplete)": "Zapisane oszacowanie (niepełne)",
+  "Water balance incomplete.": "Bilans wody jest niepełny.",
+  "Consumption from available signals is still recorded. The recorded estimate may omit earlier usage, so remaining water is unknown. Refill the tracked tank to full and confirm to restore the balance.": "Zużycie z dostępnych sygnałów jest nadal zapisywane. Zapisane oszacowanie może pomijać wcześniejsze zużycie, więc pozostała ilość wody jest nieznana. Napełnij śledzony zbiornik do pełna i potwierdź, aby przywrócić bilans.",
   "Balanced": "Zbilansowany"
 };
 
@@ -176,8 +179,8 @@ const VWM_SETUP_TEXT = {
     fullQ: 'Is the clean-water tank full now?',
     fullAuto: 'Yes: tracking starts now. Not sure: do nothing, tracking starts by itself after the next refill at the dock.',
     fullManual: 'Yes: tracking starts now. Not full: fill it first, then confirm.',
-    pausedQ: 'The water count is paused: a signal was missing while water could have been used.',
-    pausedHint: 'Fill the tank and confirm, and counting continues from full. What the robot learned is kept.',
+    pausedQ: 'The water balance is incomplete. Consumption from available signals is still recorded.',
+    pausedHint: 'The remaining water is unknown. Fill the tracked tank to full and confirm to restore the balance. What the robot learned is kept.',
     yesFull: 'Yes, the tank is full',
     needSize: 'The model database does not know this robot\u2019s tank. Enter the usable clean-water tank size.',
     mopSignal: 'No signal shows when this robot mops, so water use cannot be estimated yet.',
@@ -214,8 +217,8 @@ const VWM_SETUP_TEXT = {
     fullQ: 'Czy zbiornik czystej wody jest teraz pe\u0142ny?',
     fullAuto: 'Tak: liczenie startuje teraz. Nie wiesz: nic nie r\u00F3b, liczenie zacznie si\u0119 samo po najbli\u017Cszym dolaniu w stacji.',
     fullManual: 'Tak: liczenie startuje teraz. Nie jest pe\u0142ny: najpierw go napełnij, potem potwierd\u017A.',
-    pausedQ: 'Liczenie wody jest wstrzymane: brakowa\u0142o sygna\u0142u, gdy robot m\u00F3g\u0142 zu\u017Cywa\u0107 wod\u0119.',
-    pausedHint: 'Napełnij zbiornik i potwierd\u017A, a liczenie wr\u00F3ci od pe\u0142nego. To, czego robot si\u0119 nauczy\u0142, zostaje.',
+    pausedQ: 'Bilans wody jest niepełny. Zużycie z dostępnych sygnałów jest nadal zapisywane.',
+    pausedHint: 'Pozostała ilość wody jest nieznana. Napełnij śledzony zbiornik do pełna i potwierdź, aby przywrócić bilans. Kalibracja robota zostaje zachowana.',
     yesFull: 'Tak, zbiornik jest pe\u0142ny',
     needSize: 'Baza modeli nie zna zbiornika tego robota. Wpisz u\u017Cyteczn\u0105 pojemno\u015B\u0107 zbiornika czystej wody.',
     mopSignal: 'Brak sygna\u0142u, kiedy robot mopuje, wi\u0119c nie da si\u0119 jeszcze oszacowa\u0107 zu\u017Cycia wody.',
@@ -5505,6 +5508,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     return {
       totalMl, remainingL, percentRemaining, usedMl,
+      partialUsedMl: stateReason === 'accounting_incomplete' && initialized
+        && typeof tankState.used_ml === 'number' && Number.isFinite(tankState.used_ml)
+        && tankState.used_ml >= 0 ? tankState.used_ml : null,
       initialized, stateReason,
       profileKey: device.profile_key || profileKey || null,
       profileSource: device.profile_source || (device.profile_key ? 'backend' : 'legacy_client_fallback'),
@@ -5644,6 +5650,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     const remainingText = data.remainingL != null ? `${Number(data.remainingL).toFixed(2)} L` : '--';
     const usedText = data.usedMl != null ? `${(Number(data.usedMl) / 1000).toFixed(2)} L` : '--';
+    const partialUsedRow = data.partialUsedMl != null
+      ? `<div class="row"><span class="row-label">${this._waterText('Recorded estimate (incomplete)')}</span><span class="row-val">${(data.partialUsedMl / 1000).toFixed(2)} L</span></div>` : '';
 
     const vacStateChip = data.vacState
       ? `<span class="chip ${data.isCleaning ? 'chip-active' : 'chip-idle'}">${data.isCleaning ? '\uD83E\uDDF9 ' + this._waterText('Cleaning') : '\uD83D\uDECC ' + this._waterText('Idle')}</span>`
@@ -5748,6 +5756,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div class="details">
             <div class="row"><span class="row-label">\uD83D\uDD30 ${L.remaining}</span><span class="row-val">${remainingText} / ${data.totalMl > 0 ? (data.totalMl / 1000).toFixed(1) : "--"} L</span></div>
             <div class="row"><span class="row-label">\uD83D\uDCA6 ${L.used}</span><span class="row-val">${usedText}</span></div>
+            ${partialUsedRow}
             ${extraRows}
           </div>
         </div>
@@ -5766,7 +5775,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return box('Mop signal needed.', 'This robot does not expose a signal that shows when it mops (mop attached, mop mode or water level). Map one in Settings \u2192 Signal mapping so water use can be estimated.', '#f59e0b');
     }
     if (data.stateReason === 'accounting_incomplete') {
-      return box('Water balance paused.', 'Water may have been used while a signal was missing, so the remaining volume is unknown until the next refill. Tracking continues automatically after that refill.', '#f59e0b');
+      return box(this._waterText('Water balance incomplete.'), this._waterText('Consumption from available signals is still recorded. The recorded estimate may omit earlier usage, so remaining water is unknown. Refill the tracked tank to full and confirm to restore the balance.'), '#f59e0b');
     }
     if (!data.initialized) {
       const capability = data.capability === 'manual_only'
