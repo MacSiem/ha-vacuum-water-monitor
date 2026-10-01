@@ -286,11 +286,11 @@ async def test_a_device_with_the_old_placeholder_name_gets_the_robots_name(hass:
     assert registry.async_get(device.id).name == "Robot"
 
 
-async def test_household_can_subscribe_to_water_balance_updates(hass: HomeAssistant, hass_ws_client, hass_user) -> None:
+async def test_household_can_subscribe_to_water_balance_updates(hass: HomeAssistant, hass_ws_client, hass_admin_user) -> None:
     """A normal authenticated account receives compact domain events immediately."""
     await _setup(hass)
-    hass_user.groups = []
-    assert not hass_user.is_admin
+    hass_admin_user.groups = []
+    assert not hass_admin_user.is_admin
     client = await hass_ws_client(hass)
     await client.send_json_auto_id({"type": f"{DOMAIN}/subscribe"})
     response = await client.receive_json()
