@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "ha_vacuum_water_monitor"
-VERSION = "5.9.0-beta.5"
+VERSION = "5.9.0-beta.6"
 MANUFACTURER = "HA Tools"
 MODEL = "Vacuum Water Monitor"
 

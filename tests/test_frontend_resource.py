@@ -15,7 +15,7 @@ assert SPEC and SPEC.loader
 frontend_resource = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(frontend_resource)
 
-URL = "/ha_vacuum_water_monitor/ha-vacuum-water-monitor.js?v=5.9.0-beta.5"
+URL = "/ha_vacuum_water_monitor/ha-vacuum-water-monitor.js?v=5.9.0-beta.6"
 FILENAME = "ha-vacuum-water-monitor.js"
 
 

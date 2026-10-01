@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.9.0-beta.6 (unreleased)
+
+- Stream water balance updates to authenticated household accounts through the integration subscription, so non-administrators receive changes without waiting for the five-minute refresh.
+- Preserve compact event payloads and retained local history; align integration and card cache versions.
+
 ## 5.9.0-beta.5 (unreleased)
 
 - Localize the primary water labels and diagnostics heading for Polish Home Assistant users in both bundled card copies. English labels remain available for other languages.

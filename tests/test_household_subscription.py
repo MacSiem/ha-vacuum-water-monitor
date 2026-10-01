@@ -3,6 +3,8 @@ import ast
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+import subprocess
+import os
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,3 +33,6 @@ class HouseholdSubscriptionTests(unittest.TestCase):
         self.assertEqual(results, [(7,)])
         connection.subscriptions[7]()
         self.assertFalse(listeners)
+
+    def test_household_card_receives_compact_updates_without_losing_history(self):
+        subprocess.run(["node", ".github/household-events.cjs"],cwd=ROOT,check=True,env=os.environ.copy())
