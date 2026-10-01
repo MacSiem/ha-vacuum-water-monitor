@@ -2735,7 +2735,9 @@ const CALIBRATION_DATA = {
     "mop_wash_ml": 150,
     "source_urls": [
       "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
-      "https://global.roborock.com/pages/roborock-auto-empty-dock"
+      "https://global.roborock.com/pages/roborock-auto-empty-dock",
+      "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+      "https://ca.roborock.com/pages/roborock-s7-maxv"
     ],
     "data_quality": "researched",
     "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
