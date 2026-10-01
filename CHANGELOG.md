@@ -2,6 +2,8 @@
 
 ## 5.9.0-beta.6 (unreleased)
 
+- Recognize the S7 MaxV robot family from its a27 registry identity and retail labels even after an entity rename; keep unverified dock capacities unknown.
+
 - Stream water balance updates to authenticated household accounts through the integration subscription, so non-administrators receive changes without waiting for the five-minute refresh.
 - Preserve compact event payloads and retained local history; align integration and card cache versions.
 

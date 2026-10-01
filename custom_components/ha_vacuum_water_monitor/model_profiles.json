@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1.0",
-  "dataset_version": "6.1.0",
-  "cutoff_date": "2026-09-15",
+  "dataset_version": "6.1.1",
+  "cutoff_date": "2026-10-01",
   "profiles": {
     "cecotec_conga_3290": {
       "identifiers": [
@@ -5730,11 +5730,19 @@
     },
     "roborock_s7_maxv": {
       "identifiers": [
-        "Roborock S7 MaxV"
+        "Roborock S7 MaxV",
+        "S7 MaxV",
+        "roborock.vacuum.a27",
+        "a27",
+        "Roborock S7 MaxV Ultra",
+        "S7 MaxV Ultra"
       ],
       "manufacturer": "Roborock",
       "model": "S7 MaxV",
-      "model_ids": [],
+      "model_ids": [
+        "roborock.vacuum.a27",
+        "a27"
+      ],
       "regional_skus": [
         {
           "region": "global; Plus/Ultra dock variants require SKU confirmation",
@@ -5780,9 +5788,23 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_source",
+          "url": "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+          "claim": "ROCKROBO_S7_MAXV maps to roborock.vacuum.a27; robot identity only, not a dock capacity or usage-rate claim.",
+          "last_verified": "2026-10-01",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://ca.roborock.com/pages/roborock-s7-maxv",
+          "claim": "S7 MaxV Ultra combines the S7 MaxV robot with the Empty Wash Fill Dock; the retail alias identifies this robot family without inferring installed dock tanks.",
+          "last_verified": "2026-10-01",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-01",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
