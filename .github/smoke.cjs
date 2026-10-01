@@ -177,11 +177,14 @@ async function smokeDraftAndCalibration(target) {
         return {};
       },
       connection: {
-        subscribeEvents: (handler) => {
+        subscribeEvents: () => Promise.reject({ code: 'unauthorized' }),
+        subscribeMessage: (handler, message) => {
+          if (message.type !== 'ha_vacuum_water_monitor/subscribe') {
+            return Promise.reject({ code: 'unknown_command' });
+          }
           eventHandler = handler;
           return Promise.resolve(() => {});
         },
-        subscribeMessage: () => Promise.resolve(() => {}),
         sendMessagePromise: () => Promise.resolve([]), socket: { readyState: 1 }
       }
     });
