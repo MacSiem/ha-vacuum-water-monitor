@@ -932,7 +932,9 @@ def _tick_device_pass(
             )
         else:
             effective_minute_rate = usage_per_minute * calibration_factor
-            added = (elapsed_seconds / 60) * effective_minute_rate
+            added = (elapsed_seconds / 60) * effective_minute_rate * (
+                intensity_factor if intensity_factor is not None else 1
+            )
             state["used_ml"] = round(
                 _number(state.get("used_ml"), 0) + added, 2
             )
