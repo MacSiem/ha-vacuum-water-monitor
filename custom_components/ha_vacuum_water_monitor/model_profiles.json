@@ -7527,7 +7527,15 @@
         }
       ],
       "observed_ha_identifiers": [
-        "xiaomi.vacuum.ov42gl"
+        {
+          "kind": "public_issue_report",
+          "values": [
+            "xiaomi.vacuum.ov42gl"
+          ],
+          "source": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/11#issuecomment-5950639795",
+          "date": "2026-10-02",
+          "confidence": "medium"
+        }
       ],
       "integration_adapters": [
         "xiaomi_home",
