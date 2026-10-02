@@ -35,6 +35,15 @@ const reports = JSON.parse(process.argv[1]);
   out.freshEn = card._buildSetupPanel(device, reports.fresh);
   out.ok = card._buildSetupPanel(device, reports.ok);
   out.partial = card._buildSetupPanel(device, reports.partial);
+  for (const lang of ['en', 'pl']) {
+    card._lang = lang;
+    out['missingLastError' + lang] = card._buildSetupPanel(device, {
+      ...reports.partial, last_tank: { error_percent: null, accepted: false }
+    });
+    out['zeroLastError' + lang] = card._buildSetupPanel(device, {
+      ...reports.ok, last_tank: { error_percent: 0, accepted: true }
+    });
+  }
   card._lang = 'pl';
   out.okPl = card._buildSetupPanel(device, reports.ok);
   card._lang = 'en';
@@ -136,6 +145,13 @@ class CardSetupPanelTests(unittest.TestCase):
         self.assertIn("for example a partly filled tank", html)
         self.assertIn('data-setup="mark-empty"', html)
         self.assertNotIn("confirm-full", html)
+
+    def test_missing_last_tank_error_is_not_reported_as_zero(self):
+        for lang, label in [("en", "Last empty tank:"), ("pl", "Ostatni pusty zbiornik:")]:
+            with self.subTest(language=lang):
+                self.assertNotIn(label, self.out["missingLastError" + lang])
+                self.assertIn(label, self.out["zeroLastError" + lang])
+                self.assertIn("0%", self.out["zeroLastError" + lang])
 
     def test_unknown_tank_size_opens_the_editor(self):
         html = self.out["unknown"]
