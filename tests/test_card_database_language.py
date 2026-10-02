@@ -19,6 +19,9 @@ class DatabaseLanguageTests(unittest.TestCase):
  def test_manufacturer_facts_remain_separate_from_estimated_floor_coverage(self):
   h=self.result['tapo'];self.assertIn('Tapo',h);self.assertIn('5,000',h);self.assertIn('szacowane zużycie wody',h.lower());self.assertIn('https://',h)
   self.assertNotIn('max area on one battery charge',h)
+ def test_mixed_source_links_do_not_claim_manufacturer_provenance(self):
+  for lang in ['pl','en']:
+   h=self.result[lang];self.assertIn('github.com',h);self.assertNotIn('manufacturer source',h);self.assertNotIn('źródło producenta',h);self.assertIn('Źródło' if lang=='pl' else '>Source',h)
  def test_english_model_data_and_sources_are_preserved(self):
   h=self.result['en'];self.assertIn('(active profile)',h);self.assertIn('clean-water capacity unknown',h);self.assertIn('Estimated water usage by mode',h);self.assertIn('ml/m',h);self.assertIn('https://',h)
 if __name__=='__main__':unittest.main()

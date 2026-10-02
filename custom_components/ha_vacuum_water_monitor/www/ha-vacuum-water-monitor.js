@@ -74,7 +74,7 @@ const VWM_WATER_TEXT_PL = {
   "no estimate": "brak oszacowania",
   "Estimated wash:": "Szacowane mycie:",
   "ml/cycle": "ml/cykl",
-  "manufacturer source": "źródło producenta",
+  "Source": "Źródło",
   "ml clean-water capacity": "ml pojemności czystej wody",
   "clean-water capacity unknown": "pojemność czystej wody nieznana",
   "m² / fill (tested max)": "m² / napełnienie (maksimum testowe)",
@@ -6981,7 +6981,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (active) {
       const levels = Object.entries(active.water_per_m2 || {});
       const publishedFacts = _calibrationFacts(active, this._lang);
-      const sourceLinks = (active.source_urls || []).map((url, index) => `<a href="${_esc(url)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6">${this._waterText("manufacturer source")}${active.source_urls.length > 1 ? ' ' + (index + 1) : ''}</a>`).join(' · ');
+      const sourceLinks = (active.source_urls || []).map((url, index) => `<a href="${_esc(url)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6">${this._waterText("Source")}${active.source_urls.length > 1 ? ' ' + (index + 1) : ''}</a>`).join(' · ');
       activeCard = `
         <div style="margin-bottom:14px;padding:14px;background:rgba(59,130,246,0.06);border:1.5px solid rgba(59,130,246,0.2);border-radius:12px">
           <div style="font-weight:700;font-size:14px;margin-bottom:8px">\uD83E\uDDA4 ${active.label} <span style="font-size:11px;color:#3b82f6;font-weight:500">${this._waterText("(active profile)")}</span></div>
