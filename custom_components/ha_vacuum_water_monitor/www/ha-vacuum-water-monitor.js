@@ -68,6 +68,83 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "Refresh updates robot recognition from Home Assistant. Your tank sizes, calibration, signal assignments and history are kept.": "Odświeżenie aktualizuje rozpoznanie robota z Home Assistant. Twoje pojemności, kalibracja, przypisane sygnały i historia zostają zachowane.",
+  "Use measured water loss for this reservoir and mode. A whole-cycle dock measurement includes washes: do not also enter a wash dose for that same water. Capacity and advertised floor coverage are not consumption measurements. The scope applies only to rates you enter here; changing the tank size restarts this robot's learned correction.": "Użyj zmierzonego ubytku wody z tego zbiornika i trybu. Pomiar całego cyklu obejmuje mycia w stacji: nie dodawaj wtedy osobnej dawki mycia dla tej samej wody. Pojemność i deklarowana powierzchnia sprzątania nie są pomiarami zużycia. Zakres dotyczy tylko wpisanych tutaj stawek; zmiana pojemności rozpoczyna uczenie korekty tego robota od nowa.",
+  "Model details link to their sources. Water usage is an estimate unless a physical water sensor measures it.": "Dane modeli mają odnośniki do źródeł. Zużycie wody jest oszacowaniem, chyba że mierzy je fizyczny czujnik.",
+  "HA Consumables": "Części do wymiany",
+  "Custom Maintenance": "Własne czynności konserwacji",
+  "Add Maintenance Item": "Dodaj czynność konserwacji",
+  "Name (e.g. Clean sensors)": "Nazwa (np. Wyczyść czujniki)",
+  "Every N days": "Co ile dni",
+  "Wrench": "Klucz",
+  "Brush": "Szczotka",
+  "Filter": "Filtr",
+  "Task": "Czynność",
+  "Container": "Zbiornik",
+  "Add": "Dodaj",
+  "Mark as done today": "Oznacz jako wykonane dzisiaj",
+  "Delete": "Usuń",
+  "Calibration measurement scope": "Zakres własnego pomiaru",
+  "Whole cycle (includes dock washes)": "Cały cykl (łącznie z myciem mopów)",
+  "Floor only (dock washes measured separately)": "Sama podłoga (mycia mopów liczone osobno)",
+  "Measured water use (ml/active minute)": "Zmierzone zużycie (ml na minutę pracy)",
+  "Robot tank (ml)": "Zbiornik robota (ml)",
+  "Mop washing (ml/cycle)": "Mycie mopów (ml na mycie)",
+  "Coverage / charge (m²)": "Powierzchnia na ładowanie (m²)",
+  "Remaining water at low-water alert (%)": "Pozostała woda przy ostrzeżeniu (%)",
+  "Mopping modes — mode name and ml/m² usage:": "Tryby mopowania — nazwa i zużycie w ml/m²:",
+  "+ Add mode": "+ Dodaj tryb",
+  "Save": "Zapisz",
+  "Clear": "Wyczyść",
+  "Mopping mode name": "Nazwa trybu mopowania",
+  "Measured ml per square metre": "Zmierzone ml na metr kwadratowy",
+  "Missing your robot or have more accurate data?": "Brakuje Twojego robota lub masz dokładniejsze dane?",
+  "Report data or correction on GitHub": "Zgłoś dane lub poprawkę na GitHub",
+  "Effective calibration layers:": "Zastosowane ustawienia:",
+  "default → resolved profile → device": "domyślne → rozpoznany profil → robot",
+  "no device capacity override": "bez własnej pojemności robota",
+  "Estimate evidence:": "Podstawa oszacowania:",
+  "not available": "niedostępne",
+  "Distinct reservoirs:": "Osobne zbiorniki:",
+  "No maintenance data available. Add your own items below.": "Brak danych konserwacji. Poniżej możesz dodać własne czynności.",
+  "Main Brush": "Szczotka główna",
+  "Side Brush": "Szczotka boczna",
+  "Sensor Cleaning": "Czyszczenie czujników",
+  "Dock Brush": "Szczotka stacji",
+  "Dock Strainer": "Sitko stacji",
+  "After filling the tank, press Refilled in the Water tab. You can also use the other refill methods.": "Po dolaniu do pełna naciśnij Dolane w zakładce Woda. Możesz też używać pozostałych sposobów.",
+  "The tank is marked full when the dock clears its empty-water error. Disable this option if the error can clear without a refill, such as when the tank is re-seated.": "Zbiornik zostaje oznaczony jako pełny, gdy stacja skasuje błąd braku wody. Wyłącz tę opcję, jeśli błąd może zniknąć bez dolania, np. po ponownym osadzeniu zbiornika.",
+  "Choose a Home Assistant button. Pressing it confirms a full refill. Add it to a dashboard or connect it to a physical button.": "Wybierz przycisk Home Assistant. Naciśnięcie potwierdza dolanie do pełna. Dodaj go do pulpitu lub połącz z przyciskiem fizycznym.",
+  "With supported refill and empty-tank signals, calibration learns during normal cleaning. You do not need to test each mode. The measurements below are optional overrides.": "Kalibracja uczy się podczas zwykłego sprzątania, gdy dostępne są sygnały dolania i pustego zbiornika. Nie musisz mierzyć każdego trybu. Poniższe pomiary są opcjonalnymi własnymi ustawieniami.",
+  "Your measurements (optional)": "Własne pomiary (opcjonalnie)",
+  "click to expand": "kliknij, aby rozwinąć",
+  "Refresh detected profile": "Odśwież rozpoznany model",
+  "Device management, tank reset methods and automations.": "Roboty, wykrywanie dolania i automatyzacje.",
+  "Devices": "Roboty",
+  "Add, remove, or discover vacuum cleaners in Home Assistant.": "Dodaj, usuń lub wyszukaj roboty w Home Assistant.",
+  "Discovered vacuums (not configured)": "Wykryte roboty oczekujące na dodanie",
+  "Manually added": "Dodane ręcznie",
+  "Manual vacuum addition": "Ręczne dodawanie robota",
+  "Enter vacuum entity_id if auto-discovery didn't find it": "Wpisz identyfikator encji vacuum, jeśli robot nie został wykryty.",
+  "+ Add": "+ Dodaj",
+  "Remove": "Usuń",
+  "Tank reset methods": "Rozpoznawanie dolania",
+  "Choose how Home Assistant learns that you refilled the tank. Every option marks the tank full, and you can combine them.": "Wybierz, jak Home Assistant rozpoznaje dolanie do pełna. Możesz łączyć kilka sposobów.",
+  "On": "Włączone",
+  "Off": "Wyłączone",
+  "not available for this robot": "niedostępne dla tego robota",
+  "Refilled button in this card": "Przycisk Dolane w tej karcie",
+  "Automatic from the dock": "Automatycznie ze stacji",
+  "Refill automatically when the dock's empty-tank error clears": "Rozpoznawaj dolanie, gdy stacja skasuje błąd pustego zbiornika",
+  "Dashboard or physical button": "Przycisk na pulpicie lub przycisk fizyczny",
+  "— Not used —": "— Nieużywane —",
+  "+ Create input_button": "+ Utwórz przycisk",
+  "Tank lid or door sensor": "Czujnik pokrywy zbiornika",
+  "A contact sensor on the tank or dock lid. Closing it counts as a full refill.": "Czujnik otwarcia pokrywy zbiornika lub stacji. Zamknięcie oznacza dolanie do pełna.",
+  "Automation, script or NFC tag": "Automatyzacja, skrypt lub tag NFC",
+  "Call this action from anything in Home Assistant:": "Wywołaj tę akcję w Home Assistant:",
+  "Save refill options": "Zapisz sposoby dolania",
+  "Add the robot at any time. A complete water balance starts after a detected refill or confirmation that the tank is full.": "Możesz dodać robota w dowolnej chwili. Pełny bilans rozpocznie się po rozpoznanym dolaniu lub potwierdzeniu pełnego zbiornika.",
   "No Water": "Brak zbiornika",
   "EMPTY": "PUSTY",
   "LOW WATER": "MAŁO WODY",
@@ -175,7 +252,7 @@ const VWM_WATER_TEXT_PL = {
 const VWM_SETUP_TEXT = {
   en: {
     setupTitle: (name) => `Set up water tracking: ${name}`,
-    allGood: 'Everything is working',
+    allGood: 'Signals are ready',
     remaining: 'Remaining', used: 'Used', lastRefill: 'Last refill', diagnostics: 'Diagnostics',
     model: 'Model', tank: 'Tank', accuracy: 'Accuracy', unknown: 'unknown',
     change: 'Change', save: 'Save', tankSize: 'Tank size', useModel: 'Use the model size',
@@ -213,7 +290,7 @@ const VWM_SETUP_TEXT = {
   },
   pl: {
     setupTitle: (name) => `Konfiguracja liczenia wody: ${name}`,
-    allGood: 'Wszystko dzia\u0142a',
+    allGood: 'Sygnały są gotowe',
     remaining: 'Pozostało', used: 'Zużyto', lastRefill: 'Ostatnie dolanie', diagnostics: 'Diagnostyka',
     model: 'Model', tank: 'Zbiornik', accuracy: 'Dok\u0142adno\u015B\u0107', unknown: 'nieznany',
     change: 'Zmie\u0144', save: 'Zapisz', tankSize: 'Pojemno\u015B\u0107 zbiornika', useModel: 'U\u017Cyj pojemno\u015Bci modelu',
@@ -5989,15 +6066,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
       .map(([name, value]) => `<span>${_esc(name)}: <b>${_esc(this._formatMl(value))}</b></span>`)
       .join(' · ');
     const reservoirLabel = data.trackedReservoir ? `${_asText(data.trackedReservoir).replace(/_/g, ' ')} capacity` : 'Tracked reservoir capacity';
-    const effectiveCalibration = `<div style="margin:0 0 12px;padding:10px 12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:8px;font-size:11px;line-height:1.5"><b>Effective ${_esc(reservoirLabel)}:</b> ${data.totalMl ? _esc(this._formatMl(data.totalMl)) : 'unknown'}${data.trackedReservoir ? ` (${_esc(data.trackedReservoir)})` : ''}<br><b>Effective calibration layers:</b> default → resolved profile → device (${_esc(effectiveCalibrationData.tracked_capacity_ml || 'no device capacity override')})<br><b>Estimate evidence:</b> ${_esc(data.accountingEvidence || data.evidence || 'not available')}<br>${reservoirRows ? `<b>Distinct reservoirs:</b> ${reservoirRows}` : ''}</div>`;
+    const effectiveCalibration = `<div style="margin:0 0 12px;padding:10px 12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:8px;font-size:11px;line-height:1.5"><b>Effective ${_esc(reservoirLabel)}:</b> ${data.totalMl ? _esc(this._formatMl(data.totalMl)) : 'unknown'}${data.trackedReservoir ? ` (${_esc(data.trackedReservoir)})` : ''}<br><b>${this._waterText("Effective calibration layers:")}</b> ${this._waterText("default → resolved profile → device")} (${_esc(effectiveCalibrationData.tracked_capacity_ml || this._waterText("no device capacity override"))})<br><b>${this._waterText("Estimate evidence:")}</b> ${_esc(data.accountingEvidence || data.evidence || this._waterText('not available'))}<br>${reservoirRows ? `<b>${this._waterText("Distinct reservoirs:")}</b> ${reservoirRows}` : ''}</div>`;
     const savedModeRows = Object.entries(customCalibration.usage_ml_per_m2 || customCalibration.water_per_m2 || {});
     const calibrationModeRows = [
       ...savedModeRows,
       ...Array.from({ length: Math.max(0, 3 - savedModeRows.length) }, () => ['', '']),
     ].map(([name, value]) => `
       <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:0">
-        <input type="text" value="${_esc(String(name))}" placeholder="e.g. standard" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name" aria-label="Mopping mode name">
-        <input type="number" min="0.1" step="0.1" value="${_esc(value === '' ? '' : String(value))}" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val" aria-label="Measured ml per square metre">
+        <input type="text" value="${_esc(String(name))}" placeholder="e.g. standard" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name" aria-label="${_esc(this._waterText("Mopping mode name"))}">
+        <input type="number" min="0.1" step="0.1" value="${_esc(value === '' ? '' : String(value))}" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val" aria-label="${_esc(this._waterText("Measured ml per square metre"))}">
       </div>`).join('');
     // Known default max lifespans (hours) per consumable type.
     // These match Roborock factory defaults; other brands vary but are similar order-of-magnitude.
@@ -6041,12 +6118,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     // HA consumables from sensors
     const haItems = [
-      { label: '🧹 Main Brush', hours: data.mainBrushH, key: 'main_brush' },
-      { label: '📍 Side Brush', hours: data.sideBrushH, key: 'side_brush' },
-      { label: '🔍 Filter', hours: data.filterH, key: 'filter' },
-      { label: '💧 Sensor Cleaning', hours: data.sensorH, key: 'sensor' },
-      { label: '🔄 Dock Brush', hours: data.dockBrushH, key: 'dock_brush' },
-      { label: '🔗 Dock Strainer', hours: data.dockStrainerH, key: 'dock_strainer' },
+      { label: "🧹 " + this._waterText("Main Brush"), hours: data.mainBrushH, key: 'main_brush' },
+      { label: "📍 " + this._waterText("Side Brush"), hours: data.sideBrushH, key: 'side_brush' },
+      { label: '🔍 ' + this._waterText('Filter'), hours: data.filterH, key: 'filter' },
+      { label: "💧 " + this._waterText("Sensor Cleaning"), hours: data.sensorH, key: 'sensor' },
+      { label: "🔄 " + this._waterText("Dock Brush"), hours: data.dockBrushH, key: 'dock_brush' },
+      { label: "🔗 " + this._waterText("Dock Strainer"), hours: data.dockStrainerH, key: 'dock_strainer' },
     ].filter(i => i.hours !== null);
 
     const haRows = haItems.map(item => {
@@ -6070,63 +6147,63 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const daysLeft = item.intervalDays && daysSince !== null ? item.intervalDays - daysSince : null;
       let color = '#22c55e', statusText = 'OK';
       if (daysLeft !== null) {
-        if (daysLeft < 0) { color = '#ef4444'; statusText = `${Math.abs(daysLeft)}d overdue`; }
-        else if (daysLeft < 7) { color = '#f59e0b'; statusText = `${daysLeft}d left`; }
-        else { statusText = `${daysLeft}d left`; }
+        if (daysLeft < 0) { color = '#ef4444'; statusText = this._lang === 'pl' ? `${Math.abs(daysLeft)} dni po terminie` : `${Math.abs(daysLeft)}d overdue`; }
+        else if (daysLeft < 7) { color = '#f59e0b'; statusText = this._lang === 'pl' ? `Pozostało dni: ${daysLeft}` : `${daysLeft}d left`; }
+        else { statusText = this._lang === 'pl' ? `Pozostało dni: ${daysLeft}` : `${daysLeft}d left`; }
       } else if (daysSince !== null) {
-        statusText = `${daysSince}d ago`;
+        statusText = this._lang === 'pl' ? `${daysSince} dni temu` : `${daysSince}d ago`;
         color = '#6b7280';
       }
       return `<div class="custom-maint-row" data-idx="${idx}">
         <span class="con-label">${_esc(this._sanitize(item.icon || '\uD83D\uDD27'))} ${_esc(this._sanitize(item.name))}</span>
         <span class="con-val" style="color:${color}">${statusText}</span>
-        <button class="maint-done-btn" data-idx="${idx}" title="Mark as done today">\u2705</button>
-        <button class="maint-del-btn" data-idx="${idx}" title="Delete">\uD83D\uDDD1\uFE0F</button>
+        <button class="maint-done-btn" data-idx="${idx}" title="${_esc(this._waterText("Mark as done today"))}">\u2705</button>
+        <button class="maint-del-btn" data-idx="${idx}" title="${_esc(this._waterText("Delete"))}">\uD83D\uDDD1\uFE0F</button>
       </div>`;
     }).join('');
 
     return `
       <div class="tab-content">
-        ${haRows ? `<div class="section-block"><div class="section-title">\u23F1\uFE0F HA Consumables</div>${haRows}</div>` : ''}
-        ${haItems.length === 0 && this._maintenanceItems.length === 0 ? '<div class="empty-state">No maintenance data available.<br>Add custom items below.</div>' : ''}
-        ${this._maintenanceItems.length > 0 ? `<div class="section-block"><div class="section-title">\uD83D\uDCCB Custom Maintenance</div>${customRows}</div>` : ''}
+        ${haRows ? `<div class="section-block"><div class="section-title">\u23F1\uFE0F ${this._waterText("HA Consumables")}</div>${haRows}</div>` : ''}
+        ${haItems.length === 0 && this._maintenanceItems.length === 0 ? `<div class="empty-state">${this._waterText("No maintenance data available. Add your own items below.")}</div>` : ''}
+        ${this._maintenanceItems.length > 0 ? `<div class="section-block"><div class="section-title">\uD83D\uDCCB ${this._waterText("Custom Maintenance")}</div>${customRows}</div>` : ''}
         <div class="section-block">
-          <div class="section-title">\u2795 Add Maintenance Item</div>
+          <div class="section-title">\u2795 ${this._waterText("Add Maintenance Item")}</div>
           <div class="add-maint-form">
-            <input class="maint-input" id="maint-name" placeholder="Name (e.g. Clean sensors)" type="text"/>
-            <input class="maint-input maint-days" id="maint-days" placeholder="Every N days" type="number" min="1" max="365"/>
+            <input class="maint-input" id="maint-name" placeholder="${_esc(this._waterText("Name (e.g. Clean sensors)"))}" type="text"/>
+            <input class="maint-input maint-days" id="maint-days" placeholder="${_esc(this._waterText("Every N days"))}" type="number" min="1" max="365"/>
             <select class="maint-input maint-icon" id="maint-icon">
-              <option value="\uD83D\uDD27">\uD83D\uDD27 Wrench</option>
-              <option value="\uD83E\uDDF9">\uD83E\uDDF9 Brush</option>
-              <option value="\uD83D\uDCA7">\uD83D\uDCA7 Water</option>
-              <option value="\uD83D\uDD0D">\uD83D\uDD0D Filter</option>
-              <option value="\uD83D\uDCCB">\uD83D\uDCCB Task</option>
-              <option value="\uD83E\uDEA3">\uD83E\uDEA3 Container</option>
+              <option value="\uD83D\uDD27">\uD83D\uDD27 ${this._waterText("Wrench")}</option>
+              <option value="\uD83E\uDDF9">\uD83E\uDDF9 ${this._waterText("Brush")}</option>
+              <option value="\uD83D\uDCA7">\uD83D\uDCA7 ${this._waterText("Water")}</option>
+              <option value="\uD83D\uDD0D">\uD83D\uDD0D ${this._waterText("Filter")}</option>
+              <option value="\uD83D\uDCCB">\uD83D\uDCCB ${this._waterText("Task")}</option>
+              <option value="\uD83E\uDEA3">\uD83E\uDEA3 ${this._waterText("Container")}</option>
             </select>
-            <button class="maint-add-btn">\u2795 Add</button>
+            <button class="maint-add-btn">\u2795 ${this._waterText("Add")}</button>
           </div>
         </div>
 
         <div class="section-block">
           <button type="button" class="section-title" aria-expanded="false" aria-controls="vwm-custom-calibration-body" style="cursor:pointer;background:transparent;border:0;color:inherit;text-align:left" onclick="const open=this.nextElementSibling.style.display==='none';this.nextElementSibling.style.display=open?'block':'none';this.setAttribute('aria-expanded',String(open))">
-            \u2699\uFE0F Custom calibration values <span style="font-size:10px;color:var(--bento-text-muted);font-weight:400">(click to expand)</span>
+            \u2699\uFE0F ${this._waterText("Your measurements (optional)")} <span style="font-size:10px;color:var(--bento-text-muted);font-weight:400">${this._waterText("click to expand")}</span>
           </button>
           <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
             ${effectiveCalibration}
-            <button type="button" style="padding:8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);cursor:pointer" onclick="this.getRootNode().host._reprofileDevice()">Refresh detected profile</button>
+            <button type="button" style="padding:8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);cursor:pointer" onclick="this.getRootNode().host._reprofileDevice()">${this._waterText("Refresh detected profile")}</button>
             <div id="vwm-reprofile-status" role="status" aria-live="polite"></div>
-            <p>Refresh reads the current Home Assistant registry and releases the profile lock. Authored capacities, calibration, signal assignments and history are preserved.</p>
+            <p>${this._waterText("Refresh updates robot recognition from Home Assistant. Your tank sizes, calibration, signal assignments and history are kept.")}</p>
             <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
-              If your robot is not on the list or you want to correct values — enter your own data. They are saved per device in Home Assistant Store.
+              ${this._waterText("With supported refill and empty-tank signals, calibration learns during normal cleaning. You do not need to test each mode. The measurements below are optional overrides.")}
             </div>
-            <p>Use measured water loss for this reservoir and mode. A whole-cycle dock measurement includes washes: do not also enter a wash dose for that same water. Capacity and advertised floor coverage are not consumption measurements. The scope applies only to rates you enter here; changing the tank size restarts this robot's learned correction.</p>
-            <label>Calibration measurement scope
+            <p>${this._waterText("Use measured water loss for this reservoir and mode. A whole-cycle dock measurement includes washes: do not also enter a wash dose for that same water. Capacity and advertised floor coverage are not consumption measurements. The scope applies only to rates you enter here; changing the tank size restarts this robot's learned correction.")}</p>
+            <label>${this._waterText("Calibration measurement scope")}
               <select id="vwm-custom-scope" style="width:100%;max-width:100%;min-width:0;background:var(--bento-bg);color:var(--bento-text);padding:8px;border:1px solid var(--bento-border);border-radius:6px">
-                <option value="whole_cycle" ${(customCalibration.calibration_scope || (device && device.calibration_scope)) === 'whole_cycle' ? 'selected' : ''}>Whole cycle (includes dock washes)</option>
-                <option value="floor_only" ${(customCalibration.calibration_scope || (device && device.calibration_scope)) !== 'whole_cycle' ? 'selected' : ''}>Floor only (dock washes measured separately)</option>
+                <option value="whole_cycle" ${(customCalibration.calibration_scope || (device && device.calibration_scope)) === 'whole_cycle' ? 'selected' : ''}>${this._waterText("Whole cycle (includes dock washes)")}</option>
+                <option value="floor_only" ${(customCalibration.calibration_scope || (device && device.calibration_scope)) !== 'whole_cycle' ? 'selected' : ''}>${this._waterText("Floor only (dock washes measured separately)")}</option>
               </select>
             </label>
-            <label>Measured water use (ml/active minute)
+            <label>${this._waterText("Measured water use (ml/active minute)")}
               <input type="number" id="vwm-custom-minute-rate" min="0.001" step="any" value="${_esc(String(customCalibration.usage_ml_per_active_minute?.default || ''))}">
             </label>
             <div id="vwm-custom-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -6135,49 +6212,49 @@ class HAVacuumWaterMonitor extends HTMLElement {
                 <input type="number" id="vwm-custom-tank" min="1" step="1" value="${_esc(String(customCalibration.tracked_capacity_ml || customCalibration.tank_ml || ''))}" placeholder="e.g. 3000" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
-                Robot tank (ml)
+                ${this._waterText("Robot tank (ml)")}
                 <input type="number" id="vwm-custom-robot-tank" min="1" step="1" value="${_esc(String(customCalibration.robot_tank_ml || ''))}" placeholder="e.g. 350" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
-                Mop washing (ml/cycle)
+                ${this._waterText("Mop washing (ml/cycle)")}
                 <input type="number" id="vwm-custom-wash" min="1" step="1" value="${_esc(String(customCalibration.wash_volume_ml || customCalibration.mop_wash_ml || ''))}" placeholder="e.g. 150" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
-                Coverage / charge (m\u00B2)
+                ${this._waterText("Coverage / charge (m²)")}
                 <input type="number" id="vwm-custom-area" min="1" step="1" value="${_esc(String(customCalibration.avg_area_per_charge || ''))}" placeholder="e.g. 250" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
               <label style="font-size:11px;color:var(--bento-text-secondary)">
-                Remaining water at low-water alert (%)
+                ${this._waterText("Remaining water at low-water alert (%)")}
                 <input type="number" id="vwm-custom-low-water" min="0" max="50" step="1" value="${_esc(String(customCalibration.low_water_anchor_remaining_percent ?? ''))}" placeholder="10" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
               </label>
 
             </div>
             <div style="margin-top:10px">
-              <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:6px">Mopping modes — mode name and ml/m\u00B2 usage:</div>
+              <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:6px">${this._waterText("Mopping modes — mode name and ml/m² usage:")}</div>
               <div id="vwm-custom-modes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">
                 ${calibrationModeRows}
               </div>
               <div style="margin-top:6px;text-align:right">
-                <button onclick="this.getRootNode().host._addCustomMode()" style="padding:4px 10px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:10px;cursor:pointer">+ Add mode</button>
+                <button onclick="this.getRootNode().host._addCustomMode()" style="padding:4px 10px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:10px;cursor:pointer">${this._waterText("+ Add mode")}</button>
               </div>
             </div>
             <div style="margin-top:12px;display:flex;gap:8px">
-              <button id="vwm-custom-save" onclick="this.getRootNode().host._saveCustomCalibration()" style="flex:1;padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:600;font-size:12px;cursor:pointer">\uD83D\uDCBE Save</button>
-              <button onclick="this.getRootNode().host._clearCustomCalibration()" style="padding:8px 16px;border:1px solid var(--bento-border);border-radius:8px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:12px;cursor:pointer">\uD83D\uDDD1 Clear</button>
+              <button id="vwm-custom-save" onclick="this.getRootNode().host._saveCustomCalibration()" style="flex:1;padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:600;font-size:12px;cursor:pointer">\uD83D\uDCBE ${this._waterText("Save")}</button>
+              <button onclick="this.getRootNode().host._clearCustomCalibration()" style="padding:8px 16px;border:1px solid var(--bento-border);border-radius:8px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:12px;cursor:pointer">\uD83D\uDDD1 ${this._waterText("Clear")}</button>
             </div>
             <div id="vwm-custom-status" role="status" aria-live="polite" style="min-height:18px;margin-top:6px;font-size:11px;color:var(--bento-text-secondary)"></div>
           </div>
         </div>
         <div class="section-block" style="text-align:center;padding:16px">
           <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:8px">
-            Missing your robot or have more accurate data?
+            ${this._waterText("Missing your robot or have more accurate data?")}
           </div>
           <a href="https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new?title=Calibration+data+for+[MODEL]&body=Model:%0ATank+ml:%0AWater+per+m2:%0AMop+wash+ml:%0ASource:%0A" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:8px;background:#24292e;color:white;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-            Report data or correction on GitHub
+            ${this._waterText("Report data or correction on GitHub")}
           </a>
           <div style="margin-top:6px;font-size:10px;color:var(--bento-text-muted)">
-            Catalog: linked primary sources. Consumption: your measured calibration; unknown until measured.
+            ${this._waterText("Model details link to their sources. Water usage is an estimate unless a physical water sensor measures it.")}
           </div>
         </div>
       </div>`;
@@ -6844,47 +6921,47 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const configuredIds = devices.map(d => d.vacuum_entity).filter(Boolean);
     const undiscovered = discovered.filter(v => !configuredIds.includes(v.entity_id));
 
-    const fullTankTip = (undiscovered.length > 0 || devices.length === 0) ? `<div style="margin:10px 0;padding:10px 14px;background:rgba(59,130,246,0.1);border:1.5px solid rgba(59,130,246,0.25);border-radius:10px;font-size:12px;line-height:1.5;color:var(--vwm-text,#1e293b)">\uD83D\uDCA1 <strong>Tip:</strong> Add vacuum when its tank is <strong>full</strong> — this way water level tracking will be accurate from the start.</div>` : '';
+    const fullTankTip = (undiscovered.length > 0 || devices.length === 0) ? `<div style="margin:10px 0;padding:10px 14px;background:rgba(59,130,246,0.1);border:1.5px solid rgba(59,130,246,0.25);border-radius:10px;font-size:12px;line-height:1.5;color:var(--vwm-text,#1e293b)">\uD83D\uDCA1 ${this._waterText("Add the robot at any time. A complete water balance starts after a detected refill or confirmation that the tank is full.")}</div>` : '';
 
     const discoveredHtml = undiscovered.length > 0 ? `
       <div class="section-block">
-        <div class="section-title">\uD83D\uDD0E Discovered vacuums (not configured)</div>
+        <div class="section-title">\uD83D\uDD0E ${this._waterText("Discovered vacuums (not configured)")}</div>
         ${undiscovered.map(v => `<div class="disc-row" style="cursor:pointer" data-entity="${_esc(v.entity_id)}">
           <span class="disc-name">\uD83E\uDDA4 ${_esc(this._sanitize(v.name))}</span>
           <span class="disc-id">${_esc(v.entity_id)}</span>
           <span class="disc-state" style="color:${v.state === 'cleaning' ? '#22c55e' : '#6b7280'}">${_esc(this._sanitize(v.state))}</span>
           ${v.battery ? `<span class="disc-bat">\uD83D\uDD0B ${_esc(v.battery)}%</span>` : ''}
-          <button class="maint-add-btn disc-add-btn" data-entity="${_esc(v.entity_id)}" style="padding:3px 10px;font-size:11px">+ Add</button>
+          <button class="maint-add-btn disc-add-btn" data-entity="${_esc(v.entity_id)}" style="padding:3px 10px;font-size:11px">${this._waterText("+ Add")}</button>
         </div>`).join('')}
       </div>` : '';
 
-    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 Manually added</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(this._sanitize(ud.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="Remove">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
+    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 ${this._waterText("Manually added")}</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(this._sanitize(ud.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="${_esc(this._waterText("Remove"))}">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
 
     return `
       <div class="tab-content">
         <div style="margin-bottom:16px">
-          <div style="font-size:15px;font-weight:700;color:var(--bento-text);margin-bottom:4px">\u2699\uFE0F Settings</div>
-          <div style="font-size:12px;color:var(--bento-text-secondary)">Device management, tank reset methods and automations.</div>
+          <div style="font-size:15px;font-weight:700;color:var(--bento-text);margin-bottom:4px">\u2699\uFE0F ${this._waterText("Settings")}</div>
+          <div style="font-size:12px;color:var(--bento-text-secondary)">${this._waterText("Device management, tank reset methods and automations.")}</div>
         </div>
 
         <!-- Device management -->
         <div style="background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px;margin-bottom:16px">
           <div style="font-size:14px;font-weight:700;color:var(--bento-text);margin-bottom:4px;display:flex;align-items:center;gap:8px">
-            \uD83E\uDDA4 Devices
+            \uD83E\uDDA4 ${this._waterText("Devices")}
           </div>
           <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:12px;line-height:1.5">
-            Add, remove, or discover vacuum cleaners in Home Assistant.
+            ${this._waterText("Add, remove, or discover vacuum cleaners in Home Assistant.")}
           </div>
           ${userDevsHtml}
           ${fullTankTip}
           ${discoveredHtml}
           <div class="section-block" style="margin-top:12px">
-            <div class="section-title">Manual vacuum addition</div>
+            <div class="section-title">${this._waterText("Manual vacuum addition")}</div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
               <input type="text" id="manual-vacuum-entity" placeholder="vacuum.roborock_s7" style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--bento-border,#e2e8f0);border-radius:8px;font-size:13px;background:var(--bento-card,#fff);color:var(--bento-text,#1e293b)">
-              <button class="btn-primary" id="btn-add-manual-vacuum" style="padding:8px 16px;white-space:nowrap">+ Add</button>
+              <button class="btn-primary" id="btn-add-manual-vacuum" style="padding:8px 16px;white-space:nowrap">${this._waterText("+ Add")}</button>
             </div>
-            <p style="margin:6px 0 0;font-size:11px;color:var(--bento-text-secondary,#64748B)">Enter vacuum entity_id if auto-discovery didn't find it</p>
+            <p style="margin:6px 0 0;font-size:11px;color:var(--bento-text-secondary,#64748B)">${this._waterText("Enter vacuum entity_id if auto-discovery didn't find it")}</p>
           </div>
         </div>
 
@@ -6897,10 +6974,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <!-- Refill methods -->
         <div style="background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px">
           <div style="font-size:14px;font-weight:700;color:var(--bento-text);margin-bottom:4px;display:flex;align-items:center;gap:8px">
-            \uD83D\uDD04 Tank reset methods
+            \uD83D\uDD04 ${this._waterText("Tank reset methods")}
           </div>
           <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:12px;line-height:1.5">
-            Choose how Home Assistant learns that you refilled the tank. Every option marks the tank full, and you can combine them.
+            ${this._waterText("Choose how Home Assistant learns that you refilled the tank. Every option marks the tank full, and you can combine them.")}
           </div>
 
           ${this._buildRefillMethodCard(device, data)}
@@ -6936,8 +7013,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const autoDefault = Boolean(device && (device.refill_on_clear || device.refill_on_clear_inferred));
     const autoChecked = typeof choices.auto_refill === 'boolean' ? choices.auto_refill : autoDefault;
 
-    const statusOn = '<span style="color:#22c55e;font-size:11px;font-weight:600">✅ On</span>';
-    const statusOff = '<span style="color:var(--vwm-text-muted,#9ca3af);font-size:11px">— Off</span>';
+    const statusOn = `<span style="color:#22c55e;font-size:11px;font-weight:600">✅ ${this._waterText("On")}</span>`;
+    const statusOff = `<span style="color:var(--vwm-text-muted,#9ca3af);font-size:11px">— ${this._waterText("Off")}</span>`;
     const cardSt = 'margin-bottom:10px;padding:14px;background:var(--vwm-bg,#fff);border-radius:12px;border:1.5px solid var(--vwm-border,#e5e7eb)';
     const labelSt = 'font-weight:700;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap';
     const descSt = 'font-size:12px;color:var(--vwm-text-secondary,#6b7280);line-height:1.5;margin-bottom:10px';
@@ -6951,54 +7028,54 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <button id="vwm-refill-legacy-remove" style="${btnSt};background:rgba(239,68,68,0.08);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">Remove old automation</button>
       </div>` : '';
     const refills = (data.refillHistory || []).slice(0, 5);
-    const history = refills.length ? `<div style="font-size:11px;color:var(--vwm-text-secondary,#6b7280);margin-top:8px">Recent refills: ${refills.map(r => `${_esc(this._formatReset(r.ts))} (${_esc(VWM_REFILL_SOURCE_LABEL[r.source] || r.source)})`).join(', ')}</div>` : '';
+    const history = refills.length ? `<div style="font-size:11px;color:var(--vwm-text-secondary,#6b7280);margin-top:8px">${this._waterText('Recent refills')}: ${refills.map(r => `${_esc(this._formatReset(r.ts))} (${_esc(this._waterText(VWM_REFILL_SOURCE_LABEL[r.source] || r.source))})`).join(', ')}</div>` : '';
 
     return `
       <div style="${cardSt}">
-        <div style="${labelSt}">① Refilled button in this card ${statusOn}</div>
-        <div style="${descSt};margin-bottom:0">Press <strong>💧 Refilled</strong> in the Water tab after filling the tank. It always works, also together with the options below.</div>
+        <div style="${labelSt}">① ${this._waterText("Refilled button in this card")} ${statusOn}</div>
+        <div style="${descSt};margin-bottom:0">${this._waterText("After filling the tank, press Refilled in the Water tab. You can also use the other refill methods.")}</div>
       </div>
 
       <div style="${cardSt}">
-        <div style="${labelSt}">② Automatic from the dock ${autoAvailable ? (autoChecked ? statusOn : statusOff) : '<span style="color:var(--vwm-text-muted,#9ca3af);font-size:11px">not available for this robot</span>'}</div>
-        <div style="${descSt}">When the dock's clean-water-empty error clears, the tank counts as refilled. Turn this off if that error sometimes clears without a refill, for example after re-seating the tank.</div>
+        <div style="${labelSt}">② ${this._waterText("Automatic from the dock")} ${autoAvailable ? (autoChecked ? statusOn : statusOff) : `<span style="color:var(--vwm-text-muted,#9ca3af);font-size:11px">${this._waterText("not available for this robot")}</span>`}</div>
+        <div style="${descSt}">${this._waterText("The tank is marked full when the dock clears its empty-water error. Disable this option if the error can clear without a refill, such as when the tank is re-seated.")}</div>
         <label style="display:flex;gap:8px;align-items:center;font-size:12px">
           <input type="checkbox" id="vwm-refill-auto" ${autoChecked ? 'checked' : ''} ${autoAvailable ? '' : 'disabled'}>
-          Refill automatically when the dock's empty-tank error clears
+          ${this._waterText("Refill automatically when the dock's empty-tank error clears")}
         </label>
       </div>
 
       <div style="${cardSt}">
-        <div style="${labelSt}">③ Dashboard or physical button ${selectedButton ? statusOn : statusOff}</div>
-        <div style="${descSt}">Pick an <code>input_button</code> or <code>button</code> entity. Pressing it marks the tank refilled: add it as a dashboard tile or link a Zigbee/Z-Wave button to it.</div>
+        <div style="${labelSt}">③ ${this._waterText("Dashboard or physical button")} ${selectedButton ? statusOn : statusOff}</div>
+        <div style="${descSt}">${this._waterText("Choose a Home Assistant button. Pressing it confirms a full refill. Add it to a dashboard or connect it to a physical button.")}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <select id="vwm-refill-button" style="${selectSt};flex:1;min-width:180px">
-            <option value="">— Not used —</option>
+            <option value="">${this._waterText("\u2014 Not used \u2014")}</option>
             ${buttonOpts}
           </select>
-          <button id="refill-btn-create" style="${btnSuccess}">+ Create input_button</button>
+          <button id="refill-btn-create" style="${btnSuccess}">${this._waterText("+ Create input_button")}</button>
         </div>
       </div>
 
       <div style="${cardSt}">
-        <div style="${labelSt}">④ Tank lid or door sensor ${selectedLid ? statusOn : statusOff}</div>
-        <div style="${descSt}">A contact sensor on the tank or dock lid. Closing it counts as a full refill.</div>
+        <div style="${labelSt}">④ ${this._waterText("Tank lid or door sensor")} ${selectedLid ? statusOn : statusOff}</div>
+        <div style="${descSt}">${this._waterText("A contact sensor on the tank or dock lid. Closing it counts as a full refill.")}</div>
         <select id="vwm-refill-lid" style="${selectSt}">
-          <option value="">— Not used —</option>
+          <option value="">${this._waterText("\u2014 Not used \u2014")}</option>
           ${sensorOpts}
         </select>
       </div>
 
       <div style="${cardSt}">
-        <div style="${labelSt}">⑤ Automation, script or NFC tag</div>
-        <div style="${descSt};margin-bottom:6px">Call this action from anything in Home Assistant:</div>
+        <div style="${labelSt}">⑤ ${this._waterText("Automation, script or NFC tag")}</div>
+        <div style="${descSt};margin-bottom:6px">${this._waterText("Call this action from anything in Home Assistant:")}</div>
         <pre style="margin:0;padding:8px 10px;border-radius:8px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));color:var(--vwm-text,#1e293b);font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;user-select:all">action: ha_vacuum_water_monitor.mark_refilled
 target:
   entity_id: ${_esc(vacuum)}</pre>
       </div>
 
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn-primary" id="vwm-refill-save" style="padding:8px 16px">Save refill options</button>
+        <button class="btn-primary" id="vwm-refill-save" style="padding:8px 16px">${this._waterText("Save refill options")}</button>
         <span id="vwm-refill-status" role="status" aria-live="polite" style="font-size:12px"></span>
       </div>
       ${history}
