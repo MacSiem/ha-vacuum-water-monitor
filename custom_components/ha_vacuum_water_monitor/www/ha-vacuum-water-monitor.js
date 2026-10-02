@@ -68,6 +68,18 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "Learned from calibrated devices of this model. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Wyuczone na skalibrowanych urządzeniach tego modelu. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
+  "Measured accounting on an owner's device of this model. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Pomiar rozliczania na urządzeniu właściciela tego modelu. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
+  "Manufacturer-declared quantity. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Ilość deklarowana przez producenta. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
+  "Independent review measurement. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Niezależny pomiar w recenzji. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
+  "Transferred from a closely related model. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Szacunek na podstawie podobnego modelu. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
+  "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Szacunek dla tego systemu mopowania; kalibracja podczas zwykłego używania. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
+  "Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
+  "Model not recognised: set the tank capacity to enable percentages.": "Model nie został rozpoznany: ustaw pojemność śledzonego zbiornika, aby włączyć procentowy bilans.",
+  "roller": "wałek",
+  "rotating": "mopy obrotowe",
+  "vibrating": "mop wibrujący",
+  "static": "mop statyczny",
   "Needs a refill baseline.": "Potrzebny punkt odniesienia pełnego zbiornika.",
   "Accounting paused.": "Rozliczanie jest wstrzymane.",
   "Measured volume.": "Zmierzona objętość.",
@@ -91,7 +103,7 @@ const VWM_WATER_TEXT_PL = {
 
   "Accounting status unknown.": "Stan rozliczania nieznany.",
   "No authoritative usage capability was supplied by the integration.": "Integracja nie podała obsługi rozliczania zużycia wody.",
-  "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Początkowy szacunek mopowania uczy się automatycznie na obsługiwanych sygnałach pustego zbiornika. Nieznane pojemności pozostają nieznane.",
+  "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Początkowy szacunek mopowania; kalibracja podczas zwykłego używania. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
   "any mode": "dowolny tryb",
   "unknown": "nieznany",
   "Optional support for HA Tools": "Opcjonalne wsparcie HA Tools",
@@ -3989,7 +4001,7 @@ const CALIBRATION_DATA = {
 // Published, model-specific facts are kept separate from estimated ml/m²
 // values. This avoids treating conditional manufacturer maxima (for example
 // "up to 240 m² per fill") as measured water-dosing rates.
-function _calibrationFacts(model) {
+function _calibrationFacts(model, lang = 'en') {
   if (!model) return [];
   const facts = [];
   const number = (value) => Number(value).toLocaleString('en-US');
@@ -4017,7 +4029,9 @@ function _calibrationFacts(model) {
   if (model.drying_temp_c) facts.push(`${number(model.drying_temp_c)}°C drying air`);
   if (model.smart_dirt_detection) facts.push('smart dirt detection');
   if (model.auto_detergent) facts.push('automatic detergent dosing');
-  return facts;
+  if (lang !== 'pl') return facts;
+  const labels = {"ml clean dock": "ml czystej wody w stacji", "ml dirty dock": "ml brudnej wody w stacji", "ml robot dirty": "ml brudnej wody w robocie", "ml robot": "ml w robocie", "m²/fill (manufacturer test)": "m² na zbiornik (test producenta)", "up to ": "do ", "rpm max": "obr./min maks.", "mm lift max": "mm uniesienia maks.", "N pressure max": "N nacisku maks.", "water levels": "poziomów wody", "-stage mop wash": " etapów mycia mopa", "continuous fresh-water delivery": "ciągłe podawanie czystej wody", "ml pre-task": "ml przed zadaniem", "ml mid-task": "ml w trakcie zadania", "wash interval: ": "odstęp mycia: ", "(default ": "(domyślnie ", "wash-frequency levels": "poziomów częstotliwości mycia", "mop-cleaning preferences": "ustawień mycia mopa", "°C wash": "°C mycia", "°C drying air": "°C suszenia", "smart dirt detection": "rozpoznawanie zabrudzeń", "automatic detergent dosing": "automatyczne dozowanie detergentu"};
+  return facts.map(fact => Object.entries(labels).reduce((text, [from, to]) => text.split(from).join(to), fact));
 }
 
 // Vendor/app model identifiers are not stable human product names. Resolve
@@ -6002,14 +6016,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
         : customCalib.calibration_scope || (configuredRates ? 'whole_cycle' : 'floor_only');
       const trackedCapacity = Number(data.totalMl) > 0 ? Number(data.totalMl) : null;
       const modelCapacity = Number(calib.tank_ml) > 0 ? Number(calib.tank_ml) : null;
-      const facts = _calibrationFacts(calib);
+      const facts = _calibrationFacts(calib, this._lang);
       calibHtml = `
         <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
           <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 ${this._waterText('Calibration')}: ${calib.label}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
             <div>🪣 ${this._waterText('Tracked tank')}: <b>${trackedCapacity ? `${trackedCapacity.toLocaleString('en-US')} ml` : 'unknown'}</b></div>
             ${modelCapacity && modelCapacity !== trackedCapacity ? `<div>📚 ${this._waterText('Model reference')}: <b>${modelCapacity.toLocaleString('en-US')} ml</b></div>` : ''}
-            <div>🧹 ${this._waterText('Mop')}: <b>${_esc(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : this._waterText('unknown')))}</b></div>
+            <div>🧹 ${this._waterText('Mop')}: <b>${_esc(this._waterText(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : this._waterText('unknown'))))}</b></div>
             ${calib.avg_area_per_charge ? `<div>📏 ${this._waterText('Est. area/charge')}: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
             ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText(scope === 'whole_cycle' ? 'whole cycle, including washes' : 'standard route, excl. washes')})</span></div>` : ''}
           </div>
@@ -6893,7 +6907,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     const rows = models.map(([key, m]) => {
       const levels = Object.entries(m.water_per_m2 || {});
-      const publishedFacts = _calibrationFacts(m);
+      const publishedFacts = _calibrationFacts(m, this._lang);
       const levelTags = levels.map(([mode, val]) => {
         const estArea = m.tank_ml ? Math.round(m.tank_ml / val) : '?';
         return `<span style="${tagSt};${levelColor(val)}" title="${mode}: ${val} ml/m\u00B2 \u2192 ~${estArea} m\u00B2/tank">${mode}: ${val}</span>`;
@@ -6930,7 +6944,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const active = activeProfileKey ? CALIBRATION_DATA[activeProfileKey] : null;
     if (active) {
       const levels = Object.entries(active.water_per_m2 || {});
-      const publishedFacts = _calibrationFacts(active);
+      const publishedFacts = _calibrationFacts(active, this._lang);
       const sourceLinks = (active.source_urls || []).map((url, index) => `<a href="${_esc(url)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6">manufacturer source${active.source_urls.length > 1 ? ' ' + (index + 1) : ''}</a>`).join(' · ');
       activeCard = `
         <div style="margin-bottom:14px;padding:14px;background:rgba(59,130,246,0.06);border:1.5px solid rgba(59,130,246,0.2);border-radius:12px">
