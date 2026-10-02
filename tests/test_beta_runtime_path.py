@@ -169,5 +169,26 @@ class ReviewFollowUpTests(unittest.TestCase):
         self.assertEqual(result["state_reason"], "water_empty")
 
 
+class ManualSignalEstimateTests(unittest.TestCase):
+    def test_persisted_manual_signals_remove_false_missing_signal_after_accounting(self):
+        raw = descriptor("a27", signals={"select.robot_custom_mode": "unmatched_mode"})
+        settings = {"configured_devices": [{"vacuum_entity": "vacuum.robot", "tracked_capacity_ml": 1234}],
+                    "signal_overrides": {"vacuum.robot": {"cleaning_mode_entity": "select.robot_custom_mode"}}}
+        device = sc.build_vacuum_devices(settings, {}, [raw])[0]
+        estimate = sc.estimate_water_state(device, {"initialized": True, "used_ml": 20}, settings)
+        self.assertEqual(estimate["used_ml"], 20)
+        self.assertEqual(estimate["remaining_ml"], 1214)
+        self.assertNotEqual(estimate["state_reason"], "mop_signal_unbound")
+
+    def test_other_robot_signal_does_not_clear_missing_signal(self):
+        raw = descriptor("a27", signals={"select.robot_custom_mode": "unmatched_mode"})
+        settings = {"configured_devices": [{"vacuum_entity": "vacuum.robot", "tracked_capacity_ml": 1234}],
+                    "signal_overrides": {"vacuum.robot": {"cleaning_mode_entity": "select.other_robot_mode"}}}
+        device = sc.build_vacuum_devices(settings, {}, [raw])[0]
+        estimate = sc.estimate_water_state(device, {"initialized": True, "used_ml": 20}, settings)
+        self.assertEqual(estimate["state_reason"], "mop_signal_unbound")
+        self.assertIsNone(estimate["remaining_ml"])
+
+
 if __name__ == "__main__":
     unittest.main()
