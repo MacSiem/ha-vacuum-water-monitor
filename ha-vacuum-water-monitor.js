@@ -4728,7 +4728,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ...(Array.isArray(authoredDevices) ? { devices: authoredDevices } : {}),
     };
 
-    this._activeTab = this._config.default_tab || 'water';
+    const validTabs = new Set(['water', 'maintenance', 'history', 'stats', 'database', 'settings']);
+    let savedNavigation = {};
+    try {
+      savedNavigation = JSON.parse(localStorage.getItem('ha-tools-vacuum-water-monitor-settings') || '{}') || {};
+    } catch (e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
+    this._activeTab = validTabs.has(config.default_tab) ? config.default_tab
+      : validTabs.has(savedNavigation._activeTab) ? savedNavigation._activeTab : 'water';
+    this._activeDeviceIdx = Number.isInteger(savedNavigation._activeDeviceIdx) && savedNavigation._activeDeviceIdx >= 0
+      ? savedNavigation._activeDeviceIdx : 0;
     try { localStorage.setItem('ha-tools-vacuum-water-monitor-settings', JSON.stringify({ _activeTab: this._activeTab, _activeDeviceIdx: this._activeDeviceIdx })); } catch(e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
     this._applyServerSettings();
     const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
