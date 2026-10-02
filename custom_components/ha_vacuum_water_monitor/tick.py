@@ -453,14 +453,16 @@ def _tick_device_pass(
     intensity_key = _intensity_rate_key(
         hass, device.get("mop_intensity_entity"), mop_intensity_raw, mop_intensity)
     # An authored exact numeric coefficient is stronger than a ranged prior.
-    if isinstance(intensity_map, dict) and _positive_number(intensity_map.get(mop_intensity)) is not None:
+    if intensity_key is not None and isinstance(intensity_map, dict) and _positive_number(intensity_map.get(mop_intensity)) is not None:
         intensity_key = mop_intensity
     intensity_factor = _mapping_number(intensity_map, intensity_key)
     unmapped_intensity = (
         mop_intensity
-        if isinstance(intensity_map, dict) and mop_intensity is not None
+        if mop_intensity is not None
         and mop_intensity not in _MOP_INTENSITY_OFF
-        and not any(_positive_number(intensity_map.get(key)) is not None for key in _rate_key_candidates(intensity_key))
+        and (intensity_key is None or (
+            isinstance(intensity_map, dict)
+            and not any(_positive_number(intensity_map.get(key)) is not None for key in _rate_key_candidates(intensity_key))))
         else None
     )
     # An explicit but unrecognized output level is not the declared default.
@@ -1778,7 +1780,7 @@ def _intensity_rate_key(
     ):
         return normalized_value
     if value < minimum or value > maximum:
-        return normalized_value
+        return None
     ratio = (value - minimum) / (maximum - minimum)
     if ratio <= 1 / 3:
         return "low"
