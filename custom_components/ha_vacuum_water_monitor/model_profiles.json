@@ -7552,6 +7552,13 @@
       },
       "provenance": [
         {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/uk/support/faq/details/KA-673648/",
+          "claim": "Overview Q1 and product-use Q51 confirm dual rotating mop pads; class consumption rates remain labelled estimates. Q62 distinguishes first wash 180 ml from mid-task wash 120 ml, not a universal wash dose.",
+          "last_verified": "2026-10-02",
+          "retrieval_status": "read"
+        },
+        {
           "source_type": "manufacturer_spec",
           "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
           "claim": "Root confirmed capacities (ml): dock_clean=4000; no consumption claim.",
@@ -7577,6 +7584,7 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
+      "mop_system": "rotating_pads",
       "verification_status": "capacity_verified"
     },
     "xiaomi_p2148": {
