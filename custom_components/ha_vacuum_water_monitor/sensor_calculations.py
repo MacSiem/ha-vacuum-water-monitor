@@ -253,8 +253,12 @@ def estimate_water_state(
             **{**metadata, "state_reason": "awaiting_refill"},
         }
 
+    # Accounting resolves persisted same-device assignments before checking mop
+    # evidence. Use that same binding guard for sensors and the health report.
+    evidence_device = dict(device)
+    _apply_signal_overrides(evidence_device, settings)
     if (metadata.get("estimate_basis") and device.get("mop_evidence_required")
-            and not _has_mop_evidence_signal(device)):
+            and not _has_mop_evidence_signal(evidence_device)):
         return {**metadata, "source": "unknown", "state_reason": "mop_signal_unbound",
                 "total_ml": _format_number(total_ml) if total_ml is not None else None,
                 "used_ml": None, "remaining_ml": None, "remaining_percent": None}
