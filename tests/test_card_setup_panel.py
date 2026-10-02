@@ -43,6 +43,15 @@ const reports = JSON.parse(process.argv[1]);
     out['zeroLastError' + lang] = card._buildSetupPanel(device, {
       ...reports.ok, last_tank: { error_percent: 0, accepted: true }
     });
+    out['rejectedLastError' + lang] = card._buildSetupPanel(device, {
+      ...reports.partial, last_tank: { error_percent: 5, accepted: false, reason: 'legacy_unknown_reason' }
+    });
+    out['missingDiagnostics' + lang] = card._buildDiagnostics({
+      calibrationHistory: [{ error_percent: null, accepted: false }]
+    });
+    out['zeroDiagnostics' + lang] = card._buildDiagnostics({
+      calibrationHistory: [{ error_percent: 0, accepted: true }]
+    });
   }
   card._lang = 'pl';
   out.okPl = card._buildSetupPanel(device, reports.ok);
@@ -152,6 +161,21 @@ class CardSetupPanelTests(unittest.TestCase):
                 self.assertNotIn(label, self.out["missingLastError" + lang])
                 self.assertIn(label, self.out["zeroLastError" + lang])
                 self.assertIn("0%", self.out["zeroLastError" + lang])
+
+    def test_missing_diagnostic_error_is_unknown_and_real_zero_is_kept(self):
+        for lang in ("en", "pl"):
+            with self.subTest(language=lang):
+                self.assertNotIn("0%", self.out["missingDiagnostics" + lang])
+                self.assertIn("?", self.out["missingDiagnostics" + lang])
+                self.assertIn("0%", self.out["zeroDiagnostics" + lang])
+
+    def test_rejected_tank_with_unknown_reason_never_claims_learning(self):
+        for lang, learned, skipped in [("en", "then learned", "not learned"),
+                                       ("pl", "potem nauczony", "nienauczony")]:
+            with self.subTest(language=lang):
+                html = self.out["rejectedLastError" + lang]
+                self.assertNotIn(learned, html)
+                self.assertIn(skipped, html)
 
     def test_unknown_tank_size_opens_the_editor(self):
         html = self.out["unknown"]
