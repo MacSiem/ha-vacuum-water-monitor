@@ -436,6 +436,7 @@ const VWM_SETUP_TEXT = {
   en: {
     setupTitle: (name) => `Set up water tracking: ${name}`,
     allGood: 'Signals are ready',
+    notTracked: 'Water tracking is not configured',
     remaining: 'Remaining', used: 'Used', lastRefill: 'Last refill', diagnostics: 'Diagnostics',
     model: 'Model', tank: 'Tank', accuracy: 'Estimated uncertainty', unknown: 'unknown',
     change: 'Change', save: 'Save', tankSize: 'Tank size', useModel: 'Use the model size',
@@ -474,6 +475,7 @@ const VWM_SETUP_TEXT = {
   pl: {
     setupTitle: (name) => `Konfiguracja liczenia wody: ${name}`,
     allGood: 'Sygnały są gotowe',
+    notTracked: 'Śledzenie wody nie jest skonfigurowane',
     remaining: 'Pozostało', used: 'Zużyto', lastRefill: 'Ostatnie dolanie', diagnostics: 'Diagnostyka',
     model: 'Model', tank: 'Zbiornik', accuracy: 'Szacowana niepewność', unknown: 'nieznany',
     change: 'Zmie\u0144', save: 'Zapisz', tankSize: 'Pojemno\u015B\u0107 zbiornika', useModel: 'U\u017Cyj pojemno\u015Bci modelu',
@@ -4953,7 +4955,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ? `<button class="vwm-setup-btn" data-setup="mark-empty" data-vacuum="${entity}">${L.markEmpty}</button>` : '');
     const factsHtml = `<div class="vwm-facts">${facts.map(f => `<span>${f}</span>`).join('')}</div>`;
     if (!blocking.length) {
-      return `<details class="vwm-health"${editing ? ' open' : ''}><summary>\u2705 ${L.allGood}</summary>${factsHtml}${capacityEditor}${hints}</details>`;
+      const untracked = report.tracks_water === false || infos.some(c => c.id === 'not_tracked');
+      const summary = untracked ? L.notTracked : `\u2705 ${L.allGood}`;
+      return `<details class="vwm-health"${editing ? ' open' : ''}><summary>${summary}</summary>${factsHtml}${capacityEditor}${hints}</details>`;
     }
     return `<div class="vwm-setup"><div class="vwm-setup-title">${L.setupTitle(_esc(report.name || device.vacuum_entity))}</div>${factsHtml}${capacityEditor}${steps}${hints}</div>`;
   }

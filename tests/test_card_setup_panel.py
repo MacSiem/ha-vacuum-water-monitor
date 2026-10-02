@@ -39,6 +39,10 @@ const reports = JSON.parse(process.argv[1]);
   out.okPl = card._buildSetupPanel(device, reports.ok);
   card._lang = 'en';
   out.unknown = card._buildSetupPanel(device, reports.unknown);
+  out.notTrackedEn = card._buildSetupPanel(device, reports.notTracked);
+  card._lang = 'pl';
+  out.notTrackedPl = card._buildSetupPanel(device, reports.notTracked);
+  card._lang = 'en';
   out.duplicateOnly = card._buildSetupPanel(device, reports.duplicate);
   // A tank size chosen in Home Assistant wins in the card's own numbers.
   card._serverState = { settings: { device_options: { 'vacuum.robot': { capacity_ml: 3000 } } }, tank_states: { 'vacuum.robot': { initialized: true, used_ml: 1500 } } };
@@ -62,6 +66,8 @@ BASE = {"vacuum_entity": "vacuum.robot", "name": "Robot S8", "model": "roborock.
         "capacity_source": "model", "model_capacity_ml": 4000, "uncertainty_percent": 20, "calibration_samples": 0,
         "can_calibrate": True, "refill_method": "dock_auto", "tracks_water": True}
 REPORTS = {
+    "notTracked": {**BASE, "tracks_water": False, "capacity_ml": None, "model_capacity_ml": None,
+                   "status": "ok", "checks": [{"id": "not_tracked", "severity": "info", "params": {}}]},
     "fresh": {**BASE, "status": "action_needed", "checks": [
         {"id": "awaiting_refill", "severity": "warning", "fix": "confirm_full", "params": {"auto_refill": True}}]},
     "ok": {**BASE, "status": "ok", "calibration_samples": 3, "checks": [], "typical_error_percent": 4.2,
@@ -121,6 +127,16 @@ class CardSetupPanelTests(unittest.TestCase):
         html = self.out["unknown"]
         self.assertIn('id="vwm-capacity-input"', html)
         self.assertIn('data-setup="save-capacity"', html)
+
+    def test_untracked_robot_does_not_claim_ready_signals(self):
+        for key, ready, pending in [("notTrackedEn", "Signals are ready", "Water tracking is not configured"),
+                                    ("notTrackedPl", "Sygnały są gotowe", "Śledzenie wody nie jest skonfigurowane")]:
+            with self.subTest(language=key):
+                html = self.out[key]
+                self.assertNotIn(ready, html)
+                self.assertIn(pending, html)
+                self.assertNotIn("✅", html)
+                self.assertIn('id="vwm-capacity-input"', html)
 
     def test_duplicate_question_is_left_to_its_banner(self):
         self.assertNotIn("vwm-step", self.out["duplicateOnly"])
