@@ -5849,7 +5849,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const activeSource = data.accountingSource === 'active_time'
         ? `Usage is being estimated from active time while mopping because this integration does not expose cleaned area.${uncertainty}`
         : `Usage is being estimated from the discovered mode, intensity, area, and wash signals.${uncertainty}`;
-      return box(active ? 'Active automatic estimate.' : 'Automatic estimate ready.', active ? activeSource : `Accounting will begin after a refill baseline when a supported mopping status is observed.${uncertainty}`, '#22c55e');
+      const recorded = Number.isFinite(Number(data.usedMl)) && Number(data.usedMl) > 0;
+      return box(active ? 'Active automatic estimate.' : recorded ? 'Usage recorded.' : 'Automatic estimate ready.',
+        active ? activeSource : recorded
+          ? 'Recorded consumption is retained between mopping and mop-wash events. Accounting continues when supported water-use signals are observed.'
+          : `Accounting will begin when a supported mopping status is observed.${uncertainty}`, '#22c55e');
     }
     return box('Accounting status unknown.', 'No authoritative usage capability was supplied by the integration.', '#64748b');
   }
