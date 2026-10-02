@@ -1,3 +1,4 @@
+require('./navigation.cjs');
 const {JSDOM}=require('jsdom');
 const fs=require('fs');
 const assert=require('assert/strict');
