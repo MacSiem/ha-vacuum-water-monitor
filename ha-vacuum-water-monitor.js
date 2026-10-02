@@ -141,6 +141,14 @@ const VWM_WATER_TEXT_PL = {
   "standard route, excl. washes": "standardowa trasa, bez mycia mopów",
   "Estimated water usage per m²": "Szacowane zużycie wody na m²",
   "Configured base usage per m²": "Ustawione bazowe zużycie na m²",
+  "Usage recorded.": "Zużycie zapisane.",
+  "Water": "Woda",
+  "Maint.": "Konserwacja",
+  "History": "Historia",
+  "Stats": "Statystyki",
+  "Database": "Baza modeli",
+  "Settings": "Ustawienia",
+  "Recorded consumption is retained between mopping and mop-wash events. Accounting continues when supported water-use signals are observed.": "Zapisane zużycie pozostaje zachowane między mopowaniem a myciem mopów. Naliczanie jest kontynuowane po otrzymaniu sygnałów zużycia wody.",
   "Configured rates; accuracy is not verified.": "Ustawione stawki; dokładność nie została zweryfikowana.",
   "whole cycle, including washes": "cały cykl, z myciem mopów",
   "Dock Status": "Stan stacji",
@@ -5850,9 +5858,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ? `Usage is being estimated from active time while mopping because this integration does not expose cleaned area.${uncertainty}`
         : `Usage is being estimated from the discovered mode, intensity, area, and wash signals.${uncertainty}`;
       const recorded = Number.isFinite(Number(data.usedMl)) && Number(data.usedMl) > 0;
-      return box(active ? 'Active automatic estimate.' : recorded ? 'Usage recorded.' : 'Automatic estimate ready.',
+      return box(active ? 'Active automatic estimate.' : recorded ? this._waterText('Usage recorded.') : 'Automatic estimate ready.',
         active ? activeSource : recorded
-          ? 'Recorded consumption is retained between mopping and mop-wash events. Accounting continues when supported water-use signals are observed.'
+          ? this._waterText('Recorded consumption is retained between mopping and mop-wash events. Accounting continues when supported water-use signals are observed.')
           : `Accounting will begin when a supported mopping status is observed.${uncertainty}`, '#22c55e');
     }
     return box('Accounting status unknown.', 'No authoritative usage capability was supplied by the integration.', '#64748b');
@@ -7214,7 +7222,7 @@ target:
     ];
 
     const tabNav = `<div class="tab-nav">
-      ${tabs.map(t => `<button class="tab-btn ${this._activeTab === t.id ? 'tab-active' : ''}" data-tab="${t.id}">${t.icon} ${t.label}</button>`).join('')}
+      ${tabs.map(t => `<button class="tab-btn ${this._activeTab === t.id ? 'tab-active' : ''}" data-tab="${t.id}" aria-pressed="${this._activeTab === t.id}">${t.icon} ${_esc(this._waterText(t.label))}</button>`).join('')}
     </div>`;
 
     const deviceHeader = devices.length > 0 ? `
@@ -7343,10 +7351,10 @@ target:
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         .device-body { display: flex; align-items: center; gap: 16px; }
         .gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
-        .details { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .details { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
         .row { display: flex; justify-content: space-between; align-items: center; gap:12px; min-height:30px; padding:4px 0; font-size: 12px; }
         .row-label { color: var(--bento-text-secondary); min-width:0; line-height:1.4; }
-        .row-val { font-weight: 600; color: var(--bento-text); flex-shrink:0; white-space:nowrap; }
+        .row-val { font-weight: 600; color: var(--bento-text); flex:1; min-width:0; white-space:normal; overflow-wrap:anywhere; text-align:right; }
         .accounting-guidance { display:grid; gap:4px; padding:12px 14px; margin-bottom:14px; border:1px solid; border-radius:10px; font-size:12px; line-height:1.55; color:var(--bento-text,#1a1a2e); }
         .accounting-guidance b { font-size:12px; }
         .diagnostics { margin-top:16px; color:var(--bento-text-secondary,#64748b); }
