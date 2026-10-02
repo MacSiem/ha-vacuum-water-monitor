@@ -503,6 +503,7 @@ def _tick_device_pass(
     # A short gap with the same settings and a continuous area counter keeps the
     # tank complete: the cumulative counter still carries the cleaned area.
     bridge_area = False
+    previous_rate_settings = state.get("last_rate_settings") or {}
     rate_settings = {"cleaning_mode": cleaning_mode, "mop_mode": mop_mode, "mop_intensity": mop_intensity}
     gap_started = _positive_number(state.get("gap_started_ts"))
     if gap_started is not None and (curr_area is not None or not device.get("area_sensor")):
@@ -628,6 +629,29 @@ def _tick_device_pass(
     state["accounting_calibration_context"] = calibration_context
     # 5.6 state has only the legacy hash; the first 5.7 pass adopts it silently.
     if old_interval_context is not None and old_interval_context != context:
+        # Rebaselining discards a setting-crossing interval. If that interval
+        # could have used water, the tank is no longer a complete learning
+        # sample, even though later intervals can continue to be recorded.
+        previous_mop_active = _is_mop_active(
+            previous_rate_settings.get("cleaning_mode"),
+            previous_rate_settings.get("mop_mode"), None,
+            mop_intensity=previous_rate_settings.get("mop_intensity"),
+            intensity_is_evidence=bool(device.get("mop_intensity_is_evidence")),
+            require_evidence=bool(device.get("mop_evidence_required")))
+        previous_area = _float_or_none(state.get("last_area"))
+        previous_duration = _float_or_none(state.get("last_duration_seconds"))
+        exposure_changed = (curr_area is not None and previous_area is not None
+                            and curr_area - previous_area > AREA_COUNTER_JITTER_M2)
+        if curr_area is None:
+            exposure_changed = (
+                curr_duration_seconds is not None and previous_duration is not None
+                and curr_duration_seconds > previous_duration) or (
+                not (device.get("duration_sensor") or device.get("duration_attribute"))
+                and now_ts > _number(state.get("last_tick_ts"), now_ts))
+        was_or_is_cleaning = (_is_cleaning(None, state.get("last_status"))
+                              or _is_cleaning(vac_state, curr_status, cleaning_active))
+        if exposure_changed and was_or_is_cleaning and (mop_active or previous_mop_active):
+            state.update(accounting_incomplete=True, session_water_broken=True)
         updates: dict[str, Any] = dict(
             last_area=curr_area, last_duration_seconds=curr_duration_seconds,
             last_tick_ts=now_ts, last_water_volume_ml=None, session_accounting_valid=False,
