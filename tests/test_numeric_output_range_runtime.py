@@ -52,3 +52,8 @@ class NumericOutputRuntimeTests(unittest.TestCase):
         state,_=self.sample(4,{'min':1,'max':3})
         self.assertEqual(state['used_ml'],0)
         self.assertTrue(state.get('accounting_incomplete'))
+
+    def test_known_enum_outside_declared_range_remains_unknown(self):
+        state,_=self.sample(3,{"min":1,"max":2})
+        self.assertEqual(state["used_ml"],0)
+        self.assertTrue(state.get("accounting_incomplete"))
