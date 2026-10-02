@@ -4959,8 +4959,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       Number(report.calibration_samples) > 0 ? L.calibrated(Number(report.calibration_samples)) : (report.can_calibrate ? L.learns : ''),
       L.refill[report.refill_method] || '',
       report.supply && report.supply.cleanings_left != null ? L.supply(Number(report.supply.cleanings_left), report.supply.days_left != null ? Number(report.supply.days_left) : null) : '',
-      report.last_tank && Number.isFinite(Number(report.last_tank.error_percent))
-        ? L.lastTank(Number(report.last_tank.error_percent), report.last_tank.accepted ? '' : ((this._lang === 'pl' ? VWM_TANK_REASON_LABEL_PL : VWM_TANK_REASON_LABEL)[report.last_tank.reason] || ''))
+      report.last_tank && typeof report.last_tank.error_percent === 'number' && Number.isFinite(report.last_tank.error_percent)
+        ? L.lastTank(Number(report.last_tank.error_percent), report.last_tank.accepted === true ? '' : ((this._lang === 'pl' ? VWM_TANK_REASON_LABEL_PL : VWM_TANK_REASON_LABEL)[report.last_tank.reason] || (this._lang === 'pl' ? 'nienauczony' : 'not learned')))
         : '',
       Number(report.calibration_samples) >= 3 && report.typical_error_percent != null ? L.typical(Number(report.typical_error_percent)) : '',
     ].filter(Boolean);
@@ -6240,7 +6240,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.mopSystem) rows.push(['Mop system', String(data.mopSystem).replace(/_/g, ' ')]);
     if (data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent))) rows.push(['Estimated accuracy', `\u00B1${Number(data.uncertaintyPercent)}%`]);
     const tanks = (data.calibrationHistory || []).slice(0, 5);
-    if (tanks.length) rows.push(['Last empty tanks', tanks.map(t => `${Number.isFinite(Number(t.error_percent)) ? (Number(t.error_percent) > 0 ? '+' : '') + Number(t.error_percent) + '%' : '?'}${t.accepted ? '' : ` (${VWM_TANK_REASON_LABEL[t.reason] || 'skipped'})`}`).join(', ')]);
+    if (tanks.length) rows.push(['Last empty tanks', tanks.map(t => `${typeof t.error_percent === 'number' && Number.isFinite(t.error_percent) ? (Number(t.error_percent) > 0 ? '+' : '') + Number(t.error_percent) + '%' : '?'}${t.accepted ? '' : ` (${VWM_TANK_REASON_LABEL[t.reason] || 'skipped'})`}`).join(', ')]);
     if (data.calibrationPending) rows.push(['Calibration check', 'An unusual tank result waits for the next tank to confirm it']);
     if (data.intensityUnmapped) rows.push(['Water level', `\u201C${data.intensityUnmapped}\u201D has no own factor; the average level is used`]);
     if (Number(data.bridgedGaps) > 0) rows.push(['Signal gaps bridged', String(Number(data.bridgedGaps))]);

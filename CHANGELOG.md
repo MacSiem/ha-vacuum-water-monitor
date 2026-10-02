@@ -2,6 +2,8 @@
 
 ## 5.9.0 (unreleased)
 
+- Keep missing tank accuracy unknown in setup and diagnostics, preserve a genuine 0% error, and never claim learning from a rejected sample with an unknown legacy reason.
+
 - Keep informational descriptions readable in light and dark Home Assistant themes, including the card fallback styles.
 
 - Preserve recorded consumption across area and active-time handoffs, distinguish mopping from vacuum-only operation, and count a mop-wash sequence once. Missing exposure remains explicit and excludes an incomplete tank from learning.
