@@ -18,6 +18,19 @@ def floor_ml_before(status, vac):
 
 
 class AreaAtTransitionTests(unittest.TestCase):
+    def test_prewash_before_new_task_area_reset_keeps_balance_complete(self):
+        state = run(S8, dict(BASE), [
+            dict(status="charging", vac="docked", area="22.7", intensity="off"),
+            dict(status="charging", vac="docked", area="22.7", intensity="standard"),
+            dict(status="washing_the_mop", vac="docked", area="22.7", intensity="standard"),
+            dict(status="washing_the_mop", vac="docked", area="0", intensity="standard"),
+            dict(status="cleaning", vac="cleaning", area="0", intensity="standard"),
+            dict(status="cleaning", vac="cleaning", area="5", intensity="standard"),
+        ])
+        self.assertAlmostEqual(state["used_ml"], 150 + 5 * 6, places=1)
+        self.assertFalse(state.get("accounting_incomplete"))
+        self.assertFalse(state.get("session_water_broken"))
+
     def test_area_cleaned_before_heading_to_wash_is_charged(self):
         added, _ = floor_ml_before("going_to_wash_the_mop", "returning")
         self.assertAlmostEqual(added, 2 * 6 + 150, places=1)
