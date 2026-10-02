@@ -70,6 +70,21 @@ class WaterLevelTests(unittest.TestCase):
                 self.assertEqual(state["intensity_unmapped"], level)
                 self.assertTrue(state.get("accounting_incomplete"))
 
+    def test_time_fallback_respects_the_same_water_level_factors_as_area(self):
+        device = {**S8, "area_sensor": None,
+                  "usage_ml_per_active_minute": {"default": 2},
+                  "time_accounting_evidence": "user_measured"}
+        for level, expected_ml in (("mild", 1.4), ("standard", 2.0),
+                                   ("intense", 2.6), ("extreme", 3.0)):
+            with self.subTest(level=level):
+                first = run(device, dict(BASE), [dict(status="cleaning", vac="cleaning",
+                                                      intensity=level)])
+                before = first["used_ml"]
+                after = run(device, first, [dict(status="cleaning", vac="cleaning",
+                                                 intensity=level)], ts=10_060_000)
+                self.assertAlmostEqual(after["used_ml"] - before, expected_ml, places=2)
+                self.assertFalse(after.get("accounting_incomplete"))
+
     def test_unmapped_level_does_not_escape_through_time_fallback(self):
         device = {**S8, "area_sensor": None,
                   "usage_ml_per_active_minute": {"default": 2},
