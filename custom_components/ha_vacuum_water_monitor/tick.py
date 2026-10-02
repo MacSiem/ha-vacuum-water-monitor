@@ -924,6 +924,7 @@ def _tick_device_pass(
     last_duration_seconds = _float_or_none(state.get("last_duration_seconds"))
     should_use_time = (curr_area is None or (usage_per_m2 is None and usage_per_minute is not None)) and not wash_now
     elapsed_seconds: float | None = None
+    time_interval_counted = False
     if should_use_time and curr_duration_seconds is not None:
         if last_duration_seconds is None or state.get("duration_gap"):
             dirty |= _record_accounting(
@@ -960,6 +961,7 @@ def _tick_device_pass(
                 state, "active_time", None, time_evidence, "missing_time_rate"
             )
         else:
+            time_interval_counted = True
             effective_minute_rate = usage_per_minute * calibration_factor
             added = (elapsed_seconds / 60) * effective_minute_rate * (
                 intensity_factor if intensity_factor is not None else 1
@@ -1312,6 +1314,10 @@ def _tick_device_pass(
                 _record_accounting(state, "unknown", None, None, resolution.get("reason") or "incomplete_cycle")
         dirty = True
     pass_reasons = set(state.get(_PASS_REASONS_KEY) or ())
+    # A valid time rate covered this interval; lack of an area coefficient
+    # did not lose water exposure. Other gaps and missing rates still apply.
+    if time_interval_counted:
+        pass_reasons.discard("missing_area_rate")
     exposure_possible = bool(session_running or wash_now or state.get("session_start_ts")
                              or state.get("verified_wash_active"))
     if (unobserved_exposure or pass_reasons & _MISSING_RATE_REASONS
