@@ -100,12 +100,12 @@ class CardEstimateTests(unittest.TestCase):
 FOOTER_SCRIPT = SCRIPT.split("const cases =")[0] + r"""
 card.setConfig({type:'custom:ha-vacuum-water-monitor', language:'en', show_dock_status:false});
 card._hass={states:{},locale:{language:'en'}};
-const device={vacuum_entity:'vacuum.robot', profile_key:'roborock_s7_maxv', brand_profile:'roborock_s7_maxv', capability:'automatic_estimate', config_provenance:{authored_fields:['vacuum_entity']}};
+const device=card._decorateLegacyProfile({vacuum_entity:'vacuum.robot', profile_key:'roborock_s7_maxv', brand_profile:'roborock_s7_maxv', capability:'automatic_estimate', config_provenance:{authored_fields:['vacuum_entity']}});
 card._discoveredVacuums=[device];
 card._serverState={settings:{custom_calibration:{'entity:vacuum.robot':{usage_ml_per_m2:{standard:10},calibration_scope:'floor_only'}}},tank_states:{'vacuum.robot':{initialized:true,used_ml:40}}};
 const data=card._calcDeviceData(device);data.totalMl=1234;
 const configured=card._buildWaterTab(device,data);
-const authored={...device,usage_ml_per_m2:{standard:12},config_provenance:{authored_fields:['vacuum_entity','usage_ml_per_m2']}};
+const authored=card._decorateLegacyProfile({...device,usage_ml_per_m2:{standard:12},config_provenance:{authored_fields:['vacuum_entity','usage_ml_per_m2']}});
 const explicit=card._buildWaterTab(authored,{...data});
 card._serverState.settings.custom_calibration={'entity:vacuum.robot':{tracked_capacity_ml:1234}};
 const prior=card._buildWaterTab(device,card._calcDeviceData(device));

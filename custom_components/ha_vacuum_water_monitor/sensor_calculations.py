@@ -188,10 +188,10 @@ def estimate_water_state(
     # Reports and sensors receive discovery descriptors, while accounting uses
     # the persisted effective configuration. Resolve the same copy here so an
     # authored rate cannot inherit model-prior accuracy claims.
-    device = apply_custom_calibration(device, settings)
+    effective_device = apply_custom_calibration(device, settings)
 
     profile = resolve_profile(device)
-    user_rate = (device.get("accounting_evidence") in {"user_calibration", "explicit_user_configuration"}
+    user_rate = (effective_device.get("accounting_evidence") in {"user_calibration", "explicit_user_configuration"}
                  or bool(device.get("consumption_calibration")))
     estimate_basis = None if user_rate else (device.get("estimate_basis") or profile.get("estimate_basis"))
     initialized = bool(tank_state.get("initialized")) or parse_refill_datetime(tank_state) is not None
