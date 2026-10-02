@@ -185,6 +185,10 @@ def estimate_water_state(
     device = device if isinstance(device, dict) else {}
     tank_state = tank_state if isinstance(tank_state, dict) else {}
     settings = settings if isinstance(settings, dict) else {}
+    # Reports and sensors receive discovery descriptors, while accounting uses
+    # the persisted effective configuration. Resolve the same copy here so an
+    # authored rate cannot inherit model-prior accuracy claims.
+    device = apply_custom_calibration(device, settings)
 
     profile = resolve_profile(device)
     user_rate = (device.get("accounting_evidence") in {"user_calibration", "explicit_user_configuration"}

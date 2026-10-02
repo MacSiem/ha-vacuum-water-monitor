@@ -140,6 +140,9 @@ const VWM_WATER_TEXT_PL = {
   "Est. floor area/tank": "Szac. powierzchnia na zbiornik",
   "standard route, excl. washes": "standardowa trasa, bez mycia mopów",
   "Estimated water usage per m²": "Szacowane zużycie wody na m²",
+  "Configured base usage per m²": "Ustawione bazowe zużycie na m²",
+  "Configured rates; accuracy is not verified.": "Ustawione stawki; dokładność nie została zweryfikowana.",
+  "whole cycle, including washes": "cały cykl, z myciem mopów",
   "Dock Status": "Stan stacji",
   "Clean Water Box": "Zbiornik czystej wody",
   "Dirty Water Box": "Zbiornik brudnej wody",
@@ -5711,10 +5714,23 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const profileKey = (device && this._resolveProfileKey(device)) || cfg.brand_profile || 'generic';
     const calib = typeof CALIBRATION_DATA !== 'undefined' ? CALIBRATION_DATA[profileKey] || CALIBRATION_DATA['generic'] : null;
     if (calib) {
-      const usage = calib.water_per_m2 || {};
-      const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${k}:</b> ${v} ml/m²</span>`).join('');
+      const effectiveDevice = this._withBackendDescriptor(device);
+      const customCalib = this._effectiveCustomCalibration(effectiveDevice);
+      const explicit = this._explicitDeviceKeys(effectiveDevice);
+      const validRates = value => Object.fromEntries(Object.entries(value || {})
+        .filter(([, rate]) => Number.isFinite(Number(rate)) && Number(rate) > 0)
+        .map(([key, rate]) => [key, Number(rate)]));
+      const customRates = validRates(customCalib.usage_ml_per_m2 || customCalib.water_per_m2);
+      const explicitRates = explicit.has('usage_ml_per_m2') ? validRates(effectiveDevice.usage_ml_per_m2) : {};
+      const configuredRates = Object.keys(customRates).length > 0 || Object.keys(explicitRates).length > 0;
+      const usage = {...(configuredRates && calib.estimate_basis ? {} : validRates(calib.water_per_m2)),
+        ...customRates, ...explicitRates};
+      const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${_esc(k)}:</b> ${v} ml/m²</span>`).join('');
       const referenceUsage = usage.standard || usage.medium || usage.default || Object.values(usage)[0] || null;
-      const estAreaPerTank = referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / referenceUsage) : null;
+      const factor = Number(data.calibrationFactor) > 0 ? Number(data.calibrationFactor) : 1;
+      const estAreaPerTank = referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / (referenceUsage * factor)) : null;
+      const scope = explicit.has('calibration_scope') ? effectiveDevice.calibration_scope
+        : customCalib.calibration_scope || (configuredRates ? 'whole_cycle' : 'floor_only');
       const trackedCapacity = Number(data.totalMl) > 0 ? Number(data.totalMl) : null;
       const modelCapacity = Number(calib.tank_ml) > 0 ? Number(calib.tank_ml) : null;
       const facts = _calibrationFacts(calib);
@@ -5726,11 +5742,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
             ${modelCapacity && modelCapacity !== trackedCapacity ? `<div>📚 ${this._waterText('Model reference')}: <b>${modelCapacity.toLocaleString('en-US')} ml</b></div>` : ''}
             <div>🧹 ${this._waterText('Mop')}: <b>${_esc(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : 'unknown'))}</b></div>
             ${calib.avg_area_per_charge ? `<div>📏 ${this._waterText('Est. area/charge')}: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
-            ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText('standard route, excl. washes')})</span></div>` : ''}
+            ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText(scope === 'whole_cycle' ? 'whole cycle, including washes' : 'standard route, excl. washes')})</span></div>` : ''}
           </div>
           ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText('Estimated water usage per m²')}${calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : 'No estimate for this model yet; set the tank capacity to enable tracking.'}</div>`}
-          ${calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + calib.notes + '</div>' : ''}
+          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}${!configuredRates && calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : 'No estimate for this model yet; set the tank capacity to enable tracking.'}</div>`}
+          ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + calib.notes + '</div>' : ''}
         </div>`;
     }
 
