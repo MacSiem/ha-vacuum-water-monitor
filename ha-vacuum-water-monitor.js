@@ -68,6 +68,62 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "Select a recorded cycle. Optionally enter the water measured to refill the same reservoir to its starting level and your measurement resolution. Review the draft before downloading; nothing is uploaded.": "Wybierz zapisane sprzątanie. Opcjonalnie wpisz zmierzoną ilość wody dolanej do tego samego poziomu oraz dokładność pomiaru. Sprawdź szkic przed pobraniem; nic nie jest przesyłane.",
+  "Recorded cycle": "Zapisane sprzątanie",
+  "Cycle": "Sprzątanie",
+  "Measured refill (ml)": "Zmierzona ilość dolanej wody (ml)",
+  "Measurement resolution (ml)": "Dokładność pomiaru (ml)",
+  "Private measured calibration": "Prywatna kalibracja na podstawie pomiarów",
+  "Save a full-to-full refill for this device. Three distinct complete cycles with the same historical settings fit a whole-cycle dose per m². Independent validation cycles never change that fit. Partial cycles, missing context and changed settings cannot be used.": "Zapisz pomiar dolania od pełnego zbiornika do ponownie pełnego. Trzy różne kompletne sprzątania z tymi samymi zapisanymi ustawieniami pozwalają wyznaczyć zużycie całego cyklu na m². Pomiary do niezależnej weryfikacji nie zmieniają kalibracji. Nie można użyć niepełnych cykli, brakujących danych ani zmienionych ustawień.",
+  "Instrument": "Przyrząd pomiarowy",
+  "Graduated jug": "Dzbanek z podziałką",
+  "Scale (water, converted to ml)": "Waga (woda przeliczona na ml)",
+  "Flow meter": "Przepływomierz",
+  "Sample purpose": "Cel pomiaru",
+  "Training": "Kalibracja",
+  "Independent validation": "Niezależna weryfikacja",
+  "Same full reservoir level before and after; no intermediate refill or unmeasured transfer": "Ten sam pełny poziom zbiornika przed i po sprzątaniu; bez dolania w trakcie ani niezmierzonego przelewania",
+  "Complete cycle observed from zero area, with unchanged settings and no interruption": "Pełne sprzątanie obserwowane od zerowej powierzchni, bez zmiany ustawień i przerwania",
+  "Save private measurement": "Zapisz pomiar prywatnie",
+  "The draft excludes identifiers and dates. Historical settings still need verification; estimates and elapsed time are not physical measurements or active mopping time.": "Szkic pomija identyfikatory i daty. Zapisane ustawienia wymagają sprawdzenia; szacunek wody i czas trwania nie są fizycznym pomiarem ani czasem aktywnego mopowania.",
+  "Preview contribution draft": "Podgląd szkicu danych",
+  "Contribution draft preview": "Podgląd szkicu danych",
+  "Download reviewed draft": "Pobierz sprawdzony szkic",
+  "No recorded cycle available.": "Brak zapisanych sprzątań.",
+  "historical context": "dane zapisane podczas sprzątania",
+  "complete single-context cycle": "pełne sprzątanie z niezmiennymi ustawieniami",
+  "measured area": "zmierzona powierzchnia",
+  "Not ready for fitting:": "Brak danych do kalibracji:",
+  "Current settings cannot fill historical gaps.": "Bieżące ustawienia nie uzupełniają braków w historii.",
+  "Historical context and complete area are recorded. Confirm the physical measurement boundaries below.": "Zapisano ustawienia i pełną powierzchnię. Poniżej potwierdź warunki fizycznego pomiaru.",
+  "Enter measured ml and resolution, then confirm both measurement boundaries.": "Wpisz zmierzoną ilość wody i dokładność pomiaru, a następnie potwierdź oba warunki pomiaru.",
+  "Saved privately.": "Zapisano prywatnie.",
+  "sample(s)": "pomiarów",
+  "device calibration available within its measured area range. Independent accuracy remains separate.": "kalibracja urządzenia dostępna w zmierzonym zakresie powierzchni. Dokładność wymaga niezależnej weryfikacji.",
+  "for these settings; at least three distinct training cycles are needed.": "dla tych ustawień; potrzebne są co najmniej trzy różne sprzątania do kalibracji.",
+  "Could not save. Check complete historical context, measurement boundaries, duplicate cycle and connection.": "Nie udało się zapisać. Sprawdź zapisane dane i warunki pomiaru, powtórzenie tego samego sprzątania oraz połączenie.",
+  "Enter both measured refill and a positive resolution in ml.": "Wpisz zmierzoną ilość dolanej wody oraz dodatnią dokładność pomiaru w ml.",
+  "Preparing preview…": "Przygotowywanie podglądu…",
+  "Review every field. Missing context must be completed before submission. Nothing has been uploaded.": "Sprawdź każde pole. Uzupełnij brakujące dane przed wysłaniem. Nic nie zostało przesłane.",
+  "Could not prepare the draft. Check the connection and recorded cycle, then retry.": "Nie udało się przygotować szkicu. Sprawdź połączenie i zapisane sprzątanie, a następnie spróbuj ponownie.",
+  "Model identifier": "Identyfikator modelu",
+  "Retail variant": "Wariant sprzedażowy",
+  "Dock variant": "Wariant stacji",
+  "Firmware": "Oprogramowanie urządzenia",
+  "Integration": "Integracja",
+  "Integration version": "Wersja integracji",
+  "Reservoir": "Zbiornik",
+  "Action": "Czynność",
+  "Route": "Trasa",
+  "Passes": "Liczba przejazdów",
+  "Mop wash mode": "Tryb mycia mopa",
+  "Mop wash frequency": "Częstotliwość mycia mopa",
+  "Mop wash temperature": "Temperatura mycia mopa",
+  "Adaptive mode": "Tryb adaptacyjny",
+  "Detergent mode": "Tryb detergentu",
+  "Task scope": "Zakres sprzątania",
+  "Suction level": "Siła odkurzania",
+  "Carpet policy": "Zachowanie na dywanach",
   "Model": "Model",
   "Tank": "Zbiornik",
   "Water usage (ml/m²)": "Zużycie wody (ml/m²)",
@@ -6381,26 +6437,26 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const contributionForm = `<details class="section-block contribution-form">
       <summary class="section-title">${this._waterText("Optional measurements and contribution drafts")}</summary>
       <p>${this._waterText("Normal water tracking does not require these measurements. Use them only if you want to provide independently measured data.")}</p>
-      <p>Select a recorded cycle. Optionally enter the water measured to refill the same reservoir to its starting level and your measurement resolution. Review the draft before downloading; nothing is uploaded.</p>
-      <label>Recorded cycle <select id="cal-cycle" class="maint-input" ${recordedCycles.length ? '' : 'disabled'}>
-        ${recordedCycles.slice(0, 50).map((s, i) => `<option value="${rawCycles.indexOf(s)}" data-cycle-ts="${Number(s.ts)}">Cycle ${i + 1} — ${_esc(new Date(s.ts).toLocaleString())}</option>`).join('')}
+      <p>${this._waterText("Select a recorded cycle. Optionally enter the water measured to refill the same reservoir to its starting level and your measurement resolution. Review the draft before downloading; nothing is uploaded.")}</p>
+      <label>${this._waterText("Recorded cycle")} <select id="cal-cycle" class="maint-input" ${recordedCycles.length ? '' : 'disabled'}>
+        ${recordedCycles.slice(0, 50).map((s, i) => `<option value="${rawCycles.indexOf(s)}" data-cycle-ts="${Number(s.ts)}">${this._waterText("Cycle")} ${i + 1} — ${_esc(new Date(s.ts).toLocaleString())}</option>`).join('')}
       </select></label>
-      <label>Measured refill (ml) <input id="cal-observed" class="maint-input" type="number" min="0" step="any" /></label>
-      <label>Measurement resolution (ml) <input id="cal-resolution" class="maint-input" type="number" min="0" step="any" /></label>
-      <div class="section-title">Private measured calibration</div>
+      <label>${this._waterText("Measured refill (ml)")} <input id="cal-observed" class="maint-input" type="number" min="0" step="any" /></label>
+      <label>${this._waterText("Measurement resolution (ml)")} <input id="cal-resolution" class="maint-input" type="number" min="0" step="any" /></label>
+      <div class="section-title">${this._waterText("Private measured calibration")}</div>
       <p id="cal-readiness">${_esc(this._measurementReadiness(recordedCycles[0]))}</p>
-      <p>Save a full-to-full refill for this device. Three distinct complete cycles with the same historical settings fit a whole-cycle dose per m². Independent validation cycles never change that fit. Partial cycles, missing context and changed settings cannot be used.</p>
-      <label>Instrument <select id="cal-instrument" class="maint-input"><option value="graduated_jug">Graduated jug</option><option value="scale_water">Scale (water, converted to ml)</option><option value="flow_meter">Flow meter</option></select></label>
-      <label>Sample purpose <select id="cal-purpose" class="maint-input"><option value="training">Training</option><option value="validation">Independent validation</option></select></label>
-      <label><span><input type="checkbox" id="cal-boundaries" /> Same full reservoir level before and after; no intermediate refill or unmeasured transfer</span></label>
-      <label><span><input type="checkbox" id="cal-uninterrupted" /> Complete cycle observed from zero area, with unchanged settings and no interruption</span></label>
-      <button type="button" id="cal-save" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>Save private measurement</button>
+      <p>${this._waterText("Save a full-to-full refill for this device. Three distinct complete cycles with the same historical settings fit a whole-cycle dose per m². Independent validation cycles never change that fit. Partial cycles, missing context and changed settings cannot be used.")}</p>
+      <label>${this._waterText("Instrument")} <select id="cal-instrument" class="maint-input"><option value="graduated_jug">${this._waterText("Graduated jug")}</option><option value="scale_water">${this._waterText("Scale (water, converted to ml)")}</option><option value="flow_meter">${this._waterText("Flow meter")}</option></select></label>
+      <label>${this._waterText("Sample purpose")} <select id="cal-purpose" class="maint-input"><option value="training">${this._waterText("Training")}</option><option value="validation">${this._waterText("Independent validation")}</option></select></label>
+      <label><span><input type="checkbox" id="cal-boundaries" /> ${this._waterText("Same full reservoir level before and after; no intermediate refill or unmeasured transfer")}</span></label>
+      <label><span><input type="checkbox" id="cal-uninterrupted" /> ${this._waterText("Complete cycle observed from zero area, with unchanged settings and no interruption")}</span></label>
+      <button type="button" id="cal-save" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>${this._waterText("Save private measurement")}</button>
       <div id="cal-local-status" role="status" aria-live="polite"></div>
-      <p>The draft excludes identifiers and dates. Historical settings still need verification; estimates and elapsed time are not physical measurements or active mopping time.</p>
-      <button type="button" id="cal-preview" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>Preview contribution draft</button>
+      <p>${this._waterText("The draft excludes identifiers and dates. Historical settings still need verification; estimates and elapsed time are not physical measurements or active mopping time.")}</p>
+      <button type="button" id="cal-preview" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>${this._waterText("Preview contribution draft")}</button>
       <div id="cal-export-status" role="status" aria-live="polite"></div>
-      <textarea id="cal-export-preview" aria-label="Contribution draft preview" readonly hidden style="width:100%;box-sizing:border-box;min-height:220px"></textarea>
-      <button type="button" id="cal-download" class="maint-add-btn" disabled>Download reviewed draft</button>
+      <textarea id="cal-export-preview" aria-label="${this._waterText("Contribution draft preview")}" readonly hidden style="width:100%;box-sizing:border-box;min-height:220px"></textarea>
+      <button type="button" id="cal-download" class="maint-add-btn" disabled>${this._waterText("Download reviewed draft")}</button>
     </details>`;
 
     return `
@@ -6432,22 +6488,23 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _measurementReadiness(session) {
-    if (!session || typeof session !== 'object') return 'No recorded cycle available.';
+    if (!session || typeof session !== 'object') return this._waterText("No recorded cycle available.");
     const missing = [];
+    const labels = {"model_id": "Model identifier", "sku": "Retail variant", "dock_variant": "Dock variant", "firmware": "Firmware", "integration_id": "Integration", "integration_version": "Integration version", "reservoir": "Reservoir", "action": "Action", "mop_mode": "Mop mode", "water_level": "Water level", "route": "Route", "passes": "Passes", "wash_mode": "Mop wash mode", "wash_frequency": "Mop wash frequency", "wash_temperature": "Mop wash temperature", "adaptive_mode": "Adaptive mode", "detergent_mode": "Detergent mode", "cleaning_mode": "Cleaning mode", "task_scope": "Task scope", "suction_level": "Suction level", "carpet_policy": "Carpet policy"};
     const ctx = session.context;
-    if (!ctx || typeof ctx !== 'object') missing.push('historical context');
+    if (!ctx || typeof ctx !== 'object') missing.push(this._waterText("historical context"));
     else {
       for (const key of ['model_id','sku','dock_variant','firmware','integration_id','integration_version','reservoir','action']) {
-        if (!ctx[key] || ['unknown','unavailable'].includes(ctx[key])) missing.push(key);
+        if (!ctx[key] || ['unknown','unavailable'].includes(ctx[key])) missing.push(this._waterText(labels[key]));
       }
       for (const key of ['mop_mode','water_level','route','passes','wash_mode','wash_frequency','wash_temperature','adaptive_mode','detergent_mode','cleaning_mode','task_scope','suction_level','carpet_policy']) {
-        if (!ctx.settings?.[key] || ['unknown','unavailable'].includes(ctx.settings[key])) missing.push(key);
+        if (!ctx.settings?.[key] || ['unknown','unavailable'].includes(ctx.settings[key])) missing.push(this._waterText(labels[key]));
       }
     }
-    if (!session.exposure_complete || session.segments !== 1) missing.push('complete single-context cycle');
-    if (!(Number.isFinite(session.area) && session.area > 0)) missing.push('measured area');
-    return missing.length ? `Not ready for fitting: ${missing.join(', ')}. Current settings cannot fill historical gaps.`
-      : 'Historical context and complete area are recorded. Confirm the physical measurement boundaries below.';
+    if (!session.exposure_complete || session.segments !== 1) missing.push(this._waterText("complete single-context cycle"));
+    if (!(Number.isFinite(session.area) && session.area > 0)) missing.push(this._waterText("measured area"));
+    return missing.length ? `${this._waterText("Not ready for fitting:")} ${missing.join(', ')}. ${this._waterText("Current settings cannot fill historical gaps.")}`
+      : this._waterText("Historical context and complete area are recorded. Confirm the physical measurement boundaries below.");
   }
 
   async _saveLocalMeasurement(device) {
@@ -6460,7 +6517,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!rawVolume || !rawResolution || !Number.isFinite(volume) || !Number.isFinite(resolution) ||
         volume <= 0 || resolution <= 0 || resolution >= volume ||
         !sr.getElementById('cal-boundaries')?.checked || !sr.getElementById('cal-uninterrupted')?.checked) {
-      if (status) status.textContent = 'Enter measured ml and resolution, then confirm both measurement boundaries.';
+      if (status) status.textContent = this._waterText("Enter measured ml and resolution, then confirm both measurement boundaries.");
       return false;
     }
     if (button?.disabled) return false;
@@ -6477,11 +6534,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (result?.saved !== true || !Number.isInteger(result.sample_count) || result.sample_count < 1) throw new Error('Invalid measurement acknowledgement');
       if (sr.getElementById('cal-local-status') !== status || generation !== (this._localMeasurementGeneration || 0)) return true;
       if (status) status.textContent = result.calibration
-        ? `Saved privately. ${result.sample_count} sample(s); device calibration available within its measured area range. Independent accuracy remains separate.`
-        : `Saved privately. ${result.sample_count} sample(s) for these settings; at least three distinct training cycles are needed.`;
+        ? `${this._waterText("Saved privately.")} ${result.sample_count} ${this._waterText("sample(s)")}; ${this._waterText("device calibration available within its measured area range. Independent accuracy remains separate.")}`
+        : `${this._waterText("Saved privately.")} ${result.sample_count} ${this._waterText("sample(s)")} ${this._waterText("for these settings; at least three distinct training cycles are needed.")}`;
       return true;
     } catch (_) {
-      if (sr.getElementById('cal-local-status') === status && status) status.textContent = 'Could not save. Check complete historical context, measurement boundaries, duplicate cycle and connection.';
+      if (sr.getElementById('cal-local-status') === status && status) status.textContent = this._waterText("Could not save. Check complete historical context, measurement boundaries, duplicate cycle and connection.");
       return false;
     } finally {
       if (sr.getElementById('cal-save') === button && button) button.disabled = false;
@@ -6502,7 +6559,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (observed !== '' || resolution !== '') {
       if (observed === '' || resolution === '' || !Number.isFinite(Number(observed)) ||
           !Number.isFinite(Number(resolution)) || Number(observed) < 0 || Number(resolution) <= 0) {
-        if (status) status.textContent = 'Enter both measured refill and a positive resolution in ml.';
+        if (status) status.textContent = this._waterText("Enter both measured refill and a positive resolution in ml.");
         if (download) download.disabled = true;
         return false;
       }
@@ -6512,13 +6569,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (download) download.disabled = true;
     if (preview) { preview.value = ''; preview.hidden = true; }
     const generation = this._calibrationPreviewGeneration = (this._calibrationPreviewGeneration || 0) + 1;
-    if (status) status.textContent = 'Preparing preview…';
+    if (status) status.textContent = this._waterText("Preparing preview…");
     try {
       const draft = await this._hass.callWS(request);
       if (generation !== this._calibrationPreviewGeneration || sr.getElementById('cal-export-preview') !== preview) return false;
       const content = JSON.stringify(draft, null, 2);
       if (preview) { preview.value = content; preview.hidden = false; }
-      if (status) status.textContent = 'Review every field. Missing context must be completed before submission. Nothing has been uploaded.';
+      if (status) status.textContent = this._waterText("Review every field. Missing context must be completed before submission. Nothing has been uploaded.");
       if (download) {
         download.disabled = false;
         download.onclick = () => {
@@ -6530,7 +6587,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       }
       return true;
     } catch (_) {
-      if (generation === this._calibrationPreviewGeneration && status) status.textContent = 'Could not prepare the draft. Check the connection and recorded cycle, then retry.';
+      if (generation === this._calibrationPreviewGeneration && status) status.textContent = this._waterText("Could not prepare the draft. Check the connection and recorded cycle, then retry.");
       return false;
     }
   }
