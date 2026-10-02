@@ -54,6 +54,20 @@ const reports = JSON.parse(process.argv[1]);
   const fromServer = card._calcDeviceData({ vacuum_entity: 'vacuum.robot', water_total_ml: 4000, config_provenance: { authored_fields: ['vacuum_entity', 'water_total_ml'] }, brand_profile: 'roborock_s8_maxv_ultra' });
   out.configuredTotalMl = fromServer.totalMl;
   out.configuredWaterTab = card._buildWaterTab({ vacuum_entity: 'vacuum.robot', brand_profile: 'roborock_s8_maxv_ultra' }, fromServer);
+  out.invalidBatteries = [undefined, null, 'unknown', 'unavailable', '', ' ', -1, 101, '21foo', false, {}].map(value => card._buildBatteryBar(value));
+  out.zeroBattery = card._buildBatteryBar(0);
+  card._serverState = { settings: {}, tank_states: {} };
+  card._discoveredVacuums = [{ entity_id: 'vacuum.robot', manufacturer: 'Roborock', model: 'a27', profile_key: 'roborock_s7_maxv', tracked_capacity_ml: null, capability: 'automatic_estimate', mop_system: 'pad' }];
+  card._health['vacuum.robot'] = reports.unknown;
+  const s7 = { vacuum_entity: 'vacuum.robot' };
+  const unknownDock = card._calcDeviceData(s7);
+  out.unknownDockStatus = card._getStatus(unknownDock, {}).label;
+  out.emptyUnknownDockStatus = card._getStatus({ ...unknownDock, waterEmpty: true }, {}).label;
+  out.unknownDockWater = card._buildWaterTab(s7, unknownDock);
+  card._discoveredVacuums = [{ entity_id: 'vacuum.robot', manufacturer: 'QA synthetic', model: '1797', profile_key: null, tracked_capacity_ml: null, capability: 'unknown' }];
+  card._health['vacuum.robot'] = reports.notTracked;
+  card._lang = 'pl';
+  out.unknownVendorPl = card._buildWaterTab(s7, card._calcDeviceData(s7));
   out.throttled = card._refreshHealth(false) === null;
   out.trailingScheduled = Boolean(card._healthTimer);
   clearTimeout(card._healthTimer);
@@ -140,6 +154,25 @@ class CardSetupPanelTests(unittest.TestCase):
 
     def test_duplicate_question_is_left_to_its_banner(self):
         self.assertNotIn("vwm-step", self.out["duplicateOnly"])
+
+    def test_missing_or_invalid_battery_is_not_a_zero_percent_measurement(self):
+        self.assertTrue(all(html == "" for html in self.out["invalidBatteries"]))
+        self.assertIn("0%", self.out["zeroBattery"])
+
+    def test_known_mopping_robot_with_unknown_tank_keeps_unknown_water(self):
+        self.assertEqual(self.out["unknownDockStatus"], "Unknown")
+        self.assertNotIn("This device doesn't track water levels", self.out["unknownDockWater"])
+        self.assertNotIn('class="battery-bar"', self.out["unknownDockWater"])
+
+    def test_verified_empty_signal_wins_over_unknown_capacity(self):
+        self.assertEqual(self.out["emptyUnknownDockStatus"], "EMPTY")
+
+    def test_polish_unknown_device_fallbacks_are_localized(self):
+        html = self.out["unknownVendorPl"]
+        self.assertIn("Nieznany model", html)
+        self.assertIn("nieznany", html)
+        for text in ["Unknown model", "No estimate for this model yet", "This device doesn't track water levels", "<b>unknown</b>"]:
+            self.assertNotIn(text, html)
 
     def test_tank_size_option_wins_in_card_numbers(self):
         self.assertEqual(self.out["totalMl"], 3000)

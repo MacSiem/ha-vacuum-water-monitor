@@ -429,7 +429,10 @@ const VWM_WATER_TEXT_PL = {
   "Recorded estimate (incomplete)": "Zapisane oszacowanie (niepełne)",
   "Water balance incomplete.": "Bilans wody jest niepełny.",
   "Consumption from available signals is still recorded. The recorded estimate may omit earlier usage, so remaining water is unknown. Refill the tracked tank to full and confirm to restore the balance.": "Zużycie z dostępnych sygnałów jest nadal zapisywane. Zapisane oszacowanie może pomijać wcześniejsze zużycie, więc pozostała ilość wody jest nieznana. Napełnij śledzony zbiornik do pełna i potwierdź, aby przywrócić bilans.",
-  "Balanced": "Zbilansowany"
+  "Balanced": "Zbilansowany",
+  "Unknown model": "Nieznany model",
+  "This device doesn't track water levels": "Śledzenie wody nie jest skonfigurowane dla tego urządzenia",
+  "No estimate for this model yet; set the tank capacity to enable tracking.": "Brak oszacowania dla tego modelu. Ustaw pojemność śledzonego zbiornika, aby włączyć bilans wody."
 };
 
 const VWM_SETUP_TEXT = {
@@ -5855,10 +5858,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _getStatus(data, cfg) {
-    if (data.totalMl === 0) return { label: this._waterText('No Water'), color: '#6b7280', icon: '\uD83D\uDCA7' };
     if (data.waterEmpty) return { label: this._waterText('EMPTY'), color: '#ef4444', icon: '\u26A0\uFE0F' };
     if (data.waterLow || data.waterShortage) return { label: this._waterText('LOW WATER'), color: '#f59e0b', icon: '\u26A0\uFE0F' };
-    if (data.percentRemaining === null) return { label: this._waterText('Unknown'), color: '#6b7280', icon: '\u2753' };
+    if (data.totalMl === 0 || data.percentRemaining === null) return { label: this._waterText('Unknown'), color: '#6b7280', icon: '\u2753' };
     if (data.percentRemaining <= (cfg.critical_threshold || 10)) return { label: this._waterText('Critical'), color: '#ef4444', icon: '\uD83D\uDEA8' };
     if (data.percentRemaining <= (cfg.warning_threshold || 20)) return { label: this._waterText('Low'), color: '#f59e0b', icon: '\u26A0\uFE0F' };
     return { label: 'OK', color: '#22c55e', icon: '\u2705' };
@@ -5920,8 +5922,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _buildBatteryBar(charge) {
-    if (charge === null) return '';
-    const pct = parseInt(charge) || 0;
+    if ((typeof charge !== 'number' && typeof charge !== 'string') || String(charge).trim() === '') return '';
+    const value = Number(charge);
+    if (!Number.isFinite(value) || value < 0 || value > 100) return '';
+    const pct = Math.round(value);
     const color = pct < 20 ? '#ef4444' : pct < 40 ? '#f59e0b' : '#22c55e';
     return `<div class="battery-bar">
       <span class="battery-icon">\uD83D\uDD0B</span>
@@ -6023,26 +6027,26 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const facts = _calibrationFacts(calib, this._lang);
       calibHtml = `
         <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
-          <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 ${this._waterText('Calibration')}: ${calib.label}</div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 ${this._waterText('Calibration')}: ${_esc(this._waterText(calib.label))}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
-            <div>🪣 ${this._waterText('Tracked tank')}: <b>${trackedCapacity ? `${trackedCapacity.toLocaleString('en-US')} ml` : 'unknown'}</b></div>
+            <div>🪣 ${this._waterText('Tracked tank')}: <b>${trackedCapacity ? `${trackedCapacity.toLocaleString('en-US')} ml` : this._waterText('unknown')}</b></div>
             ${modelCapacity && modelCapacity !== trackedCapacity ? `<div>📚 ${this._waterText('Model reference')}: <b>${modelCapacity.toLocaleString('en-US')} ml</b></div>` : ''}
             <div>🧹 ${this._waterText('Mop')}: <b>${_esc(this._waterText(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : this._waterText('unknown'))))}</b></div>
             ${calib.avg_area_per_charge ? `<div>📏 ${this._waterText('Est. area/charge')}: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
             ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText(scope === 'whole_cycle' ? 'whole cycle, including washes' : 'standard route, excl. washes')})</span></div>` : ''}
           </div>
           ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}${!configuredRates && calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : 'No estimate for this model yet; set the tank capacity to enable tracking.'}</div>`}
+          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}${!configuredRates && calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : this._waterText('No estimate for this model yet; set the tank capacity to enable tracking.')}</div>`}
           ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + _esc(this._waterText(calib.notes)) + '</div>' : ''}
         </div>`;
     }
 
 
-    // Only show "doesn't track water" if no water tracking capability at all:
-    // No explicit water_total_ml AND no brand_profile match AND no water sensors
+    // A mop-capable robot still needs water setup when its tank size is unknown.
     const noWaterTracking = !device.water_total_ml &&
       !data.totalMl &&  // No calibration data either
-      !device.water_sensor;
+      !device.water_sensor &&
+      !(healthReport && healthReport.tracks_water === true);
 
     return `
       <div class="tab-content">
@@ -6050,7 +6054,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ${configMissingBanner}
         ${setupBlocking ? setupHtml : ''}
         ${accountingHtml}
-        ${noWaterTracking ? `<div class="no-water-note">\uD83D\uDCCC This device doesn't track water levels</div>` : `
+        ${noWaterTracking ? `<div class="no-water-note">\uD83D\uDCCC ${this._waterText("This device doesn't track water levels")}</div>` : `
         <div class="device-body">
           <div class="gauge-wrap">
             ${gaugeSvg}
