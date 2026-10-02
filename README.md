@@ -54,12 +54,12 @@ itself on your robot:
    the mop system, or a generic mopping estimate. The initial 15–65% uncertainty labels
    describe the chosen prior; they are not measured error bounds for a particular robot.
 3. **Automatic calibration.** When the dock reports an empty clean-water tank, the prediction
-   for that tank is compared with the tank capacity. The median of recent tanks becomes the
+   for a complete refill-to-empty cycle is compared with the configured usable capacity. The median of recent tanks becomes the
    robot's correction. Until three tanks are learned, a tank far outside the estimate's uncertainty band
    (a tank lifted mid-cycle, a top-up nobody reported) waits for the next tank to confirm it;
    after that an abnormal tank is ignored. A tank whose signals were missing for more than a
    short, bridgeable gap does not teach the robot. An estimated dock tank is closed at capacity
-   minus a 5% unusable residual (the water the pump cannot draw). The indicative uncertainty
+   minus its configured residual (5% by default, not a measured pump threshold). The indicative uncertainty
    narrows as tanks agree; the last results are in Diagnostics.
 4. **Your data wins.** A volume sensor or your own calibration replaces the estimate.
 5. **No mopping, no water.** A run with the water level off or the mop detached uses no water.
@@ -73,8 +73,18 @@ With 15% of tanks anchored at the wrong point, the confirmation step keeps the s
 tank within about ±14% at P90 instead of ±46%. These are simulation results for method
 quality, not a guarantee for a specific robot. On the first live tank of a Roborock S8 MaxV
 Ultra (three runs, about 71 m²) the uncalibrated estimate was 7.4% above the tank's
-usable volume when the dock reported it empty; that tank then became the robot's first
+configured empty-tank target when the dock reported it empty; that tank then became the robot's first
 calibration sample.
+
+Normal cleaning is enough for automatic tank calibration when supported full-refill and
+empty-tank signals are available. You do not need to measure every cleaning mode or
+run a prescribed test matrix. The estimate accounts for the available route, water-output
+and wash signals, then learns an overall correction from complete tank cycles. A single
+tank boundary cannot independently identify every floor and dock-wash rate. Settings
+that the integration does not expose remain unknown; a learned correction and a narrow
+indicative uncertainty are not proof of physical accuracy for every setting combination.
+The independent measurement and contribution controls in History are optional and
+collapsed by default. They never turn estimated usage into measured training data.
 
 ### Tank size
 
