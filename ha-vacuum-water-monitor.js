@@ -5981,7 +5981,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     let extraRows = '';
     if (cfg.show_session !== false && data.sessionMl != null && !isNaN(data.sessionMl)) {
-      extraRows += `<div class="row"><span class="row-label">\uD83D\uDCA7 ${this._waterText('Last session')}</span><span class="row-val">${data.sessionMl} ml</span></div>`;
+      extraRows += `<div class="row"><span class="row-label">\uD83D\uDCA7 ${this._waterText('Last session')}</span><span class="row-val">${_esc(this._formatMl(data.sessionMl))}</span></div>`;
     }
     if (cfg.show_filter !== false && data.filterDays != null && !isNaN(data.filterDays)) {
       const filterColor = data.filterDays < 7 ? '#ef4444' : data.filterDays < 30 ? '#f59e0b' : '#22c55e';
@@ -6505,7 +6505,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       currentSession = `<div class="current-session-card">
         <div class="cs-title">\uD83D\uDD04 ${this._waterText("Current session")}</div>
         <div class="cs-row"><span>\uD83D\uDDFA\uFE0F ${this._waterText("Area cleaned")}</span><span>${data.areaCleaned != null ? parseFloat(data.areaCleaned).toFixed(1) : '--'} m\u00B2</span></div>
-        ${data.sessionMl ? `<div class="cs-row"><span>\uD83D\uDCA7 ${this._waterText("Water used")}</span><span>${data.sessionMl} ml</span></div>` : ''}
+        ${data.sessionMl ? `<div class="cs-row"><span>\uD83D\uDCA7 ${this._waterText("Water used")}</span><span>${_esc(this._formatMl(data.sessionMl))}</span></div>` : ''}
         ${data.durationSec ? `<div class="cs-row"><span>\u23F1\uFE0F ${this._waterText("Duration")}</span><span>${this._formatDuration(data.durationSec)}</span></div>` : ''}
       </div>`;
     }
@@ -6534,7 +6534,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <div class="session-date">${label} <span class="session-time">${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</span></div>
         <div class="session-stats">
           ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${s.area} m\u00B2</span>` : ''}
-          ${s.water ? `<span class="session-stat" title="${s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded'}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${s.water} ml</span>` : ''}
+          ${s.water ? `<span class="session-stat" title="${s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded'}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${_esc(this._formatMl(s.water))}</span>` : ''}
           ${s.duration ? `<span class="session-stat">\u23F1\uFE0F ${s.duration}</span>` : ''}
         </div>
       </div>`;

@@ -2,6 +2,8 @@
 
 ## 5.9.0 (unreleased)
 
+- Format current, last and logged session water amounts with the existing millilitre formatter, removing binary floating-point tails while preserving original accounting records, estimate markers and missing values.
+
 - Keep missing tank accuracy unknown in setup and diagnostics, preserve a genuine 0% error, and never claim learning from a rejected sample with an unknown legacy reason. Preserve missing volume, error and factor values as null in the optional calibration-sharing preview; no transmission is enabled.
 
 - Keep informational descriptions readable in light and dark Home Assistant themes, including the card fallback styles.
