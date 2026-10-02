@@ -922,7 +922,8 @@ def _tick_device_pass(
     # consumption from bounded active time instead of leaving the counter stuck.
     previous_tick_ts = _positive_number(state.get("last_tick_ts"))
     last_duration_seconds = _float_or_none(state.get("last_duration_seconds"))
-    should_use_time = (curr_area is None or (usage_per_m2 is None and usage_per_minute is not None)) and not wash_now
+    should_use_time = (curr_area is None or state.get("area_time_fallback")
+                       or (usage_per_m2 is None and usage_per_minute is not None)) and not wash_now
     elapsed_seconds: float | None = None
     time_interval_counted = False
     if should_use_time and curr_duration_seconds is not None:
@@ -973,6 +974,15 @@ def _tick_device_pass(
             dirty |= _record_accounting(
                 state, "active_time", effective_minute_rate, time_evidence, None
             )
+
+    if time_interval_counted and curr_area is None and device.get("area_sensor"):
+        # This interval was already charged by time. Drop the stale area
+        # baseline so a recovered cumulative counter cannot charge it again.
+        # Use time once more when area returns, then adopt that area baseline.
+        state.update(last_area=None, area_gap=False, area_time_fallback=True,
+                     gap_started_ts=None, gap_exposure_possible=False)
+    elif curr_area is not None:
+        state["area_time_fallback"] = False
 
     if device.get("duration_sensor") or device.get("duration_attribute"):
         state["duration_gap"] = curr_duration_seconds is None

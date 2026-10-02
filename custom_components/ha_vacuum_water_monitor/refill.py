@@ -24,6 +24,7 @@ _REBASELINE_FIELDS = {
     "last_tick_ts": 0,
     "last_water_volume_ml": None,
     "area_gap": False,
+    "area_time_fallback": False,
     "duration_gap": False,
     "session_exposure_complete": False,
     "verified_wash_active": False,
