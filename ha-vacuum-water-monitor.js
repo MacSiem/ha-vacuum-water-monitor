@@ -7078,7 +7078,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // It is shown in full before sharing and contains no entity ids, names,
   // device/account identifiers, timestamps, areas, rooms, maps or firmware.
   _buildCalibrationSharePayload(device, data) {
-    const round = (value, step) => (Number.isFinite(Number(value)) ? Math.round(Number(value) / step) * step : null);
+    const round = (value, step) => (value != null && Number.isFinite(Number(value)) ? Math.round(Number(value) / step) * step : null);
     const tanks = (data?.calibrationHistory || []).slice(0, 12).map(t => ({
       predicted_ml: round(t.predicted_ml, 10),
       target_ml: round(t.target_ml, 10),
@@ -7094,7 +7094,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       estimate_basis: data?.estimateBasis || null,
       tracked_reservoir: data?.trackedReservoir || null,
       tracked_capacity_ml: round(data?.totalMl, 10),
-      calibration_factor: Number.isFinite(Number(data?.calibrationFactor)) ? Number(Number(data.calibrationFactor).toFixed(3)) : null,
+      calibration_factor: data?.calibrationFactor != null && Number.isFinite(Number(data.calibrationFactor)) ? Number(Number(data.calibrationFactor).toFixed(3)) : null,
       calibrated_tanks: Number(data?.calibrationSamples) || 0,
       tanks,
     };

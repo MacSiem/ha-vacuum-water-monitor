@@ -2,7 +2,7 @@
 
 ## 5.9.0 (unreleased)
 
-- Keep missing tank accuracy unknown in setup and diagnostics, preserve a genuine 0% error, and never claim learning from a rejected sample with an unknown legacy reason.
+- Keep missing tank accuracy unknown in setup and diagnostics, preserve a genuine 0% error, and never claim learning from a rejected sample with an unknown legacy reason. Preserve missing volume, error and factor values as null in the optional calibration-sharing preview; no transmission is enabled.
 
 - Keep informational descriptions readable in light and dark Home Assistant themes, including the card fallback styles.
 
