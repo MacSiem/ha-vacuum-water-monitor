@@ -101,10 +101,10 @@ class CardSetupPanelTests(unittest.TestCase):
         self.assertIn("Tak, zbiornik jest pełny", html)
         self.assertIn("baza modeli", html)
 
-    def test_ok_robot_collapses_to_everything_is_working(self):
+    def test_ok_robot_collapses_to_signals_ready(self):
         html = self.out["ok"]
         self.assertTrue(html.startswith("<details"))
-        self.assertIn("Everything is working", html)
+        self.assertIn("Signals are ready", html)
         self.assertIn("Calibrated on 3 empty tanks", html)
         self.assertIn("Enough for about 4 cleanings (about 6.5 days)", html)
         self.assertIn("Last empty tank: the estimate was +7.4% off, then learned", html)
