@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1.0",
-  "dataset_version": "6.1.1",
-  "cutoff_date": "2026-10-01",
+  "dataset_version": "6.1.2",
+  "cutoff_date": "2026-10-02",
   "profiles": {
     "cecotec_conga_3290": {
       "identifiers": [
@@ -7573,7 +7573,7 @@
           "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-02",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",

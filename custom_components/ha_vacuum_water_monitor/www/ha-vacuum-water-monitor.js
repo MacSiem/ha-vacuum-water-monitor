@@ -3643,20 +3643,24 @@ const CALIBRATION_DATA = {
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "rotating_pads",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 5,
+      "standard": 7,
+      "deep": 10,
+      "deep_plus": 12
     },
     "mop_wash_ml": 120,
     "source_urls": [
+      "https://www.mi.com/uk/support/faq/details/KA-673648/",
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
       "https://www.mi.com/global/support/faq/details/KA-673648/"
     ],
     "data_quality": "capacity_verified",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "xiaomi_p2148": {
     "label": "Xiaomi P2148",
