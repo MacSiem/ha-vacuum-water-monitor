@@ -834,8 +834,13 @@ def _tick_device_pass(
         # A whole-cycle dose needs the complete exposure of one task, so a
         # restart inside it stays an interruption; per-area accounting simply
         # continues from the new task's zero.
+        # Roborock clears the previous task's area during the initial dock wash,
+        # before a floor session exists. No floor exposure is lost at that zero.
+        prewash_zero = (wash_now and vac_state == "docked" and not had_open_session
+                        and curr_area < AREA_MIN_DELTA)
         if delta < 0 and ((task_restarted and whole_cycle_calibration is None)
-                          or (not previously_active and not had_open_session)):
+                          or (not previously_active and not had_open_session)
+                          or prewash_zero):
             # Per-session counters (for example Roborock cleaning_area) restart
             # at zero when a new session starts: the area since restart is new.
             area_baseline = 0.0
