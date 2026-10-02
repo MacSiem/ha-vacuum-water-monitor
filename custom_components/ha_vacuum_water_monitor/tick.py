@@ -449,13 +449,18 @@ def _tick_device_pass(
     if rate_signal == "cleaning_mode":
         rate_key = cleaning_mode
     usage_per_m2 = _mapping_number(device.get("usage_ml_per_m2"), rate_key)
-    intensity_factor = _mapping_number(device.get("intensity_factor"), mop_intensity)
     intensity_map = device.get("intensity_factor")
+    intensity_key = _intensity_rate_key(
+        hass, device.get("mop_intensity_entity"), mop_intensity_raw, mop_intensity)
+    # An authored exact numeric coefficient is stronger than a ranged prior.
+    if isinstance(intensity_map, dict) and _positive_number(intensity_map.get(mop_intensity)) is not None:
+        intensity_key = mop_intensity
+    intensity_factor = _mapping_number(intensity_map, intensity_key)
     unmapped_intensity = (
         mop_intensity
         if isinstance(intensity_map, dict) and mop_intensity is not None
         and mop_intensity not in _MOP_INTENSITY_OFF
-        and not any(_positive_number(intensity_map.get(key)) is not None for key in _rate_key_candidates(mop_intensity))
+        and not any(_positive_number(intensity_map.get(key)) is not None for key in _rate_key_candidates(intensity_key))
         else None
     )
     # An explicit but unrecognized output level is not the declared default.
@@ -1772,7 +1777,9 @@ def _intensity_rate_key(
         or maximum <= minimum
     ):
         return normalized_value
-    ratio = _clamp((value - minimum) / (maximum - minimum), 0, 1)
+    if value < minimum or value > maximum:
+        return normalized_value
+    ratio = (value - minimum) / (maximum - minimum)
     if ratio <= 1 / 3:
         return "low"
     if ratio <= 2 / 3:
