@@ -3655,6 +3655,7 @@ const CALIBRATION_DATA = {
     },
     "mop_wash_ml": 120,
     "source_urls": [
+      "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/11#issuecomment-5950639795",
       "https://www.mi.com/uk/support/faq/details/KA-673648/",
       "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
       "https://www.mi.com/global/support/faq/details/KA-673648/"

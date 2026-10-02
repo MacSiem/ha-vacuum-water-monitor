@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1.0",
-  "dataset_version": "6.1.2",
+  "dataset_version": "6.1.3",
   "cutoff_date": "2026-10-02",
   "profiles": {
     "cecotec_conga_3290": {
@@ -7513,7 +7513,8 @@
     "xiaomi_h50_pro": {
       "identifiers": [
         "Xiaomi Robot Vacuum H50 Pro",
-        "xiaomi_robot_vacuum_h50_pro"
+        "xiaomi_robot_vacuum_h50_pro",
+        "xiaomi.vacuum.ov42gl"
       ],
       "manufacturer": "Xiaomi",
       "model": "Robot Vacuum H50 Pro",
@@ -7525,7 +7526,9 @@
           "equivalence_verified": false
         }
       ],
-      "observed_ha_identifiers": [],
+      "observed_ha_identifiers": [
+        "xiaomi.vacuum.ov42gl"
+      ],
       "integration_adapters": [
         "xiaomi_home",
         "xiaomi_miot",
@@ -7551,6 +7554,13 @@
         "rate_signal": null
       },
       "provenance": [
+        {
+          "source_type": "user_report",
+          "url": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/11#issuecomment-5950639795",
+          "claim": "H50 Pro reporter screenshot on beta.1 displays xiaomi.vacuum.ov42gl as model. Observed HA identifier only; regional SKU equivalence and author hardware validation remain unknown.",
+          "last_verified": "2026-10-02",
+          "retrieval_status": "native_screenshot_read"
+        },
         {
           "source_type": "manufacturer_documentation",
           "url": "https://www.mi.com/uk/support/faq/details/KA-673648/",
