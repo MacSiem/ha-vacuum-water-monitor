@@ -170,6 +170,20 @@ class ReviewFollowUpTests(unittest.TestCase):
 
 
 class ManualSignalEstimateTests(unittest.TestCase):
+    def test_raw_discovery_health_resolves_saved_rate_without_inventing_accuracy(self):
+        raw = descriptor("a27")
+        settings = {"custom_calibration": {"entity:vacuum.robot": {"usage_ml_per_m2": {"standard": 10}}}}
+        device = sc.build_vacuum_devices(settings, {}, [raw])[0]
+        original = dict(device)
+        estimate = sc.estimate_water_state(device, {"initialized": True, "used_ml": 40}, settings)
+        self.assertIsNone(estimate["estimate_basis"])
+        self.assertIsNone(estimate["uncertainty_percent"])
+        self.assertEqual(device, original)
+        capacity_only = sc.estimate_water_state(device, {"initialized": True, "used_ml": 40},
+            {"custom_calibration": {"entity:vacuum.robot": {"tracked_capacity_ml": 1234}}})
+        self.assertEqual(capacity_only["estimate_basis"], "class_prior")
+        self.assertIsNotNone(capacity_only["uncertainty_percent"])
+
     def test_persisted_manual_signals_remove_false_missing_signal_after_accounting(self):
         raw = descriptor("a27", signals={"select.robot_custom_mode": "unmatched_mode"})
         settings = {"configured_devices": [{"vacuum_entity": "vacuum.robot", "tracked_capacity_ml": 1234}],

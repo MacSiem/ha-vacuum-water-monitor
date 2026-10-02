@@ -97,5 +97,33 @@ class CardEstimateTests(unittest.TestCase):
         self.assertNotIn("fetch(", source.split("_buildCalibrationSharePayload", 1)[1].split("_buildSettingsTab", 1)[0])
 
 
+FOOTER_SCRIPT = SCRIPT.split("const cases =")[0] + r"""
+card.setConfig({type:'custom:ha-vacuum-water-monitor', language:'en', show_dock_status:false});
+card._hass={states:{},locale:{language:'en'}};
+const device={vacuum_entity:'vacuum.robot', profile_key:'roborock_s7_maxv_ultra', brand_profile:'roborock_s7_maxv_ultra', capability:'automatic_estimate', config_provenance:{authored_fields:['vacuum_entity']}};
+card._discoveredVacuums=[device];
+card._serverState={settings:{custom_calibration:{'entity:vacuum.robot':{usage_ml_per_m2:{standard:10},calibration_scope:'floor_only'}}},tank_states:{'vacuum.robot':{initialized:true,used_ml:40}}};
+const data=card._calcDeviceData(device);data.totalMl=1234;
+const configured=card._buildWaterTab(device,data);
+const authored={...device,usage_ml_per_m2:{standard:12},config_provenance:{authored_fields:['vacuum_entity','usage_ml_per_m2']}};
+const explicit=card._buildWaterTab(authored,{...data});
+card._serverState.settings.custom_calibration={'entity:vacuum.robot':{tracked_capacity_ml:1234}};
+const prior=card._buildWaterTab(device,card._calcDeviceData(device));
+console.log(JSON.stringify({configured,explicit,prior}));
+"""
+
+class EffectiveRatePresentationTests(unittest.TestCase):
+    def test_water_footer_matches_saved_rate_and_preserves_model_reference_without_rate(self):
+        out = subprocess.run(["node", "-e", FOOTER_SCRIPT], cwd=ROOT, check=True, capture_output=True, text=True)
+        result = json.loads(out.stdout.strip().splitlines()[-1])
+        self.assertIn("10 ml/m²", result["configured"])
+        self.assertIn("~123 m²", result["configured"])
+        self.assertNotIn("6 ml/m²", result["configured"])
+        self.assertNotIn("±50%", result["configured"])
+        self.assertIn("12 ml/m²", result["explicit"])
+        self.assertNotIn("10 ml/m²", result["explicit"])
+        self.assertIn("6 ml/m²", result["prior"])
+
+
 if __name__ == "__main__":
     unittest.main()
