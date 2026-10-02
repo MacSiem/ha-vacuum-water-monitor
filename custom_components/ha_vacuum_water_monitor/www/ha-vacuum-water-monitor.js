@@ -7326,7 +7326,7 @@ target:
         .details { flex: 1; display: flex; flex-direction: column; gap: 6px; }
         .row { display: flex; justify-content: space-between; align-items: center; gap:12px; min-height:30px; padding:4px 0; font-size: 12px; }
         .row-label { color: var(--bento-text-secondary); min-width:0; line-height:1.4; }
-        .row-val { font-weight: 600; color: var(--bento-text); }
+        .row-val { font-weight: 600; color: var(--bento-text); flex-shrink:0; white-space:nowrap; }
         .accounting-guidance { display:grid; gap:4px; padding:12px 14px; margin-bottom:14px; border:1px solid; border-radius:10px; font-size:12px; line-height:1.55; color:var(--bento-text,#1a1a2e); }
         .accounting-guidance b { font-size:12px; }
         .diagnostics { margin-top:16px; color:var(--bento-text-secondary,#64748b); }

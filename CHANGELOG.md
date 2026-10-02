@@ -2,6 +2,8 @@
 
 ## 5.9.0-beta.6 (unreleased)
 
+- Keep water amounts and units together on narrow mobile screens, including incomplete recorded estimates.
+
 - Show the recorded partial consumption estimate when the reservoir balance is incomplete; clarify that recording continues while remaining water stays unknown (English and Polish).
 
 - Recognize the S7 MaxV robot family from its a27 registry identity and retail labels even after an entity rename; keep unverified dock capacities unknown.
