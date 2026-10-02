@@ -1,5 +1,109 @@
 # Changelog
 
+## 5.9.0 (unreleased)
+
+- Format current, last and logged session water amounts with the existing millilitre formatter, removing binary floating-point tails while preserving original accounting records, estimate markers and missing values.
+
+- Keep missing tank accuracy unknown in setup and diagnostics, preserve a genuine 0% error, and never claim learning from a rejected sample with an unknown legacy reason. Preserve missing volume, error and factor values as null in the optional calibration-sharing preview; no transmission is enabled.
+
+- Keep informational descriptions readable in light and dark Home Assistant themes, including the card fallback styles.
+
+- Preserve recorded consumption across area and active-time handoffs, distinguish mopping from vacuum-only operation, and count a mop-wash sequence once. Missing exposure remains explicit and excludes an incomplete tank from learning.
+- Recognize S7 MaxV/a27 and the observed H50 Pro identifier `xiaomi.vacuum.ov42gl` independently of entity names, while preserving saved capacity, rates, calibration and history. A robot identifier does not establish an unverified dock capacity.
+- Apply declared numeric water-output ranges and retain unknown values outside them. Keep authored rates separate from labelled model estimates and physical measurements.
+- Localize model database explanations and estimate provenance in Polish, keeping manufacturer facts and unverified capacity separate. Use neutral source-link captions for the mix of manufacturer references and other supporting materials.
+- Improve Polish and English setup, calibration and refill guidance. Unknown capacity stays unknown, missing battery telemetry is not shown as 0%, and unconfigured tracking does not claim ready signals.
+- Register the bundled card automatically, preserve the selected robot and tab after reload, and keep independent calibration measurements optional.
+
+## 5.9.0-beta.6 (unreleased)
+
+- Keep water amounts and units together on narrow mobile screens, including incomplete recorded estimates.
+
+- Show the recorded partial consumption estimate when the reservoir balance is incomplete; clarify that recording continues while remaining water stays unknown (English and Polish).
+
+- Recognize the S7 MaxV robot family from its a27 registry identity and retail labels even after an entity rename; keep unverified dock capacities unknown.
+
+- Stream water balance updates to authenticated household accounts through the integration subscription, so non-administrators receive changes without waiting for the five-minute refresh.
+- Preserve compact event payloads and retained local history; align integration and card cache versions.
+
+## 5.9.0-beta.5 (unreleased)
+
+- Localize the primary water labels and diagnostics heading for Polish Home Assistant users in both bundled card copies. English labels remain available for other languages.
+- Keep integration, cache URL and card versions aligned for the corrected asset.
+- Add security reporting and license notices.
+
+- Translate Polish cleaning/idle status, dock status, calibration/refill labels and diagnostics field names. Preserve integration identifiers and evidence codes.
+
+## 5.9.0-beta.4 (2026-09-29)
+
+- Register the bundled card as a Lovelace resource in storage mode so dashboard cards load after a fresh HA session. Reuse or update the existing resource, avoid double-loading a HACS copy, and keep the extra-JS fallback for YAML mode.
+- Use the integration's configured tank capacity in the card, ahead of stale panel or model values. Show that tracked capacity separately from the model reference in the calibration panel, and refresh the card asset URL for existing HA browsers.
+- Keep the card within Home Assistant Sections and replace the prominent support panel with a compact administrator-only link.
+- Preserve unknown water-use and intensity states when the connected robot does not expose reliable signals; show a clear first-run state when no vacuum is configured.
+
+## 5.9.0-beta.2 (unreleased)
+
+- Show a clear first-run message instead of fabricated water readings when no vacuum is available.
+- Improve the empty-state contrast in light and dark themes.
+- Keep unknown output intensity and unknown uncertainty explicitly unknown; describe calibration only for verified signals.
+- Bump the integration and card version together so Home Assistant requests the corrected card instead of its cached beta.1 URL.
+
+## 5.9.0-beta.1 (2026-09-24)
+
+Accuracy you can see: how long the water lasts, how far the estimate was on the last tanks,
+and learning for robots whose dock cannot report an empty tank. Includes everything from
+5.8.0-beta.1.
+
+### Added
+
+- **Cleanings left** sensor: how many cleanings the water left lasts at this robot's usual use
+  (median of the last mopping runs), with *days left* as an attribute. Unknown until three
+  mopping runs are recorded.
+- **Tank empty** button on each robot (and in the setup panel for robots whose dock cannot report
+  an empty tank): pressing it when the robot runs dry anchors the tank and teaches the estimate,
+  like the dock's own signal. The next refill clears it.
+- **Track record in the card:** the last empty tank (how far the estimate was before it learned),
+  the typical error of recent tanks, and plain reasons when a tank is not learned (for example a
+  partly filled tank).
+
+### Fixed
+
+- A robot device named "Vacuum" by an old single-device card configuration now gets the robot's
+  real name (a name you set in Home Assistant is kept).
+
+## 5.8.0-beta.1 (2026-09-24)
+
+Set up without reading anything: every robot says what it needs, in the card and in Home
+Assistant itself. Requires Home Assistant 2025.1 or newer.
+
+### Added
+
+- **Setup panel in the card.** For each robot the Water tab shows what was detected (model, tank
+  size and where it comes from, expected accuracy, how refills are recognised) and asks only
+  what is needed: is the tank full now, the tank size of an unknown model, or the mop signal.
+  When nothing is needed it collapses to *Everything is working*.
+- **Repairs.** The same questions appear in Settings → Repairs with one-step fixes: confirm a
+  full tank, enter the tank size, or say whether a Matter robot is a copy of a native one. A
+  missing mop signal is reported there too.
+- **Entities on each robot's device:** *Tank size* (number), *Refill from dock automatically*
+  (switch, only for docks that report refills) and *Refilled* (button). They work without the
+  card, in the mobile app and in automations.
+- **Diagnostics download** with the health report, detected signals and recent history; robot
+  names are removed.
+- **Refill reminder blueprint** (threshold and action of your choice).
+
+### Changed
+
+- **One tank size, newest choice first:** the *Tank size* entity (or the setup panel or Repairs)
+  wins over the card configuration and the model database. The card, the sensors and the
+  calibration all use it.
+- **A run that waits off the dock ends.** When the robot's task flag stays on while it is paused,
+  stuck or stopped away from the dock, the run is recorded as finished after 20 minutes idle
+  (ending when the pause began); a new run starts when it really cleans again. A recharge at the
+  dock in the middle of a task still keeps one run.
+- First-run tip in the card rewritten (Polish and English).
+- Minimum Home Assistant version is now 2025.1.
+
 ## 5.7.0 (2026-09-23)
 
 Water estimates for every recognised robot that learn from your dock, every refill method,

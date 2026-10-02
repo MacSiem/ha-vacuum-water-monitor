@@ -36,9 +36,21 @@ const data = { profileKey: 'roborock_qrevo_curv_2_flow', mopSystem: 'roller', in
   calibrationHistory: [{ ts: 1757955764335, predicted_ml: 3012.4, target_ml: 4000, error_percent: -24.69, accepted: true, reason: null, factor_before: 1 }],
   areaCleaned: '45.5', lastCleanStart: '2026-09-15T17:42:44Z' };
 const payload = card._buildCalibrationSharePayload(device, data);
+const missingPayload = card._buildCalibrationSharePayload(device, { ...data,
+  totalMl: null, calibrationFactor: null,
+  calibrationHistory: [{ predicted_ml: null, target_ml: null, error_percent: null, accepted: false }]
+});
+const zeroPayload = card._buildCalibrationSharePayload(device, { ...data,
+  calibrationHistory: [{ predicted_ml: 0, target_ml: 4000, error_percent: 0, accepted: true }]
+});
 const html = card._buildCalibrationSharingSection(device, data);
 const url = card._calibrationShareUrl(payload);
-console.log(JSON.stringify({ u: cases.map(([b, f]) => card._estimateUncertainty(b, f)), payload, html, url }));
+const guidance = (uncertaintyPercent) => card._buildAccountingGuidance({
+  capability: 'automatic_estimate', initialized: true, accountingSource: 'area', accountingRate: 6,
+  stateReason: null, uncertaintyPercent, calibrationSamples: 0,
+});
+console.log(JSON.stringify({ u: cases.map(([b, f]) => card._estimateUncertainty(b, f)), payload, missingPayload, zeroPayload, html, url,
+  guidanceNull: guidance(null), guidance20: guidance(20) }));
 """
 
 
@@ -53,6 +65,10 @@ class CardEstimateTests(unittest.TestCase):
         expected = [estimation.uncertainty_percent(basis, factors) for basis, factors in CASES]
         self.assertEqual(self.result["u"], expected)
 
+    def test_missing_uncertainty_is_not_rendered_as_zero_percent(self):
+        self.assertNotIn("0%", self.result["guidanceNull"])
+        self.assertIn("20%", self.result["guidance20"])
+
     def test_share_payload_contains_no_identifiers_or_timestamps(self):
         payload = self.result["payload"]
         text = json.dumps(payload)
@@ -64,6 +80,17 @@ class CardEstimateTests(unittest.TestCase):
         self.assertEqual(set(payload), {"schema", "integration_version", "profile_key", "mop_system", "integration_adapter",
                                         "estimate_basis", "tracked_reservoir", "tracked_capacity_ml", "calibration_factor",
                                         "calibrated_tanks", "tanks"})
+
+    def test_share_payload_preserves_missing_measurements_and_genuine_zero(self):
+        payload = self.result["missingPayload"]
+        self.assertIsNone(payload["tracked_capacity_ml"])
+        self.assertIsNone(payload["calibration_factor"])
+        self.assertEqual(payload["tanks"][0], {
+            "predicted_ml": None, "target_ml": None, "error_percent": None, "accepted": False
+        })
+        zero = self.result["zeroPayload"]["tanks"][0]
+        self.assertEqual(zero["predicted_ml"], 0)
+        self.assertEqual(zero["error_percent"], 0)
 
     def test_sharing_requires_explicit_opt_in_and_shows_the_exact_payload(self):
         self.assertIn('id="vwm-share-optin" checked', self.result["html"])
@@ -86,6 +113,34 @@ class CardEstimateTests(unittest.TestCase):
         self.assertIn("sharing.enabled === true", source)
         self.assertNotIn("callWS({ type: `${VWM_DOMAIN}/share", source)
         self.assertNotIn("fetch(", source.split("_buildCalibrationSharePayload", 1)[1].split("_buildSettingsTab", 1)[0])
+
+
+FOOTER_SCRIPT = SCRIPT.split("const cases =")[0] + r"""
+card.setConfig({type:'custom:ha-vacuum-water-monitor', language:'en', show_dock_status:false});
+card._hass={states:{},locale:{language:'en'}};
+const device=card._decorateLegacyProfile({vacuum_entity:'vacuum.robot', profile_key:'roborock_s7_maxv', brand_profile:'roborock_s7_maxv', capability:'automatic_estimate', config_provenance:{authored_fields:['vacuum_entity']}});
+card._discoveredVacuums=[device];
+card._serverState={settings:{custom_calibration:{'entity:vacuum.robot':{usage_ml_per_m2:{standard:10},calibration_scope:'floor_only'}}},tank_states:{'vacuum.robot':{initialized:true,used_ml:40}}};
+const data=card._calcDeviceData(device);data.totalMl=1234;
+const configured=card._buildWaterTab(device,data);
+const authored=card._decorateLegacyProfile({...device,usage_ml_per_m2:{standard:12},config_provenance:{authored_fields:['vacuum_entity','usage_ml_per_m2']}});
+const explicit=card._buildWaterTab(authored,{...data});
+card._serverState.settings.custom_calibration={'entity:vacuum.robot':{tracked_capacity_ml:1234}};
+const prior=card._buildWaterTab(device,card._calcDeviceData(device));
+console.log(JSON.stringify({configured,explicit,prior}));
+"""
+
+class EffectiveRatePresentationTests(unittest.TestCase):
+    def test_water_footer_matches_saved_rate_and_preserves_model_reference_without_rate(self):
+        out = subprocess.run(["node", "-e", FOOTER_SCRIPT], cwd=ROOT, check=True, capture_output=True, text=True)
+        result = json.loads(out.stdout.strip().splitlines()[-1])
+        self.assertIn("10 ml/m²", result["configured"])
+        self.assertIn("~123 m²", result["configured"])
+        self.assertNotIn("6 ml/m²", result["configured"])
+        self.assertNotIn("±50%", result["configured"])
+        self.assertIn("12 ml/m²", result["explicit"])
+        self.assertNotIn("10 ml/m²", result["explicit"])
+        self.assertIn("6 ml/m²", result["prior"])
 
 
 if __name__ == "__main__":

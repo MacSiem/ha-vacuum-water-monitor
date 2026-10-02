@@ -20,11 +20,10 @@ from homeassistant.helpers.event import async_track_time_change
 from .const import (
     DATA_STORAGE,
     DOMAIN,
-    MANUFACTURER,
-    MODEL,
     signal_vacuum_water_updated,
 )
 from .sensor_calculations import (
+    PLACEHOLDER_ROBOT_NAMES,
     build_vacuum_devices,
     estimate_water_state,
     filter_active_devices,
@@ -33,6 +32,7 @@ from .sensor_calculations import (
     setup_guidance,
     vacuum_slug,
 )
+from .entity import robot_device_info, vacuum_display_name
 from .storage import VacuumWaterStorage
 from .tick import list_vacuums
 
@@ -109,6 +109,7 @@ class VacuumSensorManager:
                 WaterUsedSensor,
                 LastRefillSensor,
                 NextMaintenanceDueSensor,
+                CleaningsLeftSensor,
             ):
                 sensor_id = (str(vacuum_entity), sensor_cls.sensor_key)
                 if sensor_id in self._known:
@@ -143,7 +144,8 @@ class VacuumSensorManager:
             if match is None:
                 continue
             registry.async_remove_device(device_entry.id)
-            for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor):
+            for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor,
+                               CleaningsLeftSensor):
                 self._known.discard((match, sensor_cls.sensor_key))
 
     def _rename_raw_id_devices(self, devices: list[dict[str, Any]]) -> None:
@@ -169,9 +171,11 @@ class VacuumSensorManager:
             if not vacuum_entity:
                 continue
             entry = ours.get((DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(vacuum_entity)}"))
-            if entry is None or entry.name_by_user or entry.name != vacuum_entity:
+            if entry is None or entry.name_by_user or (entry.name != vacuum_entity
+                                                          and entry.name not in PLACEHOLDER_ROBOT_NAMES):
                 continue
-            name = (device.get("name") if device.get("name") != vacuum_entity else None) or _vacuum_display_name(
+            name = (device.get("name") if device.get("name") not in {vacuum_entity, *PLACEHOLDER_ROBOT_NAMES}
+                    else None) or _vacuum_display_name(
                 self.hass, vacuum_entity)
             if name and name != vacuum_entity:
                 registry.async_update_device(entry.id, name=name)
@@ -196,23 +200,13 @@ class VacuumStoreSensor(SensorEntity):
         self._device = dict(device)
         self._fallback_device = dict(device)
         self._attr_unique_id = f"{entry.entry_id}_{self.vacuum_slug}_{self.sensor_key}"
-        self._attr_name = self.sensor_name
+        if self.sensor_name:
+            self._attr_name = self.sensor_name
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Return a per-vacuum device."""
-        name = (
-            self._device.get("name")
-            or self._device.get("device_name")
-            or self._device.get("label")
-            or _vacuum_display_name(self.hass, self.vacuum_entity)
-        )
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self.entry.entry_id}_{self.vacuum_slug}")},
-            manufacturer=str(self._device.get("manufacturer") or MANUFACTURER),
-            model=str(self._device.get("brand_profile") or MODEL),
-            name=str(name),
-        )
+        """Return a per-vacuum device (shared with the settings entities)."""
+        return robot_device_info(self.hass, self.entry, self._device)
 
     @property
     def _storage(self) -> VacuumWaterStorage:
@@ -378,30 +372,39 @@ class NextMaintenanceDueSensor(VacuumStoreSensor):
         }
 
 
+class CleaningsLeftSensor(VacuumStoreSensor):
+    """Cleanings the water left lasts at this robot's usual use (days as an attribute)."""
+
+    sensor_key = "cleanings_left"
+    sensor_name = ""
+    _attr_translation_key = "cleanings_left"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:calendar-clock"
+
+    async def async_update(self) -> None:
+        from datetime import datetime, timezone
+
+        from .forecast import supply_forecast
+
+        settings, tank_state = await self._store_context()
+        estimate = estimate_water_state(self._device, tank_state, settings)
+        forecast = supply_forecast(tank_state, estimate.get("remaining_ml"),
+                                   int(datetime.now(timezone.utc).timestamp() * 1000))
+        self._attr_native_value = forecast["cleanings_left"]
+        self._attr_extra_state_attributes = {
+            "vacuum_entity": self.vacuum_entity,
+            "days_left": forecast["days_left"],
+            "water_per_cleaning_ml": forecast["water_per_cleaning_ml"],
+            "water_per_day_ml": forecast["water_per_day_ml"],
+            "basis_runs": forecast["basis_runs"],
+        }
+
+
 def _storage(hass: HomeAssistant) -> VacuumWaterStorage:
     return hass.data[DOMAIN][DATA_STORAGE]
 
 
-def _vacuum_display_name(hass: HomeAssistant, vacuum_entity: str) -> str:
-    """The name users know the robot by, never a raw entity id when avoidable."""
-    state = hass.states.get(vacuum_entity)
-    friendly = state.attributes.get("friendly_name") if state is not None else None
-    if friendly:
-        return str(friendly)
-    try:
-        from homeassistant.helpers import device_registry as dr
-        from homeassistant.helpers import entity_registry as er
-
-        entry = er.async_get(hass).async_get(vacuum_entity)
-        if entry is not None:
-            if entry.name or entry.original_name:
-                return str(entry.name or entry.original_name)
-            device = dr.async_get(hass).async_get(entry.device_id) if entry.device_id else None
-            if device is not None and (device.name_by_user or device.name):
-                return str(device.name_by_user or device.name)
-    except Exception:  # noqa: BLE001 - naming must never break sensor setup
-        pass
-    return vacuum_entity
+_vacuum_display_name = vacuum_display_name
 
 
 def _water_state_attributes(

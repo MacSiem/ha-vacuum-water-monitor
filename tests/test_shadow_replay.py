@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import types
@@ -76,6 +77,34 @@ class ShadowReplayTests(unittest.TestCase):
         events, _ = recorded_session()
         text = repr(shadow.replay(events, self.devices, calc, tick))
         self.assertNotIn("vacuum.", text.replace("vacuum.sample", ""))
+
+    def test_sanitized_live_empty_tank_replay_matches_counter_and_error_gate(self):
+        fixture = json.loads((ROOT / "tests/fixtures/sanitized-live-empty-20260923.json").read_text())
+        self.assertEqual(fixture["schema"], "vwm-sanitized-live-replay-v1")
+        self.assertEqual(len(fixture["events"]), fixture["source_event_count"])
+        descriptors = discovery.discover_descriptors(fixture["entities"], fixture["devices"], {})
+        devices = calc.build_vacuum_devices(fixture["settings"], {}, descriptors)
+        events = [
+            (fixture["synthetic_epoch_ms"] + offset, entity, S(state, **attributes))
+            for offset, entity, state, attributes in fixture["events"]
+        ]
+        report = shadow.replay(events, devices, calc, tick)
+        self.assertEqual(len(report["vacuums"]), 1)
+        vacuum = report["vacuums"][0]
+        self.assertEqual(len(vacuum["empty_tanks"]), 1)
+        empty = vacuum["empty_tanks"][0]
+        expected = fixture["expected"]
+        counter_difference = abs(empty["predicted_ml"] - expected["pre_calibration_counter_ml"])
+        self.assertLessEqual(
+            counter_difference / expected["pre_calibration_counter_ml"] * 100,
+            expected["max_replay_counter_difference_percent"],
+        )
+        self.assertEqual(empty["target_ml"], expected["target_ml"])
+        self.assertGreaterEqual(empty["error_percent"], 0)
+        self.assertLessEqual(empty["error_percent"], expected["max_error_percent"])
+        self.assertTrue(empty["accepted"])
+        self.assertEqual(vacuum["calibration_samples"], expected["accepted_samples"])
+        self.assertAlmostEqual(vacuum["calibration_factor"], expected["calibration_factor_after"], places=3)
 
 
 if __name__ == "__main__":

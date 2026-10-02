@@ -18,6 +18,19 @@ def floor_ml_before(status, vac):
 
 
 class AreaAtTransitionTests(unittest.TestCase):
+    def test_prewash_before_new_task_area_reset_keeps_balance_complete(self):
+        state = run(S8, dict(BASE), [
+            dict(status="charging", vac="docked", area="22.7", intensity="off"),
+            dict(status="charging", vac="docked", area="22.7", intensity="standard"),
+            dict(status="washing_the_mop", vac="docked", area="22.7", intensity="standard"),
+            dict(status="washing_the_mop", vac="docked", area="0", intensity="standard"),
+            dict(status="cleaning", vac="cleaning", area="0", intensity="standard"),
+            dict(status="cleaning", vac="cleaning", area="5", intensity="standard"),
+        ])
+        self.assertAlmostEqual(state["used_ml"], 150 + 5 * 6, places=1)
+        self.assertFalse(state.get("accounting_incomplete"))
+        self.assertFalse(state.get("session_water_broken"))
+
     def test_area_cleaned_before_heading_to_wash_is_charged(self):
         added, _ = floor_ml_before("going_to_wash_the_mop", "returning")
         self.assertAlmostEqual(added, 2 * 6 + 150, places=1)
@@ -62,13 +75,37 @@ class WaterLevelTests(unittest.TestCase):
                 self.assertAlmostEqual(state["used_ml"], ml, places=1)
                 self.assertIsNone(state.get("intensity_unmapped"))
 
-    def test_levels_without_a_factor_are_reported(self):
+    def test_levels_without_a_factor_are_not_billed_as_medium(self):
         for level in ("smart_mode", "custom_water_flow", "custom"):
             with self.subTest(level=level):
                 state = self.ml_for(level)
-                self.assertAlmostEqual(state["used_ml"], 60, places=1)
+                self.assertEqual(state["used_ml"], 0)
                 self.assertEqual(state["intensity_unmapped"], level)
-                self.assertFalse(state.get("accounting_incomplete"))
+                self.assertTrue(state.get("accounting_incomplete"))
+
+    def test_time_fallback_respects_the_same_water_level_factors_as_area(self):
+        device = {**S8, "area_sensor": None,
+                  "usage_ml_per_active_minute": {"default": 2},
+                  "time_accounting_evidence": "user_measured"}
+        for level, expected_ml in (("mild", 1.4), ("standard", 2.0),
+                                   ("intense", 2.6), ("extreme", 3.0)):
+            with self.subTest(level=level):
+                first = run(device, dict(BASE), [dict(status="cleaning", vac="cleaning",
+                                                      intensity=level)])
+                before = first["used_ml"]
+                after = run(device, first, [dict(status="cleaning", vac="cleaning",
+                                                 intensity=level)], ts=10_060_000)
+                self.assertAlmostEqual(after["used_ml"] - before, expected_ml, places=2)
+                self.assertFalse(after.get("accounting_incomplete"))
+
+    def test_unmapped_level_does_not_escape_through_time_fallback(self):
+        device = {**S8, "area_sensor": None,
+                  "usage_ml_per_active_minute": {"default": 2},
+                  "time_accounting_evidence": "user_measured"}
+        state = run(device, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0",
+                                             intensity="custom_water_flow")])
+        self.assertEqual(state["used_ml"], 0)
+        self.assertTrue(state.get("accounting_incomplete"))
 
 
 if __name__ == "__main__":

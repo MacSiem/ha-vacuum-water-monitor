@@ -35,6 +35,34 @@ class ModelProfileTests(unittest.TestCase):
         self.assertEqual(resolved["capability"], "unknown")
         self.assertIsNone(resolved["tracked_capacity_ml"])
 
+    def test_s7_maxv_registry_identity_survives_entity_rename(self):
+        # Issue #13: the registry's a27 identity must not depend on the
+        # user-editable vacuum.roborock_s7_maxv entity alias.
+        for field, value in [
+            ("model", "roborock.vacuum.a27"),
+            ("model_id", "a27"),
+            ("model", "S7 MaxV"),
+            ("model", "Roborock S7 MaxV Ultra"),
+            ("model", "S7 MaxV Ultra"),
+        ]:
+            with self.subTest(field=field, value=value):
+                resolved = profiles.resolve_profile({
+                    "manufacturer": "Beijing Roborock Technology Co., Ltd.",
+                    field: value, "entity_id": "vacuum.qa_renamed",
+                })
+                self.assertEqual(resolved["profile_key"], "roborock_s7_maxv")
+                # Robot identity alone does not prove dock variant/capacity.
+                self.assertIsNone(resolved["tracked_capacity_ml"])
+                self.assertTrue(all(v is None for v in resolved["reservoirs_ml"].values()))
+
+    def test_s7_identity_does_not_guess_dock_or_cross_manufacturers(self):
+        for metadata in [
+            {"manufacturer": "Unrelated vendor", "model_id": "a27"},
+            {"manufacturer": "Roborock", "model": "S7 MaxV Ultra 2"},
+        ]:
+            with self.subTest(metadata=metadata):
+                self.assertIsNone(profiles.resolve_profile(metadata)["profile_key"])
+
     def test_malformed_rate_is_rejected(self):
         payload = json.loads(PATH.with_name("model_profiles.json").read_text())
         payload["profiles"]["roborock_s8_maxv_ultra"]["accounting"]["usage_ml_per_m2"] = {"default": 1}
