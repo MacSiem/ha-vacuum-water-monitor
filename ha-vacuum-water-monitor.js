@@ -8,7 +8,7 @@ const _escBase = (s) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':
 const _esc = (s) => _escBase(_asText(s));
 const SUPPORT_DISMISSED_KEY = 'ha-vacuum-water-monitor-support-dismissed';
 const supportDismissed = () => { try { return localStorage.getItem(SUPPORT_DISMISSED_KEY) === '1'; } catch (_) { return false; } };
-const ownDonateFooter = () => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">Optional support for HA Tools</a><button type="button" class="support-dismiss" aria-label="Dismiss support link">×</button></section>`;
+const ownDonateFooter = (lang = "en") => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">${lang === "pl" ? "Opcjonalne wsparcie HA Tools" : "Optional support for HA Tools"}</a><button type="button" class="support-dismiss" aria-label="${lang === "pl" ? "Ukryj odnośnik wsparcia" : "Dismiss support link"}">×</button></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
 const VWM_VERSION = '5.9.0-beta.6';
@@ -68,6 +68,52 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "Needs a refill baseline.": "Potrzebny punkt odniesienia pełnego zbiornika.",
+  "Accounting paused.": "Rozliczanie jest wstrzymane.",
+  "Measured volume.": "Zmierzona objętość.",
+  "The configured sensor for this reservoir takes precedence over all estimates.": "Odczyt przypisanego czujnika tego zbiornika ma pierwszeństwo przed szacunkami.",
+  "The water warning does not identify the tracked reservoir. Accounting is unchanged.": "Ostrzeżenie o wodzie nie wskazuje śledzonego zbiornika. Bilans pozostaje bez zmian.",
+  "Low-water threshold has no measured remaining volume. It cannot calibrate consumption.": "Próg niskiego poziomu nie podaje zmierzonej pozostałej objętości. Nie może kalibrować zużycia.",
+  "Model or accounting signals changed. A new sample baseline is being established.": "Zmieniono model lub sygnały rozliczania. Ustalany jest nowy punkt odniesienia próbki.",
+  "The vacuum is missing or unavailable. Accounting is paused.": "Robot nie jest dostępny. Rozliczanie jest wstrzymane.",
+  "The configured duration signal is unavailable. No elapsed time is inferred.": "Przypisany sygnał czasu jest niedostępny. Czas nie jest zgadywany.",
+  "The authoritative volume sensor is unavailable. Estimates will not replace it.": "Czujnik objętości jest niedostępny. Szacunki go nie zastępują.",
+  "Confirm which reservoir the volume sensor measures.": "Potwierdź, który zbiornik mierzy czujnik objętości.",
+  "Volume sensor must publish mL or L.": "Czujnik objętości musi podawać mL lub L.",
+  "Typical for this mop system": "Szacunek dla tego systemu mopowania",
+  "Generic mopping estimate": "Początkowy szacunek mopowania",
+  "Based on manufacturer-declared quantities": "Na podstawie ilości deklarowanych przez producenta",
+  "Based on an independent review measurement": "Na podstawie niezależnego pomiaru w recenzji",
+  "Based on a closely related model": "Na podstawie podobnego modelu",
+  "Learned from calibrated robots of this model": "Wyuczone na skalibrowanych robotach tego modelu",
+  "Labelled estimate": "Oznaczony szacunek",
+  "This robot does not expose a signal that shows when it mops (mop attached, mop mode or water level). Map one in Settings → Signal mapping so water use can be estimated.": "Brakuje sygnału określającego mopowanie (zamocowany mop, tryb mopowania lub poziom wody). Przypisz go w Ustawienia → Przypisanie sygnałów.",
+
+  "Accounting status unknown.": "Stan rozliczania nieznany.",
+  "No authoritative usage capability was supplied by the integration.": "Integracja nie podała obsługi rozliczania zużycia wody.",
+  "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Początkowy szacunek mopowania uczy się automatycznie na obsługiwanych sygnałach pustego zbiornika. Nieznane pojemności pozostają nieznane.",
+  "any mode": "dowolny tryb",
+  "unknown": "nieznany",
+  "Optional support for HA Tools": "Opcjonalne wsparcie HA Tools",
+  "Dismiss support link": "Ukryj odnośnik wsparcia",
+  "Mop signal needed.": "Potrzebny sygnał mopowania.",
+  "Tracked reservoir is empty.": "Śledzony zbiornik jest pusty.",
+  "A machine-readable empty state closed this calibration cycle. Refill the reservoir; the learned device factor is preserved.": "Sygnał pustego zbiornika zakończył cykl. Dolej wody; wyuczony współczynnik robota zostaje zachowany.",
+  "Low-water alert confirmed.": "Potwierdzony niski poziom wody.",
+  "Missing rate.": "Brak współczynnika zużycia.",
+  "Automatic estimate is paused until an applicable measured calibration rate is available.": "Szacunek jest wstrzymany do czasu uzyskania współczynnika pasującego do tego sprzątania.",
+  "Unavailable signal.": "Sygnał niedostępny.",
+  "Automatic estimate is waiting for a usable configured same-device status or area signal.": "Szacunek czeka na dostępny sygnał stanu lub powierzchni z tego robota.",
+  "Calibrated for this robot.": "Kalibracja tego robota.",
+  "Estimating now.": "Trwa szacowanie zużycia.",
+  "Estimated usage.": "Szacowane zużycie.",
+  "Measured calibration active.": "Kalibracja z pomiarów jest aktywna.",
+  "This manual-only model is currently accounting from your measured calibration and same-device signal.": "Zużycie tego modelu jest liczone z Twojej kalibracji pomiarowej i sygnału tego robota.",
+  "Manual-only.": "Rozliczanie ręczne.",
+  "This model has capacity data but no published automatic usage telemetry. Add calibration and use manual refill to maintain the estimate.": "Znamy pojemność tego modelu, ale nie ma danych o automatycznym zużyciu. Dodaj kalibrację i potwierdzaj dolanie, aby prowadzić szacunek.",
+  "Active automatic estimate.": "Trwa automatyczne szacowanie.",
+  "Automatic estimate ready.": "Automatyczny szacunek jest gotowy.",
+
   "Select a recorded cycle. Optionally enter the water measured to refill the same reservoir to its starting level and your measurement resolution. Review the draft before downloading; nothing is uploaded.": "Wybierz zapisane sprzątanie. Opcjonalnie wpisz zmierzoną ilość wody dolanej do tego samego poziomu oraz dokładność pomiaru. Sprawdź szkic przed pobraniem; nic nie jest przesyłane.",
   "Recorded cycle": "Zapisane sprzątanie",
   "Cycle": "Sprzątanie",
@@ -5940,7 +5986,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const configuredRates = Object.keys(customRates).length > 0 || Object.keys(explicitRates).length > 0;
       const usage = {...(configuredRates && calib.estimate_basis ? {} : validRates(calib.water_per_m2)),
         ...customRates, ...explicitRates};
-      const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${_esc(k)}:</b> ${v} ml/m²</span>`).join('');
+      const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${_esc(this._waterText(k))}:</b> ${v} ml/m²</span>`).join('');
       const referenceUsage = usage.standard || usage.medium || usage.default || Object.values(usage)[0] || null;
       const factor = Number(data.calibrationFactor) > 0 ? Number(data.calibrationFactor) : 1;
       const estAreaPerTank = referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / (referenceUsage * factor)) : null;
@@ -5955,13 +6001,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
             <div>🪣 ${this._waterText('Tracked tank')}: <b>${trackedCapacity ? `${trackedCapacity.toLocaleString('en-US')} ml` : 'unknown'}</b></div>
             ${modelCapacity && modelCapacity !== trackedCapacity ? `<div>📚 ${this._waterText('Model reference')}: <b>${modelCapacity.toLocaleString('en-US')} ml</b></div>` : ''}
-            <div>🧹 ${this._waterText('Mop')}: <b>${_esc(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : 'unknown'))}</b></div>
+            <div>🧹 ${this._waterText('Mop')}: <b>${_esc(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : this._waterText('unknown')))}</b></div>
             ${calib.avg_area_per_charge ? `<div>📏 ${this._waterText('Est. area/charge')}: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
             ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText(scope === 'whole_cycle' ? 'whole cycle, including washes' : 'standard route, excl. washes')})</span></div>` : ''}
           </div>
           ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
           ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}${!configuredRates && calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : 'No estimate for this model yet; set the tank capacity to enable tracking.'}</div>`}
-          ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + calib.notes + '</div>' : ''}
+          ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + _esc(this._waterText(calib.notes)) + '</div>' : ''}
         </div>`;
     }
 
@@ -6001,7 +6047,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _buildAccountingGuidance(data) {
-    const box = (title, text, color = '#64748b') => `<div class="accounting-guidance" style="border-color:${color}"><b>${title}</b><span>${text}</span></div>`;
+    const box = (title, text, color = '#64748b') => `<div class="accounting-guidance" style="border-color:${color}"><b>${this._waterText(title)}</b><span>${this._waterText(text)}</span></div>`;
     if (data.stateReason === 'mop_signal_unbound') {
       return box('Mop signal needed.', 'This robot does not expose a signal that shows when it mops (mop attached, mop mode or water level). Map one in Settings \u2192 Signal mapping so water use can be estimated.', '#f59e0b');
     }
@@ -6012,7 +6058,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const capability = data.capability === 'manual_only'
         ? ' Manual-only: add calibration and use manual refill to maintain the estimate.'
         : '';
-      return box('Needs a refill baseline.', `Water remaining and used are unknown until you press Refilled with a full tracked reservoir.${capability}`, '#f59e0b');
+      return box('Needs a refill baseline.', (this._lang === 'pl' ? `Pozostała i zużyta woda są nieznane, dopóki nie potwierdzisz pełnego śledzonego zbiornika przyciskiem Dolane.${data.capability === 'manual_only' ? ' Rozliczanie ręczne: dodaj kalibrację i potwierdzaj dolanie.' : ''}` : `Water remaining and used are unknown until you press Refilled with a full tracked reservoir.${capability}`), '#f59e0b');
     }
     const blockedReasons = {
       water_anchor_reservoir_unverified: 'The water warning does not identify the tracked reservoir. Accounting is unchanged.',
@@ -6030,8 +6076,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return box('Tracked reservoir is empty.', 'A machine-readable empty state closed this calibration cycle. Refill the reservoir; the learned device factor is preserved.', '#ef4444');
     }
     if (data.stateReason === 'water_low' || data.waterLow || data.waterShortage) {
-      const reserve = Number.isFinite(Number(data.percentRemaining)) ? ` The current estimate preserves approximately ${Number(data.percentRemaining)}% reserve.` : '';
-      return box('Low-water alert confirmed.', `This threshold is an estimated calibration anchor, not a direct volume measurement.${reserve} Refill the reservoir when convenient; the learned device factor is preserved.`, '#f59e0b');
+      const reserve = Number.isFinite(Number(data.percentRemaining)) ? (this._lang === 'pl' ? ` Szacunek zachowuje około ${Number(data.percentRemaining)}% rezerwy.` : ` The current estimate preserves approximately ${Number(data.percentRemaining)}% reserve.`) : '';
+      return box('Low-water alert confirmed.', (this._lang === 'pl' ? `Ten próg jest szacowanym punktem odniesienia kalibracji, a nie pomiarem objętości.${reserve} Dolej wody; wyuczony współczynnik zostaje zachowany.` : `This threshold is an estimated calibration anchor, not a direct volume measurement.${reserve} Refill the reservoir when convenient; the learned device factor is preserved.`), '#f59e0b');
     }
     if (data.stateReason === 'missing_area_rate' || data.stateReason === 'missing_wash_rate' || data.stateReason === 'missing_time_rate') {
       return box('Missing rate.', 'Automatic estimate is paused until an applicable measured calibration rate is available.', '#f59e0b');
@@ -6042,17 +6088,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const active = Boolean(data.accountingSource && Number.isFinite(Number(data.accountingRate)) && Number(data.accountingRate) > 0 && !data.stateReason);
     const hasUncertainty = data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent));
     const uncertainty = hasUncertainty
-      ? ` Initial uncertainty: approximately ${Number(data.uncertaintyPercent)}%.`
+      ? (this._lang === 'pl' ? ` Początkowa niepewność: około ${Number(data.uncertaintyPercent)}%.` : ` Initial uncertainty: approximately ${Number(data.uncertaintyPercent)}%.`)
       : '';
     const samples = Math.max(0, Number(data.calibrationSamples) || 0);
-    const accuracy = hasUncertainty ? ` Indicative uncertainty: about \u00B1${Number(data.uncertaintyPercent)}%.` : '';
+    const accuracy = hasUncertainty ? (this._lang === 'pl' ? ` Orientacyjna niepewność: około ±${Number(data.uncertaintyPercent)}%.` : ` Indicative uncertainty: about \u00B1${Number(data.uncertaintyPercent)}%.`) : '';
     if (samples > 0) {
       const factor = Number.isFinite(Number(data.calibrationFactor)) ? Number(data.calibrationFactor) : 1;
-      return box('Calibrated for this robot.', `Calibrated on ${samples} empty ${samples === 1 ? 'tank' : 'tanks'} (correction \u00D7${Number(factor.toFixed(2))}).${accuracy} Every empty-tank signal refines it automatically.`, '#22c55e');
+      return box('Calibrated for this robot.', (this._lang === 'pl' ? `Kalibracja na ${samples} cyklach zbiornika (współczynnik ×${Number(factor.toFixed(2))}).${accuracy} Kolejne poprawne cykle pełnego zbiornika ulepszają szacunek automatycznie.` : `Calibrated on ${samples} empty ${samples === 1 ? 'tank' : 'tanks'} (correction \u00D7${Number(factor.toFixed(2))}).${accuracy} Complete refill-to-empty cycles refine it automatically.`), '#22c55e');
     }
     if (data.estimateBasis) {
-      const label = VWM_BASIS_LABEL[data.estimateBasis] || 'Labelled estimate';
-      return box(active ? 'Estimating now.' : 'Estimated usage.', `${_esc(label)}.${accuracy} A verified empty signal for the tracked tank can calibrate this estimate; otherwise add a measured calibration.`, '#22c55e');
+      const label = this._waterText(VWM_BASIS_LABEL[data.estimateBasis] || 'Labelled estimate');
+      return box(active ? 'Estimating now.' : 'Estimated usage.', (this._lang === 'pl' ? `${_esc(label)}.${accuracy} Potwierdzony sygnał pustego śledzonego zbiornika może kalibrować szacunek; bez niego można dodać kalibrację z pomiaru.` : `${_esc(label)}.${accuracy} A verified empty signal for the tracked tank can calibrate this estimate; otherwise add a measured calibration.`), '#22c55e');
     }
     if (data.capability === 'manual_only' && active && data.accountingEvidence === 'user_calibration') {
       return box('Measured calibration active.', 'This manual-only model is currently accounting from your measured calibration and same-device signal.', '#22c55e');
@@ -6062,13 +6108,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     if (data.capability === 'automatic_estimate') {
       const activeSource = data.accountingSource === 'active_time'
-        ? `Usage is being estimated from active time while mopping because this integration does not expose cleaned area.${uncertainty}`
-        : `Usage is being estimated from the discovered mode, intensity, area, and wash signals.${uncertainty}`;
+        ? (this._lang === 'pl' ? `Zużycie jest szacowane z czasu aktywnego mopowania, ponieważ integracja nie podaje powierzchni.${uncertainty}` : `Usage is being estimated from active time while mopping because this integration does not expose cleaned area.${uncertainty}`)
+        : (this._lang === 'pl' ? `Zużycie jest szacowane z wykrytych sygnałów trybu, intensywności, powierzchni i mycia mopów.${uncertainty}` : `Usage is being estimated from the discovered mode, intensity, area, and wash signals.${uncertainty}`);
       const recorded = Number.isFinite(Number(data.usedMl)) && Number(data.usedMl) > 0;
       return box(active ? 'Active automatic estimate.' : recorded ? this._waterText('Usage recorded.') : 'Automatic estimate ready.',
         active ? activeSource : recorded
           ? this._waterText('Recorded consumption is retained between mopping and mop-wash events. Accounting continues when supported water-use signals are observed.')
-          : `Accounting will begin when a supported mopping status is observed.${uncertainty}`, '#22c55e');
+          : (this._lang === 'pl' ? `Rozliczanie rozpocznie się po rozpoznaniu obsługiwanego stanu mopowania.${uncertainty}` : `Accounting will begin when a supported mopping status is observed.${uncertainty}`), '#22c55e');
     }
     return box('Accounting status unknown.', 'No authoritative usage capability was supplied by the integration.', '#64748b');
   }
@@ -7710,7 +7756,7 @@ target:
         ${tabNav}
         ${tabContent}
 
-        ${this._hass?.user?.is_admin && this._config.show_support !== false && !supportDismissed() ? ownDonateFooter() : ''}
+        ${this._hass?.user?.is_admin && this._config.show_support !== false && !supportDismissed() ? ownDonateFooter(this._lang) : ''}
 
       
         </div>`;
