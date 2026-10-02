@@ -5,6 +5,7 @@
 - Preserve recorded consumption across area and active-time handoffs, distinguish mopping from vacuum-only operation, and count a mop-wash sequence once. Missing exposure remains explicit and excludes an incomplete tank from learning.
 - Recognize S7 MaxV/a27 and the observed H50 Pro identifier `xiaomi.vacuum.ov42gl` independently of entity names, while preserving saved capacity, rates, calibration and history. A robot identifier does not establish an unverified dock capacity.
 - Apply declared numeric water-output ranges and retain unknown values outside them. Keep authored rates separate from labelled model estimates and physical measurements.
+- Localize model database explanations and estimate provenance in Polish, keeping manufacturer facts and unverified capacity separate.
 - Improve Polish and English setup, calibration and refill guidance. Unknown capacity stays unknown, missing battery telemetry is not shown as 0%, and unconfigured tracking does not claim ready signals.
 - Register the bundled card automatically, preserve the selected robot and tab after reload, and keep independent calibration measurements optional.
 

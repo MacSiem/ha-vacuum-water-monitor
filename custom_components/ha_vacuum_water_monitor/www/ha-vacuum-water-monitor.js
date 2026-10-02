@@ -68,6 +68,34 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "active": "aktywny",
+  "(active profile)": "(aktywny profil)",
+  "mop system unknown": "system mopowania nieznany",
+  "no estimate": "brak oszacowania",
+  "Estimated wash:": "Szacowane mycie:",
+  "ml/cycle": "ml/cykl",
+  "manufacturer source": "źródło producenta",
+  "ml clean-water capacity": "ml pojemności czystej wody",
+  "clean-water capacity unknown": "pojemność czystej wody nieznana",
+  "m² / fill (tested max)": "m² / napełnienie (maksimum testowe)",
+  "m² / charge": "m² / ładowanie",
+  "estimated mop modes": "szacowane tryby mopowania",
+  "Estimated water usage by mode": "Szacowane zużycie wody według trybu",
+  "labelled estimate": "oznaczone oszacowanie",
+  "capacity unknown": "pojemność nieznana",
+  "tank (floor only)": "zbiornik (tylko podłoga)",
+  "No estimate for this model yet.": "Brak oszacowania dla tego modelu.",
+  "Mop wash in dock:": "Mycie mopa w stacji:",
+  "manufacturer data": "dane producenta",
+  "low": "niski",
+  "medium": "średni",
+  "high": "wysoki",
+  "max/deep": "maksymalny/dokładny",
+  "Based on an owner’s measured accounting for this model": "Na podstawie pomiarów bilansu właściciela tego modelu",
+  "calibrates automatically.": "kalibruje się automatycznie.",
+  "tracked clean-water capacity: dock tank for auto-refill models, otherwise the robot's built-in tank. Published robot and dirty-water capacities are shown separately in the model facts.": "Śledzona pojemność czystej wody: zbiornik stacji w modelach automatycznie dolewających wodę, w pozostałych zbiornik robota. Opublikowane pojemności zbiornika robota i brudnej wody podano osobno w danych modelu.",
+  "estimated area the robot cleans on one full tank in given mode.": "Szacowana powierzchnia sprzątania z jednego pełnego zbiornika w danym trybie.",
+  "reported area on one battery charge (regardless of water).": "Podana powierzchnia sprzątania na jednym ładowaniu (niezależnie od wody).",
   "Learned from calibrated devices of this model. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Wyuczone na skalibrowanych urządzeniach tego modelu. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
   "Measured accounting on an owner's device of this model. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Pomiar rozliczania na urządzeniu właściciela tego modelu. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
   "Manufacturer-declared quantity. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Ilość deklarowana przez producenta. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
@@ -6036,7 +6064,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
             ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText(scope === 'whole_cycle' ? 'whole cycle, including washes' : 'standard route, excl. washes')})</span></div>` : ''}
           </div>
           ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}${!configuredRates && calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(VWM_BASIS_LABEL[calib.estimate_basis] || '') + ' \u00B7 calibrates automatically.' : this._waterText('No estimate for this model yet; set the tank capacity to enable tracking.')}</div>`}
+          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}${!configuredRates && calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(this._waterText(VWM_BASIS_LABEL[calib.estimate_basis] || '')) + ' \u00B7 ' + this._waterText('calibrates automatically.') : this._waterText('No estimate for this model yet; set the tank capacity to enable tracking.')}</div>`}
           ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + _esc(this._waterText(calib.notes)) + '</div>' : ''}
         </div>`;
     }
@@ -6933,16 +6961,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
       return `<tr style="${rowBg}">
         <td style="${cellSt}">
-          <div style="font-weight:600;font-size:12px">${m.label}${isActive ? ' <span style="color:#3b82f6;font-size:10px">\u2705 active</span>' : ''}</div>
-          <div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${_esc(m.mop_type || (m.mop_system && m.mop_system !== 'unknown' ? String(m.mop_system).replace(/_/g, ' ') : 'mop system unknown'))}</div>
+          <div style="font-weight:600;font-size:12px">${m.label}${isActive ? ` <span style="color:#3b82f6;font-size:10px">\u2705 ${this._waterText("active")}</span>` : ''}</div>
+          <div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${_esc(m.mop_type || (m.mop_system && m.mop_system !== 'unknown' ? String(m.mop_system).replace(/_/g, ' ') : this._waterText("mop system unknown")))}</div>
         </td>
-        <td style="${cellSt};${numSt}">${m.tank_ml ? `${Number(m.tank_ml).toLocaleString('en-US')} ml` : 'unknown'}</td>
-        <td style="${cellSt}">${levelTags ? `${levelTags}${m.estimate_basis ? `<div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${_esc(VWM_BASIS_LABEL[m.estimate_basis] || '')}${m.uncertainty_percent ? ` \u00B7 \u00B1${m.uncertainty_percent}%` : ''}</div>` : ''}` : '<span style="color:var(--vwm-text-muted,#9ca3af)">no estimate</span>'}</td>
+        <td style="${cellSt};${numSt}">${m.tank_ml ? `${Number(m.tank_ml).toLocaleString('en-US')} ml` : this._waterText("unknown")}</td>
+        <td style="${cellSt}">${levelTags ? `${levelTags}${m.estimate_basis ? `<div style="font-size:10px;color:var(--vwm-text-muted,#9ca3af);margin-top:2px">${_esc(this._waterText(VWM_BASIS_LABEL[m.estimate_basis] || ''))}${m.uncertainty_percent ? ` \u00B7 \u00B1${m.uncertainty_percent}%` : ''}</div>` : ''}` : `<span style="color:var(--vwm-text-muted,#9ca3af)">${this._waterText("no estimate")}</span>`}</td>
         <td style="${cellSt}">${areaEstimates || '—'}</td>
         <td style="${cellSt};${numSt}">${m.avg_area_per_charge ? m.avg_area_per_charge + ' m\u00B2' : '—'}</td>
         <td style="${cellSt};font-size:10px;color:var(--vwm-text-secondary,#6b7280);max-width:220px">
           ${publishedFacts.length ? `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px">${publishedFacts.map(fact => `<span style="${tagSt};background:rgba(59,130,246,0.08);color:var(--vwm-text-secondary,#6b7280)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          ${m.notes || ''}${m.mop_wash_ml ? ' | Estimated wash: ' + m.mop_wash_ml + 'ml/cycle' : ''}
+          ${_esc(this._waterText(m.notes || ''))}${m.mop_wash_ml ? ' | ' + this._waterText('Estimated wash:') + ' ' + m.mop_wash_ml + this._waterText('ml/cycle') : ''}
         </td>
       </tr>`;
     }).join('');
@@ -6953,26 +6981,26 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (active) {
       const levels = Object.entries(active.water_per_m2 || {});
       const publishedFacts = _calibrationFacts(active, this._lang);
-      const sourceLinks = (active.source_urls || []).map((url, index) => `<a href="${_esc(url)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6">manufacturer source${active.source_urls.length > 1 ? ' ' + (index + 1) : ''}</a>`).join(' · ');
+      const sourceLinks = (active.source_urls || []).map((url, index) => `<a href="${_esc(url)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6">${this._waterText("manufacturer source")}${active.source_urls.length > 1 ? ' ' + (index + 1) : ''}</a>`).join(' · ');
       activeCard = `
         <div style="margin-bottom:14px;padding:14px;background:rgba(59,130,246,0.06);border:1.5px solid rgba(59,130,246,0.2);border-radius:12px">
-          <div style="font-weight:700;font-size:14px;margin-bottom:8px">\uD83E\uDDA4 ${active.label} <span style="font-size:11px;color:#3b82f6;font-weight:500">(active profile)</span></div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px">\uD83E\uDDA4 ${active.label} <span style="font-size:11px;color:#3b82f6;font-weight:500">${this._waterText("(active profile)")}</span></div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
               <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${active.tank_ml ? Number(active.tank_ml).toLocaleString('en-US') : '\u2014'}</div>
-              <div style="font-size:10px;color:var(--bento-text-muted)">${active.tank_ml ? 'ml clean-water capacity' : 'clean-water capacity unknown'}</div>
+              <div style="font-size:10px;color:var(--bento-text-muted)">${active.tank_ml ? this._waterText("ml clean-water capacity") : this._waterText("clean-water capacity unknown")}</div>
             </div>
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
               <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${active.tested_max_area_per_fill_m2 || active.avg_area_per_charge || '—'}</div>
-              <div style="font-size:10px;color:var(--bento-text-muted)">${active.tested_max_area_per_fill_m2 ? 'm\u00B2 / fill (tested max)' : 'm\u00B2 / charge'}</div>
+              <div style="font-size:10px;color:var(--bento-text-muted)">${active.tested_max_area_per_fill_m2 ? this._waterText("m² / fill (tested max)") : this._waterText("m² / charge")}</div>
             </div>
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
               <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${levels.length}</div>
-              <div style="font-size:10px;color:var(--bento-text-muted)">estimated mop modes</div>
+              <div style="font-size:10px;color:var(--bento-text-muted)">${this._waterText("estimated mop modes")}</div>
             </div>
           </div>
           ${publishedFacts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">${publishedFacts.map(fact => `<span style="${tagSt};background:rgba(59,130,246,0.08);color:var(--vwm-text-secondary,#6b7280)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          <div style="font-size:12px;font-weight:600;margin-bottom:6px">Estimated water usage by mode${active.uncertainty_percent ? ` (\u00B1${active.uncertainty_percent}%, ${_esc(VWM_BASIS_LABEL[active.estimate_basis] || 'labelled estimate')})` : ''}:</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px">${this._waterText("Estimated water usage by mode")}${active.uncertainty_percent ? ` (\u00B1${active.uncertainty_percent}%, ${_esc(this._waterText(VWM_BASIS_LABEL[active.estimate_basis] || 'labelled estimate'))})` : ''}:</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px">
             ${levels.length ? levels.map(([mode, val]) => {
               const area = active.tank_ml ? Math.round(active.tank_ml / val) : null;
@@ -6981,14 +7009,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
                 <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--bento-text-secondary);margin-bottom:4px">${mode}</div>
                 <div style="font-size:16px;font-weight:700;color:var(--bento-text)">${val} <span style="font-size:10px;font-weight:400">ml/m\u00B2</span></div>
                 <div style="margin:4px 0;height:4px;background:rgba(59,130,246,0.12);border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;border-radius:2px;background:${val <= 8 ? '#22c55e' : val <= 14 ? '#3b82f6' : val <= 18 ? '#f59e0b' : '#ef4444'}"></div></div>
-                <div style="font-size:10px;color:var(--bento-text-muted)">${area ? `\u2248 ${area} m\u00B2 / tank (floor only)` : 'capacity unknown'}</div>
+                <div style="font-size:10px;color:var(--bento-text-muted)">${area ? `\u2248 ${area} m\u00B2 / ${this._waterText("tank (floor only)")}` : this._waterText("capacity unknown")}</div>
               </div>`;
-            }).join('') : '<div style="font-size:11px;color:var(--bento-text-secondary)">No estimate for this model yet.</div>'}
+            }).join('') : `<div style="font-size:11px;color:var(--bento-text-secondary)">${this._waterText("No estimate for this model yet.")}</div>`}
           </div>
           ${active.mop_type ? `<div style="margin-top:8px;font-size:11px;color:var(--bento-text-secondary)">\uD83E\uDDF9 ${active.mop_type}</div>` : ''}
-          ${active.notes ? `<div style="margin-top:4px;font-size:11px;color:var(--bento-text-muted);font-style:italic">\uD83D\uDCA1 ${active.notes}</div>` : ''}
-          ${active.mop_wash_ml ? `<div style="margin-top:4px;font-size:11px;color:var(--bento-text-secondary)">\uD83D\uDEBF Mop wash in dock: ${active.mop_wash_ml}ml/cycle${active.mop_wash_modes ? ' (' + Object.entries(active.mop_wash_modes).map(([k,v]) => k + ': ' + v + 'ml').join(', ') + ')' : ''}</div>` : ''}
-          ${sourceLinks ? `<div style="margin-top:6px;font-size:10px">${this._waterText("Sources")}: ${sourceLinks} · ${_esc(active.data_quality || 'manufacturer data')}</div>` : ''}
+          ${active.notes ? `<div style="margin-top:4px;font-size:11px;color:var(--bento-text-muted);font-style:italic">\uD83D\uDCA1 ${_esc(this._waterText(active.notes))}</div>` : ''}
+          ${active.mop_wash_ml ? `<div style="margin-top:4px;font-size:11px;color:var(--bento-text-secondary)">\uD83D\uDEBF ${this._waterText("Mop wash in dock:")} ${active.mop_wash_ml}${this._waterText("ml/cycle")}${active.mop_wash_modes ? ' (' + Object.entries(active.mop_wash_modes).map(([k,v]) => k + ': ' + v + 'ml').join(', ') + ')' : ''}</div>` : ''}
+          ${sourceLinks ? `<div style="margin-top:6px;font-size:10px">${this._waterText("Sources")}: ${sourceLinks} · ${_esc(this._waterText(active.data_quality || 'manufacturer data'))}</div>` : ''}
         </div>`;
     }
 
@@ -7019,15 +7047,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <div class="section-block">
           <div class="section-title">\u2139\uFE0F ${this._waterText("Mode Legend")}</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-top:8px;font-size:11px">
-            <div style="display:flex;align-items:center;gap:6px"><span style="${tagSt};${levelColor(5)}">low</span> ${this._waterText("Gentle water output")}</div>
-            <div style="display:flex;align-items:center;gap:6px"><span style="${tagSt};${levelColor(10)}">medium</span> ${this._waterText("Standard water output")}</div>
-            <div style="display:flex;align-items:center;gap:6px"><span style="${tagSt};${levelColor(16)}">high</span> ${this._waterText("High water output")}</div>
-            <div style="display:flex;align-items:center;gap:6px"><span style="${tagSt};${levelColor(22)}">max/deep</span> ${this._waterText("Deep cleaning")}</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="${tagSt};${levelColor(5)}">${this._waterText("low")}</span> ${this._waterText("Gentle water output")}</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="${tagSt};${levelColor(10)}">${this._waterText("medium")}</span> ${this._waterText("Standard water output")}</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="${tagSt};${levelColor(16)}">${this._waterText("high")}</span> ${this._waterText("High water output")}</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="${tagSt};${levelColor(22)}">${this._waterText("max/deep")}</span> ${this._waterText("Deep cleaning")}</div>
           </div>
           <div style="margin-top:10px;font-size:11px;color:var(--bento-text-secondary);line-height:1.5">
-            <strong>${this._waterText("Tank")}</strong> — tracked clean-water capacity: dock tank for auto-refill models, otherwise the robot's built-in tank. Published robot and dirty-water capacities are shown separately in the model facts.<br>
-            <strong>${this._waterText("Coverage / tank")}</strong> — estimated area the robot cleans on one full tank in given mode.<br>
-            <strong>${this._waterText("Coverage / charge")}</strong> — max area on one battery charge (regardless of water).
+            <strong>${this._waterText("Tank")}</strong> — ${this._waterText("tracked clean-water capacity: dock tank for auto-refill models, otherwise the robot's built-in tank. Published robot and dirty-water capacities are shown separately in the model facts.")}<br>
+            <strong>${this._waterText("Coverage / tank")}</strong> — ${this._waterText("estimated area the robot cleans on one full tank in given mode.")}<br>
+            <strong>${this._waterText("Coverage / charge")}</strong> — ${this._waterText("reported area on one battery charge (regardless of water).")}
           </div>
         </div>
       </div>`;
