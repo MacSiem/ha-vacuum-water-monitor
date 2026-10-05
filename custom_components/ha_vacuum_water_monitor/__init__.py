@@ -39,7 +39,7 @@ from .const import (
     signal_vacuum_water_updated,
 )
 from .scheduler import EVENT_SAVE_DELAY_SECONDS, EventTicker
-from .frontend_resource import async_register_card_resource
+from .frontend_resource import async_register_card_resource, card_resource_url
 from .robots import (
     ISSUE_SYNC_TICK_DELAY_SECONDS,
     async_clear_issues,
@@ -203,7 +203,8 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
             )
         ]
     )
-    card_url = f"{_CARD_URL_PATH}?v={VERSION}"
+    card_bytes = await hass.async_add_executor_job(card_path.read_bytes)
+    card_url = card_resource_url(_CARD_URL_PATH, VERSION, card_bytes)
     registration = await async_register_card_resource(hass, card_url, _CARD_FILENAME)
     if registration == "extra_js_url":
         add_extra_js_url(hass, card_url)

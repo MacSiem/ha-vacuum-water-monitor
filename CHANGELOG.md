@@ -2,6 +2,10 @@
 
 ## 5.9.0 (unreleased)
 
+- Refresh the bundled card resource when its content changes, even when the version stays the same.
+- Localize missing-volume diagnostics and recorded/estimated history provenance, and keep open diagnostics expanded when data refreshes.
+- Remove the default duck decorations from robot names and device views.
+
 - Give manual history fields accessible names with their units, and localize the help-dismissal button in Polish.
 
 - Let a briefly unavailable cumulative area counter recover through the existing continuity checks without requiring a time-rate fallback. Do not invent a time dose or invalidate the tank before a short gap can be evaluated. Long gaps, changed settings and counter resets still leave the balance unknown.

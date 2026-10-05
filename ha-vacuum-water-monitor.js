@@ -127,6 +127,13 @@ const VWM_WATER_TEXT_PL = {
   "Based on a closely related model": "Na podstawie podobnego modelu",
   "Learned from calibrated robots of this model": "Wyuczone na skalibrowanych robotach tego modelu",
   "Labelled estimate": "Oznaczony szacunek",
+  "Recorded": "Zapisane",
+  "Effective": "Zastosowana",
+  "Tracked reservoir capacity": "pojemność śledzonego zbiornika",
+  "capacity": "pojemność",
+  "no measurement": "brak pomiaru",
+  "source unavailable": "źródło niedostępne",
+  "Measured event stream": "Zmierzony strumień zdarzeń",
   "This robot does not expose a signal that shows when it mops (mop attached, mop mode or water level). Map one in Settings → Signal mapping so water use can be estimated.": "Brakuje sygnału określającego mopowanie (zamocowany mop, tryb mopowania lub poziom wody). Przypisz go w Ustawienia → Przypisanie sygnałów.",
 
   "Accounting status unknown.": "Stan rozliczania nieznany.",
@@ -575,7 +582,7 @@ const VWM_EVENT = 'ha_vacuum_water_monitor_state_changed';
 const BRAND_PROFILES = {
   'roborock_s8_maxv_ultra': {
     label: 'Roborock S8 MaxV Ultra',
-    icon: '\uD83E\uDDA4',
+    icon: '',
     water_total_ml: 4000,
     vacuum_entity: 'vacuum.roborock_s8_maxv_ultra',
     // Official Roborock integration entities only \u2014 private template sensors
@@ -608,7 +615,7 @@ const BRAND_PROFILES = {
   },
   'roborock_q7': {
     label: 'Roborock Q7',
-    icon: '\uD83E\uDDA4',
+    icon: '',
     water_total_ml: 200,
     vacuum_entity: 'vacuum.roborock_q7',
     main_brush_sensor: 'sensor.roborock_q7_main_brush_time_left',
@@ -625,7 +632,7 @@ const BRAND_PROFILES = {
   },
   'irobot_j7': {
     label: 'iRobot j7+',
-    icon: '\uD83E\uDDA4',
+    icon: '',
     water_total_ml: 0,
     vacuum_entity: 'vacuum.irobot_j7',
     charge_sensor: 'sensor.irobot_j7_battery_level',
@@ -638,7 +645,7 @@ const BRAND_PROFILES = {
   },
   'generic': {
     label: 'Generic Vacuum',
-    icon: '\uD83E\uDDA4',
+    icon: '',
     water_total_ml: 0,
   },
 };
@@ -4671,11 +4678,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const active = sr && sr.activeElement;
     const activeEditable = active && active.matches?.('input, select, textarea') ? active : null;
     const calibrationExpanded = sr.getElementById('vwm-custom-calibration-body')?.style.display === 'block';
-    if (!activeEditable && !calibrationExpanded) return null;
+    const details = [...sr.querySelectorAll('details')].map(detail => ({ id: detail.id, className: detail.className, open: detail.open }));
+    if (!activeEditable && !calibrationExpanded && !details.length) return null;
     const controls = [...sr.querySelectorAll('input, select, textarea')];
     const activeIndex = activeEditable ? controls.indexOf(activeEditable) : -1;
     return {
-      controls: controls.map((control, index) => ({
+      controls: (activeEditable || calibrationExpanded ? controls : []).map((control, index) => ({
         index,
         id: control.id || '',
         value: control.value,
@@ -4686,12 +4694,18 @@ class HAVacuumWaterMonitor extends HTMLElement {
       selectionStart: typeof activeEditable?.selectionStart === 'number' ? activeEditable.selectionStart : null,
       selectionEnd: typeof activeEditable?.selectionEnd === 'number' ? activeEditable.selectionEnd : null,
       calibrationExpanded,
+      details,
     };
   }
 
   _restoreDraftState(draft) {
     if (!draft) return;
     const sr = this.shadowRoot;
+    const details = [...sr.querySelectorAll('details')];
+    for (const saved of draft.details || []) {
+      const detail = details.find(item => saved.id ? item.id === saved.id : item.className === saved.className);
+      if (detail) detail.open = saved.open;
+    }
     const controls = [...sr.querySelectorAll('input, select, textarea')];
     for (const saved of draft.controls) {
       const control = saved.id ? sr.getElementById(saved.id) : controls[saved.index];
@@ -6187,11 +6201,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const rows = [];
     for (const [name, level] of Object.entries(data.reservoirLevels || {})) {
       if (level && typeof level === 'object') rows.push([`${this._waterText('Physical')} ${name}`, level.volume_ml == null
-        ? `Unknown: ${level.reason || 'no measurement'}` : this._formatMl(level.volume_ml)]);
+        ? `${this._waterText('Unknown')}: ${level.reason || this._waterText('no measurement')}` : this._formatMl(level.volume_ml)]);
     }
     const balance = data.accountingV2;
     if (balance && typeof balance === 'object') {
-      rows.push(['Physical transfer balance', balance.status === 'known' ? 'Measured event stream' : `Unknown: ${balance.reason || 'source unavailable'}`]);
+      rows.push(['Physical transfer balance', balance.status === 'known' ? 'Measured event stream' : `${this._waterText('Unknown')}: ${balance.reason || this._waterText('source unavailable')}`]);
       if (balance.status === 'known') {
         if (balance.source_contract_id) rows.push(['Transfer source', balance.source_contract_id]);
         for (const [name, ml] of Object.entries(balance.balances_ml || {})) {
@@ -6233,7 +6247,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.mopEvidenceRequired) rows.push(['Mop accounting gate', 'affirmative mop mode or attachment required']);
     if (data.profileKey) rows.push(['Profile', data.profileKey]);
     if (data.profileSource || data.profileConfidence) rows.push(['Resolution', [data.profileSource, data.profileConfidence].filter(Boolean).join(' / ')]);
-    if (data.trackedReservoir || data.totalMl) rows.push(['Tracked reservoir', `${data.trackedReservoir || 'unknown'}${data.totalMl ? ` (${this._formatMl(data.totalMl)})` : ''}`]);
+    if (data.trackedReservoir || data.totalMl) rows.push(['Tracked reservoir', `${this._waterText(data.trackedReservoir || 'unknown')}${data.totalMl ? ` (${this._formatMl(data.totalMl)})` : ''}`]);
     for (const [key, value] of Object.entries(data.reservoirsMl || {})) {
       if (value != null) rows.push([key, this._formatMl(value)]);
     }
@@ -6305,8 +6319,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       .filter(([, value]) => value != null)
       .map(([name, value]) => `<span>${_esc(name)}: <b>${_esc(this._formatMl(value))}</b></span>`)
       .join(' · ');
-    const reservoirLabel = data.trackedReservoir ? `${_asText(data.trackedReservoir).replace(/_/g, ' ')} capacity` : 'Tracked reservoir capacity';
-    const effectiveCalibration = `<div style="margin:0 0 12px;padding:10px 12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:8px;font-size:11px;line-height:1.5"><b>Effective ${_esc(reservoirLabel)}:</b> ${data.totalMl ? _esc(this._formatMl(data.totalMl)) : 'unknown'}${data.trackedReservoir ? ` (${_esc(data.trackedReservoir)})` : ''}<br><b>${this._waterText("Effective calibration layers:")}</b> ${this._waterText("default → resolved profile → device")} (${_esc(effectiveCalibrationData.tracked_capacity_ml || this._waterText("no device capacity override"))})<br><b>${this._waterText("Estimate evidence:")}</b> ${_esc(data.accountingEvidence || data.evidence || this._waterText('not available'))}<br>${reservoirRows ? `<b>${this._waterText("Distinct reservoirs:")}</b> ${reservoirRows}` : ''}</div>`;
+    const reservoirLabel = data.trackedReservoir ? (this._lang === 'pl' ? `${this._waterText('capacity')} ${_asText(data.trackedReservoir).replace(/_/g, ' ')}` : `${_asText(data.trackedReservoir).replace(/_/g, ' ')} capacity`) : this._waterText('Tracked reservoir capacity');
+    const effectiveCalibration = `<div style="margin:0 0 12px;padding:10px 12px;background:var(--vwm-overlay-light,rgba(0,0,0,0.04));border-radius:8px;font-size:11px;line-height:1.5"><b>${this._waterText("Effective")} ${_esc(reservoirLabel)}:</b> ${data.totalMl ? _esc(this._formatMl(data.totalMl)) : this._waterText('unknown')}${data.trackedReservoir ? ` (${_esc(data.trackedReservoir)})` : ''}<br><b>${this._waterText("Effective calibration layers:")}</b> ${this._waterText("default → resolved profile → device")} (${_esc(effectiveCalibrationData.tracked_capacity_ml || this._waterText("no device capacity override"))})<br><b>${this._waterText("Estimate evidence:")}</b> ${_esc(data.accountingEvidence || data.evidence || this._waterText('not available'))}<br>${reservoirRows ? `<b>${this._waterText("Distinct reservoirs:")}</b> ${reservoirRows}` : ''}</div>`;
     const savedModeRows = Object.entries(customCalibration.usage_ml_per_m2 || customCalibration.water_per_m2 || {});
     const calibrationModeRows = [
       ...savedModeRows,
@@ -6540,7 +6554,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <div class="session-date">${label} <span class="session-time">${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</span></div>
         <div class="session-stats">
           ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${s.area} m\u00B2</span>` : ''}
-          ${s.water ? `<span class="session-stat" title="${s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded'}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${_esc(this._formatMl(s.water))}</span>` : ''}
+          ${s.water ? `<span class="session-stat" title="${this._waterText(s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded')}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${_esc(this._formatMl(s.water))}</span>` : ''}
           ${s.duration ? `<span class="session-stat">\u23F1\uFE0F ${s.duration}</span>` : ''}
         </div>
       </div>`;
@@ -6726,7 +6740,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const status = this._getStatus(data, this._config);
       const pct = data.percentRemaining !== null ? Math.round(data.percentRemaining) : null;
       return `<div class="stats-row">
-        <span class="stats-device">${_esc(this._sanitize(device.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</span>
+        <span class="stats-device">${_esc(this._sanitize(device.icon || ''))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</span>
         <span class="stats-status" style="color:${status.color}">${status.icon} ${status.label}</span>
         <span class="stats-pct" style="color:${status.color}">${pct !== null ? pct + '%' : '--'}</span>
       </div>`;
@@ -6990,7 +7004,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const sourceLinks = (active.source_urls || []).map((url, index) => `<a href="${_esc(url)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6">${this._waterText("Source")}${active.source_urls.length > 1 ? ' ' + (index + 1) : ''}</a>`).join(' · ');
       activeCard = `
         <div style="margin-bottom:14px;padding:14px;background:rgba(59,130,246,0.06);border:1.5px solid rgba(59,130,246,0.2);border-radius:12px">
-          <div style="font-weight:700;font-size:14px;margin-bottom:8px">\uD83E\uDDA4 ${active.label} <span style="font-size:11px;color:#3b82f6;font-weight:500">${this._waterText("(active profile)")}</span></div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px"> ${active.label} <span style="font-size:11px;color:#3b82f6;font-weight:500">${this._waterText("(active profile)")}</span></div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
             <div style="text-align:center;padding:10px;background:var(--vwm-bg,#fff);border-radius:10px;border:1px solid var(--vwm-border,#e5e7eb)">
               <div style="font-size:20px;font-weight:700;color:var(--bento-text)">${active.tank_ml ? Number(active.tank_ml).toLocaleString('en-US') : '\u2014'}</div>
@@ -7165,7 +7179,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div class="section-block">
         <div class="section-title">\uD83D\uDD0E ${this._waterText("Discovered vacuums (not configured)")}</div>
         ${undiscovered.map(v => `<div class="disc-row" style="cursor:pointer" data-entity="${_esc(v.entity_id)}">
-          <span class="disc-name">\uD83E\uDDA4 ${_esc(this._sanitize(v.name))}</span>
+          <span class="disc-name"> ${_esc(this._sanitize(v.name))}</span>
           <span class="disc-id">${_esc(v.entity_id)}</span>
           <span class="disc-state" style="color:${v.state === 'cleaning' ? '#22c55e' : '#6b7280'}">${_esc(this._sanitize(v.state))}</span>
           ${v.battery ? `<span class="disc-bat">\uD83D\uDD0B ${_esc(v.battery)}%</span>` : ''}
@@ -7173,7 +7187,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         </div>`).join('')}
       </div>` : '';
 
-    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 ${this._waterText("Manually added")}</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(this._sanitize(ud.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="${_esc(this._waterText("Remove"))}">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
+    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 ${this._waterText("Manually added")}</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(this._sanitize(ud.icon || ''))} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="${_esc(this._waterText("Remove"))}">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
 
     return `
       <div class="tab-content">
@@ -7185,7 +7199,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <!-- Device management -->
         <div style="background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px;margin-bottom:16px">
           <div style="font-size:14px;font-weight:700;color:var(--bento-text);margin-bottom:4px;display:flex;align-items:center;gap:8px">
-            \uD83E\uDDA4 ${this._waterText("Devices")}
+             ${this._waterText("Devices")}
           </div>
           <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:12px;line-height:1.5">
             ${this._waterText("Add, remove, or discover vacuum cleaners in Home Assistant.")}
@@ -7509,7 +7523,7 @@ target:
   _buildDeviceTabs(devices) {
     if (devices.length <= 1) return '';
     return `<div class="device-tabs">
-      ${devices.map((d, i) => `<button class="dtab ${i === this._activeDeviceIdx ? 'dtab-active' : ''}" data-didx="${i}">${_esc(this._sanitize(d.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(d.name || 'Device ' + (i+1)))}</button>`).join('')}
+      ${devices.map((d, i) => `<button class="dtab ${i === this._activeDeviceIdx ? 'dtab-active' : ''}" data-didx="${i}">${_esc(this._sanitize(d.icon || ''))} ${_esc(this._sanitize(d.name || 'Device ' + (i+1)))}</button>`).join('')}
     </div>`;
   }
 
@@ -7542,7 +7556,7 @@ target:
 
     const deviceHeader = devices.length > 0 ? `
       <div class="device-header">
-        <div class="device-name">${_esc(this._sanitize(device.icon || '\uD83E\uDDA4'))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
+        <div class="device-name">${_esc(this._sanitize(device.icon || ''))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
         ${data.vacState !== undefined ? `<div class="status-badge" style="background:${status.color}20;color:${status.color};border:1px solid ${status.color}40">${status.icon} ${status.label}</div>` : ''}
       </div>` : '';
 

@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+from hashlib import sha256
 from typing import Any
+
+
+def card_resource_url(path: str, version: str, content: bytes) -> str:
+    """Refresh the browser module whenever bundled card bytes change."""
+    return f"{path}?v={version}&h={sha256(content).hexdigest()[:12]}"
 
 
 def _resources(hass: Any) -> Any | None:
