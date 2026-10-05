@@ -193,7 +193,9 @@ def estimate_water_state(
     profile = resolve_profile(device)
     user_rate = (effective_device.get("accounting_evidence") in {"user_calibration", "explicit_user_configuration"}
                  or bool(device.get("consumption_calibration")))
-    estimate_basis = None if user_rate else (device.get("estimate_basis") or profile.get("estimate_basis"))
+    measured_volume = bool(device.get("water_volume_sensor") or tank_state.get("last_accounting_source") == "real_sensor")
+    estimate_basis = None if user_rate or measured_volume else (device.get("estimate_basis") or profile.get("estimate_basis"))
+    log_factors = estimation.uncertainty_log_factors(tank_state)
     initialized = bool(tank_state.get("initialized")) or parse_refill_datetime(tank_state) is not None
     total_ml = _water_capacity_ml(device, settings)
     metadata = {
@@ -208,11 +210,14 @@ def estimate_water_state(
         "mop_evidence_required": bool(device.get("mop_evidence_required")),
         "accounting_evidence": tank_state.get("last_accounting_evidence") or device.get("accounting_evidence") or profile["accounting_evidence"],
         "estimate_basis": estimate_basis,
+        "estimate_sources": list(device.get("estimate_sources") or profile.get("estimate_sources") or []) if estimate_basis else [],
+        "uncertainty_kind": ("calibration_spread" if len(log_factors) >= 3 else "prior_band") if estimate_basis else None,
+        "physical_accuracy_verified": False,
         "mop_system": device.get("mop_system") or profile.get("mop_system"),
         "uncertainty_percent": estimation.uncertainty_percent(
             estimate_basis,
-            estimation.uncertainty_log_factors(tank_state),
-        ) if estimate_basis else None if user_rate else (
+            log_factors,
+        ) if estimate_basis else None if user_rate or measured_volume else (
             device.get("uncertainty_percent")
             if device.get("uncertainty_percent") is not None
             else profile.get("uncertainty_percent")),

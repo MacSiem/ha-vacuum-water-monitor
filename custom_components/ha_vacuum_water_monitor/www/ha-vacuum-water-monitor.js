@@ -41,7 +41,7 @@ const _vwmUncertainty = (basis, logFactors) => {
   const base = Object.prototype.hasOwnProperty.call(VWM_BASIS_UNCERTAINTY, basis) ? VWM_BASIS_UNCERTAINTY[basis] : null;
   const factors = Array.isArray(logFactors) ? logFactors.map(Number).filter(Number.isFinite) : [];
   if (!factors.length) return base;
-  if (factors.length < 3) return Math.max(8, _vwmRound((base === null ? 50 : base) / (factors.length + 1)));
+  if (factors.length < 3) return base === null ? 50 : base;
   const center = _vwmMedian(factors);
   const mad = _vwmMedian(factors.map(v => Math.abs(v - center))) * 1.4826;
   return Math.max(5, Math.min(50, _vwmRound((Math.exp(mad * 1.25) - 1) * 100 + 3)));
@@ -560,12 +560,14 @@ const VWM_SETUP_TEXT = {
 const VWM_TANK_REASON_LABEL = {
   calibration_sample_unconfirmed: 'unusual, waiting for the next tank to confirm',
   calibration_sample_outlier: 'not learned: far from the usual (for example a partly filled tank)',
+  calibration_sample_out_of_range: 'not learned: observation outside the supported correction range',
   calibration_sample_incomplete_cycle: 'not learned: signals were missing',
   calibration_sample_no_refill_since_empty: 'not learned: no refill since the last empty tank',
 };
 const VWM_TANK_REASON_LABEL_PL = {
   calibration_sample_unconfirmed: 'nietypowy, czeka na potwierdzenie przy nast\u0119pnym zbiorniku',
   calibration_sample_outlier: 'nienauczony: daleko od zwyk\u0142ego (np. zbiornik nape\u0142niony cz\u0119\u015Bciowo)',
+  calibration_sample_out_of_range: 'nienauczony: pomiar poza obsługiwanym zakresem korekty',
   calibration_sample_incomplete_cycle: 'nienauczony: brakowa\u0142o sygna\u0142\u00F3w',
   calibration_sample_no_refill_since_empty: 'nienauczony: bez dolania od poprzedniego pustego zbiornika',
 };

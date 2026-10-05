@@ -190,10 +190,13 @@ def update_calibration(
     Returns the window, the learned factor, whether the tank was accepted, the
     reason, and the log factor now waiting for confirmation (if any).
     """
-    observed = min(max(observed_factor, MIN_FACTOR), MAX_FACTOR)
-    value = math.log(observed)
     window = [float(v) for v in log_factors][-CALIBRATION_WINDOW:]
     current = math.exp(median(window)) if window else 1.0
+    # Clipping would turn an impossible observation into an apparently valid
+    # learning sample, including a pending sample that could be confirmed later.
+    if not _positive(observed_factor) or not MIN_FACTOR <= observed_factor <= MAX_FACTOR:
+        return window, current, False, "calibration_sample_out_of_range", None
+    value = math.log(observed_factor)
     if len(window) >= 3:
         if abs(value - median(window)) > OUTLIER_LOG_RATIO:
             return window, current, False, "calibration_sample_outlier", None
@@ -218,7 +221,7 @@ def band_fraction(basis: Any, uncertainty: Any = None) -> float:
 
 
 def uncertainty_percent(basis: Any, log_factors: Any) -> int | None:
-    """Deterministic uncertainty: basis before calibration, tank spread after."""
+    """Prior band until three tanks, then repeatability (not physical accuracy)."""
     base = BASIS_UNCERTAINTY_PERCENT.get(str(basis)) if basis else None
     factors = [float(v) for v in log_factors] if isinstance(log_factors, list) else []
     if not factors:
@@ -226,7 +229,7 @@ def uncertainty_percent(basis: Any, log_factors: Any) -> int | None:
     n = len(factors)
     if n < 3:
         start = base if base is not None else 50
-        return max(8, round(start / (n + 1)))
+        return start
     center = median(factors)
     mad = median(abs(v - center) for v in factors) * 1.4826
     return max(5, min(50, round((math.exp(mad * 1.25) - 1) * 100 + 3)))
