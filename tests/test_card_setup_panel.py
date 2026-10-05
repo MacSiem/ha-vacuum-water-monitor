@@ -90,6 +90,7 @@ const reports = JSON.parse(process.argv[1]);
   for (const lang of ['en', 'pl']) {
     card._lang = lang;
     out['noCapacity' + lang] = card._buildWaterTab(s7, card._calcDeviceData(s7));
+    card._health['vacuum.robot'] = { ...reports.notTracked, capacity_ml: 1987, status: 'ok', checks: [] };
     for (const initialized of [false, true]) {
       card._serverState = { settings: { device_options: { 'vacuum.robot': { capacity_ml: 1987 } } },
         tank_states: { 'vacuum.robot': { initialized, used_ml: 0 } } };
@@ -97,7 +98,10 @@ const reports = JSON.parse(process.argv[1]);
       out['savedCapacity' + lang + initialized] = card._buildWaterTab(s7, saved);
       out['savedPercent' + lang + initialized] = saved.percentRemaining;
     }
+    card._serverState.settings.custom_calibration = { 'entity:vacuum.robot': { usage_ml_per_minute: 2.3 } };
+    out['savedMinuteRate' + lang] = card._buildWaterTab(s7, card._calcDeviceData(s7));
     card._serverState = { settings: {}, tank_states: {} };
+    card._health['vacuum.robot'] = reports.notTracked;
   }
   out.throttled = card._refreshHealth(false) === null;
   out.trailingScheduled = Boolean(card._healthTimer);
@@ -254,6 +258,8 @@ class CardSetupPanelTests(unittest.TestCase):
                     self.assertIn(saved, html)
                     self.assertIn(estimate, html)
                     self.assertEqual(self.out['savedPercent' + key], 100 if initialized else None)
+            self.assertNotIn(prompt, self.out['savedMinuteRate' + lang].lower())
+            self.assertIn(estimate, self.out['savedMinuteRate' + lang])
 
     def test_tank_size_option_wins_in_card_numbers(self):
         self.assertEqual(self.out["totalMl"], 3000)

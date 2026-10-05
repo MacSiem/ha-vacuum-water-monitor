@@ -468,7 +468,9 @@ const VWM_WATER_TEXT_PL = {
   "Balanced": "Zbilansowany",
   "Unknown model": "Nieznany model",
   "This device doesn't track water levels": "Śledzenie wody nie jest skonfigurowane dla tego urządzenia",
-  "No estimate for this model yet; set the tank capacity to enable tracking.": "Brak oszacowania dla tego modelu. Ustaw pojemność śledzonego zbiornika, aby włączyć bilans wody."
+  "No estimate for this model yet; set the tank capacity to enable tracking.": "Brak oszacowania dla tego modelu. Ustaw pojemność śledzonego zbiornika, aby włączyć bilans wody.",
+  "Tank capacity saved. No built-in consumption estimate for this model.": "Pojemność zbiornika zapisana. Brak wbudowanego oszacowania zużycia dla tego modelu.",
+  "Automatic consumption accounting needs a matching water-use rate and mopping signals.": "Automatyczne rozliczanie zużycia wymaga odpowiedniego tempa zużycia wody i sygnałów mopowania."
 };
 
 const VWM_SETUP_TEXT = {
@@ -6072,6 +6074,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
         : customCalib.calibration_scope || (configuredRates ? 'whole_cycle' : 'floor_only');
       const trackedCapacity = Number(data.totalMl) > 0 ? Number(data.totalMl) : null;
       const modelCapacity = Number(calib.tank_ml) > 0 ? Number(calib.tank_ml) : null;
+      const capacityGuidance = trackedCapacity
+        ? 'Tank capacity saved. No built-in consumption estimate for this model.'
+        : 'No estimate for this model yet; set the tank capacity to enable tracking.';
+      const calibrationNote = trackedCapacity && calib === CALIBRATION_DATA.generic
+        ? 'Automatic consumption accounting needs a matching water-use rate and mopping signals.'
+        : calib.notes;
       const facts = _calibrationFacts(calib, this._lang);
       calibHtml = `
         <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
@@ -6084,8 +6092,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
             ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText(scope === 'whole_cycle' ? 'whole cycle, including washes' : 'standard route, excl. washes')})</span></div>` : ''}
           </div>
           ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}${!configuredRates && calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(this._waterText(VWM_BASIS_LABEL[calib.estimate_basis] || '')) + ' \u00B7 ' + this._waterText('calibrates automatically.') : this._waterText('No estimate for this model yet; set the tank capacity to enable tracking.')}</div>`}
-          ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calib.notes ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + _esc(this._waterText(calib.notes)) + '</div>' : ''}
+          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}${!configuredRates && calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(this._waterText(VWM_BASIS_LABEL[calib.estimate_basis] || '')) + ' \u00B7 ' + this._waterText('calibrates automatically.') : this._waterText(capacityGuidance)}</div>`}
+          ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calibrationNote ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + _esc(this._waterText(calibrationNote)) + '</div>' : ''}
         </div>`;
     }
 
