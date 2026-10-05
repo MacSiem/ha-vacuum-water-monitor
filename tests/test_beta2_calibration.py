@@ -28,6 +28,26 @@ def cleaning(areas, **overrides):
 
 
 class ConfirmationGateTests(unittest.TestCase):
+    def test_runtime_does_not_clip_an_implausible_cycle_before_validation(self):
+        import math
+        initial = {**BASE, "calibration_factor":4,
+                   "calibration_samples":1,"calibration_log_factors":[math.log(4)]}
+        state = tank(initial, 1200, 10_000_000)
+        self.assertFalse(state["calibration_history"][0]["accepted"])
+        self.assertEqual(state["calibration_history"][0]["reason"],"calibration_sample_out_of_range")
+        self.assertEqual(state["calibration_samples"],1)
+        self.assertEqual(state["calibration_factor"],4)
+        self.assertIsNone(state["calibration_pending_log_factor"])
+        self.assertEqual(state["used_ml"],0,"refill remains effective after rejecting learning")
+
+    def test_two_implausible_high_volume_cycles_cannot_confirm_a_clipped_factor(self):
+        state=tank(dict(BASE),80000,10_000_000)
+        state=tank(state,80000,20_000_000)
+        self.assertEqual(state.get("calibration_samples",0),0)
+        self.assertEqual(state.get("calibration_factor",1),1)
+        self.assertEqual(state["calibration_history"][0]["reason"],"calibration_sample_out_of_range")
+        self.assertIsNone(state["calibration_pending_log_factor"])
+
     def test_lifted_tank_does_not_teach_the_device(self):
         state = tank(dict(BASE), 1500, 10_000_000)
         self.assertEqual(state.get("calibration_samples", 0), 0)
