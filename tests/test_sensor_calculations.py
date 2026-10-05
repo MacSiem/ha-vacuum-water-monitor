@@ -636,6 +636,43 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(device["signals"], {})
         self.assertNotIn("area_sensor", device)
 
+    def test_locked_model_keeps_its_estimation_metadata_together(self):
+        selected = sensor_calculations.resolve_profile({
+            "brand_profile": "tapo_rv50_pro_omni", "profile_locked": True,
+        })
+        discovered = sensor_calculations.resolve_profile({"model_id": "a97"})
+        devices = build_vacuum_devices(
+            {"user_devices": [{"vacuum_entity": "vacuum.manual",
+                               "brand_profile": "tapo_rv50_pro_omni",
+                               "profile_locked": True}]}, {},
+            [{**discovered, "entity_id": "vacuum.manual", "manufacturer": "Roborock",
+              "model_id": "a97", "signals": {"status_sensor": "sensor.registry_status"}}],
+        )
+        device = devices[0]
+        for field in ("profile_key", "estimate_basis", "estimate_sources", "mop_system",
+                      "intensity_factor", "calibration_scope", "usage_ml_per_m2", "sources", "provenance"):
+            with self.subTest(field=field):
+                self.assertEqual(device[field], selected[field])
+        water = estimate_water_state(device, {"used_ml": 0, "initialized": True}, {})
+        self.assertEqual(water["estimate_basis"], "class_prior")
+        self.assertEqual(water["uncertainty_kind"], "prior_band")
+        self.assertEqual(water["estimate_sources"], selected["estimate_sources"])
+        self.assertEqual(water["uncertainty_percent"], 50)
+
+    def test_locked_robot_tank_does_not_inherit_a_dock_anchor(self):
+        discovered = sensor_calculations.resolve_profile({"model_id": "a97"})
+        devices = build_vacuum_devices(
+            {"user_devices": [{"vacuum_entity": "vacuum.manual",
+                               "brand_profile": "tapo_rv30_plus", "profile_locked": True}]}, {},
+            [{**discovered, "entity_id": "vacuum.manual", "manufacturer": "Roborock",
+              "model_id": "a97", "signals": {"status_sensor": "sensor.registry_status"}}],
+        )
+        device = devices[0]
+        self.assertEqual(device["tracked_reservoir"], "robot_clean")
+        for field in ("water_anchor_reservoir", "water_anchor_reservoir_inferred",
+                      "refill_on_clear", "refill_on_clear_inferred"):
+            self.assertNotIn(field, device)
+
     def test_legacy_profile_lock_without_provenance_remains_authored(self) -> None:
         devices = build_vacuum_devices(
             {

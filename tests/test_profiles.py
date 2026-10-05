@@ -63,6 +63,26 @@ class ModelProfileTests(unittest.TestCase):
             with self.subTest(metadata=metadata):
                 self.assertIsNone(profiles.resolve_profile(metadata)["profile_key"])
 
+    def test_locked_profile_precedes_conflicting_registry_manufacturer(self):
+        for manufacturer in ("QA synthetic", "Roborock"):
+            with self.subTest(manufacturer=manufacturer):
+                resolved = profiles.resolve_profile({
+                    "manufacturer": manufacturer, "model_id": "a97",
+                    "brand_profile": "tapo_rv50_pro_omni", "profile_locked": True,
+                })
+                self.assertEqual(resolved["profile_key"], "tapo_rv50_pro_omni")
+                self.assertEqual(resolved["profile_source"], "locked_override")
+                self.assertEqual(resolved["estimate_basis"], "class_prior")
+                self.assertEqual(resolved["mop_system"], "rotating_pads")
+
+    def test_invalid_lock_does_not_widen_automatic_manufacturer_search(self):
+        resolved = profiles.resolve_profile({
+            "manufacturer": "QA synthetic", "model_id": "1797",
+            "brand_profile": "missing_profile", "profile_locked": True,
+        })
+        self.assertIsNone(resolved["profile_key"])
+        self.assertEqual(resolved["capability"], "unknown")
+
     def test_malformed_rate_is_rejected(self):
         payload = json.loads(PATH.with_name("model_profiles.json").read_text())
         payload["profiles"]["roborock_s8_maxv_ultra"]["accounting"]["usage_ml_per_m2"] = {"default": 1}
@@ -160,3 +180,53 @@ class ResearchedCapacityTests(unittest.TestCase):
         self.assertEqual(record["sample_count"],0)
         self.assertEqual(record["accounting"]["usage_ml_per_m2"],{})
         self.assertIsNone(record["accounting"]["wash_volume_ml"])
+
+    def test_additional_primary_sources_select_the_correct_supply(self):
+        for key, reservoir, capacity in (
+            ("eufy_omni_c20", "dock_clean", 2500),
+            ("mova_s20_ultra", "dock_clean", 4500),
+            ("xiaomi_1c", "robot_clean", 200),
+            ("xiaomi_vacuum_mop_p", "robot_clean", 200),
+            ("dreame_d9", "robot_clean", 270),
+            ("dreame_f9", "robot_clean", 200),
+            ("roborock_s5_max", "robot_clean", 297),
+            ("roborock_s6_pure", "robot_clean", 180),
+        ):
+            with self.subTest(key=key):
+                resolved = profiles.resolve_profile({"profile_key": key})
+                self.assertEqual(resolved["tracked_reservoir"], reservoir)
+                self.assertEqual(resolved["tracked_capacity_ml"], capacity)
+                other = "robot_clean" if reservoir == "dock_clean" else "dock_clean"
+                self.assertIsNone(resolved["reservoirs_ml"][other])
+
+    def test_tapo_robot_tanks_and_distinct_mop_structures_are_not_transferred(self):
+        for key in ("tapo_rv20_max", "tapo_rv20_max_plus", "tapo_rv20_mop_plus",
+                    "tapo_rv30_max", "tapo_rv30_max_plus", "tapo_rv30_max_plus_gen_2"):
+            with self.subTest(key=key):
+                resolved = profiles.resolve_profile({"profile_key": key})
+                self.assertEqual(resolved["tracked_capacity_ml"], 300)
+                self.assertEqual(resolved["tracked_reservoir"], "robot_clean")
+                self.assertEqual(resolved["mop_system"], "pad")
+                self.assertNotIn("water_anchor_reservoir", resolved)
+        for key, system in (("eufy_omni_c20", "rotating_pads"),
+                            ("eufy_x10_pro_omni", "rotating_pads"),
+                            ("eufy_omni_e25", "roller"), ("mova_s20_ultra", "pad")):
+            with self.subTest(key=key):
+                resolved = profiles.resolve_profile({"profile_key": key})
+                self.assertEqual(resolved["mop_system"], system)
+                self.assertEqual(resolved["estimate_basis"], "class_prior")
+                self.assertEqual(resolved["usage_ml_per_m2"]["default"],
+                                 profiles.estimation.CLASS_PRIORS[system]["usage_ml_per_m2"]["default"])
+
+    def test_new_capacity_evidence_keeps_rates_samples_and_sku_equivalence_unknown(self):
+        for key in ("dreame_f9", "eufy_omni_c20", "mova_s20_ultra", "tapo_rv30_max_plus_gen_2"):
+            with self.subTest(key=key):
+                record = profiles.CATALOG[key]
+                self.assertEqual(record["sample_count"], 0)
+                self.assertEqual(record["accounting"]["usage_ml_per_m2"], {})
+                self.assertEqual(record["accounting"]["usage_ml_per_active_minute"], {})
+                self.assertIsNone(record["accounting"]["wash_volume_ml"])
+                self.assertTrue(all(not sku["equivalence_verified"] for sku in record["regional_skus"]))
+                self.assertTrue(any(item["last_verified"] == "2026-10-05"
+                                    and item["retrieval_status"] == "read" for item in record["provenance"]))
+

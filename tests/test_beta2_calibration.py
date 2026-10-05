@@ -72,6 +72,24 @@ class ConfirmationGateTests(unittest.TestCase):
         self.assertEqual(state["calibration_history"][0]["reason"], "calibration_sample_confirmed")
         self.assertAlmostEqual(state["calibration_factor"], 1.257, delta=0.02)
 
+    def test_runtime_converges_from_under_and_overestimation_within_two_tanks(self):
+        # Functional synthetic anchors, not independently measured consumption.
+        # Both predictions stay within the reservoir capacity; an overshooting
+        # counter may mean an unreported top-up and is a separate protected case.
+        for raw, expected_factor in ((3000, 3800 / 3000), (4000, 3800 / 4000)):
+            with self.subTest(raw=raw):
+                state = dict(BASE)
+                initial_error = abs(raw - 3800) / 3800
+                for cycle in range(2):
+                    predicted = raw * state.get("calibration_factor", 1)
+                    state = tank(state, predicted, 10_000_000 * (cycle + 1))
+                corrected_error = abs(raw * state["calibration_factor"] - 3800) / 3800
+                self.assertLess(corrected_error, 0.01)
+                self.assertLess(corrected_error, initial_error)
+                self.assertAlmostEqual(state["calibration_factor"], expected_factor, delta=0.001)
+                self.assertEqual(state["calibration_samples"], 2)
+                self.assertIsNone(state["calibration_pending_log_factor"])
+
     def test_after_three_tanks_the_outlier_gate_takes_over(self):
         state = dict(BASE)
         for index, used in enumerate((3700, 3750, 3650)):
