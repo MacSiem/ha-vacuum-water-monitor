@@ -98,7 +98,7 @@ const reports = JSON.parse(process.argv[1]);
       out['savedCapacity' + lang + initialized] = card._buildWaterTab(s7, saved);
       out['savedPercent' + lang + initialized] = saved.percentRemaining;
     }
-    card._serverState.settings.custom_calibration = { 'entity:vacuum.robot': { usage_ml_per_minute: 2.3 } };
+    card._serverState.settings.custom_calibration = { 'entity:vacuum.robot': { usage_ml_per_active_minute: { default: 2.3 } } };
     out['savedMinuteRate' + lang] = card._buildWaterTab(s7, card._calcDeviceData(s7));
     card._serverState = { settings: {}, tank_states: {} };
     card._health['vacuum.robot'] = reports.notTracked;
