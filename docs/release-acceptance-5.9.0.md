@@ -6,36 +6,50 @@ verify code behavior; they do not replace live HACS and household-interface acce
 
 ## Function matrix
 
-| Function | Candidate behavior | Code evidence | Remaining live evidence |
+| Function | Candidate behavior | Code evidence | Live evidence and remaining limits |
 |---|---|---|---|
 | Discovery | Registry-based, same-device signals; S7 MaxV/a27 and H50 Pro/ov42gl aliases survive entity renaming | Discovery, adapter and real-runtime regressions | Authors' exact firmware/integration and native reprofile |
 | Floor accounting | Area first; explicitly supplied time rate can cover active intervals; no guessed area-to-time conversion | Tick, runtime and numeric-output regressions | Actual model/integration settings and physical volume |
 | Short area dropout | A bounded gap can recover without a time rate when the cumulative counter and settings remain valid | `test_issue12_area_recovery.py`; unchanged gap-protection regressions | Normal use on the reporting Qrevo |
 | Vacuum-only and settings | Affirmative mop evidence required; unknown output levels do not silently use a default | Runtime and numeric range tests | Exact device telemetry |
 | Mop washing | Separate observed wash sequence, counted once; whole-cycle calibration excludes extra wash dosing | Tick and refill/calibration regressions | Device-specific wash visibility and water amount |
-| Refill | Card, device button, service, bound button/lid and eligible dock clear share bookkeeping; deduplication retains intervening use | Refill and runtime tests | Every route in the candidate's live interface |
-| Calibration | Complete refill-to-empty learning; incomplete/outlier samples excluded; authored measurements stay separate | Calibration, local-measurement and replay tests | Measured accuracy; Maciej authorized the evening 5 October run after software acceptance and the two estimation tasks |
-| Tank settings and history | Per-robot capacity and baseline/history preserved; session water formatted without changing original records | Setup, storage and presentation regressions | Current candidate fresh/upgrade, reload/restart persistence |
-| Health and Repairs | Missing rate explains calibration rather than an ineffective full-tank Repair; unknown stays unknown | `test_issue10_missing_rate.py`, setup and card tests | Current native Repairs/card behavior |
-| Forecasts and reminders | Cleanings/days and forecast error use available tank history; genuine zero differs from missing data | Forecast, setup and presentation tests; blueprint in repository | Live entities, blueprint and sufficient history |
-| Polish/English and layout | Localized labels, provenance and missing-data guidance; shared millilitre formatting and theme styles | Card, smoke and language regressions | Light/dark, narrow/zoomed layout, keyboard/focus and no flicker in HA |
-| Privacy and sharing | Local state; optional reviewed contribution drafts; no automatic transmission | Diagnostics/sharing/contribution tests and source review | Live preview/cancellation and redaction review |
+| Refill | Card, device button, service, bound button/lid and eligible dock clear share bookkeeping; deduplication retains intervening use | Refill and runtime tests | Routes, auto-refill switch and deduplication accepted on live synthetic fixtures; device-specific refill truth still depends on its signal |
+| Calibration | Complete refill-to-empty learning; incomplete/outlier samples excluded; authored measurements stay separate | Calibration, local-measurement and replay tests | Live rejection/refill accepted; saved-history replay before any new test; independent measured volume remains open |
+| Tank settings and history | Per-robot capacity and baseline/history preserved; session water formatted without changing original records | Setup, storage and presentation regressions | Native fresh/upgrade, reload/restart and public-version preservation accepted |
+| Health and Repairs | Missing rate explains calibration rather than an ineffective full-tank Repair; unknown stays unknown | `test_issue10_missing_rate.py`, setup and card tests | Native first-start, missing capacity and saved-capacity guidance accepted |
+| Forecasts and reminders | Cleanings/days and forecast error use available tank history; genuine zero differs from missing data | Forecast, setup and presentation tests; blueprint in repository | Actual HA forecast entities and blueprint notification after60s accepted; forecast error is not measured water accuracy |
+| Polish/English and layout | Localized labels, provenance and missing-data guidance; shared millilitre formatting and theme styles | Card, smoke and language regressions | Light/dark, narrow/wide, keyboard/focus and stability accepted; actual browser200% zoom open |
+| Privacy and sharing | Local state; optional reviewed contribution drafts; no automatic transmission | Diagnostics/sharing/contribution tests and source review | Live cancellation without transmission and admin/household diagnostic access accepted |
 
 ## Live acceptance matrix
 
 | Scenario | Existing evidence | Whole-scenario status |
 |---|---|---|
 | Public baseline fresh installation | Native HACS 5.7.0, 28 exact files; setup/card/history/reload in `native-stage/public-baseline-fresh` | Accepted for that unchanged baseline |
-| Public baseline upgrade | Public 5.6→5.7 API migration evidence and native 5.7→candidate preservation | Open: exact native public 5.6→5.7 flow |
-| Exact candidate loaded assets | Native HACS A3f; ordinary Browser reload, 441731 exact module bytes, no disk/SW cache or ducks in `native-anchor-qa/browser-resource-readback.json` | Accepted for A3f module; repeat identity for the repaired candidate |
-| Candidate fresh and upgrade | Native 39-file candidate fresh/upgrade, baseline/calibration/history preserved; `native-stage` | Accepted for unchanged flows; changed model/estimation paths still require live acceptance |
-| Shared staging restoration | Five sessions restored and read back; 20 entries, 19 foreign, Baby 24 categories/timers, Network Map 3 devices | Accepted through native-anchor-qa restoration/readback; repeat after next live QA |
+| Public baseline upgrade | Native HACS 5.6→5.7, exact 25/28-file public packages, HA restarts and native history; nondefault HA options23/11, counter160ml, four tanks, calibration and history preserved in `native-public-upgrade-qa` | Accepted; isolated reused QA clone, with new settings/exposure produced by the running old version |
+| Exact candidate loaded assets | Ordinary Browser reload, 752465 exact module bytes, no disk/SW cache in `native-manual-qa/browser-resource-readback.json`; saved duck/dodo icons absent in Water, Stats, Settings and after reload | Accepted for the repaired runtime/card package |
+| Candidate fresh and upgrade | Native 39-file candidate fresh/upgrade, baseline/calibration/history preserved in `native-stage`; repaired package downloaded exactly and changed paths verified in `native-manual-qa` | Accepted within the tested software scope |
+| Shared staging restoration | Seven sessions restored and read back; 20 entries, 19 foreign, Baby 24 categories/timers, Network Map 3 devices | Accepted through `native-public-upgrade-qa/restore-runtime-readback.json`; no pending restore |
 | Administrator and household roles | Native settings/refill/reload; diagnostics admin200/household401; cancelled sharing without transmission in `native-stage/household-*` | Accepted for unchanged role behavior |
 | Layout and accessibility | PL/EN, light/dark390/1440, keyboard/draft, details stability; 360 Sections and 180CSS reflow with neighbor | Open: actual browser zoom200%; reflow alone is not zoom |
-| First run and recovery | Native no-robot setup, unknown capacity, reprofile/focus, reload/restart; actual forecast entities and blueprint reminder after60s in `native-completion-qa` | Accepted unchanged flows; manual model/registry conflict discovered live is open |
+| First run and recovery | Native no-robot setup, unknown capacity, reprofile/focus, reload/restart; actual forecasts and blueprint reminder after60s; repaired manual Tapo conflict verified in native card and HA sensor | Accepted within the tested software scope |
 | Reported device paths | Separate real-runtime reproductions, live fixture paths and drafts for issues10–13 | Open: authors' exact hardware/firmware; no blanket issue closure |
 
-The current live acceptance found a manual-profile regression before any test state mutations: a locked Tapo can lose estimate basis/sources when the registry manufacturer differs, and discovery can mix profile metadata. The new reproductions fail on the preceding candidate. A bounded repair is committed locally; full regression and live acceptance are pending. Earlier green tests do not close this path. The source review table covers133 rows; physical accuracy remains unverified for the catalog.
+The manual-profile regression is repaired in the backend and bundled card, including sparse
+manual settings with generated legacy defaults. A locked Tapo keeps its rotating-pad class,
+sources and initial50% prior band despite conflicting Roborock discovery. Authored rates and
+signal bindings remain authoritative. The repaired package passed566 unit tests,16 card
+checks, independent review and live HA/HACS acceptance. Actual HA rejected two8000ml and
+two1600ml cycles on a1200ml tank without learning, kept the pending sample empty and
+performed automatic refills after the real cooldown. These are synthetic functional checks.
+
+The source review covers133 models from16 manufacturers and73 known tracked capacities.
+No additional measured consumption rates were inferred from capacity or advertised runtime.
+Available local history was replayed, with learning frozen for later comparison. Its tank
+anchors provide inferred targets, not independent water measurements. Physical accuracy
+remains unknown without an independent volume or mass reference; verifying every model
+physically is not a release requirement. Remaining acceptance covers actual browser200%
+zoom, the justified missing physical-reference case, final materials and release review.
 
 ## Installation, upgrade and privacy
 

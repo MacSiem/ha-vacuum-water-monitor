@@ -2,10 +2,10 @@
 
 ## 5.9.0 (unreleased)
 
-- Keep a deliberately selected model ahead of conflicting registry manufacturer metadata. Keep its estimate sources, mop class and reservoir anchors together while retaining vendor-scoped automatic matching.
+- Keep a deliberately selected model ahead of conflicting registry manufacturer metadata in both the integration and card. Keep its estimate sources, mop class and reservoir anchors together while retaining vendor-scoped automatic matching and authored settings.
 
 - Expand source-verified reservoir capacities and mop classes. Select the dock clean-water supply rather than the robot buffer, retain regional and optional-accessory limits, and keep unsupported or conflicting specifications unknown.
-- Reject implausible calibration factors instead of clipping them. Preserve prior uncertainty until three accepted cycles and distinguish cycle agreement from physical accuracy; measured volume does not inherit a catalog prior.
+- Reject implausible calibration factors instead of clipping them, including repeated cycles that exceed tank capacity. Keep refill tracking working after rejection. Preserve prior uncertainty until three accepted cycles and distinguish cycle agreement from physical accuracy; measured volume does not inherit a catalog prior.
 
 - Reflow the water gauge and details in very narrow Sections cards; wrap long robot names and tab controls instead of pushing data outside the card.
 

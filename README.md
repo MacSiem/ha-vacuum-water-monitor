@@ -40,6 +40,12 @@ calibration limits, plus a privacy-safe partial-session template.
 
 ## How water estimates work
 
+The catalogue contains 133 model variants from 16 manufacturers, with 73 known tracked
+water-supply capacities. A detected model with usable mopping signals can start with a
+labelled estimate; you do not need to enter a consumption rate first. If the integration
+does not expose enough information to count water, the card explains what is missing.
+Recognition alone does not guarantee an estimate or measured accuracy for every model.
+
 The integration always starts from the best data available for your model and then corrects
 itself on your robot:
 
@@ -63,7 +69,8 @@ itself on your robot:
    is retained for fewer than three accepted cycles. After that, Diagnostics shows
    the spread between complete cycles; agreement does not establish physical accuracy.
    Nonfinite, nonpositive or out-of-range correction factors are rejected instead
-   of clipped into calibration samples.
+   of clipped into calibration samples. Repeated cycles that already exceed the configured
+   tank capacity cannot teach a correction; rejection does not disable normal refill tracking.
 4. **Your data wins.** A volume sensor or your own calibration replaces the estimate.
 5. **No mopping, no water.** A run with the water level off or the mop detached uses no water.
    A robot that exposes no signal showing when it mops asks you to map one instead of showing
