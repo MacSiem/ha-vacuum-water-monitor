@@ -125,3 +125,37 @@ class ModelProfileTests(unittest.TestCase):
         self.assertEqual(profiles._canonical_manufacturer("dreamer_labs", {"dreame"}), "")
         self.assertEqual(profiles._canonical_manufacturer("predreame", {"dreame"}), "")
         self.assertEqual(profiles._canonical_manufacturer("", {"dreame"}), "")
+
+
+class ResearchedCapacityTests(unittest.TestCase):
+    def test_dock_supply_is_selected_instead_of_small_robot_buffer(self):
+        cases = [("Dreame L20 Ultra",4500,80), ("Ecovacs Deebot X8 Pro Omni",4000,110),
+                 ("Roborock Qrevo Master",4000,80), ("Xiaomi Robot Vacuum 5 Pro",4000,80)]
+        for model, dock, robot in cases:
+            with self.subTest(model=model):
+                resolved=profiles.resolve_profile({"model":model})
+                self.assertEqual(resolved["tracked_reservoir"],"dock_clean")
+                self.assertEqual(resolved["tracked_capacity_ml"],dock)
+                self.assertEqual(resolved["reservoirs_ml"]["robot_clean"],robot)
+                self.assertEqual(resolved["accounting_evidence"],"labeled_estimate")
+
+    def test_verified_mop_system_uses_the_corresponding_class_prior(self):
+        for model, system in [("Tapo RV50 Pro Omni","rotating_pads"),
+                              ("Ecovacs Deebot X8 Pro Omni","roller"),
+                              ("Tapo RV30 Plus","pad")]:
+            with self.subTest(model=model):
+                resolved=profiles.resolve_profile({"model":model})
+                self.assertEqual(resolved["mop_system"],system)
+                self.assertEqual(resolved["estimate_basis"],"class_prior")
+                self.assertTrue(resolved["estimate_sources"])
+
+    def test_source_scoped_capacity_does_not_invent_consumption_measurements(self):
+        record=profiles.CATALOG["dreame_l20_ultra"]
+        sources=[s for s in record["provenance"] if s["last_verified"]=="2026-10-05"]
+        self.assertTrue(sources)
+        self.assertIn("dock_clean=4500",sources[-1]["claim"])
+        self.assertTrue(any("US" in r["region"] for r in record["regional_skus"]))
+        self.assertTrue(all(not r["equivalence_verified"] for r in record["regional_skus"]))
+        self.assertEqual(record["sample_count"],0)
+        self.assertEqual(record["accounting"]["usage_ml_per_m2"],{})
+        self.assertIsNone(record["accounting"]["wash_volume_ml"])
