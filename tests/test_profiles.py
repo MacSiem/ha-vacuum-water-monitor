@@ -130,7 +130,8 @@ class ModelProfileTests(unittest.TestCase):
 class ResearchedCapacityTests(unittest.TestCase):
     def test_dock_supply_is_selected_instead_of_small_robot_buffer(self):
         cases = [("Dreame L20 Ultra",4500,80), ("Ecovacs Deebot X8 Pro Omni",4000,110),
-                 ("Roborock Qrevo Master",4000,80), ("Xiaomi Robot Vacuum 5 Pro",4000,80)]
+                 ("Roborock Qrevo Master",4000,80), ("Xiaomi Robot Vacuum 5 Pro",4000,80),
+                 ("Ecovacs Deebot T30 Pro Omni",4000,55), ("eufy X10 Pro Omni",3000,80)]
         for model, dock, robot in cases:
             with self.subTest(model=model):
                 resolved=profiles.resolve_profile({"model":model})
