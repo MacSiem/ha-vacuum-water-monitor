@@ -6,6 +6,9 @@ sources. Recognizing a model ID only identifies a candidate; it does not prove t
 Assistant integration exposes the required signals, that a listed tank belongs to the
 tracked reservoir, or that a consumption rate applies.
 
+The [October model evidence review](model-evidence-review-2026-10-05.md) covers all
+133 catalog rows, adopted capacity facts, rejected transfers and unresolved sources.
+
 ## 5.9.0 automatic-start audit — 5 October 2026
 
 The current runtime resolver supplies a labelled provisional prior for all 133
