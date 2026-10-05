@@ -236,6 +236,7 @@ const VWM_WATER_TEXT_PL = {
   "Water ml": "Woda ml",
   "Duration (e.g. 45m)": "Czas (np. 45m)",
   "Log": "Dodaj",
+  "Dismiss": "Ukryj podpowiedź",
   "All Devices": "Wszystkie roboty",
   "This Week (logged)": "Ostatnie 7 dni (zapisane)",
   "sessions": "sprzątania",
@@ -6583,9 +6584,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <div class="section-block">
           <div class="section-title">\u270F\uFE0F ${this._waterText("Log Manual Session")}</div>
           <div class="add-maint-form">
-            <input class="maint-input" id="hist-area" placeholder="${_esc(this._waterText("Area m²"))}" type="number" min="0"/>
-            <input class="maint-input maint-days" id="hist-water" placeholder="${_esc(this._waterText("Water ml"))}" type="number" min="0"/>
-            <input class="maint-input maint-days" id="hist-duration" placeholder="${_esc(this._waterText("Duration (e.g. 45m)"))}" type="text"/>
+            <input class="maint-input" id="hist-area" aria-label="${_esc(this._waterText("Area m²"))}" placeholder="${_esc(this._waterText("Area m²"))}" type="number" min="0"/>
+            <input class="maint-input maint-days" id="hist-water" aria-label="${_esc(this._waterText("Water ml"))}" placeholder="${_esc(this._waterText("Water ml"))}" type="number" min="0"/>
+            <input class="maint-input maint-days" id="hist-duration" aria-label="${_esc(this._waterText("Duration (e.g. 45m)"))}" placeholder="${_esc(this._waterText("Duration (e.g. 45m)"))}" type="text"/>
             <button class="maint-add-btn" id="hist-log-btn">\u2795 ${this._waterText("Log")}</button>
           </div>
         </div>
@@ -7810,7 +7811,7 @@ target:
       <div class="card">
         <div class="card-title">${_esc(this._config.title)}</div>
         <div class="tip-banner" id="tip-banner">
-          <button class="tip-dismiss" id="tip-dismiss" aria-label="Dismiss">\u2715</button>
+          <button class="tip-dismiss" id="tip-dismiss" aria-label="${_esc(this._waterText("Dismiss"))}">\u2715</button>
           ${this._tipHtml()}
         </div>
         ${this._duplicateNoticeHtml()}

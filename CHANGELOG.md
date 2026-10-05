@@ -2,6 +2,8 @@
 
 ## 5.9.0 (unreleased)
 
+- Give manual history fields accessible names with their units, and localize the help-dismissal button in Polish.
+
 - Let a briefly unavailable cumulative area counter recover through the existing continuity checks without requiring a time-rate fallback. Do not invent a time dose or invalidate the tank before a short gap can be evaluated. Long gaps, changed settings and counter resets still leave the balance unknown.
 
 - Explain a missing water-use rate in setup instead of repeatedly asking for a full tank. Keep unmeasured consumption unknown and document that the Tapo Matter profile needs a measured time rate; model recognition alone does not supply one.
