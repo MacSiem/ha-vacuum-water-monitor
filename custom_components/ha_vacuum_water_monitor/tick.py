@@ -2011,6 +2011,16 @@ def _record_accounting(
         "last_accounting_evidence": evidence,
         "last_accounting_reason": reason,
     }
+    missing = {"missing_area_rate", "missing_time_rate", "missing_wash_rate", "missing_intensity_factor"}
+    previous = state.get("missing_usage_rate_reason")
+    if reason in missing:
+        payload["missing_usage_rate_reason"] = reason
+    elif rate is not None and rate > 0 and reason is None:
+        # Idle/docked decisions must not erase why a rate is still needed.
+        # A successful dose on the affected route proves that it is supplied.
+        if (source == "wash" and previous == "missing_wash_rate") or (
+                source in {"area", "active_time"} and previous in missing - {"missing_wash_rate"}):
+            payload["missing_usage_rate_reason"] = None
     reasons = state.get(_PASS_REASONS_KEY)
     if isinstance(reasons, list) and reason:
         reasons.append(reason)

@@ -377,6 +377,7 @@ class VacuumWaterStorage:
             "last_accounting_rate_ml": None,
             "last_accounting_evidence": None,
             "last_accounting_reason": None,
+            "missing_usage_rate_reason": None,
             "last_tick_ts": 0,
             "water_empty_active": False,
             "water_anchor_source": None,

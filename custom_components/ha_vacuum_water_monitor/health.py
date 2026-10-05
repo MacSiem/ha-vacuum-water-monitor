@@ -116,7 +116,7 @@ def robot_health(
         add("possible_duplicate", "warning", FIX_RESOLVE_DUPLICATE, target=duplicate_of,
             target_name=duplicate_of_name or duplicate_of)
     reason = estimate.get("state_reason")
-    rate_reason = tank_state.get("last_accounting_reason")
+    rate_reason = tank_state.get("missing_usage_rate_reason") or tank_state.get("last_accounting_reason")
     missing_rate = reason == "accounting_incomplete" and rate_reason in {
         "missing_area_rate", "missing_time_rate", "missing_wash_rate", "missing_intensity_factor"
     }

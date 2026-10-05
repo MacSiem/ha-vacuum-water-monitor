@@ -8,6 +8,16 @@ health = importlib.import_module("vwmruntimepkg.health")
 
 
 class MatterMissingRateTests(unittest.TestCase):
+    def test_idle_does_not_erase_missing_rate_but_a_valid_dose_does(self):
+        state = {}
+        tick._record_accounting(state, "active_time", None, None, "missing_time_rate")
+        tick._record_accounting(state, "active_time", None, None, "not_cleaning")
+        self.assertEqual(state["missing_usage_rate_reason"], "missing_time_rate")
+        tick._record_accounting(state, "wash", 100, "user_calibration", None)
+        self.assertEqual(state["missing_usage_rate_reason"], "missing_time_rate")
+        tick._record_accounting(state, "active_time", 5, "user_calibration", None)
+        self.assertIsNone(state["missing_usage_rate_reason"])
+
     def test_actual_profile_reports_missing_rate_instead_of_a_refill(self):
         entities = [
             {"entity_id": "vacuum.robot", "platform": "matter", "device_id": "test", "unique_id": "vac"},
@@ -55,4 +65,3 @@ class MatterMissingRateTests(unittest.TestCase):
                 self.assertEqual(result["checks"][0]["id"], "missing_usage_rate")
                 self.assertEqual(result["status"], "action_needed")
                 self.assertFalse(any(c["fix"] == "confirm_full" for c in result["checks"]))
-

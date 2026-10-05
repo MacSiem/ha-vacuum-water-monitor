@@ -65,6 +65,7 @@ def apply_refill(
     state.update(
         used_ml=0,
         accounting_incomplete=False,
+        missing_usage_rate_reason=None,
         session_accounting_valid=False,
         initialized=True,
         last_reset_ts=now_ts,
