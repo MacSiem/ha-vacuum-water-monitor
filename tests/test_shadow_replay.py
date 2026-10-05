@@ -78,7 +78,7 @@ class ShadowReplayTests(unittest.TestCase):
         text = repr(shadow.replay(events, self.devices, calc, tick))
         self.assertNotIn("vacuum.", text.replace("vacuum.sample", ""))
 
-    def test_sanitized_live_empty_tank_replay_matches_counter_and_error_gate(self):
+    def test_sanitized_live_empty_tank_replay_preserves_counter_and_excludes_over_capacity_learning(self):
         fixture = json.loads((ROOT / "tests/fixtures/sanitized-live-empty-20260923.json").read_text())
         self.assertEqual(fixture["schema"], "vwm-sanitized-live-replay-v1")
         self.assertEqual(len(fixture["events"]), fixture["source_event_count"])
@@ -102,9 +102,13 @@ class ShadowReplayTests(unittest.TestCase):
         self.assertEqual(empty["target_ml"], expected["target_ml"])
         self.assertGreaterEqual(empty["error_percent"], 0)
         self.assertLessEqual(empty["error_percent"], expected["max_error_percent"])
-        self.assertTrue(empty["accepted"])
-        self.assertEqual(vacuum["calibration_samples"], expected["accepted_samples"])
-        self.assertAlmostEqual(vacuum["calibration_factor"], expected["calibration_factor_after"], places=3)
+        # The historical fixture predates the over-capacity guard. Its inferred
+        # 2850 ml target and counter agreement are retained as replay evidence,
+        # while 3061 ml predicted for a configured 3000 ml tank cannot train.
+        self.assertFalse(empty["accepted"])
+        self.assertEqual(empty["reason"], "calibration_sample_over_capacity")
+        self.assertEqual(vacuum["calibration_samples"], 0)
+        self.assertEqual(vacuum["calibration_factor"], 1)
 
 
 if __name__ == "__main__":
