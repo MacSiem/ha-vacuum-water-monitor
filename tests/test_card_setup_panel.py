@@ -37,6 +37,7 @@ const reports = JSON.parse(process.argv[1]);
   out.partial = card._buildSetupPanel(device, reports.partial);
   for (const lang of ['en', 'pl']) {
     card._lang = lang;
+    out['missingRate' + lang] = card._buildSetupPanel(device, reports.missingRate);
     out['missingLastError' + lang] = card._buildSetupPanel(device, {
       ...reports.partial, last_tank: { error_percent: null, accepted: false }
     });
@@ -98,6 +99,8 @@ BASE = {"vacuum_entity": "vacuum.robot", "name": "Robot S8", "model": "roborock.
         "capacity_source": "model", "model_capacity_ml": 4000, "uncertainty_percent": 20, "calibration_samples": 0,
         "can_calibrate": True, "refill_method": "dock_auto", "tracks_water": True}
 REPORTS = {
+    "missingRate": {**BASE, "status": "action_needed", "checks": [
+        {"id": "missing_usage_rate", "severity": "warning", "fix": None, "params": {"reason": "missing_time_rate"}}]},
     "notTracked": {**BASE, "tracks_water": False, "capacity_ml": None, "model_capacity_ml": None,
                    "status": "ok", "checks": [{"id": "not_tracked", "severity": "info", "params": {}}]},
     "fresh": {**BASE, "status": "action_needed", "checks": [
@@ -132,6 +135,16 @@ class CardSetupPanelTests(unittest.TestCase):
         self.assertIn("model database", html)
         self.assertIn("±20%", html)
         self.assertIn("tracking starts by itself after the next refill at the dock", html)
+
+    def test_missing_rate_explains_calibration_without_a_refill_button(self):
+        for lang, title, hint in [("en", "Missing water-use rate", "Confirming a full tank cannot supply this rate"),
+                                  ("pl", "Brak tempa zużycia wody", "Potwierdzenie pełnego zbiornika nie ustali tego tempa")]:
+            with self.subTest(language=lang):
+                html = self.out["missingRate" + lang]
+                self.assertIn(title, html)
+                self.assertIn(hint, html)
+                self.assertNotIn('data-setup="confirm-full"', html)
+                self.assertNotIn("Signals are ready", html)
 
     def test_polish(self):
         html = self.out["freshPl"]
