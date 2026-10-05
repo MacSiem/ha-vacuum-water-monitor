@@ -2,6 +2,8 @@
 
 ## 5.9.0 (unreleased)
 
+- Reflow the water gauge and details in very narrow Sections cards; wrap long robot names and tab controls instead of pushing data outside the card.
+
 - Respect a saved tank capacity in unknown-model guidance. Describe passing setup checks without promising verified consumption signals, and clarify the first-start requirements and manufacturer coverage.
 - Refresh the bundled card resource when its content changes, even when the version stays the same.
 - Localize missing-volume diagnostics and recorded/estimated history provenance, and keep open diagnostics expanded when data refreshes.

@@ -7684,6 +7684,22 @@ target:
         .tab-btn { flex: 1; background: transparent; color: var(--bento-text-muted); border: none; border-radius: 8px; padding: 7px 4px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: Inter, sans-serif; transition: all 0.2s; }
         .tab-active { background: rgba(59,130,246,0.12); color: var(--bento-text); }
         /* Content */
+        :host { container-type: inline-size; min-width: 0; }
+        .card { overflow-wrap: anywhere; }
+        .card-title, .device-name { min-width: 0; overflow-wrap: anywhere; }
+        .device-header { flex-wrap: wrap; gap: 6px; }
+        .dtab { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+        .tab-nav { flex-wrap: wrap; }
+        .tab-btn { flex-basis: 54px; min-width: 0; overflow-wrap: anywhere; }
+        @container (max-width: 300px) {
+          .device-body { flex-direction: column; align-items: stretch; }
+          .gauge-wrap { align-self: center; }
+          .details { width: 100%; }
+          .row { flex-wrap: wrap; gap: 4px 8px; }
+          .row-label, .row-val { flex-basis: 100%; text-align: left; }
+          .diagnostics-grid { grid-template-columns: minmax(0,1fr); padding: 8px; }
+          .diagnostics-label { min-width: 0; }
+        }
         .tab-content { }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         .device-body { display: flex; align-items: center; gap: 16px; }
