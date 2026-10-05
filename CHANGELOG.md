@@ -2,6 +2,8 @@
 
 ## 5.9.0 (unreleased)
 
+- Keep a deliberately selected model ahead of conflicting registry manufacturer metadata. Keep its estimate sources, mop class and reservoir anchors together while retaining vendor-scoped automatic matching.
+
 - Expand source-verified reservoir capacities and mop classes. Select the dock clean-water supply rather than the robot buffer, retain regional and optional-accessory limits, and keep unsupported or conflicting specifications unknown.
 - Reject implausible calibration factors instead of clipping them. Preserve prior uncertainty until three accepted cycles and distinguish cycle agreement from physical accuracy; measured volume does not inherit a catalog prior.
 
@@ -10,7 +12,7 @@
 - Respect a saved tank capacity in unknown-model guidance. Describe passing setup checks without promising verified consumption signals, and clarify the first-start requirements and manufacturer coverage.
 - Refresh the bundled card resource when its content changes, even when the version stays the same.
 - Localize missing-volume diagnostics and recorded/estimated history provenance, and keep open diagnostics expanded when data refreshes.
-- Remove the default duck decorations from robot names and device views.
+- Remove duck decorations from robot names and device views, including previously saved icons; preserve historical migration defaults.
 
 - Give manual history fields accessible names with their units, and localize the help-dismissal button in Polish.
 

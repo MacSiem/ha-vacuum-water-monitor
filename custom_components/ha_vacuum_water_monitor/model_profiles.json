@@ -1,6 +1,6 @@
 {
   "schema_version": "1.1.0",
-  "dataset_version": "6.2.0",
+  "dataset_version": "6.2.1",
   "cutoff_date": "2026-10-05",
   "profiles": {
     "cecotec_conga_3290": {
@@ -235,6 +235,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Switzerland source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -245,13 +250,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 235,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 235,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -266,9 +271,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://ch.dreametech.com/blogs/blog-dreame-switzerland/dreame-d10s-pro-staubsaugroboter-im-test",
+          "claim": "Exact primary manufacturer article states D10s Pro235ml;140ml in the comparison belongs to D10s Plus. Slide-on mop pad with tank; no broad SKU equivalence or flow coefficient adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -276,7 +288,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "dreame_d9": {
       "identifiers": [
@@ -290,6 +303,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Canada source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -300,13 +318,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 270,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 270,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -321,9 +339,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://ca.dreametech.com/blogs/blog/dreame-d9-new-features",
+          "claim": "Owner verified robot_clean=270, mop_system=pad. Source region: Canada. Exact named tank; three ordinal levels not rates. CA editorial claim, not measured consumption. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -331,7 +356,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "dreame_d9_pro": {
       "identifiers": [
@@ -400,6 +426,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Canada source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -410,13 +441,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 200,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 200,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -431,9 +462,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://ca.dreametech.com/blogs/blog/dreame-first-robot-vacuum-revealed",
+          "claim": "Owner verified robot_clean=200. Source region: Canada. Exact F9 primary article confirms200ml; D9 article also explicitly names F9 in comparison, correcting earlier overly broad rejection based on article title. 90minute mopping claim not rate. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -441,7 +479,7 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified"
     },
     "dreame_l10_pro": {
       "identifiers": [
@@ -649,6 +687,11 @@
           "region": "regional; exact SKU unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Global Heat source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -658,15 +701,15 @@
       ],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
-        "dock_dirty": null,
-        "robot_clean": null,
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": 80,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -688,9 +731,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.dreametech.com/products/l10s-pro-ultra",
+          "claim": "Detailed global page explicitly names Heat with dock clean4.5L/dirty4L, onboard80ml and rotary mops. Header/URL omit Heat; do not transfer automatically to separately catalogued plain L10s Pro Ultra. Optional plumbing kit not universally included. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
@@ -703,7 +753,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "rotating_pads"
     },
     "dreame_l10s_ultra": {
       "identifiers": [
@@ -795,6 +846,11 @@
           "region": "US/global; exact SKU unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "US source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -803,15 +859,15 @@
       ],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
+        "dock_clean": 4500,
         "dock_dirty": null,
         "robot_clean": null,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -827,9 +883,16 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "browser_or_unavailable"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.dreametech.com/products/l10s-ultra-gen-2-robot-vacuum",
+          "claim": "Exact Gen2 source4.5L clean dock and dual rotary mops. Optional water hookup kit is separate and not available in all regions; no dirty/onboard volume or water rate adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
@@ -842,7 +905,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "rotating_pads"
     },
     "dreame_l20_ultra": {
       "identifiers": [
@@ -1165,9 +1229,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.dreametech.com/hc/en-us/article_attachments/10385247328399",
+          "claim": "Exact W10 manual names RLS5C robot and RCS3 base; two mop pads and troubleshooting of their rotation. No numeric water capacity appears in its specifications; no transfer from W10 Pro. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -1175,7 +1246,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "rotating_pads"
     },
     "dreame_w10_pro": {
       "identifiers": [
@@ -1514,6 +1586,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Australia source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -1524,13 +1601,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 150,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 150,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -1545,9 +1622,23 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://dreame.com.au/products/dreame-z10-pro",
+          "claim": "Exact Z10 Pro specification150ml robot water;4L/400ml are dust capacities. Single cloth pad verified additionally in primary Z10 Pro manual. Three ordinal flow levels not numerical delivery. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.dreametech.com/hc/en-us/article_attachments/10385247102095",
+          "claim": "Exact Z10 Pro manual shows one mop pad fixed on the water-tank attaching area; confirms pad structure only, not numerical capacity or rate.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -1555,7 +1646,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "ecovacs_deebot_n30_pro_omni": {
       "identifiers": [
@@ -2074,21 +2166,26 @@
           "region": "US; retail SKU unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "US source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
       "integration_adapters": [],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
-        "dock_dirty": null,
+        "dock_clean": 2500,
+        "dock_dirty": 2400,
         "robot_clean": null,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 2500,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -2103,9 +2200,23 @@
           "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://service.eufy.com/article-description/Dimensions-of-the-C20-Omni-and-the-All-in-One-Station?urlName=Dimensions-of-the-C20-Omni-and-the-All-in-One-Station",
+          "claim": "Owner verified dock_clean=2500, dock_dirty=2400, mop_system=rotating_pads. Source region: US. Manufacturer support explicitly names C20 Omni; reservoir capacities only, no consumption coefficient. Exact C20 comparison names dual rotating pads. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.eufy.com/products/t2280111",
+          "claim": "Owner verified dock_clean=2500, dock_dirty=2400, mop_system=rotating_pads. Source region: US. Manufacturer support explicitly names C20 Omni; reservoir capacities only, no consumption coefficient. Exact C20 comparison names dual rotating pads. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -2113,7 +2224,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "rotating_pads"
     },
     "eufy_omni_c28": {
       "identifiers": [
@@ -2180,6 +2292,11 @@
           "region": "UK",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "US source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -2215,9 +2332,16 @@
           "url": "https://www.eufy.com/uk/robot-vacuum-e28",
           "claim": "UK E25 and E28 specifications: clean tank 2.5 L, dirty 1.8 L; HA water surface not verified.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.eufy.com/products/robot-vacuum-omni-e25-dust-bag?variant=45704584626362",
+          "claim": "Owner verified dock_clean=2500, dock_dirty=1800, mop_system=roller. Source region: US. Page contains E28 marketing copy in some blocks; use explicit E25 specs and HydroJet section only. Do not transfer robot capacity or runtime into a water rate. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -2225,7 +2349,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "capacity_verified"
+      "verification_status": "capacity_verified",
+      "mop_system": "roller"
     },
     "eufy_omni_e28": {
       "identifiers": [
@@ -2393,9 +2518,16 @@
           "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://service.eufy.com/uk/article-description/S2-Features-Introduction",
+          "claim": "UK support page explicitly names S2 HydroJet2.0 self-clean roller mop. US vs Taiwan capacity conflict remains unresolved; no capacity or flow adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -2403,7 +2535,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "roller"
     },
     "eufy_x10_pro_omni": {
       "identifiers": [
@@ -2426,6 +2559,11 @@
         {
           "region": "US/EU manual",
           "sku": "T2351",
+          "equivalence_verified": false
+        },
+        {
+          "region": "UK source; exact SKU equivalence unverified",
+          "sku": null,
           "equivalence_verified": false
         }
       ],
@@ -2470,6 +2608,13 @@
           "claim": "Owner verified robot_clean=80. Official FAQ separates80ml robot buffer and3L dock; do not derive consumption from1500-2000sqft coverage. No floor/time/wash coefficient inferred.",
           "last_verified": "2026-10-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.eufy.com/uk/products/t2351v21?fliter_category=best-seller",
+          "claim": "Owner verified mop_system=rotating_pads. Source region: UK. Exact X10 UKcomparison states Dual Rotating Mop Pads; does not promote model-specific coefficients. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
       "last_verified": "2026-10-05",
@@ -2480,7 +2625,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "capacity_verified"
+      "verification_status": "capacity_verified",
+      "mop_system": "rotating_pads"
     },
     "eureka_e20_evo_plus": {
       "identifiers": [
@@ -2549,6 +2695,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "US source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -2580,9 +2731,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eureka.com/products/eureka-e20plus",
+          "claim": "Exact E20 Plus mop cloth and pad accessories plus mop-lift system.2L dust cup is not water; no water capacity/rate adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -2590,7 +2748,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "pad"
     },
     "eureka_j12_ultra": {
       "identifiers": [
@@ -3643,6 +3802,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "France source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -3651,15 +3815,15 @@
       ],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
-        "dock_dirty": null,
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
         "robot_clean": null,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -3674,9 +3838,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://fr.mova.tech/products/mova-s20-ultra-robot-vacuum",
+          "claim": "Owner verified dock_clean=4500, dock_dirty=4000, mop_system=pad. Source region: France. French exact S20 Ultra: vibrating cloth, not rotating pads. Robot reservoir and water rate remain unknown; no battery-runtime conversion. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -3684,7 +3855,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "mova_v50_ultra_complete": {
       "identifiers": [
@@ -5847,6 +6019,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Azerbaijan source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -5857,13 +6034,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 297,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 297,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -5878,9 +6055,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://az.roborock.com/pages/robot-vacuum-cleaner-redirect-b",
+          "claim": "Owner verified robot_clean=297. Source region: Azerbaijan. AZ manufacturer exact named model. No electric/passive pump-speed assumption, battery/area conversion or water-flow coefficient. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -5888,7 +6072,7 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched",
+      "verification_status": "capacity_verified",
       "mop_system": "pad"
     },
     "roborock_s6": {
@@ -5959,6 +6143,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Azerbaijan source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -5969,13 +6158,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 180,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 180,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -5990,9 +6179,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://az.roborock.com/pages/robot-vacuum-cleaner-redirect-b",
+          "claim": "Owner verified robot_clean=180. Source region: Azerbaijan. AZ manufacturer exact named model. No electric/passive pump-speed assumption, battery/area conversion or water-flow coefficient. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -6000,7 +6196,7 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched",
+      "verification_status": "capacity_verified",
       "mop_system": "pad"
     },
     "roborock_s7": {
@@ -6901,6 +7097,11 @@
           "region": "Global",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "International source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -6913,7 +7114,7 @@
         "dock_dirty": null,
         "robot_clean": null,
         "robot_dirty": null,
-        "detergent": null
+        "detergent": 150
       },
       "tracked_reservoir": null,
       "tracked_capacity_ml": null,
@@ -6932,9 +7133,16 @@
           "url": "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.switch-bot.com/pages/switchbot-floor-cleaning-robot-s10",
+          "claim": "Exact S10 RevoRoll roller;150ml tank is cleaning solution, not water. Plumbing supply and optional external tank remain distinct. No numerical clean/dirty water capacity adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -6942,7 +7150,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "roller"
     },
     "switchbot_s20": {
       "identifiers": [
@@ -6956,6 +7165,11 @@
           "region": "Global",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "International source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -6987,9 +7201,16 @@
           "url": "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.switch-bot.com/products/switchbot-floor-cleaning-robot-s20",
+          "claim": "Exact S20 RevoRoll roller. Auto refill/waste functions do not specify tank volume or water flow;300 scrubs/min is not pump delivery. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -6997,7 +7218,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "researched",
+      "mop_system": "roller"
     },
     "tapo_rv20_max": {
       "identifiers": [
@@ -7011,6 +7233,11 @@
           "region": "regional variants; exact SKU unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Singapore source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -7022,13 +7249,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 300,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -7044,9 +7271,23 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/sg/product/robot-vacuum/tapo-rv20-max/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: Singapore. Exact SG model water tank300ml; no dockwater reservoir. Three levels not rates. Exact grouped cloth-mount replacement confirms pad structure. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
@@ -7059,7 +7300,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "tapo_rv20_max_plus": {
       "identifiers": [
@@ -7073,6 +7315,11 @@
           "region": "regional variants; exact SKU unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Netherlands source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -7084,13 +7331,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 300,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -7106,9 +7353,23 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://nl.store.tapo.com/products/tapo-rv20-max-plus",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: Netherlands. Official NL store exact model300ml water tank; no transfer to Gen2 orotherRV30variants. Exact grouped cloth-mount replacement confirms pad structure. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
@@ -7121,7 +7382,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "tapo_rv20_mop_plus": {
       "identifiers": [
@@ -7135,6 +7397,11 @@
           "region": "regional variants; exact SKU unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Nordic source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -7146,13 +7413,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 300,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -7168,9 +7435,23 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tp-link.com/nordic/smart-home/robot-vacuum/tapo-rv20-mop-plus/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: Nordic. Exact model300ml water tank; support names removable mop cloth mount. Dustbag capacity is not water. No3level/battery/coverage-derived rates. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
@@ -7183,7 +7464,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "tapo_rv30_max": {
       "identifiers": [
@@ -7197,6 +7479,11 @@
           "region": "regional variants; exact hardware SKU unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "India source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -7208,13 +7495,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 300,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -7230,9 +7517,23 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/in/product/robot-vacuum/tapo-rv30-max/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: India. Exact model300ml water tank; support names removable mop cloth mount. Dustbag capacity is not water. No3level/battery/coverage-derived rates. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
@@ -7245,7 +7546,8 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "tapo_rv30_max_plus": {
       "identifiers": [
@@ -7259,66 +7561,9 @@
           "region": "regional variants; exact hardware SKU unknown",
           "sku": null,
           "equivalence_verified": false
-        }
-      ],
-      "observed_ha_identifiers": [],
-      "integration_adapters": [
-        "tplink",
-        "matter"
-      ],
-      "available_signals": [],
-      "reservoirs_ml": {
-        "dock_clean": null,
-        "dock_dirty": null,
-        "robot_clean": null,
-        "robot_dirty": null,
-        "detergent": null
-      },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
-      "confidence": "low",
-      "accounting": {
-        "usage_ml_per_m2": {},
-        "usage_ml_per_active_minute": {},
-        "wash_volume_ml": null,
-        "evidence": "not_published",
-        "rate_signal": null
-      },
-      "provenance": [
+        },
         {
-          "source_type": "manufacturer_support",
-          "url": "https://www.tapo.com/us/faq/290/",
-          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
-          "last_verified": "2026-09-05",
-          "retrieval_status": "read"
-        }
-      ],
-      "last_verified": "2026-09-05",
-      "sample_count": 0,
-      "unsupported_unknowns": [
-        "Regional hardware equivalence and exact retail SKU unknown",
-        "Firmware-specific HA feature presence unverified",
-        "All consumption rates and wash volumes unmeasured",
-        "Reservoir null means unknown, not zero or absent",
-        "Unknown dock_clean capacity",
-        "Unknown dock_dirty capacity",
-        "Unknown robot_clean capacity",
-        "Unknown robot_dirty capacity",
-        "Unknown detergent capacity"
-      ],
-      "verification_status": "researched"
-    },
-    "tapo_rv30_max_plus_gen_2": {
-      "identifiers": [
-        "Tapo RV30 Max Plus Gen 2"
-      ],
-      "manufacturer": "Tapo",
-      "model": "RV30 Max Plus Gen 2",
-      "model_ids": [],
-      "regional_skus": [
-        {
-          "region": "regional variants; exact hardware SKU unknown",
+          "region": "US source; exact SKU equivalence unverified",
           "sku": null,
           "equivalence_verified": false
         }
@@ -7332,13 +7577,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 300,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -7354,9 +7599,23 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/us/product/robot-vacuum/tapo-rv30-max-plus/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: US. Exact model300ml water tank; support names removable mop cloth mount. Dustbag capacity is not water. No3level/battery/coverage-derived rates. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
@@ -7369,7 +7628,90 @@
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
+    },
+    "tapo_rv30_max_plus_gen_2": {
+      "identifiers": [
+        "Tapo RV30 Max Plus Gen 2"
+      ],
+      "manufacturer": "Tapo",
+      "model": "RV30 Max Plus Gen 2",
+      "model_ids": [],
+      "regional_skus": [
+        {
+          "region": "regional variants; exact hardware SKU unknown",
+          "sku": null,
+          "equivalence_verified": false
+        },
+        {
+          "region": "UK source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
+        }
+      ],
+      "observed_ha_identifiers": [],
+      "integration_adapters": [
+        "tplink",
+        "matter"
+      ],
+      "available_signals": [],
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 300,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "capability": "calibration_required",
+      "confidence": "low",
+      "accounting": {
+        "usage_ml_per_m2": {},
+        "usage_ml_per_active_minute": {},
+        "wash_volume_ml": null,
+        "evidence": "not_published",
+        "rate_signal": null
+      },
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://www.tapo.com/us/faq/290/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/uk/product/robot-vacuum/tapo-rv30-max-plus-gen-2/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: UK. Exact model300ml water tank; support names removable mop cloth mount. Dustbag capacity is not water. No3level/battery/coverage-derived rates. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "last_verified": "2026-10-05",
+      "sample_count": 0,
+      "unsupported_unknowns": [
+        "Regional hardware equivalence and exact retail SKU unknown",
+        "Firmware-specific HA feature presence unverified",
+        "All consumption rates and wash volumes unmeasured",
+        "Reservoir null means unknown, not zero or absent",
+        "Unknown dock_clean capacity",
+        "Unknown dock_dirty capacity",
+        "Unknown robot_clean capacity",
+        "Unknown robot_dirty capacity",
+        "Unknown detergent capacity"
+      ],
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "tapo_rv30_plus": {
       "identifiers": [
@@ -7734,6 +8076,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Taiwan source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -7744,13 +8091,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 200,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 200,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -7765,9 +8112,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/tw/mi-robot-vacuum-mop-combo-1c/",
+          "claim": "Owner verified robot_clean=200, mop_system=pad. Source region: Taiwan. Taiwan exact 1C; electronically controlled200ml and suspended cloth. Keep regional scope; advertised120m² is battery/coverage, not delivery. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -7775,7 +8129,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "xiaomi_1t": {
       "identifiers": [
@@ -8599,6 +8954,11 @@
           "region": "unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "Mexico source; exact SKU equivalence unverified",
+          "sku": null,
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
@@ -8609,13 +8969,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 200,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 200,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -8630,9 +8990,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/mx/product/mi-robot-vacuum-mop-p/",
+          "claim": "Owner verified robot_clean=200, mop_system=pad. Source region: Mexico. Mexico exact MopP 2-in-1:300ml dust,200ml water. Cloth area350cm² is mop size, not consumption. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -8640,7 +9007,8 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "pad"
     },
     "xiaomi_x10_plus": {
       "identifiers": [

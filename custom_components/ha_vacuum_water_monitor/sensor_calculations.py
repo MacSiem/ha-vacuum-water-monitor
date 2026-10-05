@@ -1042,6 +1042,17 @@ _BEHAVIOR_BINDING_FIELDS = _DIRECT_SIGNAL_FIELDS | {
     "charge_sensor",
 }
 _PROFILE_DESCRIPTOR_FIELDS = {
+    "estimate_basis",
+    "estimate_sources",
+    "mop_system",
+    "intensity_factor",
+    "calibration_scope",
+    "sources",
+    "provenance",
+    "water_anchor_reservoir",
+    "water_anchor_reservoir_inferred",
+    "refill_on_clear",
+    "refill_on_clear_inferred",
     "profile_key",
     "profile_source",
     "profile_confidence",

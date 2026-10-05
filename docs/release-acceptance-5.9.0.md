@@ -14,7 +14,7 @@ verify code behavior; they do not replace live HACS and household-interface acce
 | Vacuum-only and settings | Affirmative mop evidence required; unknown output levels do not silently use a default | Runtime and numeric range tests | Exact device telemetry |
 | Mop washing | Separate observed wash sequence, counted once; whole-cycle calibration excludes extra wash dosing | Tick and refill/calibration regressions | Device-specific wash visibility and water amount |
 | Refill | Card, device button, service, bound button/lid and eligible dock clear share bookkeeping; deduplication retains intervening use | Refill and runtime tests | Every route in the candidate's live interface |
-| Calibration | Complete refill-to-empty learning; incomplete/outlier samples excluded; authored measurements stay separate | Calibration, local-measurement and replay tests | Measured accuracy; no new physical runs currently authorized |
+| Calibration | Complete refill-to-empty learning; incomplete/outlier samples excluded; authored measurements stay separate | Calibration, local-measurement and replay tests | Measured accuracy; Maciej authorized the evening 5 October run after software acceptance and the two estimation tasks |
 | Tank settings and history | Per-robot capacity and baseline/history preserved; session water formatted without changing original records | Setup, storage and presentation regressions | Current candidate fresh/upgrade, reload/restart persistence |
 | Health and Repairs | Missing rate explains calibration rather than an ineffective full-tank Repair; unknown stays unknown | `test_issue10_missing_rate.py`, setup and card tests | Current native Repairs/card behavior |
 | Forecasts and reminders | Cleanings/days and forecast error use available tank history; genuine zero differs from missing data | Forecast, setup and presentation tests; blueprint in repository | Live entities, blueprint and sufficient history |
@@ -25,15 +25,17 @@ verify code behavior; they do not replace live HACS and household-interface acce
 
 | Scenario | Existing evidence | Whole-scenario status |
 |---|---|---|
-| Public baseline fresh installation | Earlier package/API evidence retained | Open: native HACS and card flow |
-| Public baseline upgrade | Earlier settings/baseline migration evidence retained | Open: native upgrade/reload/restart |
-| Exact candidate loaded assets | Current code and CI | Open: loaded asset identity/cache and native rendering |
-| Candidate fresh and upgrade | Earlier candidate package/API migrations retained as history | Open: changed candidate installation and migration |
-| Shared staging restoration | Earlier byte-exact restoration and readiness evidence retained | Open for a new candidate run; baseline/restore must be checked again |
-| Administrator and household roles | Earlier scoped checks and subscription regressions retained | Open: all current-candidate role flows |
-| Layout and accessibility | Source/card harness coverage retained | Open: themes, phone width, Sections neighbors, zoom and keyboard |
-| First run and recovery | Setup/storage tests retained | Open: no robot, unknown model/capacity, resource registration, reload/restart |
-| Reported device paths | Separate reproductions and drafts for issues 10–13 | Open: authors' hardware; no blanket issue closure |
+| Public baseline fresh installation | Native HACS 5.7.0, 28 exact files; setup/card/history/reload in `native-stage/public-baseline-fresh` | Accepted for that unchanged baseline |
+| Public baseline upgrade | Public 5.6→5.7 API migration evidence and native 5.7→candidate preservation | Open: exact native public 5.6→5.7 flow |
+| Exact candidate loaded assets | Native HACS A3f; ordinary Browser reload, 441731 exact module bytes, no disk/SW cache or ducks in `native-anchor-qa/browser-resource-readback.json` | Accepted for A3f module; repeat identity for the repaired candidate |
+| Candidate fresh and upgrade | Native 39-file candidate fresh/upgrade, baseline/calibration/history preserved; `native-stage` | Accepted for unchanged flows; changed model/estimation paths still require live acceptance |
+| Shared staging restoration | Five sessions restored and read back; 20 entries, 19 foreign, Baby 24 categories/timers, Network Map 3 devices | Accepted through native-anchor-qa restoration/readback; repeat after next live QA |
+| Administrator and household roles | Native settings/refill/reload; diagnostics admin200/household401; cancelled sharing without transmission in `native-stage/household-*` | Accepted for unchanged role behavior |
+| Layout and accessibility | PL/EN, light/dark390/1440, keyboard/draft, details stability; 360 Sections and 180CSS reflow with neighbor | Open: actual browser zoom200%; reflow alone is not zoom |
+| First run and recovery | Native no-robot setup, unknown capacity, reprofile/focus, reload/restart; actual forecast entities and blueprint reminder after60s in `native-completion-qa` | Accepted unchanged flows; manual model/registry conflict discovered live is open |
+| Reported device paths | Separate real-runtime reproductions, live fixture paths and drafts for issues10–13 | Open: authors' exact hardware/firmware; no blanket issue closure |
+
+The current live acceptance found a manual-profile regression before any test state mutations: a locked Tapo can lose estimate basis/sources when the registry manufacturer differs, and discovery can mix profile metadata. The new reproductions fail on the preceding candidate. A bounded repair is committed locally; full regression and live acceptance are pending. Earlier green tests do not close this path. The source review table covers133 rows; physical accuracy remains unverified for the catalog.
 
 ## Installation, upgrade and privacy
 

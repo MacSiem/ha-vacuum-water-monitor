@@ -13,7 +13,7 @@ The [October model evidence review](model-evidence-review-2026-10-05.md) covers 
 
 The current runtime resolver supplies a labelled provisional prior for all 133
 catalog rows. This does not mean that all 133 can account for water immediately:
-only 55 rows have a known tracked capacity, and the installed integration must
+only 73 rows have a known tracked capacity, and the installed integration must
 expose matching mopping, exposure and settings signals. Confirming a full tank
 establishes a baseline; it cannot create a missing time rate or signal binding.
 Unknown models can save a capacity, but model identity and capacity alone do not
@@ -23,20 +23,20 @@ establish automatic consumption accounting.
 |---|---:|---:|---|
 | Cecotec | 2 | 0 | 2 generic |
 | Commodore | 1 | 0 | 1 generic |
-| Dreame | 22 | 9 | 3 class, 19 generic |
+| Dreame | 22 | 15 | 9 class, 13 generic |
 | Ecovacs | 7 | 6 | 3 class, 4 generic |
-| eufy | 7 | 3 | 1 class, 6 generic |
-| Eureka | 6 | 2 | 6 generic |
+| eufy | 7 | 4 | 5 class, 2 generic |
+| Eureka | 6 | 2 | 1 class, 5 generic |
 | IKOHS | 1 | 0 | 1 generic |
 | iRobot | 7 | 5 | 7 generic |
-| MOVA | 7 | 5 | 4 class, 3 generic |
+| MOVA | 7 | 6 | 5 class, 2 generic |
 | Proscenic | 1 | 0 | 1 generic |
-| Roborock | 42 | 13 | 39 class, 1 family-transfer, 1 generic, 1 owner-device |
+| Roborock | 42 | 15 | 39 class, 1 family-transfer, 1 generic, 1 owner-device |
 | Samsung | 2 | 1 | 2 generic |
-| SwitchBot | 2 | 0 | 2 generic |
-| Tapo | 9 | 3 | 3 class, 6 generic |
+| SwitchBot | 2 | 0 | 2 class |
+| Tapo | 9 | 9 | 9 class |
 | Viomi | 2 | 0 | 2 generic |
-| Xiaomi | 15 | 8 | 2 class, 13 generic |
+| Xiaomi | 15 | 10 | 4 class, 11 generic |
 
 Counts come from `model_profiles.json` resolved through `profiles._resolved` and
 `estimation.estimate_for_record`, including runtime reservoir inference. The

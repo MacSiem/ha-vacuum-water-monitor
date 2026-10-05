@@ -778,51 +778,59 @@ const CALIBRATION_DATA = {
   },
   "dreame_d10s_pro": {
     "label": "Dreame D10s Pro",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 235,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 235,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 235,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://ch.dreametech.com/blogs/blog-dreame-switzerland/dreame-d10s-pro-staubsaugroboter-im-test"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "dreame_d9": {
     "label": "Dreame D9",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 270,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 270,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 270,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://ca.dreametech.com/blogs/blog/dreame-d9-new-features"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "dreame_d9_pro": {
     "label": "Dreame D9 Pro",
@@ -850,12 +858,12 @@ const CALIBRATION_DATA = {
   },
   "dreame_f9": {
     "label": "Dreame F9",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 200,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 200,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 200,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
@@ -867,9 +875,10 @@ const CALIBRATION_DATA = {
     },
     "mop_wash_ml": 120,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://ca.dreametech.com/blogs/blog/dreame-first-robot-vacuum-revealed"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "dreame_l10_pro": {
@@ -951,28 +960,32 @@ const CALIBRATION_DATA = {
   },
   "dreame_l10s_pro_ultra_heat": {
     "label": "Dreame L10s Pro Ultra Heat",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
-    "dock_clean_tank_ml": null,
-    "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "tank_ml": 4500,
+    "tracked_reservoir": "dock_clean",
+    "robot_tank_ml": 80,
+    "dock_clean_tank_ml": 4500,
+    "dock_dirty_tank_ml": 4000,
+    "robot_clean_tank_ml": 80,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "rotating_pads",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 5,
+      "standard": 7,
+      "deep": 10,
+      "deep_plus": 12
     },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums",
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://global.dreametech.com/products/l10s-pro-ultra"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "dreame_l10s_ultra": {
     "label": "Dreame L10s Ultra",
@@ -1005,27 +1018,31 @@ const CALIBRATION_DATA = {
   },
   "dreame_l10s_ultra_gen_2": {
     "label": "Dreame L10s Ultra Gen 2",
-    "tank_ml": null,
-    "tracked_reservoir": null,
+    "tank_ml": 4500,
+    "tracked_reservoir": "dock_clean",
     "robot_tank_ml": null,
-    "dock_clean_tank_ml": null,
+    "dock_clean_tank_ml": 4500,
     "dock_dirty_tank_ml": null,
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "rotating_pads",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 5,
+      "standard": 7,
+      "deep": 10,
+      "deep_plus": 12
     },
     "mop_wash_ml": 120,
     "source_urls": [
-      "https://store.dreametech.com/robot-vacuum-and-mop-comparison/"
+      "https://store.dreametech.com/robot-vacuum-and-mop-comparison/",
+      "https://www.dreametech.com/products/l10s-ultra-gen-2-robot-vacuum"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "dreame_l20_ultra": {
     "label": "Dreame L20 Ultra",
@@ -1141,19 +1158,23 @@ const CALIBRATION_DATA = {
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "rotating_pads",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 5,
+      "standard": 7,
+      "deep": 10,
+      "deep_plus": 12
     },
     "mop_wash_ml": 120,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://support.dreametech.com/hc/en-us/article_attachments/10385247328399"
     ],
     "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "dreame_w10_pro": {
     "label": "Dreame W10 Pro",
@@ -1282,27 +1303,32 @@ const CALIBRATION_DATA = {
   },
   "dreame_z10_pro": {
     "label": "Dreame Z10 Pro",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 150,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 150,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 150,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://dreame.com.au/products/dreame-z10-pro",
+      "https://support.dreametech.com/hc/en-us/article_attachments/10385247102095"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "ecovacs_deebot_n30_pro_omni": {
     "label": "Ecovacs ECOVACS DEEBOT N30 PRO OMNI",
@@ -1492,27 +1518,32 @@ const CALIBRATION_DATA = {
   },
   "eufy_omni_c20": {
     "label": "eufy Omni C20",
-    "tank_ml": null,
-    "tracked_reservoir": null,
+    "tank_ml": 2500,
+    "tracked_reservoir": "dock_clean",
     "robot_tank_ml": null,
-    "dock_clean_tank_ml": null,
-    "dock_dirty_tank_ml": null,
+    "dock_clean_tank_ml": 2500,
+    "dock_dirty_tank_ml": 2400,
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "rotating_pads",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 5,
+      "standard": 7,
+      "deep": 10,
+      "deep_plus": 12
     },
     "mop_wash_ml": 120,
     "source_urls": [
-      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+      "https://service.eufy.com/article-description/Dimensions-of-the-C20-Omni-and-the-All-in-One-Station?urlName=Dimensions-of-the-C20-Omni-and-the-All-in-One-Station",
+      "https://www.eufy.com/products/t2280111"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "eufy_omni_c28": {
     "label": "eufy Omni C28",
@@ -1548,20 +1579,24 @@ const CALIBRATION_DATA = {
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "roller",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 7,
+      "standard": 10,
+      "deep": 13,
+      "deep_plus": 15
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 200,
     "source_urls": [
       "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
-      "https://www.eufy.com/uk/robot-vacuum-e28"
+      "https://www.eufy.com/uk/robot-vacuum-e28",
+      "https://www.eufy.com/products/robot-vacuum-omni-e25-dust-bag?variant=45704584626362"
     ],
     "data_quality": "capacity_verified",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "eufy_omni_e28": {
     "label": "eufy Omni E28",
@@ -1626,19 +1661,23 @@ const CALIBRATION_DATA = {
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "roller",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 7,
+      "standard": 10,
+      "deep": 13,
+      "deep_plus": 15
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 200,
     "source_urls": [
-      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+      "https://service.eufy.com/uk/article-description/S2-Features-Introduction"
     ],
     "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "eufy_x10_pro_omni": {
     "label": "eufy X10 Pro Omni",
@@ -1650,21 +1689,25 @@ const CALIBRATION_DATA = {
     "robot_clean_tank_ml": 80,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "rotating_pads",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 5,
+      "standard": 7,
+      "deep": 10,
+      "deep_plus": 12
     },
     "mop_wash_ml": 120,
     "source_urls": [
       "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
       "https://service.eufy.com/article-description/X10-Pro-Omni-T2351-EN-Manual",
-      "https://service.eufy.com/article-description/Does-the-X10-Pro-Omni-have-an-onboard-water-tank?urlName=Does-the-X10-Pro-Omni-have-an-onboard-water-tank"
+      "https://service.eufy.com/article-description/Does-the-X10-Pro-Omni-have-an-onboard-water-tank?urlName=Does-the-X10-Pro-Omni-have-an-onboard-water-tank",
+      "https://www.eufy.com/uk/products/t2351v21?fliter_category=best-seller"
     ],
     "data_quality": "capacity_verified",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "eureka_e20_evo_plus": {
     "label": "Eureka E20 Evo Plus",
@@ -1700,19 +1743,23 @@ const CALIBRATION_DATA = {
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://us.eureka.com/products/eureka-e20plus"
     ],
     "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "eureka_j12_ultra": {
     "label": "Eureka J12 Ultra",
@@ -2104,27 +2151,31 @@ const CALIBRATION_DATA = {
   },
   "mova_s20_ultra": {
     "label": "MOVA S20 Ultra",
-    "tank_ml": null,
-    "tracked_reservoir": null,
+    "tank_ml": 4500,
+    "tracked_reservoir": "dock_clean",
     "robot_tank_ml": null,
-    "dock_clean_tank_ml": null,
-    "dock_dirty_tank_ml": null,
+    "dock_clean_tank_ml": 4500,
+    "dock_dirty_tank_ml": 4000,
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://fr.mova.tech/products/mova-s20-ultra-robot-vacuum"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "mova_v50_ultra_complete": {
     "label": "MOVA V50 Ultra Complete",
@@ -2999,12 +3050,12 @@ const CALIBRATION_DATA = {
   },
   "roborock_s5_max": {
     "label": "Roborock S5 Max",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 297,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 297,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 297,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
@@ -3019,9 +3070,10 @@ const CALIBRATION_DATA = {
     },
     "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://az.roborock.com/pages/robot-vacuum-cleaner-redirect-b"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "roborock_s6": {
@@ -3053,12 +3105,12 @@ const CALIBRATION_DATA = {
   },
   "roborock_s6_pure": {
     "label": "Roborock S6 Pure",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 180,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 180,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 180,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
@@ -3073,9 +3125,10 @@ const CALIBRATION_DATA = {
     },
     "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://az.roborock.com/pages/robot-vacuum-cleaner-redirect-b"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "roborock_s7": {
@@ -3435,20 +3488,24 @@ const CALIBRATION_DATA = {
     "dock_dirty_tank_ml": null,
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
-    "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "detergent_tank_ml": 150,
+    "mop_system": "roller",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 7,
+      "standard": 10,
+      "deep": 13,
+      "deep_plus": 15
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 200,
     "source_urls": [
-      "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2"
+      "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2",
+      "https://www.switch-bot.com/pages/switchbot-floor-cleaning-robot-s10"
     ],
     "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "switchbot_s20": {
     "label": "SwitchBot S20",
@@ -3460,163 +3517,197 @@ const CALIBRATION_DATA = {
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "roller",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 7,
+      "standard": 10,
+      "deep": 13,
+      "deep_plus": 15
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 200,
     "source_urls": [
-      "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2"
+      "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2",
+      "https://www.switch-bot.com/products/switchbot-floor-cleaning-robot-s20"
     ],
     "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "tapo_rv20_max": {
     "label": "Tapo RV20 Max",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 300,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 300,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 300,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://www.tapo.com/us/faq/290/"
+      "https://www.tapo.com/us/faq/290/",
+      "https://www.tapo.com/sg/product/robot-vacuum/tapo-rv20-max/",
+      "https://www.tapo.com/ec/faq/248/"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "tapo_rv20_max_plus": {
     "label": "Tapo RV20 Max Plus",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 300,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 300,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 300,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://www.tapo.com/us/faq/290/"
+      "https://www.tapo.com/us/faq/290/",
+      "https://nl.store.tapo.com/products/tapo-rv20-max-plus",
+      "https://www.tapo.com/ec/faq/248/"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "tapo_rv20_mop_plus": {
     "label": "Tapo RV20 Mop Plus",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 300,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 300,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 300,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://www.tapo.com/us/faq/290/"
+      "https://www.tapo.com/us/faq/290/",
+      "https://www.tp-link.com/nordic/smart-home/robot-vacuum/tapo-rv20-mop-plus/",
+      "https://www.tapo.com/ec/faq/248/"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "tapo_rv30_max": {
     "label": "Tapo RV30 Max",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 300,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 300,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 300,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://www.tapo.com/us/faq/290/"
+      "https://www.tapo.com/us/faq/290/",
+      "https://www.tapo.com/in/product/robot-vacuum/tapo-rv30-max/",
+      "https://www.tapo.com/ec/faq/248/"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "tapo_rv30_max_plus": {
     "label": "Tapo RV30 Max Plus",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 300,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 300,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 300,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://www.tapo.com/us/faq/290/"
+      "https://www.tapo.com/us/faq/290/",
+      "https://www.tapo.com/us/product/robot-vacuum/tapo-rv30-max-plus/",
+      "https://www.tapo.com/ec/faq/248/"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "tapo_rv30_max_plus_gen_2": {
     "label": "Tapo RV30 Max Plus Gen 2",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 300,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 300,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 300,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://www.tapo.com/us/faq/290/"
+      "https://www.tapo.com/us/faq/290/",
+      "https://www.tapo.com/uk/product/robot-vacuum/tapo-rv30-max-plus-gen-2/",
+      "https://www.tapo.com/ec/faq/248/"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "tapo_rv30_plus": {
     "label": "Tapo RV30 Plus",
@@ -3754,27 +3845,31 @@ const CALIBRATION_DATA = {
   },
   "xiaomi_1c": {
     "label": "Xiaomi 1C",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 200,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 200,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 200,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://www.mi.com/tw/mi-robot-vacuum-mop-combo-1c/"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "xiaomi_1t": {
     "label": "Xiaomi 1T",
@@ -4080,27 +4175,31 @@ const CALIBRATION_DATA = {
   },
   "xiaomi_vacuum_mop_p": {
     "label": "Xiaomi Vacuum-Mop P",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 200,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 200,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 200,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "pad",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 4,
+      "standard": 6,
+      "deep": 9,
+      "deep_plus": 11
     },
-    "mop_wash_ml": 120,
+    "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://www.mi.com/mx/product/mi-robot-vacuum-mop-p/"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "xiaomi_x10_plus": {
     "label": "Xiaomi X10 Plus",
@@ -5136,6 +5235,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _sanitize(s) { try { return decodeURIComponent(escape(s)); } catch(e) { return s; } }
+
+  _deviceIcon(value) {
+    const icon = this._sanitize(value || '');
+    return /^[\u{1F9A4}\u{1F986}]$/u.test(icon) ? '' : icon;
+  }
 
   _configuredDevicesFromConfig() {
     if (!this._config) return [];
@@ -6848,7 +6952,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const status = this._getStatus(data, this._config);
       const pct = data.percentRemaining !== null ? Math.round(data.percentRemaining) : null;
       return `<div class="stats-row">
-        <span class="stats-device">${_esc(this._sanitize(device.icon || ''))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</span>
+        <span class="stats-device">${_esc(this._deviceIcon(device.icon))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</span>
         <span class="stats-status" style="color:${status.color}">${status.icon} ${status.label}</span>
         <span class="stats-pct" style="color:${status.color}">${pct !== null ? pct + '%' : '--'}</span>
       </div>`;
@@ -7295,7 +7399,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         </div>`).join('')}
       </div>` : '';
 
-    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 ${this._waterText("Manually added")}</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(this._sanitize(ud.icon || ''))} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="${_esc(this._waterText("Remove"))}">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
+    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 ${this._waterText("Manually added")}</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(this._deviceIcon(ud.icon))} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="${_esc(this._waterText("Remove"))}">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
 
     return `
       <div class="tab-content">
@@ -7631,7 +7735,7 @@ target:
   _buildDeviceTabs(devices) {
     if (devices.length <= 1) return '';
     return `<div class="device-tabs">
-      ${devices.map((d, i) => `<button class="dtab ${i === this._activeDeviceIdx ? 'dtab-active' : ''}" data-didx="${i}">${_esc(this._sanitize(d.icon || ''))} ${_esc(this._sanitize(d.name || 'Device ' + (i+1)))}</button>`).join('')}
+      ${devices.map((d, i) => `<button class="dtab ${i === this._activeDeviceIdx ? 'dtab-active' : ''}" data-didx="${i}">${_esc(this._deviceIcon(d.icon))} ${_esc(this._sanitize(d.name || 'Device ' + (i+1)))}</button>`).join('')}
     </div>`;
   }
 
@@ -7664,7 +7768,7 @@ target:
 
     const deviceHeader = devices.length > 0 ? `
       <div class="device-header">
-        <div class="device-name">${_esc(this._sanitize(device.icon || ''))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
+        <div class="device-name">${_esc(this._deviceIcon(device.icon))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
         ${data.vacState !== undefined ? `<div class="status-badge" style="background:${status.color}20;color:${status.color};border:1px solid ${status.color}40">${status.icon} ${status.label}</div>` : ''}
       </div>` : '';
 

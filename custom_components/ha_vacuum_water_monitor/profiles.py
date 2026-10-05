@@ -266,6 +266,17 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
     """Resolve one profile using explicit configuration before registry metadata."""
     device = device if isinstance(device, dict) else {}
     catalog = CATALOG if catalog is None else catalog
+    # A deliberate model lock is user configuration, independent of registry
+    # manufacturer strings. Invalid locks still fall through to scoped lookup.
+    locked = _first_profile(
+        _catalog_indexes(catalog),
+        device.get("profile_override"),
+        device.get("locked_profile"),
+        device.get("brand_profile") if device.get("profile_locked") else None,
+    ) if device.get("profile_locked") else None
+    if locked:
+        return _resolved(catalog[locked], locked, "locked_override", "high")
+
     stated = normalize_identifier(device.get("manufacturer"))
     if stated:
         # A stated manufacturer always scopes the catalog: a bare Matter product
@@ -281,15 +292,6 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
         catalog = {k: r for k, r in catalog.items()
                    if manufacturer and normalize_identifier(r.get("manufacturer")) == manufacturer}
     indexes = _catalog_indexes(catalog)
-
-    locked = _first_profile(
-        indexes,
-        device.get("profile_override"),
-        device.get("locked_profile"),
-        device.get("brand_profile") if device.get("profile_locked") else None,
-    ) if device.get("profile_locked") else None
-    if locked:
-        return _resolved(catalog[locked], locked, "locked_override", "high")
 
     for source, confidence, values in (
         ("model_id", "high", (device.get("model_id"),)),
