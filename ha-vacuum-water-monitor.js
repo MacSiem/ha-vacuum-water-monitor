@@ -2257,12 +2257,12 @@ const CALIBRATION_DATA = {
   },
   "roborock_q7_max": {
     "label": "Roborock Q7 Max",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 350,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 350,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 350,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
@@ -2277,9 +2277,10 @@ const CALIBRATION_DATA = {
     },
     "mop_wash_ml": 150,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://global.roborock.com/pages/roborock-q7-max"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "roborock_q_revo": {
@@ -3648,27 +3649,31 @@ const CALIBRATION_DATA = {
   },
   "tapo_rv50_omni": {
     "label": "Tapo RV50 Omni",
-    "tank_ml": null,
-    "tracked_reservoir": null,
+    "tank_ml": 5000,
+    "tracked_reservoir": "dock_clean",
     "robot_tank_ml": null,
-    "dock_clean_tank_ml": null,
-    "dock_dirty_tank_ml": null,
+    "dock_clean_tank_ml": 5000,
+    "dock_dirty_tank_ml": 4000,
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
+    "mop_system": "rotating_pads",
+    "estimate_basis": "class_prior",
+    "estimate_label": "Typical for this mop system; calibrates automatically",
+    "uncertainty_percent": 50,
     "water_per_m2": {
-      "any mode": 7
+      "fast": 5,
+      "standard": 7,
+      "deep": 10,
+      "deep_plus": 12
     },
     "mop_wash_ml": 120,
     "source_urls": [
-      "https://www.tapo.com/pl/faq/834/"
+      "https://www.tapo.com/pl/faq/834/",
+      "https://uk.store.tapo.com/products/tapo-rv50-omni-robot-vacuum-cleaner-mop-all-in-one-station"
     ],
-    "data_quality": "researched",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "data_quality": "capacity_verified",
+    "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "tapo_rv50_pro_omni": {
     "label": "Tapo RV50 Pro Omni",

@@ -4036,13 +4036,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 350,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 350,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -4057,9 +4057,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-q7-max",
+          "claim": "Owner verified robot_clean=350. Global Q7Max/Q7Max+ comparison explicitly gives350ml water tank, distinct470ml dustbin; no capacity/area or runtime conversion.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -4067,7 +4074,7 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched",
+      "verification_status": "capacity_verified",
       "mop_system": "pad"
     },
     "roborock_q_revo": {
@@ -7466,15 +7473,15 @@
       ],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
-        "dock_dirty": null,
+        "dock_clean": 5000,
+        "dock_dirty": 4000,
         "robot_clean": null,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 5000,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -7490,22 +7497,28 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://uk.store.tapo.com/products/tapo-rv50-omni-robot-vacuum-cleaner-mop-all-in-one-station",
+          "claim": "Owner verified dock_clean=5000, dock_dirty=4000. UK RV50Omni non-Pro exact table5L/4L and dual circular mop. Robot capacity is not borrowed from95mlPro variant.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
         "Firmware-specific HA feature presence unverified",
         "All consumption rates and wash volumes unmeasured",
         "Reservoir null means unknown, not zero or absent",
-        "Unknown dock_clean capacity",
-        "Unknown dock_dirty capacity",
         "Unknown robot_clean capacity",
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified",
+      "mop_system": "rotating_pads"
     },
     "tapo_rv50_pro_omni": {
       "identifiers": [

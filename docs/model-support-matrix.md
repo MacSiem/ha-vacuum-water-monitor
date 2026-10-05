@@ -10,7 +10,7 @@ tracked reservoir, or that a consumption rate applies.
 
 The current runtime resolver supplies a labelled provisional prior for all 133
 catalog rows. This does not mean that all 133 can account for water immediately:
-only 23 rows have a known tracked capacity, and the installed integration must
+only 55 rows have a known tracked capacity, and the installed integration must
 expose matching mopping, exposure and settings signals. Confirming a full tank
 establishes a baseline; it cannot create a missing time rate or signal binding.
 Unknown models can save a capacity, but model identity and capacity alone do not
@@ -18,29 +18,34 @@ establish automatic consumption accounting.
 
 | Manufacturer | Catalog rows | Known tracked capacity | Runtime prior basis |
 |---|---:|---:|---|
-| Cecotec | 2 | 0 | Generic |
-| Commodore | 1 | 0 | Generic |
-| Dreame | 22 | 4 | Generic |
-| Ecovacs | 7 | 0 | Generic |
-| eufy | 7 | 2 | Generic |
-| Eureka | 6 | 0 | Generic |
-| IKOHS | 1 | 0 | Generic |
-| iRobot | 7 | 0 | Generic |
-| MOVA | 7 | 2 | Generic |
-| Proscenic | 1 | 0 | Generic |
-| Roborock | 42 | 6 | 38 class, 2 generic, 1 owner-device, 1 family-transfer |
-| Samsung | 2 | 1 | Generic |
-| SwitchBot | 2 | 0 | Generic |
-| Tapo | 9 | 2 | Generic |
-| Viomi | 2 | 0 | Generic |
-| Xiaomi | 15 | 7 | 14 generic, 1 class |
+| Cecotec | 2 | 0 | 2 generic |
+| Commodore | 1 | 0 | 1 generic |
+| Dreame | 22 | 9 | 3 class, 19 generic |
+| Ecovacs | 7 | 6 | 3 class, 4 generic |
+| eufy | 7 | 3 | 1 class, 6 generic |
+| Eureka | 6 | 2 | 6 generic |
+| IKOHS | 1 | 0 | 1 generic |
+| iRobot | 7 | 5 | 7 generic |
+| MOVA | 7 | 5 | 4 class, 3 generic |
+| Proscenic | 1 | 0 | 1 generic |
+| Roborock | 42 | 13 | 39 class, 1 family-transfer, 1 generic, 1 owner-device |
+| Samsung | 2 | 1 | 2 generic |
+| SwitchBot | 2 | 0 | 2 generic |
+| Tapo | 9 | 3 | 3 class, 6 generic |
+| Viomi | 2 | 0 | 2 generic |
+| Xiaomi | 15 | 8 | 2 class, 13 generic |
 
 Counts come from `model_profiles.json` resolved through `profiles._resolved` and
 `estimation.estimate_for_record`, including runtime reservoir inference. The
 raw catalog's `manual_only`/`calibration_required` fields and empty empirical
 rates therefore must not be read as the final runtime estimate classification.
 The runtime uncertainty labels describe the prior basis; they are not measured
-accuracy bounds for every listed model.
+accuracy bounds for every listed model. The prior band is retained until at least
+three accepted complete cycles. After that, the displayed calibration spread
+describes agreement between cycles, not verified physical accuracy. Direct volume
+sensors and authored rates do not inherit catalog-prior uncertainty. Invalid cycle
+factors outside 0.25–4, nonfinite factors and nonpositive factors are rejected
+instead of clipped into plausible training data.
 
 There are zero approved shared consumption profiles in the bundled snapshot.
 The independent per-model coverage gates remain incomplete for all catalog

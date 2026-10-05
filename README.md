@@ -60,13 +60,16 @@ itself on your robot:
    after that an abnormal tank is ignored. A tank whose signals were missing for more than a
    short, bridgeable gap does not teach the robot. An estimated dock tank is closed at capacity
    minus its configured residual (5% by default, not a measured pump threshold). The indicative uncertainty
-   narrows as tanks agree; the last results are in Diagnostics.
+   is retained for fewer than three accepted cycles. After that, Diagnostics shows
+   the spread between complete cycles; agreement does not establish physical accuracy.
+   Nonfinite, nonpositive or out-of-range correction factors are rejected instead
+   of clipped into calibration samples.
 4. **Your data wins.** A volume sensor or your own calibration replaces the estimate.
 5. **No mopping, no water.** A run with the water level off or the mop detached uses no water.
    A robot that exposes no signal showing when it mops asks you to map one instead of showing
    a full tank.
 
-The method was chosen on an independent physics benchmark (tests/test_estimation_benchmark.py):
+The method was compared in a synthetic physics benchmark (tests/test_estimation_benchmark.py):
 with the owner-device estimate a pad robot reaches about ±3–4% median error (P90 about ±7–11%)
 from the fourth tank, and a roller robot that starts from the wrong class recovers to about ±5%.
 With 15% of tanks anchored at the wrong point, the confirmation step keeps the second and third

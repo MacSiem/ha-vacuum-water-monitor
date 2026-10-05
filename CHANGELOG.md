@@ -2,6 +2,9 @@
 
 ## 5.9.0 (unreleased)
 
+- Expand source-verified reservoir capacities and mop classes. Select the dock clean-water supply rather than the robot buffer, retain regional and optional-accessory limits, and keep unsupported or conflicting specifications unknown.
+- Reject implausible calibration factors instead of clipping them. Preserve prior uncertainty until three accepted cycles and distinguish cycle agreement from physical accuracy; measured volume does not inherit a catalog prior.
+
 - Reflow the water gauge and details in very narrow Sections cards; wrap long robot names and tab controls instead of pushing data outside the card.
 
 - Respect a saved tank capacity in unknown-model guidance. Describe passing setup checks without promising verified consumption signals, and clarify the first-start requirements and manufacturer coverage.
