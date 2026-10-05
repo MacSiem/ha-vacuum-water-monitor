@@ -168,12 +168,12 @@ What happens under the hood:
 
 ### What is automatic vs. manual
 
-| Automatic | Manual (optional) |
+| Automatic when supported | When user input is needed |
 |---|---|
 | Discovering vacuums | Pressing **Refilled** after you fill the tank |
 | Labelled water-use estimate when mop/exposure signals are usable; automatic calibration only with a verified empty-tank signal | Your own measured ml/m² or tank size, which replace the estimate |
 | Detecting a refill when the dock's empty-water error clears (can be switched off) | Pressing **Refilled**, a bound button, a tank lid sensor or the `mark_refilled` action |
-| Tank capacity for known models | Wiring extra sensors (dock errors, tank door) |
+| Tank capacity when a verified catalog value exists | Supply an unknown capacity or map missing signals (dock errors, tank door) |
 | Sensors + card registration | Maintenance schedule entries |
 
 > **Labelled estimates that calibrate themselves.** Most robot vacuums do not report actual
@@ -182,6 +182,10 @@ What happens under the hood:
 > a verified empty-tank signal. The displayed uncertainty is not a guarantee of accuracy.
 > Without a usable signal or refill baseline, remaining water stays Unknown.
 > Unknown remains unknown.
+
+See the [manufacturer and model support matrix](docs/model-support-matrix.md)
+for the current coverage. Catalog recognition and a full-tank confirmation do
+not establish a missing consumption rate or physically verified accuracy.
 
 ### Manual-only models and the refill baseline
 
@@ -202,7 +206,7 @@ status, entity-key, unit and fail-closed matrix is documented in
 |---|---|---|
 | Roborock | status, in-cleaning, area, duration, mop mode/intensity, attachments, shortage and dock state | Binary clean-box alerts are not treated as exact volume because they can also mean missing/transient refill state. |
 | Xiaomi Miio | current clean area/time, mop/tank attachment and no-water/shortage | HA Core's generic Xiaomi `water_level` sensor is not a vacuum entity and is deliberately excluded. |
-| Xiaomi Home / Xiaomi MIoT (custom) | status, cleaning area/time, mop water-output level, mop status, robot and dock tank status | These integrations name entities after canonical MIoT properties rather than a Home Assistant `translation_key`, so roles are matched on the property and the longest match always wins. Newer models such as the H50 and H50 Pro publish no water-consumption rate, so automatic estimation still needs a measured calibration. |
+| Xiaomi Home / Xiaomi MIoT (custom) | status, cleaning area/time, mop water-output level, mop status, robot and dock tank status | These integrations name entities after canonical MIoT properties rather than a Home Assistant `translation_key`, so roles are matched on the property and the longest match always wins. H50/H50 Pro have no published consumption rate. A labelled catalog prior can use applicable area/mop/settings signals; a time-only path needs a matching measured time rate. Neither path proves physical accuracy for every firmware or setting. |
 | Ecovacs | stats area/time, water amount, work mode, mop attached and station state | Generic error text is diagnostic only, never a water-volume anchor. |
 | Matter RVC | vacuum activity, clean mode and operational error when Home Assistant exposes them | Bounded active time requires an explicit, measured ml/min calibration and `clean_mode` proving mopping. The current Tapo RV50 Pro Omni profile has no verified time rate; recognizing the model and mode alone cannot calculate water use. Missing or vacuum-only mode fails closed. |
 | iRobot Roomba/Braava | mission area/time attributes, tank-present and spray mode; tank percentages are discovered | Generic tank percentages are not used as clean water until a model profile confirms their semantics. |
@@ -263,11 +267,14 @@ Add the card to any dashboard:
 type: custom:ha-vacuum-water-monitor
 ```
 
-That's it. Robots are found automatically. For each one the Water tab shows a short setup
-panel with what was detected (model, tank size and where it comes from, expected accuracy,
-how refills are recognised) and asks one question: **is the clean-water tank full now?**
-Answer *Yes* and counting starts. Robots whose dock reports refills also start on their own
-after the next refill. When nothing is needed, the panel collapses to *Everything is working*.
+Robots are found automatically. For each one the Water tab shows what was detected:
+model, tank size and its source, estimate basis and provisional uncertainty, and
+how refills are recognised. When the required capacity, rate and signals are
+available, it asks **is the clean-water tank full now?** Answer *Yes* to establish
+the starting balance. Eligible docks can establish it after the next observed
+refill. Otherwise follow the capacity, signal or rate guidance shown for that
+robot; confirming a full tank cannot supply a missing rate. A passing report
+collapses to *Setup checks passed*, which does not guarantee physical accuracy.
 
 You do not need the card for this: the same questions appear in **Settings → Repairs**, and
 every robot has a **Tank size**, **Refilled** and (for self-refilling docks) **Refill from dock
