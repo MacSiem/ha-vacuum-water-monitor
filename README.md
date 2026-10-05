@@ -143,7 +143,10 @@ What happens under the hood:
 2. **Water accounting runs server-side when a bound entity changes** (status, cleaned area, dock
    error, mop settings, refill button or lid), with a 60-second heartbeat as a fallback. A gap of
    up to 5 minutes in the robot's signals is bridged from the cumulative area counter when the
-   mop settings are unchanged and the cleaned area kept pace with the robot. It prefers
+   mop settings are unchanged and the cleaned area kept pace with the robot. A temporarily
+   unavailable area counter may recover through this path even without an ml/min rate;
+   no time dose is invented while waiting. A longer or non-continuous gap leaves the
+   tank balance unknown. It prefers
    cleaned-area deltas,
    then a separately calibrated duration/active-time interval. A configured same-reservoir volume sensor takes precedence over both. Mode, intensity, mop/tank
    attachment and dock-wash signals are applied only when their integration exposes a
@@ -310,8 +313,9 @@ Settings entities on each robot's device:
 | Cleanings left | sensor | Cleanings the water left lasts at the robot's usual use; `days_left` attribute |
 
 **Diagnostics:** Settings → Devices & services → Vacuum Water Monitor → ⋮ → *Download
-diagnostics* gives a file with the health report, the detected signals and the recent history
-(robot names are removed) to attach to an issue.
+diagnostics* gives a local file with health, detected signals and recent history. User-assigned
+names are redacted, but entity identifiers and event times can remain. Keep the original
+private and share only the [sanitized relevant fields](docs/diagnostics-and-calibration.md#share-a-useful-sanitized-report).
 
 **Low-water phone notification (by hand):**
 
@@ -454,7 +458,10 @@ Browser-only v4 tank counters are not automatically imported. After installing v
 
 - No telemetry, analytics, or tracking. Nothing is sent automatically.
 - No CDN-hosted assets.
-- No maps, room names, entity states or registry identifiers leave Home Assistant.
+- The integration does not automatically transmit maps, room names, entity states or registry identifiers.
+- Diagnostics downloads stay local and redact user-assigned names; they are not anonymous
+  exports. Before posting diagnostics publicly, remove household identifiers and timestamps
+  using the [sanitization guide](docs/diagnostics-and-calibration.md#share-a-useful-sanitized-report).
 - **Optional calibration sharing (off by default).** In ⚙️ Settings → *Help improve estimates*
   you can enable a calibration summary for your robot model. The card then shows the exact
   JSON: model, mop system, integration, tank capacity (rounded), correction factor and
@@ -490,3 +497,5 @@ matching `tracked_reservoir`. Only mL/L are accepted; percent, mode enums and an
 cannot masquerade as volume, and measurement gaps fail closed instead of falling back to
 estimates. **Refresh detected profile** (Maintenance → Custom calibration) releases a profile
 lock while keeping your settings, calibration and history.
+
+See the [5.9.0 feature and acceptance matrix](docs/release-acceptance-5.9.0.md) for verified code paths and remaining live checks.

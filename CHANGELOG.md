@@ -2,6 +2,8 @@
 
 ## 5.9.0 (unreleased)
 
+- Let a briefly unavailable cumulative area counter recover through the existing continuity checks without requiring a time-rate fallback. Do not invent a time dose or invalidate the tank before a short gap can be evaluated. Long gaps, changed settings and counter resets still leave the balance unknown.
+
 - Explain a missing water-use rate in setup instead of repeatedly asking for a full tank. Keep unmeasured consumption unknown and document that the Tapo Matter profile needs a measured time rate; model recognition alone does not supply one.
 
 - Format current, last and logged session water amounts with the existing millilitre formatter, removing binary floating-point tails while preserving original accounting records, estimate markers and missing values.

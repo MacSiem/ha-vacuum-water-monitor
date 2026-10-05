@@ -12,7 +12,7 @@ a model name or capacity cannot establish a consumption rate.
    clean reservoir to the same full reference. Record area or active minutes, mode,
    intensity, firmware/integration versions and wash count. Exclude spills and unrelated
    manual drains. Repeat under comparable conditions; retain sample count and range.
-3. In Maintenance → Custom calibration select **Whole cycle** when the refill measurement
+3. In Maintenance → Your measurements (optional) select **Whole cycle** when the refill measurement
    includes dock washing. Enter measured loss / measured area (ml/m²) or measured loss /
    active minutes (ml/min). The axes are independent; there is no assumed cleaning speed.
 4. Select **Floor only** only if floor water and dock-wash water were measured separately.
@@ -100,8 +100,12 @@ They validate bindings/units and foreign-device rejection, not firmware compatib
 
 ## State and migration boundaries
 
-- Restarts/reloads retain counters, history and calibration. Missing intervals and gaps
-  over 180 seconds rebaseline; no retroactive catch-up dose is invented.
+- Restarts/reloads retain counters, history and calibration. Active-time intervals over
+  180 seconds are not dosed blindly. A cumulative area counter may cover a gap up to
+  5 minutes only with continuity, sufficient cleaning progress and unchanged settings.
+  A short area-only dropout waits for that decision even when no time coefficient exists;
+  it never invents an ml/min dose. Long, discontinuous or setting-changing gaps keep the
+  tank incomplete until a real new baseline.
 - Decreasing area/time counters establish a new baseline. Wash latches survive reset so
   one ongoing wash is not charged twice.
 - Reprofiling preserves authored fields/history and removes generated profile locks.
@@ -120,3 +124,21 @@ fit one private whole-cycle ml/m² dose; validation cycles never change the fit.
 is charged once at completion and excludes additional wash dosing. Missing historical
 fields are displayed before fitting. See [the runtime contract](runtime-consumption-contract.md)
 for applicability, unknown totals, independent reservoir levels and limitations.
+
+
+## Intermittent unknown after signal loss
+
+`accounting_incomplete` records a tank-wide loss of accounting coverage, not necessarily
+a current unavailable robot. `last_accounting_reason` describes only the latest tick;
+it can become `area_delta_below_minimum` after an earlier gap. That code alone cannot
+identify the original dropout or prove a Home Assistant restart.
+
+For a report, retain the relative order of status, area, duration and wash transitions
+from ordinary use, including the last valid counter before the gap and its first recovered
+value. Include whether the integration or HA restarted, only if known. Use the sanitized
+fields above; no extra run, tank reset or private raw export is needed. A restarted
+area counter, a mode change, an unobserved wash or a long gap cannot be repaired by
+assuming all elapsed time was floor mopping.
+
+The 5.9.0 area-only recovery fix covers one reproduced false-incomplete path. It does not
+prove the cause of every intermittent unknown report or the accuracy of a physical tank.
