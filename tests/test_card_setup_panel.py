@@ -161,6 +161,8 @@ class CardSetupPanelTests(unittest.TestCase):
                 self.assertIn(hint, html)
                 self.assertNotIn('data-setup="confirm-full"', html)
                 self.assertNotIn("Signals are ready", html)
+                self.assertNotIn("Setup checks passed", html)
+                self.assertNotIn("Sprawdzenia konfiguracji zakończone", html)
 
     def test_polish(self):
         html = self.out["freshPl"]
@@ -168,10 +170,10 @@ class CardSetupPanelTests(unittest.TestCase):
         self.assertIn("Tak, zbiornik jest pełny", html)
         self.assertIn("baza modeli", html)
 
-    def test_ok_robot_collapses_to_signals_ready(self):
+    def test_ok_robot_collapses_to_setup_checks(self):
         html = self.out["ok"]
         self.assertTrue(html.startswith("<details"))
-        self.assertIn("Signals are ready", html)
+        self.assertIn("Setup checks passed", html)
         self.assertIn("Calibrated on 3 empty tanks", html)
         self.assertIn("Enough for about 4 cleanings (about 6.5 days)", html)
         self.assertIn("Last empty tank: the estimate was +7.4% off, then learned", html)
@@ -212,8 +214,8 @@ class CardSetupPanelTests(unittest.TestCase):
         self.assertIn('data-setup="save-capacity"', html)
 
     def test_untracked_robot_does_not_claim_ready_signals(self):
-        for key, ready, pending in [("notTrackedEn", "Signals are ready", "Water tracking is not configured"),
-                                    ("notTrackedPl", "Sygnały są gotowe", "Śledzenie wody nie jest skonfigurowane")]:
+        for key, ready, pending in [("notTrackedEn", "Setup checks passed", "Water tracking is not configured"),
+                                    ("notTrackedPl", "Sprawdzenia konfiguracji zakończone", "Śledzenie wody nie jest skonfigurowane")]:
             with self.subTest(language=key):
                 html = self.out[key]
                 self.assertNotIn(ready, html)
