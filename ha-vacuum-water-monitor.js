@@ -7688,9 +7688,9 @@ target:
         .card { overflow-wrap: anywhere; }
         .card-title, .device-name { min-width: 0; overflow-wrap: anywhere; }
         .device-header { flex-wrap: wrap; gap: 6px; }
-        .dtab { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+        .dtab { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
         .tab-nav { flex-wrap: wrap; }
-        .tab-btn { flex-basis: 54px; min-width: 0; overflow-wrap: anywhere; }
+        .tab-btn { flex-basis: 54px; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
         @container (max-width: 300px) {
           .device-body { flex-direction: column; align-items: stretch; }
           .gauge-wrap { align-self: center; }
