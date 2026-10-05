@@ -52,6 +52,21 @@ class FrontendResourceTests(unittest.TestCase):
         hass = SimpleNamespace(data={"lovelace": lovelace})
         return asyncio.run(frontend_resource.async_register_card_resource(hass, URL, FILENAME))
 
+    def test_changed_card_bytes_refresh_same_version_without_duplicate_resource(self):
+        path = URL.split("?")[0]
+        old = frontend_resource.card_resource_url(path, "5.9.0", b"old card")
+        unchanged = frontend_resource.card_resource_url(path, "5.9.0", b"old card")
+        updated = frontend_resource.card_resource_url(path, "5.9.0", b"new card")
+        self.assertEqual(old, unchanged)
+        self.assertNotEqual(old, updated)
+        self.assertEqual(updated.split("?")[0], path)
+        resources = FakeResources([{"id": "persisted", "type": "module", "url": old}])
+        hass = SimpleNamespace(data={"lovelace": SimpleNamespace(resources=resources, resource_mode="storage")})
+        for url in [updated, updated]:
+            self.assertEqual(asyncio.run(frontend_resource.async_register_card_resource(hass, url, FILENAME)), "resource")
+        self.assertEqual(resources.items, [{"id": "persisted", "type": "module", "url": updated}])
+        self.assertEqual(len(resources.events), 1)
+
     def test_storage_mode_creates_one_module_resource(self):
         resources = FakeResources(loaded=False)
         self.assertEqual(self.register(resources), "resource")
