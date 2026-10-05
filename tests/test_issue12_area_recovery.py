@@ -25,6 +25,17 @@ class QrevoAreaRecoveryTests(unittest.TestCase):
         estimate = sc.estimate_water_state(self.device, state, {})
         self.assertIsNotNone(estimate["remaining_ml"])
 
+    def test_waiting_never_invents_a_time_dose_and_expires(self):
+        steps = self.sequence()[:3]
+        waiting = run(self.device, dict(BASE), steps)
+        self.assertEqual(waiting["used_ml"], 20)
+        self.assertFalse(waiting.get("accounting_incomplete"))
+        self.assertEqual(waiting["last_accounting_reason"], "area_unavailable")
+        expired = run(self.device, waiting, [dict(status="cleaning", vac="cleaning", area="unknown")],
+                      ts=20_000_000)
+        self.assertEqual(expired["used_ml"], 20)
+        self.assertTrue(expired.get("accounting_incomplete"))
+
     def test_gap_with_unknown_loss_remains_incomplete(self):
         for kwargs in ({"gap": 360000, "recovered_area": "20"},
                        {"recovered_intensity": "high"}, {"recovered_area": "0"}):
@@ -32,4 +43,3 @@ class QrevoAreaRecoveryTests(unittest.TestCase):
                 state = run(self.device, dict(BASE), self.sequence(**kwargs))
                 self.assertTrue(state.get("accounting_incomplete"))
                 self.assertIsNone(sc.estimate_water_state(self.device, state, {})["remaining_ml"])
-

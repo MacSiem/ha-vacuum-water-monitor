@@ -965,8 +965,17 @@ def _tick_device_pass(
                 state, "active_time", None, time_evidence, "missing_intensity_factor"
             )
         elif usage_per_minute is None:
+            pending_area = (curr_area is None and device.get("area_sensor")
+                            and usage_per_m2 is not None and last_area is not None
+                            and _positive_number(state.get("gap_started_ts")) is not None
+                            and 0 <= now_ts - state["gap_started_ts"] <= BRIDGE_GAP_MAX_SECONDS * 1000)
+            # A cumulative area counter can still cover this short interval.
+            # Its return is checked for continuity, pace and unchanged settings
+            # above. Missing a fallback time coefficient is not yet lost water.
             dirty |= _record_accounting(
-                state, "active_time", None, time_evidence, "missing_time_rate"
+                state, "area" if pending_area else "active_time", None,
+                evidence if pending_area else time_evidence,
+                "area_unavailable" if pending_area else "missing_time_rate"
             )
         else:
             time_interval_counted = True
