@@ -116,6 +116,10 @@ def robot_health(
         add("possible_duplicate", "warning", FIX_RESOLVE_DUPLICATE, target=duplicate_of,
             target_name=duplicate_of_name or duplicate_of)
     reason = estimate.get("state_reason")
+    rate_reason = tank_state.get("last_accounting_reason")
+    missing_rate = reason == "accounting_incomplete" and rate_reason in {
+        "missing_area_rate", "missing_time_rate", "missing_wash_rate", "missing_intensity_factor"
+    }
     if duplicate_of:
         # Until the user decides, a suspected copy raises only that question.
         pass
@@ -126,6 +130,10 @@ def robot_health(
             add("mop_signal_unbound", "warning", FIX_MAP_SIGNAL)
         if not estimate.get("initialized") and estimate.get("source") == "uninitialized":
             add("awaiting_refill", "warning", FIX_CONFIRM_FULL, auto_refill=method == "dock_auto")
+        elif missing_rate:
+            # A refill cannot supply a missing coefficient. Keep the balance
+            # unknown and explain calibration instead of repeating a Repair.
+            add("missing_usage_rate", "warning", None, reason=rate_reason)
         elif reason == "accounting_incomplete":
             add("accounting_paused", "warning", FIX_CONFIRM_FULL, auto_refill=method == "dock_auto")
         elif reason in {"vacuum_unavailable", "status_unavailable", "area_unavailable", "duration_unavailable",
@@ -133,7 +141,7 @@ def robot_health(
             add("signal_unavailable", "info", None, reason=reason)
         if method == "manual":
             add("manual_refill", "info", None)
-        if not can_calibrate:
+        if not can_calibrate and not missing_rate:
             add("no_empty_signal", "info", None)
     else:
         add("not_tracked", "info", FIX_SET_CAPACITY)

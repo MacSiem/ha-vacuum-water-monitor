@@ -484,6 +484,8 @@ const VWM_SETUP_TEXT = {
     fullManual: 'Yes: tracking starts now. Not full: fill it first, then confirm.',
     pausedQ: 'The water balance is incomplete. Consumption from available signals is still recorded.',
     pausedHint: 'The remaining water is unknown. Fill the tracked tank to full and confirm to restore the balance. What the robot learned is kept.',
+    missingRate: 'Missing water-use rate',
+    missingRateHint: 'Water use cannot be calculated for the available signals. Enter a measured rate in Diagnostics → Custom calibration. Confirming a full tank cannot supply this rate; remaining water stays unknown.',
     yesFull: 'Yes, the tank is full',
     needSize: 'The model database does not know this robot\u2019s tank. Enter the usable clean-water tank size.',
     mopSignal: 'No signal shows when this robot mops, so water use cannot be estimated yet.',
@@ -523,6 +525,8 @@ const VWM_SETUP_TEXT = {
     fullManual: 'Tak: liczenie startuje teraz. Nie jest pe\u0142ny: najpierw go napełnij, potem potwierd\u017A.',
     pausedQ: 'Bilans wody jest niepełny. Zużycie z dostępnych sygnałów jest nadal zapisywane.',
     pausedHint: 'Pozostała ilość wody jest nieznana. Napełnij śledzony zbiornik do pełna i potwierdź, aby przywrócić bilans. Kalibracja robota zostaje zachowana.',
+    missingRate: 'Brak tempa zużycia wody',
+    missingRateHint: 'Dostępne sygnały nie pozwalają wyliczyć zużycia. Wpisz zmierzone tempo w Diagnostyka → Własna kalibracja. Potwierdzenie pełnego zbiornika nie ustali tego tempa; pozostała ilość wody pozostaje nieznana.',
     yesFull: 'Tak, zbiornik jest pe\u0142ny',
     needSize: 'Baza modeli nie zna zbiornika tego robota. Wpisz u\u017Cyteczn\u0105 pojemno\u015B\u0107 zbiornika czystej wody.',
     mopSignal: 'Brak sygna\u0142u, kiedy robot mopuje, wi\u0119c nie da si\u0119 jeszcze oszacowa\u0107 zu\u017Cycia wody.',
@@ -4976,6 +4980,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const confirmBtn = `<button class="vwm-setup-btn primary" data-setup="confirm-full" data-vacuum="${entity}">${L.yesFull}</button>`;
     const steps = blocking.map((check) => {
       if (check.id === 'awaiting_refill') return step(L.fullQ, check.params && check.params.auto_refill ? L.fullAuto : L.fullManual, confirmBtn);
+      if (check.id === 'missing_usage_rate') return step(L.missingRate, L.missingRateHint, '');
       if (check.id === 'accounting_paused') return step(L.pausedQ, L.pausedHint, confirmBtn);
       if (check.id === 'unknown_capacity') return step(L.needSize, '', '');
       if (check.id === 'mop_signal_unbound') return step(L.mopSignal, '', `<button class="vwm-setup-btn" data-setup="open-signals" data-vacuum="${entity}">${L.openSignals}</button>`);

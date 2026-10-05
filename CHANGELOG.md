@@ -2,6 +2,8 @@
 
 ## 5.9.0 (unreleased)
 
+- Explain a missing water-use rate in setup instead of repeatedly asking for a full tank. Keep unmeasured consumption unknown and document that the Tapo Matter profile needs a measured time rate; model recognition alone does not supply one.
+
 - Format current, last and logged session water amounts with the existing millilitre formatter, removing binary floating-point tails while preserving original accounting records, estimate markers and missing values.
 
 - Keep missing tank accuracy unknown in setup and diagnostics, preserve a genuine 0% error, and never claim learning from a rejected sample with an unknown legacy reason. Preserve missing volume, error and factor values as null in the optional calibration-sharing preview; no transmission is enabled.
