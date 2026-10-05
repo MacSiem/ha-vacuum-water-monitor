@@ -166,7 +166,8 @@ const data=card._calcDeviceData(merged);
 const authored=card._withBackendDescriptor(card._decorateLegacyProfile({...sparse,
  calibration_scope:'floor_only',usage_ml_per_m2:{default:12},
  config_provenance:{authored_fields:[...sparse.config_provenance.authored_fields,'calibration_scope','usage_ml_per_m2']}}));
-const legacy=card._withBackendDescriptor(card._decorateLegacyProfile({...sparse,brand_profile:'roborock_s7_maxv'}));
+const legacy=card._withBackendDescriptor(card._decorateLegacyProfile({...sparse,brand_profile:'roborock_s7_maxv',
+ tracked_capacity_ml:1,usage_ml_per_m2:{default:1},intensity_factor:{default:1},calibration_scope:'old_generated'}));
 console.log(JSON.stringify({merged,data,authored,legacy}));
 """
         out = subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
