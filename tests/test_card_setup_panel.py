@@ -277,6 +277,13 @@ class CardSetupPanelTests(unittest.TestCase):
         self.assertTrue(self.out["trailingScheduled"])
         self.assertEqual(self.out["calls"], ["ha_vacuum_water_monitor/health"])
 
+    def test_successful_setup_checks_do_not_claim_verified_usage_signals(self):
+        for key, label, old in [('ok', 'Setup checks passed', 'Signals are ready'),
+                                 ('okPl', 'Sprawdzenia konfiguracji zakończone', 'Sygnały są gotowe')]:
+            with self.subTest(language=key):
+                self.assertIn(label, self.out[key])
+                self.assertNotIn(old, self.out[key])
+
 
 if __name__ == "__main__":
     unittest.main()
