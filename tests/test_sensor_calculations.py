@@ -299,8 +299,8 @@ class VacuumSensorCalculationTests(unittest.TestCase):
         self.assertEqual(estimate["water_anchor_confidence"], "estimated")
         self.assertEqual(estimate["calibration_factor"], 1.22)
         self.assertEqual(estimate["calibration_samples"], 2)
-        # A migrated factor is not enough evidence to narrow the prior band.
-        self.assertEqual(estimate["uncertainty_percent"], 65)
+        # A migrated factor is not enough evidence to narrow the rotating-pad prior band.
+        self.assertEqual(estimate["uncertainty_percent"], 50)
 
     def test_exact_empty_anchor_reports_zero_remaining(self) -> None:
         estimate = estimate_water_state(
