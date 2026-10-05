@@ -72,3 +72,22 @@ class EstimationEvidenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SensorAttributeEvidenceTests(unittest.TestCase):
+    def test_home_assistant_attributes_retain_the_estimate_source_and_uncertainty_scope(self):
+        # Execute the actual pure attributes helper without importing HA's entity runtime.
+        import ast
+        from pathlib import Path
+        from test_sensor_calculations import calculations
+        path=Path(__file__).parents[1]/"custom_components/ha_vacuum_water_monitor/sensor.py"
+        tree=ast.parse(path.read_text())
+        function=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=="_water_state_attributes")
+        namespace={"Any":object,"setup_guidance":calculations.setup_guidance}
+        exec(compile(ast.Module(body=[function],type_ignores=[]),str(path),"exec"),namespace)
+        estimate=estimate_water_state({"profile_key":"roborock_s8_maxv_ultra"},{"initialized":True,"used_ml":100},{})
+        attributes=namespace["_water_state_attributes"](estimate,{})
+        self.assertEqual(attributes.get("estimate_basis"),"owner_device")
+        self.assertIn("not metered"," ".join(attributes.get("estimate_sources",[])))
+        self.assertEqual(attributes.get("uncertainty_kind"),"prior_band")
+        self.assertFalse(attributes.get("physical_accuracy_verified",True))
