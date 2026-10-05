@@ -4275,7 +4275,7 @@ const HA_VACUUM_WATER_MONITOR_BENTO_CSS = `
   border-radius: var(--bento-radius-pill) !important;
   margin-bottom: 0 !important;
   transition: all var(--bento-trans) !important;
-  white-space: nowrap !important; flex: 1 1 auto !important; text-align: center !important; min-height: 40px !important;
+  white-space: normal !important; overflow-wrap: anywhere; flex: 1 1 auto !important; text-align: center !important; min-height: 40px !important;
   letter-spacing: -0.005em !important;
 }
 .tab:hover, .tab-btn:hover, .tab-button:hover, .dtab:hover {
