@@ -49,7 +49,12 @@ const guidance = (uncertaintyPercent) => card._buildAccountingGuidance({
   capability: 'automatic_estimate', initialized: true, accountingSource: 'area', accountingRate: 6,
   stateReason: null, uncertaintyPercent, calibrationSamples: 0,
 });
+card._hass = { states: {} };
+card._serverState.tank_states['vacuum.measured'] = {last_water_volume_ml:1250,last_accounting_source:'real_sensor'};
+const measuredData = card._calcDeviceData({vacuum_entity:'vacuum.measured',profile_key:'roborock_s8_maxv_ultra',
+  water_volume_sensor:'sensor.ml',estimate_basis:'owner_device',uncertainty_percent:20});
 console.log(JSON.stringify({ u: cases.map(([b, f]) => card._estimateUncertainty(b, f)), payload, missingPayload, zeroPayload, html, url,
+  measuredData,
   guidanceNull: guidance(null), guidance20: guidance(20),
   learnedGuidance: card._buildAccountingGuidance({initialized:true,capability:'automatic_estimate',
     uncertaintyPercent:5,uncertaintyKind:'calibration_spread',calibrationSamples:3,calibrationFactor:1.2}),
@@ -77,6 +82,12 @@ class CardEstimateTests(unittest.TestCase):
         self.assertIn("between tank cycles", self.result["learnedGuidance"])
         self.assertIn("Physical accuracy is not verified", self.result["learnedGuidance"])
         self.assertIn("prior band", self.result["fewGuidance"])
+
+    def test_measured_card_volume_does_not_show_prior_uncertainty(self):
+        measured = self.result["measuredData"]
+        self.assertEqual(measured["remainingL"], 1.25)
+        self.assertIsNone(measured["estimateBasis"])
+        self.assertIsNone(measured["uncertaintyPercent"])
 
     def test_share_payload_contains_no_identifiers_or_timestamps(self):
         payload = self.result["payload"]
