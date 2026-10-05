@@ -561,6 +561,7 @@ const VWM_TANK_REASON_LABEL = {
   calibration_sample_unconfirmed: 'unusual, waiting for the next tank to confirm',
   calibration_sample_outlier: 'not learned: far from the usual (for example a partly filled tank)',
   calibration_sample_out_of_range: 'not learned: observation outside the supported correction range',
+  calibration_sample_over_capacity: 'not learned: prediction exceeds one tank; check refills or use a measured cycle',
   calibration_sample_incomplete_cycle: 'not learned: signals were missing',
   calibration_sample_no_refill_since_empty: 'not learned: no refill since the last empty tank',
 };
@@ -568,6 +569,7 @@ const VWM_TANK_REASON_LABEL_PL = {
   calibration_sample_unconfirmed: 'nietypowy, czeka na potwierdzenie przy nast\u0119pnym zbiorniku',
   calibration_sample_outlier: 'nienauczony: daleko od zwyk\u0142ego (np. zbiornik nape\u0142niony cz\u0119\u015Bciowo)',
   calibration_sample_out_of_range: 'nienauczony: pomiar poza obsługiwanym zakresem korekty',
+  calibration_sample_over_capacity: 'nienauczony: prognoza przekracza jeden zbiornik; sprawdź dolania lub użyj zmierzonego cyklu',
   calibration_sample_incomplete_cycle: 'nienauczony: brakowa\u0142o sygna\u0142\u00F3w',
   calibration_sample_no_refill_since_empty: 'nienauczony: bez dolania od poprzedniego pustego zbiornika',
 };

@@ -1211,6 +1211,12 @@ def _tick_device_pass(
                     log_factors, observed_factor,
                     band_fraction=estimation.band_fraction(device.get("estimate_basis"), device.get("uncertainty_percent")),
                     pending=pending)
+                if predicted_used > capacity and rejection != "calibration_sample_out_of_range":
+                    # One inferred refill-to-empty tank cannot distinguish an
+                    # overestimated prior from an unreported top-up. Repetition
+                    # does not resolve that ambiguity; use a measured cycle.
+                    window, learned_factor = log_factors, calibration_factor
+                    accepted, rejection, pending = False, "calibration_sample_over_capacity", None
                 state["calibration_pending_log_factor"] = round(pending, 6) if pending is not None else None
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
                                             calibration_factor, accepted, rejection, wash_refund)
