@@ -8,6 +8,12 @@ from test_sensor_calculations import estimate_water_state
 
 
 class EstimationEvidenceTests(unittest.TestCase):
+    def test_engineering_prior_has_a_source_and_does_not_pose_as_model_measurement(self):
+        from test_beta_estimation import profiles
+        result = profiles.resolve_profile({"profile_key": "dreame_x40_ultra"})
+        self.assertTrue(result["estimate_sources"])
+        self.assertIn("not a measurement", " ".join(result["estimate_sources"]))
+
     def test_sensor_preserves_owner_evidence_without_claiming_metered_volume(self):
         result = estimate_water_state(
             {"profile_key": "roborock_s8_maxv_ultra", "vacuum_entity": "vacuum.qa"},

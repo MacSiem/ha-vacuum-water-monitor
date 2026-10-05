@@ -50,7 +50,11 @@ const guidance = (uncertaintyPercent) => card._buildAccountingGuidance({
   stateReason: null, uncertaintyPercent, calibrationSamples: 0,
 });
 console.log(JSON.stringify({ u: cases.map(([b, f]) => card._estimateUncertainty(b, f)), payload, missingPayload, zeroPayload, html, url,
-  guidanceNull: guidance(null), guidance20: guidance(20) }));
+  guidanceNull: guidance(null), guidance20: guidance(20),
+  learnedGuidance: card._buildAccountingGuidance({initialized:true,capability:'automatic_estimate',
+    uncertaintyPercent:5,uncertaintyKind:'calibration_spread',calibrationSamples:3,calibrationFactor:1.2}),
+  fewGuidance: card._buildAccountingGuidance({initialized:true,capability:'automatic_estimate',
+    uncertaintyPercent:50,uncertaintyKind:'prior_band',calibrationSamples:2,calibrationFactor:1.2}) }));
 """
 
 
@@ -68,6 +72,11 @@ class CardEstimateTests(unittest.TestCase):
     def test_missing_uncertainty_is_not_rendered_as_zero_percent(self):
         self.assertNotIn("0%", self.result["guidanceNull"])
         self.assertIn("20%", self.result["guidance20"])
+
+    def test_learned_spread_is_not_presented_as_verified_physical_accuracy(self):
+        self.assertIn("between tank cycles", self.result["learnedGuidance"])
+        self.assertIn("Physical accuracy is not verified", self.result["learnedGuidance"])
+        self.assertIn("prior band", self.result["fewGuidance"])
 
     def test_share_payload_contains_no_identifiers_or_timestamps(self):
         payload = self.result["payload"]
