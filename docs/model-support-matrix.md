@@ -6,6 +6,48 @@ sources. Recognizing a model ID only identifies a candidate; it does not prove t
 Assistant integration exposes the required signals, that a listed tank belongs to the
 tracked reservoir, or that a consumption rate applies.
 
+## 5.9.0 automatic-start audit — 5 October 2026
+
+The current runtime resolver supplies a labelled provisional prior for all 133
+catalog rows. This does not mean that all 133 can account for water immediately:
+only 23 rows have a known tracked capacity, and the installed integration must
+expose matching mopping, exposure and settings signals. Confirming a full tank
+establishes a baseline; it cannot create a missing time rate or signal binding.
+Unknown models can save a capacity, but model identity and capacity alone do not
+establish automatic consumption accounting.
+
+| Manufacturer | Catalog rows | Known tracked capacity | Runtime prior basis |
+|---|---:|---:|---|
+| Cecotec | 2 | 0 | Generic |
+| Commodore | 1 | 0 | Generic |
+| Dreame | 22 | 4 | Generic |
+| Ecovacs | 7 | 0 | Generic |
+| eufy | 7 | 2 | Generic |
+| Eureka | 6 | 0 | Generic |
+| IKOHS | 1 | 0 | Generic |
+| iRobot | 7 | 0 | Generic |
+| MOVA | 7 | 2 | Generic |
+| Proscenic | 1 | 0 | Generic |
+| Roborock | 42 | 6 | 38 class, 2 generic, 1 owner-device, 1 family-transfer |
+| Samsung | 2 | 1 | Generic |
+| SwitchBot | 2 | 0 | Generic |
+| Tapo | 9 | 2 | Generic |
+| Viomi | 2 | 0 | Generic |
+| Xiaomi | 15 | 7 | 14 generic, 1 class |
+
+Counts come from `model_profiles.json` resolved through `profiles._resolved` and
+`estimation.estimate_for_record`, including runtime reservoir inference. The
+raw catalog's `manual_only`/`calibration_required` fields and empty empirical
+rates therefore must not be read as the final runtime estimate classification.
+The runtime uncertainty labels describe the prior basis; they are not measured
+accuracy bounds for every listed model.
+
+There are zero approved shared consumption profiles in the bundled snapshot.
+The independent per-model coverage gates remain incomplete for all catalog
+rows. Synthetic adapter and accounting tests verify behavior, not physical
+volume accuracy. Universal out-of-the-box accuracy remains an open requirement;
+it cannot be accepted from recognition, a green test suite or a generic prior.
+
 | Model row status | Detection | Data available | Estimate scope | Limits and calibration |
 |---|---|---|---|---|
 | Recognized candidate | Catalog identifier or a source names the model | Identity and possibly capacity/options | None by identity alone | Confirm the exact integration, firmware, reservoir and settings. A capacity is not consumption. |
