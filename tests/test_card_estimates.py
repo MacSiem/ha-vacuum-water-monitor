@@ -151,6 +151,38 @@ console.log(JSON.stringify({configured,explicit,prior}));
 """
 
 class EffectiveRatePresentationTests(unittest.TestCase):
+    def test_sparse_locked_model_keeps_all_metadata_from_selected_profile(self):
+        script = SCRIPT.split("const cases =")[0] + r"""
+card._hass={states:{}};
+card._discoveredVacuums=[{entity_id:'vacuum.robot',profile_key:'roborock_s8_maxv_ultra',
+ estimate_basis:'owner_device',estimate_sources:[{url:'https://wrong.example'}],mop_system:'pad',
+ tracked_reservoir:'dock_clean',tracked_capacity_ml:4000,uncertainty_percent:20,
+ calibration_scope:'wrong_scope',water_anchor_reservoir:'dock_clean',refill_on_clear:true,
+ sources:['wrong'],provenance:[{url:'https://wrong.example'}],signals:{area_sensor:'sensor.area'}}];
+const sparse={vacuum_entity:'vacuum.robot',brand_profile:'tapo_rv50_pro_omni',profile_locked:true,
+ config_provenance:{authored_fields:['vacuum_entity','brand_profile','profile_locked']}};
+const merged=card._withBackendDescriptor(card._decorateLegacyProfile(sparse));
+const data=card._calcDeviceData(merged);
+const authored=card._withBackendDescriptor(card._decorateLegacyProfile({...sparse,
+ calibration_scope:'floor_only',usage_ml_per_m2:{default:12},
+ config_provenance:{authored_fields:[...sparse.config_provenance.authored_fields,'calibration_scope','usage_ml_per_m2']}}));
+console.log(JSON.stringify({merged,data,authored}));
+"""
+        out = subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
+        result = json.loads(out.stdout.strip().splitlines()[-1])
+        expected = __import__('runpy').run_path(str(PKG / 'profiles.py'))['resolve_profile']({
+            'brand_profile': 'tapo_rv50_pro_omni', 'profile_locked': True})
+        for field in ('profile_key', 'estimate_basis', 'estimate_sources', 'mop_system',
+                      'tracked_reservoir', 'tracked_capacity_ml', 'calibration_scope',
+                      'sources', 'provenance', 'water_anchor_reservoir', 'refill_on_clear'):
+            self.assertEqual(result['merged'].get(field), expected.get(field), field)
+        self.assertEqual(result['data']['estimateBasis'], 'class_prior')
+        self.assertEqual(result['data']['uncertaintyPercent'], 50)
+        self.assertEqual(result['data']['mopSystem'], 'rotating_pads')
+        self.assertEqual(result['authored']['calibration_scope'], 'floor_only')
+        self.assertEqual(result['authored']['usage_ml_per_m2'], {'default': 12})
+        self.assertEqual(result['merged']['area_sensor'], 'sensor.area')
+
     def test_water_footer_matches_saved_rate_and_preserves_model_reference_without_rate(self):
         out = subprocess.run(["node", "-e", FOOTER_SCRIPT], cwd=ROOT, check=True, capture_output=True, text=True)
         result = json.loads(out.stdout.strip().splitlines()[-1])
