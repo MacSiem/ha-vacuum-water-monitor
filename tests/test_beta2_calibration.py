@@ -64,6 +64,16 @@ class ConfirmationGateTests(unittest.TestCase):
         self.assertFalse(state["calibration_history"][0]["accepted"])
         self.assertEqual(state.get("calibration_factor", 1), 1)
 
+    def test_repeated_over_capacity_counters_cannot_confirm_an_unreported_top_up(self):
+        state = dict(BASE)
+        for cycle in range(2):
+            state = tank(state, 5800, 10_000_000 * (cycle + 1))
+            self.assertFalse(state["calibration_history"][0]["accepted"])
+            self.assertEqual(state.get("calibration_samples", 0), 0)
+            self.assertEqual(state.get("calibration_factor", 1), 1)
+            self.assertIsNone(state["calibration_pending_log_factor"])
+            self.assertEqual(state["used_ml"], 0, "refill still applies after excluding the ambiguous tank")
+
     def test_a_genuinely_different_robot_is_learned_after_two_consistent_tanks(self):
         state = tank(dict(BASE), 3000, 10_000_000)
         self.assertEqual(state.get("calibration_samples", 0), 0)
