@@ -55,6 +55,9 @@ def build_client_catalog():
             "robot_dirty_tank_ml": caps["robot_dirty"],
             "detergent_tank_ml": caps["detergent"],
             "mop_system": resolved.get("mop_system") or "unknown",
+            # A manual model lock must use one complete resolver result, even
+            # when registry discovery reports a different manufacturer/model.
+            "profile_descriptor": profiles.resolve_profile({"brand_profile": key, "profile_locked": True}),
             "estimate_basis": basis,
             "estimate_label": BASIS_LABELS.get(basis),
             "uncertainty_percent": resolved.get("uncertainty_percent"),

@@ -693,6 +693,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "cecotec_conga_3290",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -717,6 +767,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "cecotec_conga_3790",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -741,6 +841,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "commodore_cvr_200",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -765,6 +915,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_d10s_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -789,6 +989,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "dreame_d10s_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://ch.dreametech.com/blogs/blog-dreame-switzerland/dreame-d10s-pro-staubsaugroboter-im-test"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://ch.dreametech.com/blogs/blog-dreame-switzerland/dreame-d10s-pro-staubsaugroboter-im-test",
+          "claim": "Exact primary manufacturer article states D10s Pro235ml;140ml in the comparison belongs to D10s Plus. Slide-on mop pad with tank; no broad SKU equivalence or flow coefficient adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 235,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 235,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -817,6 +1079,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "dreame_d9",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://ca.dreametech.com/blogs/blog/dreame-d9-new-features"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://ca.dreametech.com/blogs/blog/dreame-d9-new-features",
+          "claim": "Owner verified robot_clean=270, mop_system=pad. Source region: Canada. Exact named tank; three ordinal levels not rates. CA editorial claim, not measured consumption. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 270,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 270,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -845,6 +1169,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_d9_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -869,6 +1243,64 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_f9",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://ca.dreametech.com/blogs/blog/dreame-first-robot-vacuum-revealed"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://ca.dreametech.com/blogs/blog/dreame-first-robot-vacuum-revealed",
+          "claim": "Owner verified robot_clean=200. Source region: Canada. Exact F9 primary article confirms200ml; D9 article also explicitly names F9 in comparison, correcting earlier overly broad rejection based on article title. 90minute mopping claim not rate. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 200,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 200,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -894,6 +1326,64 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_l10_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://www.dreametech.com/blogs/blog/dreame-l10-pro-robot-vacuum-new-features"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.dreametech.com/blogs/blog/dreame-l10-pro-robot-vacuum-new-features",
+          "claim": "Owner verified robot_clean=270. US official blog explicitly270ml electric water tank; not a DreameF9 source. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 270,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 270,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -919,6 +1409,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "dreame_l10_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums",
+        "https://global.dreametech.com/products/dreamebot-l10-ultra"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "browser_or_unavailable"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.dreametech.com/products/dreamebot-l10-ultra",
+          "claim": "Owner verified dock_clean=2700, dock_dirty=2400, robot_clean=80, mop_system=rotating_pads. Source region: Global. Owner read exact robot and station specifications; L20/X30 table columns checked. Region as source Global/US, SKU equivalence remains separately unknown. No coefficient inferred from coverage. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 2700,
+      "reservoirs_ml": {
+        "dock_clean": 2700,
+        "dock_dirty": 2400,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -947,6 +1504,57 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_l10s_pro_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://store.dreametech.com/robot-vacuum-and-mop-comparison/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_catalog",
+          "url": "https://store.dreametech.com/robot-vacuum-and-mop-comparison/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "browser_or_unavailable"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -971,6 +1579,80 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "dreame_l10s_pro_ultra_heat",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums",
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://global.dreametech.com/products/l10s-pro-ultra"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "browser_or_unavailable"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.dreametech.com/products/l10s-pro-ultra",
+          "claim": "Detailed global page explicitly names Heat with dock clean4.5L/dirty4L, onboard80ml and rotary mops. Header/URL omit Heat; do not transfer automatically to separately catalogued plain L10s Pro Ultra. Optional plumbing kit not universally included. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1000,6 +1682,80 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "dreame_l10s_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.dreametech.com/products/dreamebot-l10s-ultra?gQT=1",
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://www.dreametech.com/products/dreamebot-l10s-ultra"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.dreametech.com/products/dreamebot-l10s-ultra?gQT=1",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.dreametech.com/products/dreamebot-l10s-ultra",
+          "claim": "Owner verified dock_clean=2500, dock_dirty=2400, robot_clean=80, mop_system=rotating_pads. Source region: US. Owner read exact robot and station specifications; L20/X30 table columns checked. Region as source Global/US, SKU equivalence remains separately unknown. No coefficient inferred from coverage. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 2500,
+      "reservoirs_ml": {
+        "dock_clean": 2500,
+        "dock_dirty": 2400,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1029,6 +1785,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "dreame_l10s_ultra_gen_2",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://store.dreametech.com/robot-vacuum-and-mop-comparison/",
+        "https://www.dreametech.com/products/l10s-ultra-gen-2-robot-vacuum"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_catalog",
+          "url": "https://store.dreametech.com/robot-vacuum-and-mop-comparison/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "browser_or_unavailable"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.dreametech.com/products/l10s-ultra-gen-2-robot-vacuum",
+          "claim": "Exact Gen2 source4.5L clean dock and dual rotary mops. Optional water hookup kit is separate and not available in all regions; no dirty/onboard volume or water rate adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1057,6 +1880,80 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "dreame_l20_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.dreametech.com/products/l20-ultra?variant=41846212296909",
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://www.dreametech.com/products/l20-ultra"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.dreametech.com/products/l20-ultra?variant=41846212296909",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.dreametech.com/products/l20-ultra",
+          "claim": "Owner verified dock_clean=4500, dock_dirty=4000, robot_clean=80, mop_system=rotating_pads. Source region: US. Owner read exact robot and station specifications; L20/X30 table columns checked. Region as source Global/US, SKU equivalence remains separately unknown. No coefficient inferred from coverage. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1086,6 +1983,57 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_l30_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://support.dreametech.com/hc/en-us/sections/10376680416783-Robot-Vacuums",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "browser_or_unavailable"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1110,6 +2058,76 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_l40_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.dreametech.com/products/l40ultra-robot-vacuum",
+        "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md",
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.dreametech.com/products/l40ultra-robot-vacuum",
+          "claim": "Root confirmed capacities (ml): dock_clean=4500, dock_dirty=4000; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1136,6 +2154,69 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_l40_ultra_gen_2",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.dreametech.com/products/l40-ultra-gen2-robot-vacuum",
+        "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/events.md"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.dreametech.com/products/l40-ultra-gen2-robot-vacuum",
+          "claim": "Root confirmed capacities (ml): dock_clean=4500, dock_dirty=4000; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/events.md",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1161,6 +2242,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "dreame_w10",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://support.dreametech.com/hc/en-us/article_attachments/10385247328399"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.dreametech.com/hc/en-us/article_attachments/10385247328399",
+          "claim": "Exact W10 manual names RLS5C robot and RCS3 base; two mop pads and troubleshooting of their rotation. No numeric water capacity appears in its specifications; no transfer from W10 Pro. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1189,6 +2332,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_w10_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1213,6 +2406,76 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_x30_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.dreametech.com/products/dreame-x30-ultra/",
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://www.dreametech.com/products/dreame-x30-ultra"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.dreametech.com/products/dreame-x30-ultra/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.dreametech.com/products/dreame-x30-ultra",
+          "claim": "Owner verified dock_clean=4500, dock_dirty=4000, robot_clean=80. Source region: US. Owner read exact robot and station specifications; L20/X30 table columns checked. Region as source Global/US, SKU equivalence remains separately unknown. No coefficient inferred from coverage. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1239,6 +2502,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_x40_master",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1263,6 +2576,76 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_x40_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.dreametech.com/products/dreametech-x40-ultra-robot-vacuum",
+        "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md",
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.dreametech.com/products/dreametech-x40-ultra-robot-vacuum",
+          "claim": "Root confirmed capacities (ml): dock_clean=4500, dock_dirty=4000, robot_clean=80; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1289,6 +2672,69 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "dreame_x50_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
+        "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
+          "claim": "Root confirmed capacities (ml): dock_clean=4500, dock_dirty=4000; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1314,6 +2760,76 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "dreame_z10_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://dreame.com.au/products/dreame-z10-pro",
+        "https://support.dreametech.com/hc/en-us/article_attachments/10385247102095"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://dreame.com.au/products/dreame-z10-pro",
+          "claim": "Exact Z10 Pro specification150ml robot water;4L/400ml are dust capacities. Single cloth pad verified additionally in primary Z10 Pro manual. Three ordinal flow levels not numerical delivery. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.dreametech.com/hc/en-us/article_attachments/10385247102095",
+          "claim": "Exact Z10 Pro manual shows one mop pad fixed on the water-tank attaching area; confirms pad structure only, not numerical capacity or rate.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 150,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 150,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1343,6 +2859,69 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "ecovacs_deebot_n30_pro_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.ecovacs.com/",
+        "https://www.ecovacs.com/de/shop/deebot-robotic-vacuum-cleaner/deebot-n30pro-omni-black"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_catalog",
+          "url": "https://www.ecovacs.com/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/de/shop/deebot-robotic-vacuum-cleaner/deebot-n30pro-omni-black",
+          "claim": "Owner verified dock_clean=3500, dock_dirty=3000. Source region: Germany. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 3500,
+      "reservoirs_ml": {
+        "dock_clean": 3500,
+        "dock_dirty": 3000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1368,6 +2947,85 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "ecovacs_deebot_t30_pro_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://site-static.ecovacs.com/upload/global/file/product_manual_edit/2024/05/20/094053_6297-DEEBOTT30PROOMNI-UserManual.pdf",
+        "https://www.home-assistant.io/integrations/ecovacs",
+        "https://www.ecovacs.com/jp/shop/deebot-robotic-vacuum-cleaner/deebot-t30-pro-omni-white",
+        "https://www.ecovacs.com/jp/shop/deebot-robotic-vacuum-cleaner/deebot-t30-pro-omni-white"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_manual",
+          "url": "https://site-static.ecovacs.com/upload/global/file/product_manual_edit/2024/05/20/094053_6297-DEEBOTT30PROOMNI-UserManual.pdf",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/ecovacs",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/jp/shop/deebot-robotic-vacuum-cleaner/deebot-t30-pro-omni-white",
+          "claim": "Owner verified robot_clean=55. Source region: Japan. JP primary explicitly names55ml; station quantities not reproduced on this page. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/jp/shop/deebot-robotic-vacuum-cleaner/deebot-t30-pro-omni-white",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=3500, robot_clean=55. Japan; specifications229-230 now successfully retrieved, previous robot-only extraction superseded. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
+        "robot_clean": 55,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1395,6 +3053,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "ecovacs_deebot_t50_pro_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.ecovacs.com/",
+        "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t50-pro-omni"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_catalog",
+          "url": "https://www.ecovacs.com/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t50-pro-omni",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=4000, robot_clean=55, mop_system=rotating_pads. Source region: US. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 4000,
+        "robot_clean": 55,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1423,6 +3148,69 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "ecovacs_deebot_x1_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.home-assistant.io/integrations/ecovacs",
+        "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-x1-omni-black"
+      ],
+      "provenance": [
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/ecovacs",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-x1-omni-black",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=4000, robot_clean=80. Source region: US. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 4000,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1448,6 +3236,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "ecovacs_deebot_x2_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.home-assistant.io/integrations/ecovacs",
+        "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-x2-omni"
+      ],
+      "provenance": [
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/ecovacs",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-x2-omni",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=3500, robot_clean=180, mop_system=rotating_pads. Source region: US. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
+        "robot_clean": 180,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1476,6 +3331,57 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "ecovacs_deebot_x5_hybrid",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://site-static.ecovacs.com/upload/de/file/support/2025/06/24/024923_5962%24DEEBOTX5HYBRIDInstructionManual.pdf"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_manual",
+          "url": "https://site-static.ecovacs.com/upload/de/file/support/2025/06/24/024923_5962%24DEEBOTX5HYBRIDInstructionManual.pdf",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1500,6 +3406,81 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": 95,
     "detergent_tank_ml": null,
     "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "ecovacs_deebot_x8_pro_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://site-static.ecovacs.com/upload/file/support/2025/07/04/012124_8335%24X8ProOMNIwithautorefill-EMEA.pdf",
+        "https://www.home-assistant.io/integrations/ecovacs",
+        "https://www.ecovacs.com/ca/shop/deebot-robotic-vacuum-cleaner/deebot-x8-pro-omni"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_manual",
+          "url": "https://site-static.ecovacs.com/upload/file/support/2025/07/04/012124_8335%24X8ProOMNIwithautorefill-EMEA.pdf",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/ecovacs",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/ca/shop/deebot-robotic-vacuum-cleaner/deebot-x8-pro-omni",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=4000, robot_clean=110, mop_system=roller, robot_dirty=95. Source region: CA. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 4000,
+        "robot_clean": 110,
+        "robot_dirty": 95,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 7,
+        "standard": 10,
+        "deep": 13,
+        "deep_plus": 15,
+        "default": 10
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 200,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for roller: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1529,6 +3510,80 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "eufy_omni_c20",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+        "https://service.eufy.com/article-description/Dimensions-of-the-C20-Omni-and-the-All-in-One-Station?urlName=Dimensions-of-the-C20-Omni-and-the-All-in-One-Station",
+        "https://www.eufy.com/products/t2280111"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://service.eufy.com/article-description/Dimensions-of-the-C20-Omni-and-the-All-in-One-Station?urlName=Dimensions-of-the-C20-Omni-and-the-All-in-One-Station",
+          "claim": "Owner verified dock_clean=2500, dock_dirty=2400, mop_system=rotating_pads. Source region: US. Manufacturer support explicitly names C20 Omni; reservoir capacities only, no consumption coefficient. Exact C20 comparison names dual rotating pads. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.eufy.com/products/t2280111",
+          "claim": "Owner verified dock_clean=2500, dock_dirty=2400, mop_system=rotating_pads. Source region: US. Manufacturer support explicitly names C20 Omni; reservoir capacities only, no consumption coefficient. Exact C20 comparison names dual rotating pads. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 2500,
+      "reservoirs_ml": {
+        "dock_clean": 2500,
+        "dock_dirty": 2400,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1558,6 +3613,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "eufy_omni_c28",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1582,6 +3687,79 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "eufy_omni_e25",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+        "https://www.eufy.com/uk/robot-vacuum-e28",
+        "https://www.eufy.com/products/robot-vacuum-omni-e25-dust-bag?variant=45704584626362"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.eufy.com/uk/robot-vacuum-e28",
+          "claim": "UK E25 and E28 specifications: clean tank 2.5 L, dirty 1.8 L; HA water surface not verified.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.eufy.com/products/robot-vacuum-omni-e25-dust-bag?variant=45704584626362",
+          "claim": "Owner verified dock_clean=2500, dock_dirty=1800, mop_system=roller. Source region: US. Page contains E28 marketing copy in some blocks; use explicit E25 specs and HydroJet section only. Do not transfer robot capacity or runtime into a water rate. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 2500,
+      "reservoirs_ml": {
+        "dock_clean": 2500,
+        "dock_dirty": 1800,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 7,
+        "standard": 10,
+        "deep": 13,
+        "deep_plus": 15,
+        "default": 10
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 200,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for roller: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1611,6 +3789,79 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "eufy_omni_e28",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+        "https://www.eufy.com/uk/robot-vacuum-e28",
+        "https://www.eufy.com/au/products/t2352t11?fliter_category=cleaner-robot"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.eufy.com/uk/robot-vacuum-e28",
+          "claim": "UK E25 and E28 specifications: clean tank 2.5 L, dirty 1.8 L; HA water surface not verified.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.eufy.com/au/products/t2352t11?fliter_category=cleaner-robot",
+          "claim": "Owner verified dock_clean=2500, dock_dirty=1800, mop_system=roller. Source region: AU. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 2500,
+      "reservoirs_ml": {
+        "dock_clean": 2500,
+        "dock_dirty": 1800,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 7,
+        "standard": 10,
+        "deep": 13,
+        "deep_plus": 15,
+        "default": 10
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 200,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for roller: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1640,6 +3891,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "eufy_omni_s1",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1664,6 +3965,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "eufy_omni_s2",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+        "https://service.eufy.com/uk/article-description/S2-Features-Introduction"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://service.eufy.com/uk/article-description/S2-Features-Introduction",
+          "claim": "UK support page explicitly names S2 HydroJet2.0 self-clean roller mop. US vs Taiwan capacity conflict remains unresolved; no capacity or flow adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 7,
+        "standard": 10,
+        "deep": 13,
+        "deep_plus": 15,
+        "default": 10
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 200,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for roller: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1692,6 +4055,88 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "eufy_x10_pro_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+        "https://service.eufy.com/article-description/X10-Pro-Omni-T2351-EN-Manual",
+        "https://service.eufy.com/article-description/Does-the-X10-Pro-Omni-have-an-onboard-water-tank?urlName=Does-the-X10-Pro-Omni-have-an-onboard-water-tank",
+        "https://www.eufy.com/uk/products/t2351v21?fliter_category=best-seller"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://service.eufy.com/article-description/X10-Pro-Omni-T2351-EN-Manual",
+          "claim": "Owner verified dock_clean=3000, dock_dirty=2700. US/EU EN manual T2351 specifications416-417. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://service.eufy.com/article-description/Does-the-X10-Pro-Omni-have-an-onboard-water-tank?urlName=Does-the-X10-Pro-Omni-have-an-onboard-water-tank",
+          "claim": "Owner verified robot_clean=80. Official FAQ separates80ml robot buffer and3L dock; do not derive consumption from1500-2000sqft coverage. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.eufy.com/uk/products/t2351v21?fliter_category=best-seller",
+          "claim": "Owner verified mop_system=rotating_pads. Source region: UK. Exact X10 UKcomparison states Dual Rotating Mop Pads; does not promote model-specific coefficients. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 3000,
+      "reservoirs_ml": {
+        "dock_clean": 3000,
+        "dock_dirty": 2700,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1722,6 +4167,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "eureka_e20_evo_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1746,6 +4241,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "eureka_e20_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://us.eureka.com/products/eureka-e20plus"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eureka.com/products/eureka-e20plus",
+          "claim": "Exact E20 Plus mop cloth and pad accessories plus mop-lift system.2L dust cup is not water; no water capacity/rate adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -1774,6 +4331,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "eureka_j12_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1798,6 +4405,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "eureka_j15_max_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://us.eureka.com/products/j15-max-ultra"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eureka.com/products/j15-max-ultra",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=3400. Source region: US. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3400,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1823,6 +4492,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "eureka_j15_pro_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1847,6 +4566,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "eureka_j15_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://us.eureka.com/products/eureka-j15-ultra-flagship-robot-vacuum"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.eureka.com/products/eureka-j15-ultra-flagship-robot-vacuum",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=3400. Source region: US. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3400,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1872,6 +4653,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "ikohs_netbot_ls22",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1896,6 +4727,65 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "irobot_braava_jet_m6",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.irobot.com/sfsites/c/cms/delivery/media/MCLJTXTOSTTBDWDNWBJ3AEPORTHM",
+        "https://www.home-assistant.io/integrations/roomba"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_regulatory",
+          "url": "https://global.irobot.com/sfsites/c/cms/delivery/media/MCLJTXTOSTTBDWDNWBJ3AEPORTHM",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/roomba",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1921,6 +4811,85 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "irobot_roomba_combo_10_max_plus_autowash_dock",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://homesupport.irobot.com/articles/en_US/Knowledge/10009",
+        "https://answers.irobot.com/nl-NL/knowledge/163",
+        "https://www.home-assistant.io/integrations/roomba",
+        "https://homesupport.irobot.com/articles/en_US/Knowledge/163"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/10009",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://answers.irobot.com/nl-NL/knowledge/163",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/roomba",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/163",
+          "claim": "Owner verified dock_clean=3000, dock_dirty=2500. Official station reservoirs. Robot170vs210 contradiction unresolved; robot remains unknown. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 3000,
+      "reservoirs_ml": {
+        "dock_clean": 3000,
+        "dock_dirty": 2500,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1948,6 +4917,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "irobot_roomba_combo_i5",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://answers.irobot.com/nl-NL/knowledge/163",
+        "https://www.home-assistant.io/integrations/roomba",
+        "https://homesupport.irobot.com/articles/en_US/Knowledge/163"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://answers.irobot.com/nl-NL/knowledge/163",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/roomba",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/163",
+          "claim": "Owner verified robot_clean=210. Official liquid capacity explicitly i5/i5+. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 210,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 210,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -1974,6 +5010,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "irobot_roomba_combo_i5_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://answers.irobot.com/nl-NL/knowledge/163",
+        "https://www.home-assistant.io/integrations/roomba",
+        "https://homesupport.irobot.com/articles/en_US/Knowledge/163"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://answers.irobot.com/nl-NL/knowledge/163",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/roomba",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/163",
+          "claim": "Owner verified robot_clean=210. Source region: Global. i5 and i5+ explicitly listed; un-suffixed j7 not listed, do not transfer j7+ automatically. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 210,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 210,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -2000,6 +5103,65 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "irobot_roomba_combo_j7",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://answers.irobot.com/nl-NL/knowledge/163",
+        "https://www.home-assistant.io/integrations/roomba"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://answers.irobot.com/nl-NL/knowledge/163",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/roomba",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -2025,6 +5187,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "irobot_roomba_combo_j7_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://answers.irobot.com/nl-NL/knowledge/163",
+        "https://www.home-assistant.io/integrations/roomba",
+        "https://homesupport.irobot.com/articles/en_US/Knowledge/163"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://answers.irobot.com/nl-NL/knowledge/163",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/roomba",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/163",
+          "claim": "Owner verified robot_clean=210. Official liquid capacity explicitly j7+; no transfer to j7. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 210,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 210,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -2051,6 +5280,77 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "irobot_roomba_combo_j9_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://answers.irobot.com/nl-NL/knowledge/163",
+        "https://www.home-assistant.io/integrations/roomba",
+        "https://homesupport.irobot.com/articles/en_US/Knowledge/163"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://answers.irobot.com/nl-NL/knowledge/163",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "home_assistant_core",
+          "url": "https://www.home-assistant.io/integrations/roomba",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/163",
+          "claim": "Owner verified robot_clean=170, dock_clean=3050. Official liquid capacity explicitly j9+ robot170/dock3050; dry bins not used. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 3050,
+      "reservoirs_ml": {
+        "dock_clean": 3050,
+        "dock_dirty": null,
+        "robot_clean": 170,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -2077,6 +5377,80 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "mova_p10_pro_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mova-tech.com/",
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://us.mova.tech/products/p10-pro-ultra-robot-vacuum"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_catalog",
+          "url": "https://www.mova-tech.com/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.mova.tech/products/p10-pro-ultra-robot-vacuum",
+          "claim": "Owner verified dock_clean=4500, dock_dirty=4000, mop_system=rotating_pads. Source region: US. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2106,6 +5480,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "mova_p10_pro_ultra_gen2",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://us.mova.tech/products/mova-p10-pro-ultra-gen2-robot-vacuum",
+        "https://us.mova.tech/products/mova-p10-pro-ultra-gen2-robot-vacuum"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_product",
+          "url": "https://us.mova.tech/products/mova-p10-pro-ultra-gen2-robot-vacuum",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.mova.tech/products/mova-p10-pro-ultra-gen2-robot-vacuum",
+          "claim": "Owner verified dock_clean=4500, dock_dirty=4000, mop_system=rotating_pads. Source region: US. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2134,6 +5575,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "mova_p20_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://us.mova.tech/products/mova-p10-pro-ultra-robot-vacuum-live-only",
+        "https://us.mova.tech/products/mova-p20-ultra-robot-vacuum"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_product",
+          "url": "https://us.mova.tech/products/mova-p10-pro-ultra-robot-vacuum-live-only",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "browser_or_unavailable"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://us.mova.tech/products/mova-p20-ultra-robot-vacuum",
+          "claim": "Owner verified dock_clean=5000, dock_dirty=4500, mop_system=rotating_pads. Source region: US. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 5000,
+      "reservoirs_ml": {
+        "dock_clean": 5000,
+        "dock_dirty": 4500,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2162,6 +5670,72 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "mova_s20_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://fr.mova.tech/products/mova-s20-ultra-robot-vacuum"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://fr.mova.tech/products/mova-s20-ultra-robot-vacuum",
+          "claim": "Owner verified dock_clean=4500, dock_dirty=4000, mop_system=pad. Source region: France. French exact S20 Ultra: vibrating cloth, not rotating pads. Robot reservoir and water rate remain unknown; no battery-runtime conversion. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2190,6 +5764,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "mova_v50_ultra_complete",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mova.tech/products/mova-v50-ultra-robot-vacuum",
+        "https://www.mova.tech/products/mova-v50-ultra-robot-vacuum"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_product",
+          "url": "https://www.mova.tech/products/mova-v50-ultra-robot-vacuum",
+          "claim": "Root confirmed capacities (ml): dock_clean=4000, dock_dirty=3500; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mova.tech/products/mova-v50-ultra-robot-vacuum",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=3500, mop_system=rotating_pads. Source region: Global. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2218,6 +5859,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "mova_z500",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -2242,6 +5933,69 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "mova_z50_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mova.tech/products/mova-z50-ultra-robot-vacuum",
+        "https://www.mova.tech/products/mova-z50-ultra-robot-vacuum"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_product",
+          "url": "https://www.mova.tech/products/mova-z50-ultra-robot-vacuum",
+          "claim": "Root confirmed capacities (ml): dock_clean=4500, dock_dirty=4000; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mova.tech/products/mova-z50-ultra-robot-vacuum",
+          "claim": "Owner verified dock_clean=4500, dock_dirty=4000. Source region: Global. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4500,
+      "reservoirs_ml": {
+        "dock_clean": 4500,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -2267,6 +6021,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "proscenic_m6_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -2291,6 +6095,69 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_q5_max_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-q5-max-plus",
+        "https://global.roborock.com/pages/roborock-q5-max-plus"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-q5-max-plus",
+          "claim": "Root confirmed capacities (ml): robot_clean=180; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-q5-max-plus",
+          "claim": "Owner verified robot_clean=180, mop_system=pad. Source region: Global. Compatible with 180ml tank and mop, SOLD SEPARATELY. Optional accessory presence must be confirmed; base unit manual absence cannot negate product-page accessory claim. No rate inferred from battery or maximum vacuuming coverage. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 180,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 180,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2319,6 +6186,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_q7_max",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://global.roborock.com/pages/roborock-q7-max"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-q7-max",
+          "claim": "Owner verified robot_clean=350. Global Q7Max/Q7Max+ comparison explicitly gives350ml water tank, distinct470ml dustbin; no capacity/area or runtime conversion.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 350,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 350,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2347,6 +6276,81 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_q_revo",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+        "https://github.com/home-assistant/core/issues/103213",
+        "https://support.roborock.com/hc/en-us/articles/33953924555673-What-are-the-differences-between-Roborock-Qrevo-Master-and-Qrevo"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://github.com/home-assistant/core/issues/103213",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.roborock.com/hc/en-us/articles/33953924555673-What-are-the-differences-between-Roborock-Qrevo-Master-and-Qrevo",
+          "claim": "Owner verified robot_clean=80, dock_clean=5000, dock_dirty=4200. Source region: Global. Original Qrevo, explicitly differentiated from Master. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 5000,
+      "reservoirs_ml": {
+        "dock_clean": 5000,
+        "dock_dirty": 4200,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2376,6 +6380,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_2_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-2-pro"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-2-pro",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2403,6 +6462,80 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_5ae",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.roborock.sg/products/roborock-qrevo-5ae-white-certified-refurbished",
+        "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/12",
+        "https://www.agdmaniak.pl/124755/roborock-qrevo-5ae-test/amp/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.roborock.sg/products/roborock-qrevo-5ae-white-certified-refurbished",
+          "claim": "Root confirmed capacities (ml): dock_clean=4000, dock_dirty=3500, robot_clean=80; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "browser_or_unavailable"
+        },
+        {
+          "source_type": "user_report",
+          "url": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/12",
+          "claim": "Reporter supplied model identifier; not manufacturer capacity evidence.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "primary_hands_on",
+          "url": "https://www.agdmaniak.pl/124755/roborock-qrevo-5ae-test/amp/",
+          "claim": "Owner verified robot_clean=80, dock_clean=4000, dock_dirty=3500, mop_system=rotating_pads. Source region: Poland. Approximate independent wash amount; no apparatus/repetition detail, no floor rate, do not transfer to every wash mode. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2432,6 +6565,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_curv",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2459,6 +6647,87 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_curv_2_flow",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-2-flow",
+        "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/12",
+        "https://www.notebookcheck.net/Roborock-now-also-mops-with-a-roller-Roborock-Qrevo-Curv-2-Flow-review.1234769.0.html",
+        "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-2-flow",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "user_report",
+          "url": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/12",
+          "claim": "Reporter supplied model identifier; not manufacturer capacity evidence.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "independent_review",
+          "url": "https://www.notebookcheck.net/Roborock-now-also-mops-with-a-roller-Roborock-Qrevo-Curv-2-Flow-review.1234769.0.html",
+          "claim": "Review specification table lists water / dirty water tanks as 4 l / 3 l; roller is constantly rinsed with fresh water.",
+          "last_verified": "2026-09-15",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq",
+          "claim": "Manufacturer FAQ publishes an approximately 4 L clean-water tank (adopted in 5.4.0).",
+          "last_verified": "2026-09-15"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 7,
+        "standard": 10,
+        "deep": 13,
+        "deep_plus": 15,
+        "default": 10
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 200,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for roller: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2489,6 +6758,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_curv_2_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2516,6 +6840,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_curv_5xc",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2543,6 +6922,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_curvc",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2570,6 +7004,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_curvx",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2597,6 +7086,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_edge",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-edge-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-edge-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2624,6 +7168,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_edge_2",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2651,6 +7250,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_edge_2_flow",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 7,
+        "standard": 10,
+        "deep": 13,
+        "deep_plus": 15,
+        "default": 10
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 200,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for roller: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2678,6 +7332,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_edge_2_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2705,6 +7414,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_edge_3_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2732,6 +7496,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_edge_5v1",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-edge-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-edge-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2759,6 +7578,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_edge_s5a",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-edge-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-edge-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2786,6 +7660,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_edgec",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-edge-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-edge-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2813,6 +7742,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_edget",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2840,6 +7824,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_master",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-series",
+        "https://support.roborock.com/hc/en-us/articles/33953924555673-What-are-the-differences-between-Roborock-Qrevo-Master-and-Qrevo"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.roborock.com/hc/en-us/articles/33953924555673-What-are-the-differences-between-Roborock-Qrevo-Master-and-Qrevo",
+          "claim": "Owner verified robot_clean=80, dock_clean=4000, dock_dirty=3500. Source region: Global. Exact Master in comparison, not transferred to other Qrevo variants. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2868,6 +7919,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_maxv",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-series",
+        "https://support.roborock.com/hc/en-us/articles/35960688067353-What-is-the-difference-among-Qrevo-Plus-Qrevo-Pro-and-Qrevo-MaxV"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.roborock.com/hc/en-us/articles/35960688067353-What-is-the-difference-among-Qrevo-Plus-Qrevo-Pro-and-Qrevo-MaxV",
+          "claim": "Owner verified robot_clean=80, dock_clean=4000, dock_dirty=3500, mop_system=rotating_pads. Source region: Global. All three explicitly named; no numeric consumption rate. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2896,6 +8014,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-series",
+        "https://support.roborock.com/hc/en-us/articles/35960688067353-What-is-the-difference-among-Qrevo-Plus-Qrevo-Pro-and-Qrevo-MaxV"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.roborock.com/hc/en-us/articles/35960688067353-What-is-the-difference-among-Qrevo-Plus-Qrevo-Pro-and-Qrevo-MaxV",
+          "claim": "Owner verified robot_clean=80, dock_clean=4000, dock_dirty=3500, mop_system=rotating_pads. Source region: Global. All three explicitly named; no numeric consumption rate. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2924,6 +8109,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-series",
+        "https://support.roborock.com/hc/en-us/articles/35960688067353-What-is-the-difference-among-Qrevo-Plus-Qrevo-Pro-and-Qrevo-MaxV"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.roborock.com/hc/en-us/articles/35960688067353-What-is-the-difference-among-Qrevo-Plus-Qrevo-Pro-and-Qrevo-MaxV",
+          "claim": "Owner verified robot_clean=80, dock_clean=4000, dock_dirty=3500, mop_system=rotating_pads. Source region: Global. All three explicitly named; no numeric consumption rate. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2952,6 +8204,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_s",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-series",
+        "https://support.roborock.com/hc/es/articles/33518120155417--Cu%C3%A1l-es-la-capacidad-del-tanque-del-Qrevo-S"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://support.roborock.com/hc/es/articles/33518120155417--Cu%C3%A1l-es-la-capacidad-del-tanque-del-Qrevo-S",
+          "claim": "Owner verified robot_clean=80, dock_clean=4000. Source region: Spain. Dirty tank not specified; no inference. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": null,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -2980,6 +8299,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_s_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3007,6 +8381,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_qrevo_slim",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3034,6 +8463,60 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_s5",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3061,6 +8544,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_s5_max",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://az.roborock.com/pages/robot-vacuum-cleaner-redirect-b"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://az.roborock.com/pages/robot-vacuum-cleaner-redirect-b",
+          "claim": "Owner verified robot_clean=297. Source region: Azerbaijan. AZ manufacturer exact named model. No electric/passive pump-speed assumption, battery/area conversion or water-flow coefficient. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 297,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 297,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3089,6 +8634,60 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_s6",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3116,6 +8715,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_s6_pure",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://az.roborock.com/pages/robot-vacuum-cleaner-redirect-b"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://az.roborock.com/pages/robot-vacuum-cleaner-redirect-b",
+          "claim": "Owner verified robot_clean=180. Source region: Azerbaijan. AZ manufacturer exact named model. No electric/passive pump-speed assumption, battery/area conversion or water-flow coefficient. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 180,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 180,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3144,6 +8805,76 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_s7",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-s7",
+        "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-s7",
+          "claim": "Root confirmed capacities (ml): robot_clean=300; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 300,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3173,6 +8904,85 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_s7_maxv",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+        "https://global.roborock.com/pages/roborock-auto-empty-dock",
+        "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+        "https://ca.roborock.com/pages/roborock-s7-maxv"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-auto-empty-dock",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_source",
+          "url": "https://github.com/rytilahti/python-miio/blob/master/miio/integrations/roborock/vacuum/vacuum.py",
+          "claim": "ROCKROBO_S7_MAXV maps to roborock.vacuum.a27; robot identity only, not a dock capacity or usage-rate claim.",
+          "last_verified": "2026-10-01",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://ca.roborock.com/pages/roborock-s7-maxv",
+          "claim": "S7 MaxV Ultra combines the S7 MaxV robot with the Empty Wash Fill Dock; the retail alias identifies this robot family without inferring installed dock tanks.",
+          "last_verified": "2026-10-01",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3203,6 +9013,60 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_s7_pro_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3230,6 +9094,65 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_s8_maxv_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra",
+          "claim": "Root confirmed capacities (ml): dock_clean=4000, robot_clean=100; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "browser_or_unavailable"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": null,
+        "robot_clean": 100,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 20,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "owner_device",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Owner-device Home Assistant accounting on a Roborock S8 MaxV Ultra (area x route rate x water-level factor, 150 ml per dock wash), used 2025-2026 and cross-checked against the dock's empty-water events; not metered with a volume sensor. deep_plus and the extreme water level extrapolated."
+      ]
+    },
     "estimate_basis": "owner_device",
     "estimate_label": "Measured accounting on an owner's device of this model",
     "uncertainty_percent": 20,
@@ -3257,6 +9180,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_s8_pro_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra",
+        "https://global.roborock.com/pages/roborock-academy"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra",
+          "claim": "Root confirmed capacities (ml): dock_clean=3500, robot_clean=200; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-academy",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 3500,
+      "reservoirs_ml": {
+        "dock_clean": 3500,
+        "dock_dirty": null,
+        "robot_clean": 200,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 35,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "family_transfer",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Transferred from the Roborock S8 MaxV Ultra owner-device accounting: same VibraRise sonic pad generation and RockDock wash design; not measured on this model. The extreme water level is extrapolated."
+      ]
+    },
     "estimate_basis": "family_transfer",
     "estimate_label": "Transferred from a closely related model",
     "uncertainty_percent": 35,
@@ -3285,6 +9275,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_saros_10",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-saros-10"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-saros-10",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3312,6 +9357,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_saros_10r",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-saros-10r"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-saros-10r",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3339,6 +9439,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "roborock_saros_20",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-saros-20"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-saros-20",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3366,6 +9521,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "roborock_saros_20_flow",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-qrevo-curv-series"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-qrevo-curv-series",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 7,
+        "standard": 10,
+        "deep": 13,
+        "deep_plus": 15,
+        "default": 10
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 200,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for roller: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3393,6 +9603,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "roborock_saros_20_sonic",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-saros-20-sonic"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-saros-20-sonic",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3420,6 +9685,57 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "roborock_saros_z70",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://global.roborock.com/pages/roborock-saros-z70"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://global.roborock.com/pages/roborock-saros-z70",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -3444,6 +9760,60 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "samsung_bespoke_jet_bot_combo_steam_plus_vr7md96514g_sp",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://news.samsung.com/sg/samsung-sets-new-standards-for-cleanliness-and-hygiene-with-the-new-bespoke-jet-bot-combo"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://news.samsung.com/sg/samsung-sets-new-standards-for-cleanliness-and-hygiene-with-the-new-bespoke-jet-bot-combo",
+          "claim": "Confirmed reservoir capacity (ml): {'dock_clean': 4000, 'dock_dirty': 3600}; consumption unmeasured.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3600,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -3468,6 +9838,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "samsung_bespoke_jet_bot_combo_steam_vr7md96514g_eu",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.samsung.com/uk/vacuum-cleaners/robot/70w--jet-bot-combo--all-in-one-clean-station-steam-plus-with-steamwash-satin-greige-vr7md96514g-eu/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.samsung.com/uk/vacuum-cleaners/robot/70w--jet-bot-combo--all-in-one-clean-station-steam-plus-with-steamwash-satin-greige-vr7md96514g-eu/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -3492,6 +9912,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": 150,
     "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "switchbot_s10",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2",
+        "https://www.switch-bot.com/pages/switchbot-floor-cleaning-robot-s10"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.switch-bot.com/pages/switchbot-floor-cleaning-robot-s10",
+          "claim": "Exact S10 RevoRoll roller;150ml tank is cleaning solution, not water. Plumbing supply and optional external tank remain distinct. No numerical clean/dirty water capacity adopted. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": 150
+      },
+      "usage_ml_per_m2": {
+        "fast": 7,
+        "standard": 10,
+        "deep": 13,
+        "deep_plus": 15,
+        "default": 10
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 200,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for roller: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3520,6 +10002,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "switchbot_s20",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2",
+        "https://www.switch-bot.com/products/switchbot-floor-cleaning-robot-s20"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.switch-bot.com/pages/your-dream-cleaning-assistant-is-here-2",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.switch-bot.com/products/switchbot-floor-cleaning-robot-s20",
+          "claim": "Exact S20 RevoRoll roller. Auto refill/waste functions do not specify tank volume or water flow;300 scrubs/min is not pump delivery. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 7,
+        "standard": 10,
+        "deep": 13,
+        "deep_plus": 15,
+        "default": 10
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 200,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for roller: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3548,6 +10092,77 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "tapo_rv20_max",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.tapo.com/us/faq/290/",
+        "https://www.tapo.com/sg/product/robot-vacuum/tapo-rv20-max/",
+        "https://www.tapo.com/ec/faq/248/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://www.tapo.com/us/faq/290/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/sg/product/robot-vacuum/tapo-rv20-max/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: Singapore. Exact SG model water tank300ml; no dockwater reservoir. Three levels not rates. Exact grouped cloth-mount replacement confirms pad structure. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 300,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3577,6 +10192,77 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "tapo_rv20_max_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.tapo.com/us/faq/290/",
+        "https://nl.store.tapo.com/products/tapo-rv20-max-plus",
+        "https://www.tapo.com/ec/faq/248/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://www.tapo.com/us/faq/290/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://nl.store.tapo.com/products/tapo-rv20-max-plus",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: Netherlands. Official NL store exact model300ml water tank; no transfer to Gen2 orotherRV30variants. Exact grouped cloth-mount replacement confirms pad structure. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 300,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3606,6 +10292,77 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "tapo_rv20_mop_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.tapo.com/us/faq/290/",
+        "https://www.tp-link.com/nordic/smart-home/robot-vacuum/tapo-rv20-mop-plus/",
+        "https://www.tapo.com/ec/faq/248/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://www.tapo.com/us/faq/290/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tp-link.com/nordic/smart-home/robot-vacuum/tapo-rv20-mop-plus/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: Nordic. Exact model300ml water tank; support names removable mop cloth mount. Dustbag capacity is not water. No3level/battery/coverage-derived rates. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 300,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3635,6 +10392,77 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "tapo_rv30_max",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.tapo.com/us/faq/290/",
+        "https://www.tapo.com/in/product/robot-vacuum/tapo-rv30-max/",
+        "https://www.tapo.com/ec/faq/248/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://www.tapo.com/us/faq/290/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/in/product/robot-vacuum/tapo-rv30-max/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: India. Exact model300ml water tank; support names removable mop cloth mount. Dustbag capacity is not water. No3level/battery/coverage-derived rates. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 300,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3664,6 +10492,77 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "tapo_rv30_max_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.tapo.com/us/faq/290/",
+        "https://www.tapo.com/us/product/robot-vacuum/tapo-rv30-max-plus/",
+        "https://www.tapo.com/ec/faq/248/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://www.tapo.com/us/faq/290/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/us/product/robot-vacuum/tapo-rv30-max-plus/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: US. Exact model300ml water tank; support names removable mop cloth mount. Dustbag capacity is not water. No3level/battery/coverage-derived rates. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 300,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3693,6 +10592,77 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "tapo_rv30_max_plus_gen_2",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.tapo.com/us/faq/290/",
+        "https://www.tapo.com/uk/product/robot-vacuum/tapo-rv30-max-plus-gen-2/",
+        "https://www.tapo.com/ec/faq/248/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://www.tapo.com/us/faq/290/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/uk/product/robot-vacuum/tapo-rv30-max-plus-gen-2/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: UK. Exact model300ml water tank; support names removable mop cloth mount. Dustbag capacity is not water. No3level/battery/coverage-derived rates. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/ec/faq/248/",
+          "claim": "Owner verified mop_system=pad: manufacturer support explicitly names this model in instructions for replacing the mop cloth and mount. This source does not specify a tank capacity or a flow coefficient.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 300,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3722,6 +10692,77 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "tapo_rv30_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.tapo.com/en/product/robot-vacuum/tapo-rv30-plus/",
+        "https://www.tapo.com/pl/faq/834/",
+        "https://www.tapo.com/en/product/robot-vacuum/tapo-rv30-plus/v1/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_product",
+          "url": "https://www.tapo.com/en/product/robot-vacuum/tapo-rv30-plus/",
+          "claim": "Root confirmed capacities (ml): robot_clean=300; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://www.tapo.com/pl/faq/834/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/en/product/robot-vacuum/tapo-rv30-plus/v1/",
+          "claim": "Owner verified robot_clean=300, mop_system=pad. Source region: Global. V1 electronic flow control, mop cloth mount and washable mop cloth,300ml tank. Three levels ordinal, not numeric rates. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 300,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 300,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3751,6 +10792,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "tapo_rv50_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.tapo.com/pl/faq/834/",
+        "https://uk.store.tapo.com/products/tapo-rv50-omni-robot-vacuum-cleaner-mop-all-in-one-station"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_support",
+          "url": "https://www.tapo.com/pl/faq/834/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://uk.store.tapo.com/products/tapo-rv50-omni-robot-vacuum-cleaner-mop-all-in-one-station",
+          "claim": "Owner verified dock_clean=5000, dock_dirty=4000. UK RV50Omni non-Pro exact table5L/4L and dual circular mop. Robot capacity is not borrowed from95mlPro variant.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 5000,
+      "reservoirs_ml": {
+        "dock_clean": 5000,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3779,6 +10887,80 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "tapo_rv50_pro_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/",
+        "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/10",
+        "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/",
+          "claim": "Root confirmed capacities (ml): dock_clean=5000, dock_dirty=4000, robot_clean=95; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "user_report",
+          "url": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/10",
+          "claim": "Reporter supplied model identifier; not manufacturer capacity evidence.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.tapo.com/us/product/robot-vacuum/tapo-rv50-pro-omni/",
+          "claim": "Owner verified robot_clean=95, dock_clean=5000, dock_dirty=4000, mop_system=rotating_pads. Source region: US. Ordinal levels do not establish a volume rate. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 5000,
+      "reservoirs_ml": {
+        "dock_clean": 5000,
+        "dock_dirty": 4000,
+        "robot_clean": 95,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3808,6 +10990,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "viomi_se",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -3832,6 +11064,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "viomi_v6",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -3856,6 +11138,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_1c",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://www.mi.com/tw/mi-robot-vacuum-mop-combo-1c/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/tw/mi-robot-vacuum-mop-combo-1c/",
+          "claim": "Owner verified robot_clean=200, mop_system=pad. Source region: Taiwan. Taiwan exact 1C; electronically controlled200ml and suspended cloth. Keep regional scope; advertised120m² is battery/coverage, not delivery. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 200,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 200,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3884,6 +11228,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_1t",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -3908,6 +11302,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_h50",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50/",
+          "claim": "Root confirmed capacities (ml): dock_clean=4000, dock_dirty=4000; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -3932,6 +11381,97 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_h50_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/11#issuecomment-5950639795",
+        "https://www.mi.com/uk/support/faq/details/KA-673648/",
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
+        "https://www.mi.com/global/support/faq/details/KA-673648/",
+        "https://www.mi.com/pl/support/faq/details/KA-1036331/"
+      ],
+      "provenance": [
+        {
+          "source_type": "user_report",
+          "url": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/11#issuecomment-5950639795",
+          "claim": "H50 Pro reporter screenshot on beta.1 displays xiaomi.vacuum.ov42gl as model. Observed HA identifier only; regional SKU equivalence and author hardware validation remain unknown.",
+          "last_verified": "2026-10-02",
+          "retrieval_status": "native_screenshot_read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/uk/support/faq/details/KA-673648/",
+          "claim": "Overview Q1 and product-use Q51 confirm dual rotating mop pads; class consumption rates remain labelled estimates. Q62 distinguishes first wash 180 ml from mid-task wash 120 ml, not a universal wash dose.",
+          "last_verified": "2026-10-02",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-h50-pro/",
+          "claim": "Root confirmed capacities (ml): dock_clean=4000; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://www.mi.com/global/support/faq/details/KA-673648/",
+          "claim": "FAQ Q61: clean and dirty station tanks each 4 L. Q62 action quantities are separately recorded in docs/consumption-evidence.json; not a universal wash rate.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/pl/support/faq/details/KA-1036331/",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=4000. Source region: Poland. Q61capacity; Q62firstwash180/midwash120ml action declarations not runtime-eligible until exact action binding, first-time interpretation, final wash clarified. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 4000,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -3963,6 +11503,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_p2148",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -3987,6 +11577,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_robot_vacuum_5",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-5/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-5/",
+          "claim": "Root confirmed capacities (ml): dock_clean=4000; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -4011,6 +11656,69 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_robot_vacuum_5_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-5-pro/",
+        "https://www.mi.com/uk/support/faq/details/KA-597420/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-5-pro/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/uk/support/faq/details/KA-597420/",
+          "claim": "Owner verified robot_clean=80, dock_clean=4000. Source region: UK. Effective robot capacity >=75ml; station approx4L atMAX. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": null,
+        "robot_clean": 80,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -4036,6 +11744,57 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_robot_vacuum_s10",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-s10/specs/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-s10/specs/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -4060,6 +11819,65 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_robot_vacuum_x10",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-x10/",
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-x10/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-x10/",
+          "claim": "Root confirmed capacities (ml): robot_clean=200; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-x10/",
+          "claim": "Owner verified robot_clean=200. Source region: Global. Manufacturer describes water-filled measuring-cup test on three prototypes,200±5ml. Not a consumption rate. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 200,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 200,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -4085,6 +11903,69 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_robot_vacuum_x20",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20/",
+        "https://www.home-assistant.io/integrations/xiaomi_miio/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20/",
+          "claim": "Root confirmed capacities (ml): dock_clean=4000; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.home-assistant.io/integrations/xiaomi_miio/",
+          "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -4110,6 +11991,61 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_robot_vacuum_x20_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20-plus/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20-plus/",
+          "claim": "Root confirmed capacities (ml): dock_clean=4000; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -4134,6 +12070,73 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "rotating_pads",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_robot_vacuum_x20_pro",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20-pro/",
+        "https://www.mi.com/es/product/xiaomi-robot-vacuum-x20-pro/"
+      ],
+      "provenance": [
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/global/product/xiaomi-robot-vacuum-x20-pro/",
+          "claim": "Root confirmed capacities (ml): dock_clean=4000, dock_dirty=3800; no consumption claim.",
+          "last_verified": "2026-09-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/es/product/xiaomi-robot-vacuum-x20-pro/",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=3800, mop_system=rotating_pads. Source region: Spain. Exact model specification, region as source. No use of advertised area or battery runtime to derive rate. Unknown capacities remain null. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 3800,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 5,
+        "standard": 7,
+        "deep": 10,
+        "deep_plus": 12,
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "rotating_pads",
+      "estimate_basis": "class_prior",
+      "water_anchor_reservoir": "dock_clean",
+      "water_anchor_reservoir_inferred": true,
+      "refill_on_clear": true,
+      "refill_on_clear_inferred": true,
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for rotating_pads: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -4162,6 +12165,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_vacuum_mop_2_ultra",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -4186,6 +12239,68 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "pad",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_vacuum_mop_p",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/",
+        "https://www.mi.com/mx/product/mi-robot-vacuum-mop-p/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.mi.com/mx/product/mi-robot-vacuum-mop-p/",
+          "claim": "Owner verified robot_clean=200, mop_system=pad. Source region: Mexico. Mexico exact MopP 2-in-1:300ml dust,200ml water. Cloth area350cm² is mop size, not consumption. No measured floor/time consumption coefficient adopted.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 200,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": 200,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "fast": 4,
+        "standard": 6,
+        "deep": 9,
+        "deep_plus": 11,
+        "default": 6
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 150,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 50,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "pad",
+      "estimate_basis": "class_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering class_prior for pad: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "class_prior",
     "estimate_label": "Typical for this mop system; calibrates automatically",
     "uncertainty_percent": 50,
@@ -4214,6 +12329,56 @@ const CALIBRATION_DATA = {
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
+    "profile_descriptor": {
+      "profile_key": "xiaomi_x10_plus",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "automatic_estimate",
+      "evidence": "labeled_estimate",
+      "sources": [
+        "https://valetudo.cloud/pages/general/supported-robots/"
+      ],
+      "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://valetudo.cloud/pages/general/supported-robots/",
+          "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
+          "last_verified": "2026-09-05"
+        }
+      ],
+      "tracked_reservoir": null,
+      "tracked_capacity_ml": null,
+      "reservoirs_ml": {
+        "dock_clean": null,
+        "dock_dirty": null,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {
+        "default": 7
+      },
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": 120,
+      "accounting_evidence": "labeled_estimate",
+      "uncertainty_percent": 65,
+      "rate_signal": "mop_mode",
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "unknown",
+      "estimate_basis": "generic_prior",
+      "intensity_factor": {
+        "low": 0.7,
+        "medium": 1.0,
+        "high": 1.3,
+        "extreme": 1.5,
+        "default": 1.0
+      },
+      "calibration_scope": "floor_only",
+      "estimate_sources": [
+        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
+      ]
+    },
     "estimate_basis": "generic_prior",
     "estimate_label": "Generic mopping estimate; calibrates automatically",
     "uncertainty_percent": 65,
@@ -5648,9 +13813,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _withBackendDescriptor(device) {
+    const explicit = this._explicitDeviceKeys(device);
+    const selected = device?.profile_locked && explicit.has('profile_locked')
+      ? CALIBRATION_DATA[this._resolveProfileKey(device)]?.profile_descriptor : null;
+    if (selected) {
+      device = { ...device };
+      for (const [key, value] of Object.entries(selected)) {
+        if (!explicit.has(key)) device[key] = value;
+      }
+    }
     const descriptor = this._backendDescriptor(device);
     if (!descriptor) return device || {};
-    const explicit = this._explicitDeviceKeys(device);
     const generated = this._generatedDeviceKeys(device);
     const signals = descriptor.signals && typeof descriptor.signals === 'object' ? descriptor.signals : {};
     const merged = { ...(device || {}), vacuum_entity: descriptor.entity_id || device?.vacuum_entity };
@@ -5689,7 +13862,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       merged.signals = effectiveSignals;
     }
     const locked = Boolean(merged.profile_locked) && explicit.has('profile_locked');
-    const profileFields = new Set(['profile_key','profile_source','profile_confidence','capability','evidence','tracked_reservoir','tracked_capacity_ml','reservoirs_ml','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','wash_volume_ml','accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','uncertainty_percent','low_water_anchor_remaining_percent']);
+    const profileFields = new Set(['profile_key','profile_source','profile_confidence','capability','evidence','tracked_reservoir','tracked_capacity_ml','reservoirs_ml','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','wash_volume_ml','accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','uncertainty_percent','low_water_anchor_remaining_percent',
+      'estimate_basis','estimate_sources','mop_system','intensity_factor','sources','provenance','water_anchor_reservoir','water_anchor_reservoir_inferred','refill_on_clear','refill_on_clear_inferred']);
     for (const [key, value] of Object.entries(descriptor)) {
       if (key === 'entity_id' || key === 'vacuum_entity' || key === 'signals' || key === 'name') continue;
       if (locked && profileFields.has(key)) continue;
