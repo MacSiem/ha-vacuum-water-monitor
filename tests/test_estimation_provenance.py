@@ -32,6 +32,16 @@ class EstimationEvidenceTests(unittest.TestCase):
             with self.subTest(factors=factors):
                 self.assertEqual(estimation.uncertainty_percent("class_prior", factors), 50)
 
+    def test_real_volume_sensor_does_not_inherit_prior_accuracy_claims(self):
+        result = estimate_water_state(
+            {"profile_key": "roborock_s8_maxv_ultra", "water_volume_sensor": "sensor.qa_ml"},
+            {"last_water_volume_ml": 1250, "last_accounting_source": "real_sensor"}, {},
+        )
+        self.assertEqual(result["remaining_ml"], 1250)
+        self.assertIsNone(result["estimate_basis"])
+        self.assertIsNone(result["uncertainty_percent"])
+        self.assertEqual(result.get("estimate_sources"), [])
+
     def test_three_tanks_report_repeatability_separately_from_prior(self):
         result = estimate_water_state(
             {"profile_key": "roborock_s8_maxv_ultra", "vacuum_entity": "vacuum.qa"},
