@@ -166,7 +166,8 @@ const data=card._calcDeviceData(merged);
 const authored=card._withBackendDescriptor(card._decorateLegacyProfile({...sparse,
  calibration_scope:'floor_only',usage_ml_per_m2:{default:12},
  config_provenance:{authored_fields:[...sparse.config_provenance.authored_fields,'calibration_scope','usage_ml_per_m2']}}));
-console.log(JSON.stringify({merged,data,authored}));
+const legacy=card._withBackendDescriptor(card._decorateLegacyProfile({...sparse,brand_profile:'roborock_s7_maxv'}));
+console.log(JSON.stringify({merged,data,authored,legacy}));
 """
         out = subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
         result = json.loads(out.stdout.strip().splitlines()[-1])
@@ -182,6 +183,10 @@ console.log(JSON.stringify({merged,data,authored}));
         self.assertEqual(result['authored']['calibration_scope'], 'floor_only')
         self.assertEqual(result['authored']['usage_ml_per_m2'], {'default': 12})
         self.assertEqual(result['merged']['area_sensor'], 'sensor.area')
+        legacy = __import__('runpy').run_path(str(PKG / 'profiles.py'))['resolve_profile']({
+            'brand_profile': 'roborock_s7_maxv', 'profile_locked': True})
+        for field in ('tracked_capacity_ml', 'usage_ml_per_m2', 'intensity_factor', 'calibration_scope'):
+            self.assertEqual(result['legacy'].get(field), legacy.get(field), field)
 
     def test_water_footer_matches_saved_rate_and_preserves_model_reference_without_rate(self):
         out = subprocess.run(["node", "-e", FOOTER_SCRIPT], cwd=ROOT, check=True, capture_output=True, text=True)
