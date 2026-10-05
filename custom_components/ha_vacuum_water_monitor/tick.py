@@ -1203,11 +1203,9 @@ def _tick_device_pass(
             elif cycle_long_enough:
                 assert predicted_used is not None
                 log_factors = estimation.seed_log_factors(state)
-                observed_factor = _clamp(
-                    calibration_factor * calibration_target / predicted_used,
-                    MIN_CALIBRATION_FACTOR,
-                    MAX_CALIBRATION_FACTOR,
-                )
+                # Preserve the observation for validation. Clipping here turns
+                # an impossible cycle into a plausible boundary training sample.
+                observed_factor = calibration_factor * calibration_target / predicted_used
                 pending = _float_or_none(state.get("calibration_pending_log_factor"))
                 window, learned_factor, accepted, rejection, pending = estimation.update_calibration(
                     log_factors, observed_factor,
