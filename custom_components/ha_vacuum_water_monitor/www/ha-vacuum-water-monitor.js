@@ -5738,6 +5738,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const totalMl = (Number.isFinite(optionCapacity) && optionCapacity > 0 ? optionCapacity : 0) || serverCapacity || configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
+    const measuredVolume = Boolean(device.water_volume_sensor || tankState.last_accounting_source === 'real_sensor');
+    const calibrationWindow = _vwmStoredWindow(tankState) || [];
     const legacyResetTs = Number(tankState.last_reset_ts);
     let initialized = Boolean(
       tankState.initialized
@@ -5871,11 +5873,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       consumptionResolution: tankState.consumption_resolution || null,
       reservoirLevels: tankState.reservoir_levels || null,
       accountingV2: tankState.accounting_v2 || null,
-      estimateBasis: userRate ? null : (device.estimate_basis || null),
+      estimateBasis: userRate || measuredVolume ? null : (device.estimate_basis || null),
+      estimateSources: userRate || measuredVolume ? [] : (device.estimate_sources || []),
+      uncertaintyKind: !userRate && !measuredVolume && device.estimate_basis
+        ? (calibrationWindow.length >= 3 ? 'calibration_spread' : 'prior_band') : null,
       mopSystem: device.mop_system || null,
       calibrationLogFactors: _vwmStoredWindow(tankState) || [],
       calibrationHistory: Array.isArray(tankState.calibration_history) ? tankState.calibration_history : [],
-      uncertaintyPercent: userRate ? null : device.estimate_basis
+      uncertaintyPercent: userRate || measuredVolume ? null : device.estimate_basis
         ? _vwmUncertainty(device.estimate_basis, _vwmStoredWindow(tankState)
           || (Number(tankState.calibration_samples) > 0 && Number(tankState.calibration_factor) > 0 ? [Math.log(Number(tankState.calibration_factor))] : []))
         : (Number.isFinite(Number(device.uncertainty_percent)) ? Number(device.uncertainty_percent) : null),
@@ -6179,7 +6184,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ? (this._lang === 'pl' ? ` Początkowa niepewność: około ${Number(data.uncertaintyPercent)}%.` : ` Initial uncertainty: approximately ${Number(data.uncertaintyPercent)}%.`)
       : '';
     const samples = Math.max(0, Number(data.calibrationSamples) || 0);
-    const accuracy = hasUncertainty ? (this._lang === 'pl' ? ` Orientacyjna niepewność: około ±${Number(data.uncertaintyPercent)}%.` : ` Indicative uncertainty: about \u00B1${Number(data.uncertaintyPercent)}%.`) : '';
+    const accuracy = hasUncertainty ? (data.uncertaintyKind === 'calibration_spread'
+      ? (this._lang === 'pl' ? ` Rozrzut między cyklami zbiornika: około ±${Number(data.uncertaintyPercent)}%. Dokładność fizyczna nie jest potwierdzona.` : ` Spread between tank cycles: about \u00B1${Number(data.uncertaintyPercent)}%. Physical accuracy is not verified.`)
+      : (this._lang === 'pl' ? ` Wstępne pasmo niepewności: około ±${Number(data.uncertaintyPercent)}%; dokładność fizyczna nie jest potwierdzona.` : ` Estimated prior band: about \u00B1${Number(data.uncertaintyPercent)}%; physical accuracy is not verified.`)) : '';
     if (samples > 0) {
       const factor = Number.isFinite(Number(data.calibrationFactor)) ? Number(data.calibrationFactor) : 1;
       return box('Calibrated for this robot.', (this._lang === 'pl' ? `Kalibracja na ${samples} cyklach zbiornika (współczynnik ×${Number(factor.toFixed(2))}).${accuracy} Kolejne poprawne cykle pełnego zbiornika ulepszają szacunek automatycznie.` : `Calibrated on ${samples} empty ${samples === 1 ? 'tank' : 'tanks'} (correction \u00D7${Number(factor.toFixed(2))}).${accuracy} Complete refill-to-empty cycles refine it automatically.`), '#22c55e');

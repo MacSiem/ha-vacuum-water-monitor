@@ -110,7 +110,10 @@ def estimate_for_record(record: dict[str, Any]) -> dict[str, Any] | None:
         "intensity_factor": dict(prior["intensity_factor"]),
         "wash_volume_ml": prior["wash_volume_ml"],
         "uncertainty_percent": BASIS_UNCERTAINTY_PERCENT[basis],
-        "estimate_sources": [],
+        "estimate_sources": [
+            f"Engineering {basis} for {system}: based on owner-device accounting "
+            "and structural assumptions; not a measurement for this model."
+        ],
     }
 
 
