@@ -37,6 +37,14 @@ class MatterMissingRateTests(unittest.TestCase):
         self.assertFalse(checks["missing_usage_rate"]["repair"])
         self.assertFalse(any(c["fix"] == "confirm_full" for c in checks.values()))
         self.assertNotIn("no_empty_signal", checks)
+        # Finishing the run must not return to the same ineffective Repair.
+        docked, _ = tick.tick_device(_Hass({
+            "vacuum.robot": _S("docked"), "sensor.status": _S("docked"),
+            "select.mode": _S("Vacuum and Mop;Deep Clean"),
+        }), eff, state, now_ts=1120000)
+        after = health.robot_health(device, eff, docked, sc.estimate_water_state(device, docked, {}))
+        self.assertIn("missing_usage_rate", [c["id"] for c in after["checks"]])
+        self.assertFalse(any(c["fix"] == "confirm_full" for c in after["checks"]))
 
     def test_missing_rate_is_distinct_from_an_incomplete_balance(self):
         for reason in ("missing_time_rate", "missing_area_rate", "missing_wash_rate", "missing_intensity_factor"):
