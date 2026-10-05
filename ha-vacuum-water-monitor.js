@@ -476,7 +476,7 @@ const VWM_WATER_TEXT_PL = {
 const VWM_SETUP_TEXT = {
   en: {
     setupTitle: (name) => `Set up water tracking: ${name}`,
-    allGood: 'Signals are ready',
+    allGood: 'Setup checks passed',
     notTracked: 'Water tracking is not configured',
     remaining: 'Remaining', used: 'Used', lastRefill: 'Last refill', diagnostics: 'Diagnostics',
     model: 'Model', tank: 'Tank', accuracy: 'Estimated uncertainty', unknown: 'unknown',
@@ -517,7 +517,7 @@ const VWM_SETUP_TEXT = {
   },
   pl: {
     setupTitle: (name) => `Konfiguracja liczenia wody: ${name}`,
-    allGood: 'Sygnały są gotowe',
+    allGood: 'Sprawdzenia konfiguracji zakończone',
     notTracked: 'Śledzenie wody nie jest skonfigurowane',
     remaining: 'Pozostało', used: 'Zużyto', lastRefill: 'Ostatnie dolanie', diagnostics: 'Diagnostyka',
     model: 'Model', tank: 'Zbiornik', accuracy: 'Szacowana niepewność', unknown: 'nieznany',
