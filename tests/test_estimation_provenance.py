@@ -79,7 +79,7 @@ class SensorAttributeEvidenceTests(unittest.TestCase):
         # Execute the actual pure attributes helper without importing HA's entity runtime.
         import ast
         from pathlib import Path
-        from test_sensor_calculations import calculations
+        from test_sensor_calculations import sensor_calculations as calculations
         path=Path(__file__).parents[1]/"custom_components/ha_vacuum_water_monitor/sensor.py"
         tree=ast.parse(path.read_text())
         function=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=="_water_state_attributes")
