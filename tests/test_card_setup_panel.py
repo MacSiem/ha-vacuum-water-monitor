@@ -87,6 +87,18 @@ const reports = JSON.parse(process.argv[1]);
   card._health['vacuum.robot'] = reports.notTracked;
   card._lang = 'pl';
   out.unknownVendorPl = card._buildWaterTab(s7, card._calcDeviceData(s7));
+  for (const lang of ['en', 'pl']) {
+    card._lang = lang;
+    out['noCapacity' + lang] = card._buildWaterTab(s7, card._calcDeviceData(s7));
+    for (const initialized of [false, true]) {
+      card._serverState = { settings: { device_options: { 'vacuum.robot': { capacity_ml: 1987 } } },
+        tank_states: { 'vacuum.robot': { initialized, used_ml: 0 } } };
+      const saved = card._calcDeviceData(s7);
+      out['savedCapacity' + lang + initialized] = card._buildWaterTab(s7, saved);
+      out['savedPercent' + lang + initialized] = saved.percentRemaining;
+    }
+    card._serverState = { settings: {}, tank_states: {} };
+  }
   out.throttled = card._refreshHealth(false) === null;
   out.trailingScheduled = Boolean(card._healthTimer);
   clearTimeout(card._healthTimer);
@@ -226,6 +238,22 @@ class CardSetupPanelTests(unittest.TestCase):
         self.assertIn("nieznany", html)
         for text in ["Unknown model", "No estimate for this model yet", "This device doesn't track water levels", "<b>unknown</b>"]:
             self.assertNotIn(text, html)
+
+    def test_saved_unknown_model_capacity_is_not_requested_again(self):
+        for lang, prompt, saved, estimate in [
+            ('en', 'set the tank capacity', 'Tank capacity saved.', 'No built-in consumption estimate for this model.'),
+            ('pl', 'ustaw pojemność', 'Pojemność zbiornika zapisana.', 'Brak wbudowanego oszacowania zużycia dla tego modelu.'),
+        ]:
+            self.assertIn(prompt, self.out['noCapacity' + lang].lower())
+            for initialized in (False, True):
+                with self.subTest(language=lang, initialized=initialized):
+                    key = lang + str(initialized).lower()
+                    html = self.out['savedCapacity' + key]
+                    self.assertIn('1,987 ml', html)
+                    self.assertNotIn(prompt, html.lower())
+                    self.assertIn(saved, html)
+                    self.assertIn(estimate, html)
+                    self.assertEqual(self.out['savedPercent' + key], 100 if initialized else None)
 
     def test_tank_size_option_wins_in_card_numbers(self):
         self.assertEqual(self.out["totalMl"], 3000)
