@@ -695,6 +695,36 @@ async function smokeFinalFixContracts(target) {
   } finally { window.close(); }
 }
 
+async function smokeHistoryAccessibleNames(target) {
+  for (const language of ['en', 'pl']) {
+    const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+      runScripts: 'dangerously', pretendToBeVisual: true, url: 'http://localhost/'
+    });
+    try {
+      const { window } = dom;
+      stub(window);
+      window.eval(fs.readFileSync(target.file, 'utf8'));
+      const el = window.document.createElement(target.tag);
+      el.setConfig({ type: 'custom:' + target.tag, devices: [{ vacuum_entity: 'vacuum.qa', name: 'QA' }] });
+      el.hass = mockHass({ language, locale: { language } });
+      window.document.body.appendChild(el);
+      el._activeTab = 'history';
+      el._lastHtml = '';
+      el._render();
+      const name = input => input.getAttribute('aria-label') || [...input.labels].map(label => label.textContent).join(' ');
+      const expected = language === 'pl' ? ['Powierzchnia m²', 'Woda ml', 'Czas (np. 45m)'] : ['Area m²', 'Water ml', 'Duration (e.g. 45m)'];
+      const controls = [...el.shadowRoot.querySelectorAll('.add-maint-form input')];
+      for (const label of expected) {
+        if (!controls.some(input => name(input) === label)) throw new Error(`${language}: history field has no accessible name: ${label}`);
+      }
+      const dismiss = el.shadowRoot.querySelector('#tip-dismiss');
+      if (dismiss.getAttribute('aria-label') !== (language === 'pl' ? 'Ukryj podpowiedź' : 'Dismiss')) {
+        throw new Error(`${language}: help dismissal is not localized`);
+      }
+    } finally { dom.window.close(); }
+  }
+}
+
 (async () => {
   const files = listCardFiles();
   const targets = [];
@@ -779,6 +809,10 @@ async function smokeFinalFixContracts(target) {
     } catch (e) {
       fail.push(`${t.tag} final-fix-contracts (${path.basename(t.file)}) -> ${(e && e.message) ? e.message : String(e)}`);
     }
+  }
+  for (const t of targets.filter(t => t.tag === 'ha-vacuum-water-monitor')) {
+    try { await smokeHistoryAccessibleNames(t); pass++; }
+    catch (e) { fail.push(`${t.tag} history-accessible-names (${path.basename(t.file)}) -> ${e.message}`); }
   }
   console.log(`smoke: ${targets.length} element(s) | PASS ${pass} | FAIL ${fail.length}`);
   fail.forEach(f => console.log('  FAIL ' + f));
