@@ -13816,14 +13816,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const explicit = this._explicitDeviceKeys(device);
     const selected = device?.profile_locked && explicit.has('profile_locked')
       ? CALIBRATION_DATA[this._resolveProfileKey(device)]?.profile_descriptor : null;
-    if (selected) {
-      device = { ...device };
+    const applySelectedProfile = target => {
       for (const [key, value] of Object.entries(selected)) {
-        if (!explicit.has(key)) device[key] = value;
+        if (!explicit.has(key)) target[key] = value;
       }
-    }
+      return target;
+    };
     const descriptor = this._backendDescriptor(device);
-    if (!descriptor) return device || {};
+    if (!descriptor) return selected ? applySelectedProfile({ ...device }) : device || {};
     const generated = this._generatedDeviceKeys(device);
     const signals = descriptor.signals && typeof descriptor.signals === 'object' ? descriptor.signals : {};
     const merged = { ...(device || {}), vacuum_entity: descriptor.entity_id || device?.vacuum_entity };
@@ -13841,6 +13841,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'mop_drying_sensor','last_clean_start','last_clean_end','charge_sensor','uncertainty_percent',
     ]);
     for (const key of generated) if (bindingFields.has(key)) delete merged[key];
+    if (selected) applySelectedProfile(merged);
     // Match backend merge semantics: an authored `signals: {}` is an opt-out,
     // and every authored YAML field wins over discovery. Unmarked legacy card
     // profile defaults are not authored configuration and can be superseded.
