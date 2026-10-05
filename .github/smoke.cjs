@@ -221,6 +221,22 @@ async function smokeDraftAndCalibration(target) {
     }
     el._config.brand_profile = undefined;
 
+    // A Store update changes the water output while the user is reading diagnostics.
+    el._activeTab = 'water';
+    el._render();
+    const diagnostics = el.shadowRoot.querySelector('details.diagnostics');
+    if (!diagnostics) throw new Error('water diagnostics disclosure is missing');
+    diagnostics.open = true;
+    eventHandler({ data: { tank_states: { 'vacuum.a170': { initialized: true, used_ml: 10 } } } });
+    if (!el.shadowRoot.querySelector('details.diagnostics')?.open) {
+      throw new Error('Store refresh collapsed open diagnostics');
+    }
+    el.shadowRoot.querySelector('details.diagnostics').open = false;
+    eventHandler({ data: { tank_states: { 'vacuum.a170': { initialized: true, used_ml: 20 } } } });
+    if (el.shadowRoot.querySelector('details.diagnostics')?.open) {
+      throw new Error('Store refresh reopened closed diagnostics');
+    }
+
     el._activeTab = 'maintenance';
     el._lastHtml = '';
     el._render();
@@ -716,6 +732,36 @@ async function smokeHistoryAccessibleNames(target) {
       const controls = [...el.shadowRoot.querySelectorAll('.add-maint-form input')];
       for (const label of expected) {
         if (!controls.some(input => name(input) === label)) throw new Error(`${language}: history field has no accessible name: ${label}`);
+      }
+      el._serverState = {
+        settings: { sessions: { 'vacuum.qa': [
+          { ts: Date.now(), water: 0.4, area: 1 },
+          { ts: Date.now() - 1, water: 0.8, area: 2, evidence: 'labeled_estimate' }
+        ] } }, tank_states: {}
+      };
+      el._render();
+      const recorded = el.shadowRoot.querySelector(`[title="${language === 'pl' ? 'Zapisane' : 'Recorded'}"]`);
+      const estimated = el.shadowRoot.querySelector(`[title="${language === 'pl' ? 'Oznaczony szacunek' : 'Labelled estimate'}"]`);
+      if (!recorded?.textContent.includes('0.4 ml') || !estimated?.textContent.includes('~0.8 ml')) {
+        throw new Error(`${language}: history provenance or fractional volume lost`);
+      }
+      const holder = window.document.createElement('div');
+      holder.innerHTML = el._buildDiagnostics({
+        reservoirLevels: { dock_clean: { volume_ml: null, reason: 'volume_sensor_unbound' } },
+        accountingV2: { status: 'unknown', reason: 'source_contract_unbound' },
+        totalMl: 4000, trackedReservoir: 'unknown'
+      });
+      const values = [...holder.querySelectorAll('.diagnostics-value')].map(row => row.textContent);
+      const prefix = language === 'pl' ? 'Nieznane' : 'Unknown';
+      if (!values.includes(`${prefix}: volume_sensor_unbound`) || !values.includes(`${prefix}: source_contract_unbound`)) {
+        throw new Error(`${language}: unknown diagnostics not localized or reason code altered`);
+      }
+      if (!values.includes(`${language === 'pl' ? 'nieznany' : 'unknown'} (4,000 ml)`)) {
+        throw new Error(`${language}: unknown tracked reservoir not localized`);
+      }
+      holder.innerHTML = el._buildDiagnostics({ accountingV2: { status: 'known' } });
+      if (!holder.textContent.includes(language === 'pl' ? 'Zmierzony strumień zdarzeń' : 'Measured event stream')) {
+        throw new Error(`${language}: measured event provenance not localized`);
       }
       const dismiss = el.shadowRoot.querySelector('#tip-dismiss');
       if (dismiss.getAttribute('aria-label') !== (language === 'pl' ? 'Ukryj podpowiedź' : 'Dismiss')) {
