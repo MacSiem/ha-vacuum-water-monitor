@@ -465,13 +465,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 270,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 270,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -486,9 +486,16 @@
           "url": "https://valetudo.cloud/pages/general/supported-robots/",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.dreametech.com/blogs/blog/dreame-l10-pro-robot-vacuum-new-features",
+          "claim": "Owner verified robot_clean=270. US official blog explicitly270ml electric water tank; not a DreameF9 source. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -496,7 +503,7 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified"
     },
     "dreame_l10_ultra": {
       "identifiers": [
@@ -1646,14 +1653,14 @@
       ],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
-        "dock_dirty": null,
+        "dock_clean": 4000,
+        "dock_dirty": 3500,
         "robot_clean": 55,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": "robot_clean",
-      "tracked_capacity_ml": 55,
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
       "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
@@ -1684,6 +1691,13 @@
           "claim": "Owner verified robot_clean=55. Source region: Japan. JP primary explicitly names55ml; station quantities not reproduced on this page. No measured floor/time consumption coefficient adopted.",
           "last_verified": "2026-10-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/jp/shop/deebot-robotic-vacuum-cleaner/deebot-t30-pro-omni-white",
+          "claim": "Owner verified dock_clean=4000, dock_dirty=3500, robot_clean=55. Japan; specifications229-230 now successfully retrieved, previous robot-only extraction superseded. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
       "last_verified": "2026-10-05",
@@ -1693,8 +1707,6 @@
         "Firmware-specific HA feature presence unverified",
         "All consumption rates and wash volumes unmeasured",
         "Reservoir null means unknown, not zero or absent",
-        "Unknown dock_clean capacity",
-        "Unknown dock_dirty capacity",
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
@@ -2405,21 +2417,31 @@
           "region": "US; retail SKU unknown",
           "sku": null,
           "equivalence_verified": false
+        },
+        {
+          "region": "US/EU manual",
+          "sku": "T2351",
+          "equivalence_verified": false
+        },
+        {
+          "region": "US/EU manual",
+          "sku": "T2351",
+          "equivalence_verified": false
         }
       ],
       "observed_ha_identifiers": [],
       "integration_adapters": [],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
-        "dock_dirty": null,
-        "robot_clean": null,
+        "dock_clean": 3000,
+        "dock_dirty": 2700,
+        "robot_clean": 80,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 3000,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -2434,9 +2456,23 @@
           "url": "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
           "claim": "Named model in reviewed source; unknown values are not compatibility or capacity claims.",
           "last_verified": "2026-09-05"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://service.eufy.com/article-description/X10-Pro-Omni-T2351-EN-Manual",
+          "claim": "Owner verified dock_clean=3000, dock_dirty=2700. US/EU EN manual T2351 specifications416-417. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://service.eufy.com/article-description/Does-the-X10-Pro-Omni-have-an-onboard-water-tank?urlName=Does-the-X10-Pro-Omni-have-an-onboard-water-tank",
+          "claim": "Owner verified robot_clean=80. Official FAQ separates80ml robot buffer and3L dock; do not derive consumption from1500-2000sqft coverage. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Exact HA model identifier and firmware signal presence unverified",
@@ -2444,7 +2480,7 @@
         "Consumption and wash rates unmeasured",
         "Null reservoir capacities mean unknown, not absent"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified"
     },
     "eureka_e20_evo_plus": {
       "identifiers": [
@@ -2943,15 +2979,15 @@
       ],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
-        "dock_dirty": null,
+        "dock_clean": 3000,
+        "dock_dirty": 2500,
         "robot_clean": null,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 3000,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -2981,22 +3017,28 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/163",
+          "claim": "Owner verified dock_clean=3000, dock_dirty=2500. Official station reservoirs. Robot170vs210 contradiction unresolved; robot remains unknown. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
         "Firmware-specific HA feature presence unverified",
         "All consumption rates and wash volumes unmeasured",
         "Reservoir null means unknown, not zero or absent",
-        "Unknown dock_clean capacity",
-        "Unknown dock_dirty capacity",
         "Unknown robot_clean capacity",
         "Unknown robot_dirty capacity",
-        "Unknown detergent capacity"
+        "Unknown detergent capacity",
+        "Robot clean-water capacity conflicts between official170ml and210ml claims; no robot value adopted"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified"
     },
     "irobot_roomba_combo_i5": {
       "identifiers": [
@@ -3020,13 +3062,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 210,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 210,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -3049,9 +3091,16 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/163",
+          "claim": "Owner verified robot_clean=210. Official liquid capacity explicitly i5/i5+. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
@@ -3060,11 +3109,10 @@
         "Reservoir null means unknown, not zero or absent",
         "Unknown dock_clean capacity",
         "Unknown dock_dirty capacity",
-        "Unknown robot_clean capacity",
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified"
     },
     "irobot_roomba_combo_i5_plus": {
       "identifiers": [
@@ -3235,13 +3283,13 @@
       "reservoirs_ml": {
         "dock_clean": null,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 210,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "robot_clean",
+      "tracked_capacity_ml": 210,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -3264,9 +3312,16 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/163",
+          "claim": "Owner verified robot_clean=210. Official liquid capacity explicitly j7+; no transfer to j7. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
@@ -3275,11 +3330,10 @@
         "Reservoir null means unknown, not zero or absent",
         "Unknown dock_clean capacity",
         "Unknown dock_dirty capacity",
-        "Unknown robot_clean capacity",
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified"
     },
     "irobot_roomba_combo_j9_plus": {
       "identifiers": [
@@ -3301,15 +3355,15 @@
       ],
       "available_signals": [],
       "reservoirs_ml": {
-        "dock_clean": null,
+        "dock_clean": 3050,
         "dock_dirty": null,
-        "robot_clean": null,
+        "robot_clean": 170,
         "robot_dirty": null,
         "detergent": null
       },
-      "tracked_reservoir": null,
-      "tracked_capacity_ml": null,
-      "capability": "manual_only",
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 3050,
+      "capability": "calibration_required",
       "confidence": "low",
       "accounting": {
         "usage_ml_per_m2": {},
@@ -3332,22 +3386,27 @@
           "claim": "Model/reference source; reservoir values only adopted where separately confirmed in root review.",
           "last_verified": "2026-09-05",
           "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://homesupport.irobot.com/articles/en_US/Knowledge/163",
+          "claim": "Owner verified robot_clean=170, dock_clean=3050. Official liquid capacity explicitly j9+ robot170/dock3050; dry bins not used. No floor/time/wash coefficient inferred.",
+          "last_verified": "2026-10-05",
+          "retrieval_status": "read"
         }
       ],
-      "last_verified": "2026-09-05",
+      "last_verified": "2026-10-05",
       "sample_count": 0,
       "unsupported_unknowns": [
         "Regional hardware equivalence and exact retail SKU unknown",
         "Firmware-specific HA feature presence unverified",
         "All consumption rates and wash volumes unmeasured",
         "Reservoir null means unknown, not zero or absent",
-        "Unknown dock_clean capacity",
         "Unknown dock_dirty capacity",
-        "Unknown robot_clean capacity",
         "Unknown robot_dirty capacity",
         "Unknown detergent capacity"
       ],
-      "verification_status": "researched"
+      "verification_status": "capacity_verified"
     },
     "mova_p10_pro_ultra": {
       "identifiers": [

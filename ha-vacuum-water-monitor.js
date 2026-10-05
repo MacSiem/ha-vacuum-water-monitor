@@ -874,12 +874,12 @@ const CALIBRATION_DATA = {
   },
   "dreame_l10_pro": {
     "label": "Dreame L10 Pro",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 270,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 270,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 270,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
@@ -891,9 +891,10 @@ const CALIBRATION_DATA = {
     },
     "mop_wash_ml": 120,
     "source_urls": [
-      "https://valetudo.cloud/pages/general/supported-robots/"
+      "https://valetudo.cloud/pages/general/supported-robots/",
+      "https://www.dreametech.com/blogs/blog/dreame-l10-pro-robot-vacuum-new-features"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "dreame_l10_ultra": {
@@ -1330,11 +1331,11 @@ const CALIBRATION_DATA = {
   },
   "ecovacs_deebot_t30_pro_omni": {
     "label": "Ecovacs ECOVACS DEEBOT T30 PRO OMNI",
-    "tank_ml": 55,
-    "tracked_reservoir": "robot_clean",
+    "tank_ml": 4000,
+    "tracked_reservoir": "dock_clean",
     "robot_tank_ml": 55,
-    "dock_clean_tank_ml": null,
-    "dock_dirty_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": 3500,
     "robot_clean_tank_ml": 55,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
@@ -1349,6 +1350,7 @@ const CALIBRATION_DATA = {
     "source_urls": [
       "https://site-static.ecovacs.com/upload/global/file/product_manual_edit/2024/05/20/094053_6297-DEEBOTT30PROOMNI-UserManual.pdf",
       "https://www.home-assistant.io/integrations/ecovacs",
+      "https://www.ecovacs.com/jp/shop/deebot-robotic-vacuum-cleaner/deebot-t30-pro-omni-white",
       "https://www.ecovacs.com/jp/shop/deebot-robotic-vacuum-cleaner/deebot-t30-pro-omni-white"
     ],
     "data_quality": "capacity_verified",
@@ -1640,12 +1642,12 @@ const CALIBRATION_DATA = {
   },
   "eufy_x10_pro_omni": {
     "label": "eufy X10 Pro Omni",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
-    "dock_clean_tank_ml": null,
-    "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "tank_ml": 3000,
+    "tracked_reservoir": "dock_clean",
+    "robot_tank_ml": 80,
+    "dock_clean_tank_ml": 3000,
+    "dock_dirty_tank_ml": 2700,
+    "robot_clean_tank_ml": 80,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
@@ -1657,9 +1659,11 @@ const CALIBRATION_DATA = {
     },
     "mop_wash_ml": 120,
     "source_urls": [
-      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide"
+      "https://us.eufy.com/blogs/robovac/eufy-robot-vacuum-buying-guide",
+      "https://service.eufy.com/article-description/X10-Pro-Omni-T2351-EN-Manual",
+      "https://service.eufy.com/article-description/Does-the-X10-Pro-Omni-have-an-onboard-water-tank?urlName=Does-the-X10-Pro-Omni-have-an-onboard-water-tank"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "eureka_e20_evo_plus": {
@@ -1859,11 +1863,11 @@ const CALIBRATION_DATA = {
   },
   "irobot_roomba_combo_10_max_plus_autowash_dock": {
     "label": "iRobot Roomba Combo 10 Max + AutoWash Dock",
-    "tank_ml": null,
-    "tracked_reservoir": null,
+    "tank_ml": 3000,
+    "tracked_reservoir": "dock_clean",
     "robot_tank_ml": null,
-    "dock_clean_tank_ml": null,
-    "dock_dirty_tank_ml": null,
+    "dock_clean_tank_ml": 3000,
+    "dock_dirty_tank_ml": 2500,
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
@@ -1878,19 +1882,20 @@ const CALIBRATION_DATA = {
     "source_urls": [
       "https://homesupport.irobot.com/articles/en_US/Knowledge/10009",
       "https://answers.irobot.com/nl-NL/knowledge/163",
-      "https://www.home-assistant.io/integrations/roomba"
+      "https://www.home-assistant.io/integrations/roomba",
+      "https://homesupport.irobot.com/articles/en_US/Knowledge/163"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "irobot_roomba_combo_i5": {
     "label": "iRobot Roomba Combo i5",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 210,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 210,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 210,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
@@ -1903,9 +1908,10 @@ const CALIBRATION_DATA = {
     "mop_wash_ml": 120,
     "source_urls": [
       "https://answers.irobot.com/nl-NL/knowledge/163",
-      "https://www.home-assistant.io/integrations/roomba"
+      "https://www.home-assistant.io/integrations/roomba",
+      "https://homesupport.irobot.com/articles/en_US/Knowledge/163"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "irobot_roomba_combo_i5_plus": {
@@ -1961,12 +1967,12 @@ const CALIBRATION_DATA = {
   },
   "irobot_roomba_combo_j7_plus": {
     "label": "iRobot Roomba Combo j7+",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
+    "tank_ml": 210,
+    "tracked_reservoir": "robot_clean",
+    "robot_tank_ml": 210,
     "dock_clean_tank_ml": null,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 210,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
@@ -1979,19 +1985,20 @@ const CALIBRATION_DATA = {
     "mop_wash_ml": 120,
     "source_urls": [
       "https://answers.irobot.com/nl-NL/knowledge/163",
-      "https://www.home-assistant.io/integrations/roomba"
+      "https://www.home-assistant.io/integrations/roomba",
+      "https://homesupport.irobot.com/articles/en_US/Knowledge/163"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "irobot_roomba_combo_j9_plus": {
     "label": "iRobot Roomba Combo j9+",
-    "tank_ml": null,
-    "tracked_reservoir": null,
-    "robot_tank_ml": null,
-    "dock_clean_tank_ml": null,
+    "tank_ml": 3050,
+    "tracked_reservoir": "dock_clean",
+    "robot_tank_ml": 170,
+    "dock_clean_tank_ml": 3050,
     "dock_dirty_tank_ml": null,
-    "robot_clean_tank_ml": null,
+    "robot_clean_tank_ml": 170,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
     "mop_system": "unknown",
@@ -2004,9 +2011,10 @@ const CALIBRATION_DATA = {
     "mop_wash_ml": 120,
     "source_urls": [
       "https://answers.irobot.com/nl-NL/knowledge/163",
-      "https://www.home-assistant.io/integrations/roomba"
+      "https://www.home-assistant.io/integrations/roomba",
+      "https://homesupport.irobot.com/articles/en_US/Knowledge/163"
     ],
-    "data_quality": "researched",
+    "data_quality": "capacity_verified",
     "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "mova_p10_pro_ultra": {
