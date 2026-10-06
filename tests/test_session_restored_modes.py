@@ -1,5 +1,7 @@
 """A dock restoring its defaults must not erase the completed mop run."""
 import unittest
+from unittest.mock import patch
+from test_profile_selection import context, profile
 from test_beta_runtime_path import BASE, descriptor, effective, hass, tick, sc, _S
 
 
@@ -65,3 +67,32 @@ class RestoredModeSessionTests(unittest.TestCase):
             'water_anchor_kind':'shortage','used_ml':3800},{})
         self.assertIsNone(result['remaining_percent'])
         self.assertEqual(result['state_reason'],'accounting_incomplete')
+
+    def test_numeric_output_range_keeps_its_resolved_factor_at_dock(self):
+        device=effective({},descriptor())
+        device['mop_intensity_entity']='number.output'
+        state={**BASE,'last_area':0,'last_status':'charging'}
+        for i,(status,vac,area) in enumerate([('cleaning','cleaning',0),('cleaning','cleaning',1),('returning_home','returning',2)]):
+            h=hass(status=status,vac=vac,area=area,extra={
+                'select.robot_mop_mode':_S('deep'),
+                'number.output':_S('10',{'min':1,'max':10,'step':1})})
+            state=tick.tick_device(h,device,state,now_ts=10_060_000+i*60_000)[0]
+        self.assertAlmostEqual(state['used_ml'],2*9*1.3,places=2)
+        self.assertFalse(state.get('accounting_incomplete'))
+
+    def test_verified_floor_profile_keeps_last_dose_after_default_restore(self):
+        ctx=context()
+        device={'vacuum_entity':'vacuum.robot','area_sensor':'sensor.robot_area',
+            'mop_mode_entity':'select.robot_mop_mode','status_sensor':'sensor.robot_status',
+            'consumption_context':ctx,'tracked_reservoir':'dock_clean',
+            'calibration_scope':'floor_only','rate_signal':'mop_mode'}
+        state={**BASE,'last_area':0,'last_status':'charging'}
+        with patch.object(tick.consumption_profiles,'CONSUMPTION_SNAPSHOT',
+                {'schema_version':2,'profiles':[profile()],'dataset_version':'test'}):
+            for i,(status,vac,area,mode) in enumerate([('cleaning','cleaning',0,'confirmed'),
+                    ('cleaning','cleaning',1,'confirmed'),('returning_home','returning',2,'standard')]):
+                h=hass(status=status,vac=vac,area=area,extra={'select.robot_mop_mode':_S(mode)})
+                state=tick.tick_device(h,device,state,now_ts=10_060_000+i*60_000)[0]
+        self.assertEqual(state['used_ml'],20)
+        self.assertFalse(state.get('accounting_incomplete'))
+        self.assertEqual(state['last_accounting_evidence'],'verified_model')

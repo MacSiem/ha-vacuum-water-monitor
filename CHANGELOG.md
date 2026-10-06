@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.9.1 (unreleased)
+
+- Keep the final floor area and recorded mop session when a dock restores its next-task defaults. Reuse the last resolved floor dose, including numeric water-output ranges and verified floor profiles. Mid-run exposure across unknown setting changes remains incomplete and cannot train calibration.
+- Show a confirmed empty reservoir even when earlier consumption is incomplete. Keep historical used water unknown and retain authoritative volume and transfer sensors.
+
 ## 5.9.0 (2026-10-06)
 
 - Keep a deliberately selected model ahead of conflicting registry manufacturer metadata in both the integration and card. Keep its estimate sources, mop class and reservoir anchors together while retaining vendor-scoped automatic matching and authored settings.
