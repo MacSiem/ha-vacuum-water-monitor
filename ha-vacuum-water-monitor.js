@@ -18,7 +18,7 @@ const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/
 const VWM_BASIS_UNCERTAINTY = { fleet_posterior: 15, owner_device: 20, manufacturer_declared: 20, review_measured: 25, family_transfer: 35, class_prior: 50, generic_prior: 65 };
 const VWM_BASIS_LABEL = {
   fleet_posterior: 'Learned from calibrated robots of this model',
-  owner_device: 'Based on an owner\u2019s measured accounting for this model',
+  owner_device: 'Based on owner-device estimates checked against empty-tank signals',
   manufacturer_declared: 'Based on manufacturer-declared quantities',
   review_measured: 'Based on an independent review measurement',
   family_transfer: 'Based on a closely related model',
@@ -91,13 +91,13 @@ const VWM_WATER_TEXT_PL = {
   "medium": "średni",
   "high": "wysoki",
   "max/deep": "maksymalny/dokładny",
-  "Based on an owner’s measured accounting for this model": "Na podstawie pomiarów bilansu właściciela tego modelu",
+  "Based on owner-device estimates checked against empty-tank signals": "Na podstawie szacunków na urządzeniu właściciela porównanych z sygnałami pustego zbiornika",
   "calibrates automatically.": "kalibruje się automatycznie.",
   "tracked clean-water capacity: dock tank for auto-refill models, otherwise the robot's built-in tank. Published robot and dirty-water capacities are shown separately in the model facts.": "Śledzona pojemność czystej wody: zbiornik stacji w modelach automatycznie dolewających wodę, w pozostałych zbiornik robota. Opublikowane pojemności zbiornika robota i brudnej wody podano osobno w danych modelu.",
   "estimated area the robot cleans on one full tank in given mode.": "Szacowana powierzchnia sprzątania z jednego pełnego zbiornika w danym trybie.",
   "reported area on one battery charge (regardless of water).": "Podana powierzchnia sprzątania na jednym ładowaniu (niezależnie od wody).",
   "Learned from calibrated devices of this model. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Wyuczone na skalibrowanych urządzeniach tego modelu. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
-  "Measured accounting on an owner's device of this model. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Pomiar rozliczania na urządzeniu właściciela tego modelu. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
+  "Owner-device estimate; physical volume not independently measured. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Szacunek na urządzeniu właściciela; objętość fizyczna nie została niezależnie zmierzona. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
   "Manufacturer-declared quantity. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Ilość deklarowana przez producenta. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
   "Independent review measurement. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Niezależny pomiar w recenzji. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
   "Transferred from a closely related model. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.": "Szacunek na podstawie podobnego modelu. Nieznane pojemności pozostają nieznane. Skala zużycia uczy się na kompletnych cyklach od dolania do pełna do rozpoznanego opróżnienia.",
@@ -9154,7 +9154,7 @@ const CALIBRATION_DATA = {
       ]
     },
     "estimate_basis": "owner_device",
-    "estimate_label": "Measured accounting on an owner's device of this model",
+    "estimate_label": "Owner-device estimate; physical volume not independently measured",
     "uncertainty_percent": 20,
     "water_per_m2": {
       "fast": 4,
@@ -9167,7 +9167,7 @@ const CALIBRATION_DATA = {
       "https://support.roborock.com/hc/en-us/articles/33954114436761-What-is-the-difference-among-of-S8-Pro-Ultra-S8-Max-Ultra-and-S8-MaxV-Ultra"
     ],
     "data_quality": "capacity_verified",
-    "notes": "Measured accounting on an owner's device of this model. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Owner-device estimate; physical volume not independently measured. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "roborock_s8_pro_ultra": {
     "label": "Roborock S8 Pro Ultra",
@@ -14471,7 +14471,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
             ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText(scope === 'whole_cycle' ? 'whole cycle, including washes' : 'standard route, excl. washes')})</span></div>` : ''}
           </div>
           ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}${!configuredRates && calib.uncertainty_percent ? ` (\u00B1${calib.uncertainty_percent}%)` : ''}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(this._waterText(VWM_BASIS_LABEL[calib.estimate_basis] || '')) + ' \u00B7 ' + this._waterText('calibrates automatically.') : this._waterText(capacityGuidance)}</div>`}
+          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(this._waterText(VWM_BASIS_LABEL[calib.estimate_basis] || '')) + ' \u00B7 ' + this._waterText('calibrates automatically.') : this._waterText(capacityGuidance)}</div>`}
           ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calibrationNote ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + _esc(this._waterText(calibrationNote)) + '</div>' : ''}
         </div>`;
     }

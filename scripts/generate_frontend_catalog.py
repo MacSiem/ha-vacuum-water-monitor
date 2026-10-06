@@ -19,7 +19,7 @@ _spec.loader.exec_module(profiles)
 
 BASIS_LABELS = {
     "fleet_posterior": "Learned from calibrated devices of this model",
-    "owner_device": "Measured accounting on an owner's device of this model",
+    "owner_device": "Owner-device estimate; physical volume not independently measured",
     "manufacturer_declared": "Manufacturer-declared quantity",
     "review_measured": "Independent review measurement",
     "family_transfer": "Transferred from a closely related model",

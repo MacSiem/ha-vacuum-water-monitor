@@ -244,13 +244,12 @@ silently.
 
 ## Screenshots
 
-| Light | Dark |
-|---|---|
-| ![Water tab, light theme](docs/screenshots/card-water-light.png) | ![Water tab, dark theme](docs/screenshots/card-water-dark.png) |
-
-*The Water tab with synthetic robot data: labelled estimate, indicative uncertainty,
-usage since a simulated refill, and the Refilled button. No household history or
-device identifiers are shown. Dark mode follows your Home Assistant theme.*
+The Water tab shows a labelled estimate, usage since the last refill, and the
+Refilled button. Light and dark modes follow your Home Assistant theme.
+Owner-device estimates are checked against empty-tank signals, without an
+independent measurement of physical water volume. The initial uncertainty band
+is a prior assumption; later cycle spread describes repeatability, not verified
+physical accuracy. Unknown capacities remain unknown.
 
 ![Settings tab](docs/screenshots/card-settings.png)
 
