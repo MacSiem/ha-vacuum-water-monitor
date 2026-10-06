@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.9.1 (unreleased)
+## 5.9.1 (2026-10-06)
 
 - Bind pending calibration confirmations to the reservoir capacity and rate identity. Preserve existing calibration history and accepted samples; an unscoped legacy pending value cannot confirm a new tank.
 
