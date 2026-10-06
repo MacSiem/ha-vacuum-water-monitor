@@ -96,3 +96,21 @@ class RestoredModeSessionTests(unittest.TestCase):
         self.assertEqual(state['used_ml'],20)
         self.assertFalse(state.get('accounting_incomplete'))
         self.assertEqual(state['last_accounting_evidence'],'verified_model')
+
+    def test_closing_floor_dose_works_for_each_supported_rate_signal(self):
+        for signal,rates in [('mop_mode',{'deep':9,'standard':6}),
+                ('mop_intensity',{'high':9,'extreme':6}),
+                ('cleaning_mode',{'mop':9,'vac_and_mop':6})]:
+            with self.subTest(signal=signal):
+                device=effective({},descriptor())
+                device.update(rate_signal=signal,usage_ml_per_m2=rates,cleaning_mode_entity='select.cleaning_mode')
+                state={**BASE,'last_area':0,'last_status':'charging'}
+                for i,(status,vac,area,mode,intensity,clean_mode) in enumerate([
+                        ('cleaning','cleaning',0,'deep','intense','mop'),
+                        ('cleaning','cleaning',1,'deep','intense','mop'),
+                        ('returning_home','returning',2,'standard','extreme','vac_and_mop')]):
+                    h=hass(status=status,vac=vac,area=area,intensity=intensity,
+                        extra={'select.robot_mop_mode':_S(mode),'select.cleaning_mode':_S(clean_mode)})
+                    state=tick.tick_device(h,device,state,now_ts=10_060_000+i*60_000)[0]
+                self.assertAlmostEqual(state['used_ml'],2*9*1.3,places=2)
+                self.assertFalse(state.get('accounting_incomplete'))
