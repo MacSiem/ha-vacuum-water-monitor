@@ -14,7 +14,7 @@ verify code behavior; they do not replace live HACS and household-interface acce
 | Vacuum-only and settings | Affirmative mop evidence required; unknown output levels do not silently use a default | Runtime and numeric range tests | Exact device telemetry |
 | Mop washing | Separate observed wash sequence, counted once; whole-cycle calibration excludes extra wash dosing | Tick and refill/calibration regressions | Device-specific wash visibility and water amount |
 | Refill | Card, device button, service, bound button/lid and eligible dock clear share bookkeeping; deduplication retains intervening use | Refill and runtime tests | Routes, auto-refill switch and deduplication accepted on live synthetic fixtures; device-specific refill truth still depends on its signal |
-| Calibration | Complete refill-to-empty learning; incomplete/outlier samples excluded; authored measurements stay separate | Calibration, local-measurement and replay tests | Live rejection/refill accepted; saved-history replay with frozen later comparison; full refill after empty accepted as the owner reference, nominal capacity still disputed; physical metered accuracy unknown |
+| Calibration | Complete refill-to-empty learning; incomplete/outlier samples excluded; authored measurements stay separate | Calibration, local-measurement and replay tests | Live rejection/refill accepted; saved-history replay with frozen later comparison; full refill after empty accepted as the owner reference, nominal capacity reconciled from registry, dock telemetry and account product data; physical metered accuracy unknown |
 | Tank settings and history | Per-robot capacity and baseline/history preserved; session water formatted without changing original records | Setup, storage and presentation regressions | Native fresh/upgrade, reload/restart and public-version preservation accepted |
 | Health and Repairs | Missing rate explains calibration rather than an ineffective full-tank Repair; unknown stays unknown | `test_issue10_missing_rate.py`, setup and card tests | Native first-start, missing capacity and saved-capacity guidance accepted |
 | Forecasts and reminders | Cleanings/days and forecast error use available tank history; genuine zero differs from missing data | Forecast, setup and presentation tests; blueprint in repository | Actual HA forecast entities and blueprint notification after60s accepted; forecast error is not measured water accuracy |
@@ -50,12 +50,13 @@ confirms full refills after empty signals and accepts these as a nominal referen
 3000ml and4000ml capacity hypotheses were replayed with targets2850ml and3800ml
 (the5% residual is assumed). Their recalculated factors are0.965736 and1.287648; both
 later conditional anchor differences remain−0.3% and−17.1%. Scaling the training and
-target together does not identify capacity or establish measured accuracy. Device identity
-and physical dock capacity must be reconciled before choosing one calibration. Physical
+target together does not identify capacity or establish measured accuracy. The recorded robot/dock identity was reconciled using registry model, dock telemetry
+and matching account product/serial data; the selected nominal reference is4000ml.
+The original private3000ml setting and historical records were not rewritten. Physical
 accuracy remains unknown without an independent volume or mass reference; verifying every
 model physically is not a release requirement. The owner accepts saved180CSS reflow
 evidence with its emulation limit; actual browser200% zoom is a later supplementary check.
-Remaining acceptance covers the disputed dock identity, final review and public delivery.
+Remaining acceptance covers final review and public delivery.
 
 ## Installation, upgrade and privacy
 
