@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.9.0 (unreleased)
+## 5.9.0 (2026-10-06)
 
 - Keep a deliberately selected model ahead of conflicting registry manufacturer metadata in both the integration and card. Keep its estimate sources, mop class and reservoir anchors together while retaining vendor-scoped automatic matching and authored settings.
 
