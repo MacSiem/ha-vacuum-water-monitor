@@ -2,6 +2,8 @@
 
 ## 5.9.1 (unreleased)
 
+- Bind pending calibration confirmations to the reservoir capacity and rate identity. Preserve existing calibration history and accepted samples; an unscoped legacy pending value cannot confirm a new tank.
+
 - Keep the final floor area and recorded mop session when a dock restores its next-task defaults. Reuse the last resolved floor dose, including numeric water-output ranges and verified floor profiles. Mid-run exposure across unknown setting changes remains incomplete and cannot train calibration.
 - Show a confirmed empty reservoir even when earlier consumption is incomplete. Keep historical used water unknown and retain authoritative volume and transfer sensors.
 

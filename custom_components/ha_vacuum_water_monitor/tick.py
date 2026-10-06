@@ -709,6 +709,7 @@ def _tick_device_pass(
             updates["session_accounting_valid"] = False
         if old_calibration_context is not None and old_calibration_context != calibration_context:
             updates.update(calibration_factor=1, calibration_samples=0, calibration_log_factors=[],
+                           calibration_pending_log_factor=None, calibration_pending_context=None,
                            session_accounting_valid=False, session_exposure_complete=False)
         state.update(updates)
         if not lost_exposure and curr_area == state.get("session_start_area"):
@@ -1255,6 +1256,10 @@ def _tick_device_pass(
                 # an impossible cycle into a plausible boundary training sample.
                 observed_factor = calibration_factor * calibration_target / predicted_used
                 pending = _float_or_none(state.get("calibration_pending_log_factor"))
+                # An old pending value has no proven tank identity. It must not
+                # confirm a sample after a capacity/rate change or migration.
+                if state.get("calibration_pending_context") != calibration_context:
+                    pending = None
                 window, learned_factor, accepted, rejection, pending = estimation.update_calibration(
                     log_factors, observed_factor,
                     band_fraction=estimation.band_fraction(device.get("estimate_basis"), device.get("uncertainty_percent")),
@@ -1266,6 +1271,7 @@ def _tick_device_pass(
                     window, learned_factor = log_factors, calibration_factor
                     accepted, rejection, pending = False, "calibration_sample_over_capacity", None
                 state["calibration_pending_log_factor"] = round(pending, 6) if pending is not None else None
+                state["calibration_pending_context"] = calibration_context if pending is not None else None
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
                                             calibration_factor, accepted, rejection, wash_refund)
                 state["calibration_log_factors"] = [round(value, 6) for value in window]
