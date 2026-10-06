@@ -631,6 +631,7 @@ def _tick_device_pass(
     # other calibration settings must still match the last floor observation.
     mode_independent = deepcopy(interval_values)
     mode_independent["intensity_factor"] = device.get("intensity_factor")
+    mode_independent["calibration_factor"] = calibration_factor
     for key in ("cleaning_mode", "mop_mode", "water_level"):
         mode_independent["live_settings"].pop(key, None)
         if mode_independent.get("consumption_context"):
@@ -647,10 +648,14 @@ def _tick_device_pass(
         and device.get("calibration_scope") == "floor_only"
         and whole_cycle_calibration is None and not device.get("water_volume_sensor")
         and rate_signal == "mop_mode"
+        and curr_area is not None and _positive_number(state.get("last_floor_usage_per_m2")) is not None
     )
     if closing_floor:
-        usage_per_m2 = _mapping_number(device.get("usage_ml_per_m2"), floor_settings.get("mop_mode"))
-        intensity_factor = _mapping_number(device.get("intensity_factor"), floor_settings.get("mop_intensity"))
+        # Reuse the resolved dose, including numeric output ranges and strict
+        # floor profiles. Re-resolving raw restored controls loses that dose.
+        usage_per_m2 = state["last_floor_usage_per_m2"]
+        intensity_factor = state.get("last_floor_intensity_factor")
+        evidence = state.get("last_floor_evidence")
         mop_active = _is_mop_active(
             floor_settings.get("cleaning_mode"), floor_settings.get("mop_mode"),
             mop_attached, water_box_attached,
@@ -1410,7 +1415,9 @@ def _tick_device_pass(
         dirty = True
     if _is_cleaning(vac_state, curr_status, None):
         state.update(last_floor_ts=now_ts, last_floor_identity=floor_identity,
-                     last_floor_rate_settings=deepcopy(rate_settings))
+                     last_floor_rate_settings=deepcopy(rate_settings),
+                     last_floor_usage_per_m2=usage_per_m2,
+                     last_floor_intensity_factor=intensity_factor, last_floor_evidence=evidence)
         if curr_area == state.get("session_start_area"):
             state["session_context"] = deepcopy(consumption_context)
             state["session_resolution"] = deepcopy(state.get("consumption_resolution"))
