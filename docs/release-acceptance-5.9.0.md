@@ -1,6 +1,6 @@
 # 5.9.0 features and acceptance boundaries
 
-Prepared 5 October 2026. This is a candidate, not a public release. Model recognition,
+Updated 6 October 2026. This is a candidate, not a public release. Model recognition,
 automatic estimation and physical accuracy are separate claims. Unit and CI checks
 verify code behavior; they do not replace live HACS and household-interface acceptance.
 
@@ -14,11 +14,11 @@ verify code behavior; they do not replace live HACS and household-interface acce
 | Vacuum-only and settings | Affirmative mop evidence required; unknown output levels do not silently use a default | Runtime and numeric range tests | Exact device telemetry |
 | Mop washing | Separate observed wash sequence, counted once; whole-cycle calibration excludes extra wash dosing | Tick and refill/calibration regressions | Device-specific wash visibility and water amount |
 | Refill | Card, device button, service, bound button/lid and eligible dock clear share bookkeeping; deduplication retains intervening use | Refill and runtime tests | Routes, auto-refill switch and deduplication accepted on live synthetic fixtures; device-specific refill truth still depends on its signal |
-| Calibration | Complete refill-to-empty learning; incomplete/outlier samples excluded; authored measurements stay separate | Calibration, local-measurement and replay tests | Live rejection/refill accepted; saved-history replay before any new test; independent measured volume remains open |
+| Calibration | Complete refill-to-empty learning; incomplete/outlier samples excluded; authored measurements stay separate | Calibration, local-measurement and replay tests | Live rejection/refill accepted; saved-history replay with frozen later comparison; full refill after empty accepted as the owner reference, nominal capacity still disputed; physical metered accuracy unknown |
 | Tank settings and history | Per-robot capacity and baseline/history preserved; session water formatted without changing original records | Setup, storage and presentation regressions | Native fresh/upgrade, reload/restart and public-version preservation accepted |
 | Health and Repairs | Missing rate explains calibration rather than an ineffective full-tank Repair; unknown stays unknown | `test_issue10_missing_rate.py`, setup and card tests | Native first-start, missing capacity and saved-capacity guidance accepted |
 | Forecasts and reminders | Cleanings/days and forecast error use available tank history; genuine zero differs from missing data | Forecast, setup and presentation tests; blueprint in repository | Actual HA forecast entities and blueprint notification after60s accepted; forecast error is not measured water accuracy |
-| Polish/English and layout | Localized labels, provenance and missing-data guidance; shared millilitre formatting and theme styles | Card, smoke and language regressions | Light/dark, narrow/wide, keyboard/focus and stability accepted; actual browser200% zoom open |
+| Polish/English and layout | Localized labels, provenance and missing-data guidance; shared millilitre formatting and theme styles | Card, smoke and language regressions | Light/dark, narrow/wide, keyboard/focus and stability accepted; 180CSS reflow accepted with an explicit emulation limit |
 | Privacy and sharing | Local state; optional reviewed contribution drafts; no automatic transmission | Diagnostics/sharing/contribution tests and source review | Live cancellation without transmission and admin/household diagnostic access accepted |
 
 ## Live acceptance matrix
@@ -31,9 +31,9 @@ verify code behavior; they do not replace live HACS and household-interface acce
 | Candidate fresh and upgrade | Native 39-file candidate fresh/upgrade, baseline/calibration/history preserved in `native-stage`; repaired package downloaded exactly and changed paths verified in `native-manual-qa` | Accepted within the tested software scope |
 | Shared staging restoration | Seven sessions restored and read back; 20 entries, 19 foreign, Baby 24 categories/timers, Network Map 3 devices | Accepted through `native-public-upgrade-qa/restore-runtime-readback.json`; no pending restore |
 | Administrator and household roles | Native settings/refill/reload; diagnostics admin200/household401; cancelled sharing without transmission in `native-stage/household-*` | Accepted for unchanged role behavior |
-| Layout and accessibility | PL/EN, light/dark390/1440, keyboard/draft, details stability; 360 Sections and 180CSS reflow with neighbor | Open: actual browser zoom200%; reflow alone is not zoom |
+| Layout and accessibility | PL/EN, light/dark390/1440, keyboard/draft, details stability; 360 Sections and 180CSS reflow with neighbor | Accepted with owner-approved limit: saved180CSS emulation, not actual browser200% zoom; unchanged CSS verified, latest full180px DOM not rerun |
 | First run and recovery | Native no-robot setup, unknown capacity, reprofile/focus, reload/restart; actual forecasts and blueprint reminder after60s; repaired manual Tapo conflict verified in native card and HA sensor | Accepted within the tested software scope |
-| Reported device paths | Separate real-runtime reproductions, live fixture paths and drafts for issues10–13 | Open: authors' exact hardware/firmware; no blanket issue closure |
+| Reported device paths | Separate real-runtime reproductions, live fixture paths and drafts for issues10–13 | Accepted for reproduced software paths; authors' exact hardware/firmware stays unverified, with individual post-release retest guidance and no blanket closure |
 
 The manual-profile regression is repaired in the backend and bundled card, including sparse
 manual settings with generated legacy defaults. A locked Tapo keeps its rotating-pad class,
@@ -45,11 +45,17 @@ performed automatic refills after the real cooldown. These are synthetic functio
 
 The source review covers133 models from16 manufacturers and73 known tracked capacities.
 No additional measured consumption rates were inferred from capacity or advertised runtime.
-Available local history was replayed, with learning frozen for later comparison. Its tank
-anchors provide inferred targets, not independent water measurements. Physical accuracy
-remains unknown without an independent volume or mass reference; verifying every model
-physically is not a release requirement. Remaining acceptance covers actual browser200%
-zoom, the justified missing physical-reference case, final materials and release review.
+Available local history was replayed, with learning frozen for later comparison. The owner
+confirms full refills after empty signals and accepts these as a nominal reference. Both
+3000ml and4000ml capacity hypotheses were replayed with targets2850ml and3800ml
+(the5% residual is assumed). Their recalculated factors are0.965736 and1.287648; both
+later conditional anchor differences remain−0.3% and−17.1%. Scaling the training and
+target together does not identify capacity or establish measured accuracy. Device identity
+and physical dock capacity must be reconciled before choosing one calibration. Physical
+accuracy remains unknown without an independent volume or mass reference; verifying every
+model physically is not a release requirement. The owner accepts saved180CSS reflow
+evidence with its emulation limit; actual browser200% zoom is a later supplementary check.
+Remaining acceptance covers the disputed dock identity, final review and public delivery.
 
 ## Installation, upgrade and privacy
 
