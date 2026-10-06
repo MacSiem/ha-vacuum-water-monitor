@@ -28,6 +28,21 @@ def cleaning(areas, **overrides):
 
 
 class ConfirmationGateTests(unittest.TestCase):
+    def test_unscoped_legacy_pending_cannot_confirm_a_new_tank(self):
+        import math
+        state = tank({**BASE, 'calibration_pending_log_factor':math.log(3800/3000)},3000,10_000_000)
+        self.assertEqual(state.get('calibration_samples',0),0)
+        self.assertEqual(state.get('calibration_factor',1),1)
+        self.assertEqual(state['calibration_history'][0]['reason'],'calibration_sample_unconfirmed')
+
+    def test_pending_confirmation_does_not_cross_a_capacity_change(self):
+        state=tank(dict(BASE),3000,10_000_000)
+        changed={**S8,'tracked_capacity_ml':4500,'water_total_ml':4500}
+        state=run(changed,state,[dict()],ts=15_000_000)
+        state=run(changed,{**state,'used_ml':3375},[dict(dock_err='water_empty')],ts=20_000_000)
+        self.assertEqual(state.get('calibration_samples',0),0)
+        self.assertEqual(state['calibration_history'][0]['reason'],'calibration_sample_unconfirmed')
+
     def test_runtime_does_not_clip_an_implausible_cycle_before_validation(self):
         import math
         initial = {**BASE, "calibration_factor":4,
