@@ -630,6 +630,7 @@ def _tick_device_pass(
     # last area. Only those three controls may differ: identity, rates and all
     # other calibration settings must still match the last floor observation.
     mode_independent = deepcopy(interval_values)
+    mode_independent["intensity_factor"] = device.get("intensity_factor")
     for key in ("cleaning_mode", "mop_mode", "water_level"):
         mode_independent["live_settings"].pop(key, None)
         if mode_independent.get("consumption_context"):
@@ -696,6 +697,11 @@ def _tick_device_pass(
             verified_wash_active=False, last_completed_wash_count=None)
         if lost_exposure:
             updates.update(session_accounting_valid=False, session_exposure_complete=False)
+        elif (state.get("session_start_ts") and previous_area is not None
+              and previous_area != state.get("session_start_area")):
+            # A fully counted run may mix settings, but it is not a single
+            # context calibration sample. Its numeric history remains useful.
+            updates["session_accounting_valid"] = False
         if old_calibration_context is not None and old_calibration_context != calibration_context:
             updates.update(calibration_factor=1, calibration_samples=0, calibration_log_factors=[],
                            session_accounting_valid=False, session_exposure_complete=False)
