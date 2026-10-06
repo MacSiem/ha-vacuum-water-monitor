@@ -647,7 +647,6 @@ def _tick_device_pass(
         and state.get("last_floor_identity") == floor_identity
         and device.get("calibration_scope") == "floor_only"
         and whole_cycle_calibration is None and not device.get("water_volume_sensor")
-        and rate_signal == "mop_mode"
         and curr_area is not None and _positive_number(state.get("last_floor_usage_per_m2")) is not None
     )
     if closing_floor:
