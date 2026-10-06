@@ -106,5 +106,16 @@ const assert=require('assert/strict');
  assert.equal(incomplete.percentRemaining,null);
  assert.equal(incomplete.usedMl,null);
  assert.equal(incomplete.stateReason,'accounting_incomplete');
+ card._serverState.tank_states['vacuum.demo'].water_empty_active=true;
+ card._serverState.tank_states['vacuum.demo'].water_anchor_kind='empty';
+ const empty=card._calcDeviceData({vacuum_entity:'vacuum.demo',water_total_ml:4000,config_provenance:{authored_fields:['water_total_ml']}});
+ assert.equal(empty.percentRemaining,0);
+ assert.equal(empty.remainingL,0);
+ assert.equal(empty.usedMl,null);
+ assert.equal(empty.stateReason,'water_empty');
+ const authoritative=card._calcDeviceData({vacuum_entity:'vacuum.demo',accounting_event_sensor:'sensor.events',tracked_reservoir:'dock_clean',tracked_capacity_ml:4000});
+ assert.equal(authoritative.percentRemaining,null);
+ assert.equal(authoritative.remainingL,null);
+
  dom.window.close();
 } console.log('Sprint UI: reprofile and contribution preview/failure/stale-response PASS, both copies');})().catch(e=>{console.error(e);process.exit(1);});

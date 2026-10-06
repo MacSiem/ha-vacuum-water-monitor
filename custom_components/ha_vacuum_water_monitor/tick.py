@@ -626,6 +626,36 @@ def _tick_device_pass(
     # that does not change this device's rates must not break its baseline.
     interval_values = {key: value for key, value in context_values.items() if key != "dataset_revision"}
     context = _digest(interval_values)
+    # Dock return can restore the next task's controls before publishing the
+    # last area. Only those three controls may differ: identity, rates and all
+    # other calibration settings must still match the last floor observation.
+    mode_independent = deepcopy(interval_values)
+    for key in ("cleaning_mode", "mop_mode", "water_level"):
+        mode_independent["live_settings"].pop(key, None)
+        if mode_independent.get("consumption_context"):
+            mode_independent["consumption_context"]["settings"].pop(key, None)
+    floor_identity = _digest(mode_independent)
+    floor_settings = state.get("last_floor_rate_settings") or {}
+    floor_ts = _positive_number(state.get("last_floor_ts"))
+    closing_floor = bool(
+        state.get("session_start_ts") and floor_ts is not None
+        and 0 <= now_ts - floor_ts <= MAX_ACTIVE_INTERVAL_SECONDS * 1000
+        and curr_status in {"returning_home", "returning", "docking", "docked", "charging", "completed", "charging_complete", "charging_completed"}
+        and not _is_cleaning(vac_state, curr_status, None)
+        and state.get("last_floor_identity") == floor_identity
+        and device.get("calibration_scope") == "floor_only"
+        and whole_cycle_calibration is None and not device.get("water_volume_sensor")
+        and rate_signal == "mop_mode"
+    )
+    if closing_floor:
+        usage_per_m2 = _mapping_number(device.get("usage_ml_per_m2"), floor_settings.get("mop_mode"))
+        intensity_factor = _mapping_number(device.get("intensity_factor"), floor_settings.get("mop_intensity"))
+        mop_active = _is_mop_active(
+            floor_settings.get("cleaning_mode"), floor_settings.get("mop_mode"),
+            mop_attached, water_box_attached,
+            mop_intensity=floor_settings.get("mop_intensity"),
+            intensity_is_evidence=bool(device.get("mop_intensity_is_evidence")),
+            require_evidence=bool(device.get("mop_evidence_required")))
     calibration_values = {key: device.get(key) for key in _CALIBRATION_IDENTITY_KEYS}
     calibration_values["intensity_factor"] = device.get("intensity_factor")
     calibration_context = _digest(calibration_values)
@@ -635,7 +665,7 @@ def _tick_device_pass(
     state["accounting_interval_context"] = context
     state["accounting_calibration_context"] = calibration_context
     # 5.6 state has only the legacy hash; the first 5.7 pass adopts it silently.
-    if old_interval_context is not None and old_interval_context != context:
+    if old_interval_context is not None and old_interval_context != context and not closing_floor:
         # Rebaselining discards a setting-crossing interval. If that interval
         # could have used water, the tank is no longer a complete learning
         # sample, even though later intervals can continue to be recorded.
@@ -657,15 +687,22 @@ def _tick_device_pass(
                 and now_ts > _number(state.get("last_tick_ts"), now_ts))
         was_or_is_cleaning = (_is_cleaning(None, state.get("last_status"))
                               or _is_cleaning(vac_state, curr_status, cleaning_active))
-        if exposure_changed and was_or_is_cleaning and (mop_active or previous_mop_active):
+        lost_exposure = exposure_changed and was_or_is_cleaning and (mop_active or previous_mop_active)
+        if lost_exposure:
             state.update(accounting_incomplete=True, session_water_broken=True)
         updates: dict[str, Any] = dict(
             last_area=curr_area, last_duration_seconds=curr_duration_seconds,
-            last_tick_ts=now_ts, last_water_volume_ml=None, session_accounting_valid=False,
-            session_exposure_complete=False, verified_wash_active=False, last_completed_wash_count=None)
+            last_tick_ts=now_ts, last_water_volume_ml=None,
+            verified_wash_active=False, last_completed_wash_count=None)
+        if lost_exposure:
+            updates.update(session_accounting_valid=False, session_exposure_complete=False)
         if old_calibration_context is not None and old_calibration_context != calibration_context:
-            updates.update(calibration_factor=1, calibration_samples=0, calibration_log_factors=[])
+            updates.update(calibration_factor=1, calibration_samples=0, calibration_log_factors=[],
+                           session_accounting_valid=False, session_exposure_complete=False)
         state.update(updates)
+        if not lost_exposure and curr_area == state.get("session_start_area"):
+            state["session_context"] = deepcopy(consumption_context)
+            state["session_resolution"] = deepcopy(state.get("consumption_resolution"))
         _record_accounting(state, "unknown", None, None, "accounting_context_changed")
         return state, True
 
@@ -901,7 +938,7 @@ def _tick_device_pass(
             # being silently discarded.
             hold_area_baseline = True
             dirty |= _record_accounting(state, "area", None, evidence, "area_delta_below_minimum")
-        elif not (_is_cleaning(vac_state, curr_status, cleaning_active)
+        elif not (closing_floor or _is_cleaning(vac_state, curr_status, cleaning_active)
                   or _is_cleaning(None, state.get("last_status"), None)):
             # Area only grows while cleaning. A tick that already sees the robot
             # heading to wash or dock still carries the area cleaned since the
@@ -1365,6 +1402,12 @@ def _tick_device_pass(
         _finish_session(state, False, "idle", idle_close_ts, curr_area)
         state.update(session_idle_closed=True, session_idle_since_ts=None)
         dirty = True
+    if _is_cleaning(vac_state, curr_status, None):
+        state.update(last_floor_ts=now_ts, last_floor_identity=floor_identity,
+                     last_floor_rate_settings=deepcopy(rate_settings))
+        if curr_area == state.get("session_start_area"):
+            state["session_context"] = deepcopy(consumption_context)
+            state["session_resolution"] = deepcopy(state.get("consumption_resolution"))
     _finish_session(state, session_running or wash_now, curr_status, now_ts, curr_area)
     return state, dirty
 

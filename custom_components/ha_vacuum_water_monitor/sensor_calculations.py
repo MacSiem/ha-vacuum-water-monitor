@@ -262,6 +262,14 @@ def estimate_water_state(
             **{**metadata, "state_reason": "awaiting_refill"},
         }
 
+    # An exact empty alert proves remaining usable water, not historical dose.
+    # Keep incomplete consumption unknown without hiding this physical fact.
+    if (tank_state.get("accounting_incomplete") and tank_state.get("water_empty_active")
+            and tank_state.get("water_anchor_kind") == "empty"):
+        return {**metadata, "source": "low_water_anchor", "state_reason": "water_empty",
+                "total_ml": _format_number(total_ml) if total_ml is not None else None,
+                "used_ml": None, "remaining_ml": 0, "remaining_percent": 0}
+
     # Accounting resolves persisted same-device assignments before checking mop
     # evidence. Use that same binding guard for sensors and the health report.
     evidence_device = dict(device)

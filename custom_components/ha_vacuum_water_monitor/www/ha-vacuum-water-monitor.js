@@ -14152,6 +14152,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (tankState.accounting_incomplete) {
       remainingL = percentRemaining = usedMl = null;
       stateReason = 'accounting_incomplete';
+      // Empty proves remaining usable water; historical consumption stays unknown.
+      if (initialized && tankState.water_empty_active && tankState.water_anchor_kind === 'empty') {
+        remainingL = percentRemaining = 0;
+        stateReason = 'water_empty';
+      }
     }
 
     if (device.accounting_event_sensor) {
