@@ -53,3 +53,18 @@ class CollectionTests(unittest.TestCase):
         self.assertNotIn('local.4',fitted['evidence_ids'])
         samples[0]['confirmed'] = False
         self.assertIsNone(calibration.fit_local_measurements(samples[:3]))
+
+    def test_measured_whole_cycle_profile_reaches_the_real_accounting_consumer(self):
+        records = [cycle(i) for i in (1,2,3)]
+        for record in records:
+            record['context']['settings'].update(mop_mode='standard',water_level='medium')
+        samples = [calibration.build_local_measurement(s,measurement(),'vacuum.robot') for s in records]
+        fitted = calibration.fit_local_measurements(samples)
+        device = {**effective({},descriptor()),'consumption_context':records[0]['context'],
+                  'consumption_calibration':[fitted],'usage_ml_per_m2':{},
+                  'usage_ml_per_active_minute':{},'wash_volume_ml':None}
+        state = run(device,dict(BASE),[dict(status='cleaning',vac='cleaning',area='0'),
+                                     dict(status='cleaning',vac='cleaning',area='10'),
+                                     dict(status='charging',area='10')])
+        self.assertEqual(state['used_ml'],100)
+        self.assertEqual(state['automatic_sessions'][0]['context']['action'],'whole_cycle')
