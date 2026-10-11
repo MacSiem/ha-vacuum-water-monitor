@@ -192,8 +192,11 @@ def estimate_water_state(
     effective_device = apply_custom_calibration(device, settings)
 
     profile = resolve_profile(device)
+    applied_physical_profile = (tank_state.get("last_accounting_evidence") == "device_calibration"
+                                and not tank_state.get("last_accounting_reason")
+                                and (tank_state.get("consumption_resolution") or {}).get("source") == "device_calibration")
     user_rate = (effective_device.get("accounting_evidence") in {"user_calibration", "explicit_user_configuration"}
-                 or bool(device.get("consumption_calibration")))
+                 or applied_physical_profile)
     measured_volume = bool(device.get("water_volume_sensor") or tank_state.get("last_accounting_source") == "real_sensor")
     estimate_basis = None if user_rate or measured_volume else (device.get("estimate_basis") or profile.get("estimate_basis"))
     log_factors = estimation.uncertainty_log_factors(tank_state)

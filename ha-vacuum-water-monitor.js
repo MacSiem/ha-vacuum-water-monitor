@@ -68,6 +68,13 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "Recorded floor doses": "Zapisane dawki podłogi",
+  "Recorded mop-wash doses": "Zapisane dawki mycia mopów",
+  "Recorded whole-cycle doses": "Zapisane dawki całego cyklu",
+  "Recorded sensor doses": "Zapisane dawki sensora",
+  "Dose provenance": "Pochodzenie dawek",
+  "Recorded since this ledger started; nominal level anchors are separate. A measured profile is still a prediction for later sessions.": "Zapis od uruchomienia tego dziennika; nominalne kotwice poziomu są osobne. Profil z pomiarów nadal daje prognozę późniejszych sesji.",
+
   "HA signal unavailable; declarations cannot override it.": "Sygnał HA jest niedostępny; deklaracje nie mogą go zastąpić.",
   "Physical whole-cycle calibration.": "Fizyczna kalibracja całego cyklu.",
   "The completed session uses a confirmed local total-dose profile within its measured area range. It replaces that session’s floor and wash estimate. Training spread is not verified physical accuracy; see local measurement quality for independent validation.": "Zakończona sesja korzysta z potwierdzonego lokalnego profilu całkowitej dawki w zmierzonym zakresie powierzchni. Zastępuje on estymatę podłogi i mycia tej sesji. Rozrzut prób treningowych nie potwierdza fizycznej dokładności; niezależną walidację sprawdzisz w jakości pomiarów lokalnych.",
@@ -14272,7 +14279,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const tankLevel = this._getStateValue(device.tank_level_sensor);
     const dockTankLevel = this._getStateValue(device.dock_tank_level_sensor);
 
-    const physicalWhole = tankState.last_accounting_source === 'whole_cycle' && tankState.consumption_resolution?.source === 'device_calibration';
+    const physicalWhole = tankState.last_accounting_source === 'whole_cycle' && tankState.consumption_resolution?.source === 'device_calibration' && !tankState.last_accounting_reason;
     return {
       totalMl, remainingL, percentRemaining, usedMl,
       partialUsedMl: stateReason === 'accounting_incomplete' && initialized
@@ -14291,6 +14298,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       accountingSource: tankState.last_accounting_source || null,
       accountingRate: tankState.last_accounting_rate_ml ?? null,
       consumptionResolution: tankState.consumption_resolution || null,
+      cycleActionTotals: tankState.cycle_action_totals || {},
       reservoirLevels: tankState.reservoir_levels || null,
       accountingV2: tankState.accounting_v2 || null,
       estimateBasis: userRate || measuredVolume || physicalWhole ? null : (device.estimate_basis || null),
@@ -14598,10 +14606,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.stateReason === 'area_unavailable' || data.stateReason === 'area_gap' || data.stateReason === 'status_unavailable') {
       return box('Unavailable signal.', 'Automatic estimate is waiting for a usable configured same-device status or area signal.', '#f59e0b');
     }
-    if (data.accountingSource === 'whole_cycle' && data.consumptionResolution?.source === 'device_calibration') {
+    if (data.accountingSource === 'whole_cycle' && !data.stateReason && data.consumptionResolution?.source === 'device_calibration') {
       return box('Physical whole-cycle calibration.', 'The completed session uses a confirmed local total-dose profile within its measured area range. It replaces that session’s floor and wash estimate. Training spread is not verified physical accuracy; see local measurement quality for independent validation.');
     }
-    if (data.accountingSource === 'whole_cycle_pending') {
+    if (data.stateReason === 'whole_cycle_pending') {
       return box('Whole-cycle estimate pending.', 'A local total-dose profile can be qualified only after a complete session. Current usage is provisional; missing coverage or an area outside the measured range cannot use that profile.', '#f59e0b');
     }
     const active = Boolean(data.accountingSource && Number.isFinite(Number(data.accountingRate)) && Number(data.accountingRate) > 0 && !data.stateReason);
@@ -14642,6 +14650,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _buildDiagnostics(data) {
     const rows = [];
+    const actionLabels = {floor_mopping:'Recorded floor doses',mop_wash:'Recorded mop-wash doses',whole_cycle:'Recorded whole-cycle doses',real_sensor:'Recorded sensor doses'};
+    for (const [action, amount] of Object.entries(data.cycleActionTotals || {})) {
+      if (typeof amount === 'number' && Number.isFinite(amount) && amount >= 0) rows.push([actionLabels[action] || action, this._formatMl(amount)]);
+    }
+    if (Object.keys(data.cycleActionTotals || {}).length) rows.push(['Dose provenance', 'Recorded since this ledger started; nominal level anchors are separate. A measured profile is still a prediction for later sessions.']);
     for (const [name, level] of Object.entries(data.reservoirLevels || {})) {
       if (level && typeof level === 'object') rows.push([`${this._waterText('Physical')} ${name}`, level.volume_ml == null
         ? `${this._waterText('Unknown')}: ${level.reason || this._waterText('no measurement')}` : this._formatMl(level.volume_ml)]);

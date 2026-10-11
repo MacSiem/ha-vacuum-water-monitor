@@ -71,6 +71,14 @@ const assert=require('assert/strict');
  assert.ok(guidance.includes('Physical whole-cycle calibration'));
  assert.equal(guidance.includes('prior band'),false);
  assert.equal(guidance.includes('Factor'),false);
+ const pendingGuidance=card._buildAccountingGuidance({initialized:true,capability:'automatic_estimate',stateReason:'whole_cycle_pending',
+   accountingSource:'whole_cycle',consumptionResolution:{source:'device_calibration',method:'area',coefficient:10}});
+ assert.ok(pendingGuidance.includes('Whole-cycle estimate pending'));
+ assert.equal(pendingGuidance.includes('Physical whole-cycle calibration'),false);
+ const doses=card._buildDiagnostics({cycleActionTotals:{floor_mopping:480.24,mop_wash:2550}});
+ assert.ok(doses.includes('Recorded floor doses') && doses.includes('Recorded mop-wash doses'));
+ assert.ok(doses.includes('nominal level anchors are separate'));
+
  card.shadowRoot.innerHTML=card._buildMeasurementPlan(device);
  const water=sr.querySelector('[data-measurement-field="water_level"]');
  assert.equal(water.readOnly,true,'observed HA controls stay authoritative');
