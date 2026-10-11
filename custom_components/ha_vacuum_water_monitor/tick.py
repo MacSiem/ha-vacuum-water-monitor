@@ -752,14 +752,17 @@ def _tick_device_pass(
     # The dataset revision identifies the shipped catalogue bytes. An upgrade
     # that does not change this device's rates must not break its baseline.
     interval_values = deepcopy({key: value for key, value in context_values.items() if key != "dataset_revision"})
+    if interval_values.get("consumption_context"):
+        interval_values["consumption_context"].pop("field_sources", None)
+    # Adopt an unchanged pre-projection fingerprint on upgrade, including an
+    # already open session. An actual rate/domain/eligibility change matches neither.
+    legacy_context = _digest(interval_values)
     personal = device.get("consumption_calibration")
     personal_records = personal if isinstance(personal, list) else [personal]
     identities = [identity for record in personal_records
                   if (identity := _physical_profile_identity(record)) is not None]
     interval_values["consumption_calibration"] = sorted(
-        identities, key=lambda item: json.dumps(item, sort_keys=True))
-    if interval_values.get("consumption_context"):
-        interval_values["consumption_context"].pop("field_sources", None)
+        identities, key=lambda item: json.dumps(item, sort_keys=True)) if identities else None
     context = _digest(interval_values)
     # Dock return can restore the next task's controls before publishing the
     # last area. Only those three controls may differ: identity, rates and all
@@ -811,7 +814,7 @@ def _tick_device_pass(
     state["accounting_interval_context"] = context
     state["accounting_calibration_context"] = calibration_context
     # 5.6 state has only the legacy hash; the first 5.7 pass adopts it silently.
-    if old_interval_context is not None and old_interval_context != context and not closing_floor and not closing_whole_cycle:
+    if old_interval_context is not None and old_interval_context not in (context, legacy_context) and not closing_floor and not closing_whole_cycle:
         # Rebaselining discards a setting-crossing interval. If that interval
         # could have used water, the tank is no longer a complete learning
         # sample, even though later intervals can continue to be recorded.
