@@ -192,7 +192,8 @@ class VacuumWaterStorage:
                     await self._store.async_save(data)
                 return deepcopy(state)
             # A refill starts a new baseline; it is not a signal gap.
-            apply_refill(state, when_ts, source, rebaseline=True)
+            practice = data["settings"].get("refill_settings", {}).get(vacuum_entity, {}).get("full_refill_practice_confirmed") is True
+            apply_refill(state, when_ts, source, rebaseline=True, full_practice_confirmed=practice)
             state["last_reset_iso"] = when_iso
             data["tank_states"][vacuum_entity] = state
             await self._store.async_save(data)
@@ -220,6 +221,7 @@ class VacuumWaterStorage:
         auto_refill: bool | None,
         button_entity: str | None,
         lid_entity: str | None,
+        full_refill_practice_confirmed: bool | None = None,
     ) -> dict[str, Any]:
         """Replace one vacuum's refill choices and return all settings."""
         if not isinstance(vacuum_entity, str) or not vacuum_entity.startswith("vacuum.") or len(vacuum_entity) <= 7:
@@ -234,6 +236,8 @@ class VacuumWaterStorage:
             not isinstance(lid_entity, str) or not lid_entity.startswith("binary_sensor.")
         ):
             raise ValueError("Tank lid sensor must be a binary_sensor entity")
+        if full_refill_practice_confirmed is not None and type(full_refill_practice_confirmed) is not bool:
+            raise ValueError("Confirm full refill practice with true or false")
         entry = {
             key: value
             for key, value in (("auto_refill", auto_refill), ("button_entity", button_entity), ("lid_entity", lid_entity))
@@ -243,6 +247,11 @@ class VacuumWaterStorage:
             data = await self._ensure_loaded_locked()
             settings = data["settings"]
             all_settings = dict(settings.get("refill_settings") or {})
+            previous = all_settings.get(vacuum_entity) or {}
+            if full_refill_practice_confirmed is not None:
+                entry["full_refill_practice_confirmed"] = full_refill_practice_confirmed
+            elif "full_refill_practice_confirmed" in previous:
+                entry["full_refill_practice_confirmed"] = previous["full_refill_practice_confirmed"]
             if entry:
                 all_settings[vacuum_entity] = entry
             else:

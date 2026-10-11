@@ -766,6 +766,7 @@ def _apply_refill_settings(effective: dict[str, Any], settings: dict[str, Any]) 
     choices = refill_choices(settings, effective.get("vacuum_entity"))
     if isinstance(choices.get("auto_refill"), bool):
         effective["refill_on_dock_clear"] = choices["auto_refill"]
+    effective["full_refill_practice_confirmed"] = choices.get("full_refill_practice_confirmed") is True
     button = choices.get("button_entity")
     if isinstance(button, str) and button.startswith(("input_button.", "button.")):
         effective["refill_button_entity"] = button

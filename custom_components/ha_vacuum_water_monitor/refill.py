@@ -41,6 +41,7 @@ def apply_refill(
     source: str,
     *,
     rebaseline: bool,
+    full_practice_confirmed: bool = False,
 ) -> dict[str, Any]:
     """Mark the tracked reservoir full and return the history record.
 
@@ -75,7 +76,10 @@ def apply_refill(
         last_reset_source=source,
         # Alarm clearing and opening the lid prove a change, not a full tank.
         # A user-facing full confirmation qualifies a relative balance cycle.
-        cycle_full_confirmed=source in FULL_CONFIRMATION_SOURCES,
+        cycle_full_confirmed=(source in FULL_CONFIRMATION_SOURCES
+            or (full_practice_confirmed is True and source in {"lid", "dock_cleared"})),
+        cycle_full_confirmation_source=(source if source in FULL_CONFIRMATION_SOURCES else
+            "declared_full_refill_practice" if full_practice_confirmed is True else None),
         water_empty_active=acknowledged,
         water_empty_acknowledged=acknowledged,
         user_empty_active=False,

@@ -358,7 +358,8 @@ def _tick_device_pass(
         # inside the window (the dock cleared, emptied again, the user refilled).
         if ((now_ts - int(state.get("last_reset_ts") or 0)) / 1000 > USER_REFILL_DEDUPE_SECONDS
                 or state.get("water_empty_active")):
-            apply_refill(state, now_ts, user_refill_source, rebaseline=False)
+            apply_refill(state, now_ts, user_refill_source, rebaseline=False,
+                full_practice_confirmed=device.get("full_refill_practice_confirmed") is True)
             _record_accounting(state, "refill", None, None, f"refill_{user_refill_source}")
         else:
             confirm_same_refill(state, user_refill_source)
@@ -1434,7 +1435,8 @@ def _tick_device_pass(
             dirty |= _record_accounting(state, "refill", None, evidence, "refill_volume_unmeasured")
 
     if do_reset and cooldown_ok:
-        apply_refill(state, now_ts, "dock_cleared", rebaseline=False)
+        apply_refill(state, now_ts, "dock_cleared", rebaseline=False,
+            full_practice_confirmed=device.get("full_refill_practice_confirmed") is True)
         dirty = True
         dirty |= _record_accounting(state, "refill", None, evidence, "refill_detected")
 

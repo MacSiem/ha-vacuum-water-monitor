@@ -285,6 +285,7 @@ async def _ws_save_measurement(hass, connection, msg):
         vol.Optional("auto_refill"): vol.Any(None, bool),
         vol.Optional("button_entity"): vol.Any(None, str),
         vol.Optional("lid_entity"): vol.Any(None, str),
+        vol.Optional("full_refill_practice_confirmed"): bool,
     }
 )
 @websocket_api.async_response
@@ -300,6 +301,7 @@ async def _ws_set_refill_settings(
             auto_refill=msg.get("auto_refill"),
             button_entity=msg.get("button_entity") or None,
             lid_entity=msg.get("lid_entity") or None,
+            full_refill_practice_confirmed=msg.get("full_refill_practice_confirmed"),
         )
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
