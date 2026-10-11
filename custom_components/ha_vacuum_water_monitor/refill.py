@@ -64,6 +64,7 @@ def apply_refill(
         state.update(_REBASELINE_FIELDS)
     state.update(
         used_ml=0,
+        cycle_action_totals={},
         accounting_incomplete=False,
         missing_usage_rate_reason=None,
         session_accounting_valid=False,

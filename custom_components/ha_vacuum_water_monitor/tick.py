@@ -86,8 +86,6 @@ AREA_RATE_SMOOTHING = 0.3
 REFILL_ACK_WINDOW_SECONDS = 600
 # A dock that reports empty during a wash could not finish it. Half of that
 # wash is the expected water it still drew.
-FAILED_WASH_WINDOW_SECONDS = 300
-FAILED_WASH_REFUND_FRACTION = 0.5
 MAX_ACTIVE_INTERVAL_SECONDS = 180
 WATER_ANCHOR_CONFIRMATION_SECONDS = 60
 DEFAULT_LOW_WATER_REMAINING_PERCENT = 10
@@ -248,6 +246,38 @@ def _set_used_at_anchor(state: dict[str, Any], target: float) -> None:
     if state.get("session_start_ts"):
         state["session_start_used_ml"] = round(
             _number(state.get("session_start_used_ml"), 0) + (state["used_ml"] - before), 2)
+
+
+def _charge_consumption(state, amount, action, source, evidence, now_ts, exposure=None):
+    """Keep doses apart from nominal anchors and preserve their actual context."""
+    if amount <= 0:
+        return
+    if (state.get("water_empty_active") and state.get("water_anchor_kind") == "empty"
+            and not state.get("water_empty_acknowledged") and source != "real_sensor"):
+        return
+    amount = round(amount, 2)
+    state["used_ml"] = round(_number(state.get("used_ml"), 0) + amount, 2)
+    context = deepcopy(state.get("last_consumption_context") or {})
+    if context:
+        context["action"] = action
+    event = {"ts": now_ts, "action": action, "amount_ml": amount, "unit": "ml",
+             "source": source, "evidence": evidence,
+             "quantity_kind": "measured" if evidence == "measured_volume" else "estimate",
+             "context": context, "exposure": deepcopy(exposure or {}),
+             "session_started_ts": state.get("session_start_ts"),
+             "accounting_version": 3}
+    state["consumption_events"] = [event, *(state.get("consumption_events") or [])][:256]
+    totals = deepcopy(state.get("cycle_action_totals") or {})
+    totals[action] = round(_number(totals.get(action), 0) + amount, 2)
+    state["cycle_action_totals"] = totals
+    if state.get("session_start_ts"):
+        session = deepcopy(state.get("session_action_totals") or {})
+        session[action] = round(_number(session.get(action), 0) + amount, 2)
+        state["session_action_totals"] = session
+        exposures = deepcopy(state.get("session_exposures") or {})
+        for key, value in (exposure or {}).items():
+            exposures[key] = round(_number(exposures.get(key), 0) + value, 3)
+        state["session_exposures"] = exposures
 
 
 def _only_tick_timestamp_changed(before: dict[str, Any], after: dict[str, Any]) -> bool:
@@ -612,6 +642,7 @@ def _tick_device_pass(
                 state["consumption_resolution"] = {**resolution, "source": "unknown", "reason": "action_accounting_required"}
     else:
         consumption_context = None
+    state["last_consumption_context"] = deepcopy(consumption_context)
     context_values = {key: device.get(key) for key in (
         "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",
         "firmware", "sw_version", "sku", "dock_variant", "integration_version",
@@ -748,7 +779,8 @@ def _tick_device_pass(
                     and completed >= 0 and completed.is_integer()
                     and completed - before_completed == 1 and state.get("verified_wash_active")):
                 amount = wash_resolution["coefficient"]
-                state["used_ml"] = round(_number(state.get("used_ml"), 0) + amount, 2)
+                _charge_consumption(state, amount, "mop_wash", "wash", wash_resolution["source"],
+                                    now_ts, {"completed_wash_count": 1})
                 state["last_wash_charged_ts"] = now_ts
                 state["last_wash_charged_ml"] = round(amount, 2)
                 state["wash_resolution"] = wash_resolution
@@ -773,6 +805,7 @@ def _tick_device_pass(
                                          else curr_area),
                      session_accounting_valid=True, session_water_broken=False,
                      session_area_carry=0.0,
+                     session_action_totals={}, session_exposures={},
                      session_context=deepcopy(consumption_context),
                      session_resolution=deepcopy(state.get("consumption_resolution")),
                      session_exposure_complete=curr_area == 0, session_segments=1)
@@ -794,7 +827,8 @@ def _tick_device_pass(
                 state["accounting_incomplete"] = True
             dirty |= _record_accounting(state, "wash", None, evidence, "missing_wash_rate")
         else:
-            state["used_ml"] = round(_number(state.get("used_ml"), 0) + wash_volume, 2)
+            _charge_consumption(state, wash_volume, "mop_wash", "wash", evidence,
+                                now_ts, {"wash_attempt_count": 1})
             state["last_wash_charged_ts"] = now_ts
             state["last_wash_charged_ml"] = round(wash_volume, 2)
             dirty = True
@@ -966,7 +1000,8 @@ def _tick_device_pass(
             added = delta * effective_area_rate * (
                 intensity_factor if intensity_factor is not None else 1
             )
-            state["used_ml"] = round(_number(state.get("used_ml"), 0) + added, 2)
+            _charge_consumption(state, added, "floor_mopping", "area", evidence,
+                                now_ts, {"area_m2": delta})
             dirty = True
             dirty |= _record_accounting(
                 state, "area", effective_area_rate, evidence, None
@@ -1031,9 +1066,8 @@ def _tick_device_pass(
             added = (elapsed_seconds / 60) * effective_minute_rate * (
                 intensity_factor if intensity_factor is not None else 1
             )
-            state["used_ml"] = round(
-                _number(state.get("used_ml"), 0) + added, 2
-            )
+            _charge_consumption(state, added, "floor_mopping", "active_time", time_evidence,
+                                now_ts, {"active_minutes": elapsed_seconds / 60})
             dirty = True
             dirty |= _record_accounting(
                 state, "active_time", effective_minute_rate, time_evidence, None
@@ -1205,13 +1239,10 @@ def _tick_device_pass(
         state["last_low_water_ts"] = now_ts
         dirty = True
         capacity = _device_capacity_ml(device)
-        wash_refund = 0.0
-        charged_ts = _positive_number(state.get("last_wash_charged_ts"))
-        if (anchor_kind == "empty" and anchor_source != "user_empty" and charged_ts is not None
-                and 0 <= now_ts - charged_ts <= FAILED_WASH_WINDOW_SECONDS * 1000):
-            wash_refund = _number(state.get("last_wash_charged_ml"), 0) * FAILED_WASH_REFUND_FRACTION
-            state["last_wash_charged_ts"] = 0
-        predicted_used = _positive_number(_number(state.get("used_ml"), 0) - wash_refund)
+        # Empty proves a level threshold, never the number of ml drawn. A
+        # partial wash has no measured refundable fraction; keep its labelled
+        # estimate and qualify it separately instead of inventing 50%.
+        predicted_used = _positive_number(state.get("used_ml"))
         initialized = bool(state.get("initialized") or state.get("last_reset_iso"))
         if capacity is not None and initialized:
             remaining_percent = (
@@ -1232,70 +1263,21 @@ def _tick_device_pass(
                 and predicted_used >= capacity * max(
                     MIN_CALIBRATION_USAGE_FRACTION, estimation.MIN_CALIBRATION_CYCLE_FRACTION)
             )
-            if cycle_long_enough and not refilled_since_last_anchor:
-                # The dock reported empty again without a refill in between (an
-                # error that flickered while automatic refill is off): one tank.
+            reason = "calibration_requires_measurement"
+            if not refilled_since_last_anchor:
+                reason = "calibration_sample_no_refill_since_empty"
+            elif state.get("accounting_incomplete"):
+                reason = "calibration_sample_incomplete_cycle"
+            if predicted_used is not None:
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
-                                            calibration_factor, False, "calibration_sample_no_refill_since_empty", wash_refund)
-                _set_used_at_anchor(state, calibration_target)
-                dirty |= _record_accounting(state, "low_water", None, evidence,
-                                            "calibration_sample_no_refill_since_empty")
-            elif cycle_long_enough and state.get("accounting_incomplete"):
-                # Water was dispensed while a signal was missing: the tank's
-                # prediction is not a fair sample, but the anchor still applies.
-                _append_calibration_history(state, now_ts, predicted_used, calibration_target,
-                                            calibration_factor, False, "calibration_sample_incomplete_cycle", wash_refund)
-                _set_used_at_anchor(state, calibration_target)
-                dirty |= _record_accounting(state, "low_water", None, evidence,
-                                            "calibration_sample_incomplete_cycle")
-            elif cycle_long_enough:
-                assert predicted_used is not None
-                log_factors = estimation.seed_log_factors(state)
-                # Preserve the observation for validation. Clipping here turns
-                # an impossible cycle into a plausible boundary training sample.
-                observed_factor = calibration_factor * calibration_target / predicted_used
-                pending = _float_or_none(state.get("calibration_pending_log_factor"))
-                # An old pending value has no proven tank identity. It must not
-                # confirm a sample after a capacity/rate change or migration.
-                if state.get("calibration_pending_context") != calibration_context:
-                    pending = None
-                window, learned_factor, accepted, rejection, pending = estimation.update_calibration(
-                    log_factors, observed_factor,
-                    band_fraction=estimation.band_fraction(device.get("estimate_basis"), device.get("uncertainty_percent")),
-                    pending=pending)
-                if predicted_used > capacity and rejection != "calibration_sample_out_of_range":
-                    # One inferred refill-to-empty tank cannot distinguish an
-                    # overestimated prior from an unreported top-up. Repetition
-                    # does not resolve that ambiguity; use a measured cycle.
-                    window, learned_factor = log_factors, calibration_factor
-                    accepted, rejection, pending = False, "calibration_sample_over_capacity", None
-                state["calibration_pending_log_factor"] = round(pending, 6) if pending is not None else None
-                state["calibration_pending_context"] = calibration_context if pending is not None else None
-                _append_calibration_history(state, now_ts, predicted_used, calibration_target,
-                                            calibration_factor, accepted, rejection, wash_refund)
-                state["calibration_log_factors"] = [round(value, 6) for value in window]
-                state["calibration_factor"] = round(
-                    _clamp(learned_factor, MIN_CALIBRATION_FACTOR, MAX_CALIBRATION_FACTOR), 4)
-                state["calibration_samples"] = len(window)
+                                            calibration_factor, False, reason)
                 state["last_calibration_predicted_ml"] = round(predicted_used, 2)
                 state["last_calibration_target_ml"] = round(calibration_target, 2)
-                _set_used_at_anchor(state, calibration_target)
-                dirty |= _record_accounting(
-                    state,
-                    "low_water",
-                    state["calibration_factor"],
-                    "device_calibrated",
-                    "low_water_calibrated" if accepted else rejection,
-                )
-            else:
-                _set_used_at_anchor(state, calibration_target)
-                dirty |= _record_accounting(
-                    state,
-                    "low_water",
-                    None,
-                    evidence,
-                    "low_water_detected_without_sample",
-                )
+            # Preserve legacy factor/windows/history for upgrade and rollback.
+            # Only independently confirmed local measurements may train new
+            # rates. Repetition of a nominal anchor does not confirm volume.
+            _set_used_at_anchor(state, calibration_target)
+            dirty |= _record_accounting(state, "low_water", None, evidence, reason)
         else:
             dirty |= _record_accounting(
                 state,
@@ -1388,7 +1370,8 @@ def _tick_device_pass(
             state["consumption_resolution"] = resolution
             if (state.get("session_exposure_complete") and state.get("session_accounting_valid")
                     and resolution.get("source") == "device_calibration" and resolution.get("method") == "area"):
-                state["used_ml"] = round(_number(state.get("used_ml"), 0) + exposure * resolution["coefficient"], 2)
+                _charge_consumption(state, exposure * resolution["coefficient"], "whole_cycle",
+                                    "whole_cycle", "device_calibration", now_ts, {"area_m2": exposure})
                 state["session_resolution"] = deepcopy(resolution)
                 _record_accounting(state, "whole_cycle", resolution["coefficient"], "device_calibration", None)
             else:
@@ -1469,6 +1452,8 @@ def _append_calibration_history(state, now_ts, predicted, target, factor_before,
               "factor_before": round(factor_before, 4), "accepted": bool(accepted), "reason": reason}
     if wash_refund:
         record["failed_wash_refund_ml"] = round(wash_refund, 1)
+    record["basis"] = "nominal_capacity"
+    record["measurement_confirmed"] = False
     state["calibration_history"] = [record, *(state.get("calibration_history") or [])][:12]
 
 
@@ -1534,7 +1519,10 @@ def _finish_session(state, running, status, now_ts, area):
               "resolution": deepcopy(state.get("session_resolution")),
               "accounting_valid": bool(state.get("session_accounting_valid")),
               "exposure_complete": bool(state.get("session_exposure_complete")),
-              "segments": state.get("session_segments", 1)}
+              "segments": state.get("session_segments", 1),
+              "action_totals": deepcopy(state.get("session_action_totals") or {}),
+              "exposures": deepcopy(state.get("session_exposures") or {}),
+              "accounting_version": 3}
     state["automatic_sessions"] = [record, *(state.get("automatic_sessions") or [])][:50]
     state["session_start_ts"] = None
 
