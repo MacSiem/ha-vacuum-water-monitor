@@ -15,6 +15,7 @@ REFILL_HISTORY_LIMIT = 20
 # closed after the dock already cleared, a button pressed twice or as confirmation).
 USER_REFILL_DEDUPE_SECONDS = 600
 # "entity": the Refilled button entity of the robot; "repair": confirmed in Settings > Repairs.
+FULL_CONFIRMATION_SOURCES = frozenset({"card", "service", "button", "entity", "repair"})
 REFILL_SOURCES = frozenset({"card", "service", "button", "lid", "dock_cleared", "legacy", "entity", "repair"})
 
 # Fields that restart exposure accounting from the next observation.
@@ -74,7 +75,7 @@ def apply_refill(
         last_reset_source=source,
         # Alarm clearing and opening the lid prove a change, not a full tank.
         # A user-facing full confirmation qualifies a relative balance cycle.
-        cycle_full_confirmed=source in {"card", "service", "button", "entity", "repair"},
+        cycle_full_confirmed=source in FULL_CONFIRMATION_SOURCES,
         water_empty_active=acknowledged,
         water_empty_acknowledged=acknowledged,
         user_empty_active=False,
@@ -91,3 +92,14 @@ def apply_refill(
     }
     state["refill_history"] = [record, *(state.get("refill_history") or [])][:REFILL_HISTORY_LIMIT]
     return record
+
+
+def confirm_same_refill(state: dict[str, Any], source: str) -> bool:
+    """Enrich the same zero-use baseline without inventing a previous full level."""
+    if (source not in FULL_CONFIRMATION_SOURCES or state.get("cycle_full_confirmed")
+            or state.get("used_ml") != 0 or state.get("accounting_incomplete")
+            or state.get("session_start_ts")):
+        return False
+    state["cycle_full_confirmed"] = True
+    state["cycle_full_confirmation_source"] = source
+    return True

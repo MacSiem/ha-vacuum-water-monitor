@@ -10,7 +10,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
-from .refill import REFILL_SOURCES, USER_REFILL_DEDUPE_SECONDS, apply_refill
+from .refill import REFILL_SOURCES, USER_REFILL_DEDUPE_SECONDS, apply_refill, confirm_same_refill
 from .const import (
     DEFAULT_CRITICAL_THRESHOLD,
     DEFAULT_WARNING_THRESHOLD,
@@ -187,6 +187,9 @@ class VacuumWaterStorage:
             previous_reset = int(state.get("last_reset_ts") or 0)
             if (state.get("initialized") and not state.get("water_empty_active")
                     and 0 <= when_ts - previous_reset <= USER_REFILL_DEDUPE_SECONDS * 1000):
+                if confirm_same_refill(state, source):
+                    data["tank_states"][vacuum_entity] = state
+                    await self._store.async_save(data)
                 return deepcopy(state)
             # A refill starts a new baseline; it is not a signal gap.
             apply_refill(state, when_ts, source, rebaseline=True)

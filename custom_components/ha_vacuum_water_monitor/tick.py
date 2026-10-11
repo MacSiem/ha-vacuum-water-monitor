@@ -19,7 +19,7 @@ from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compat
 from . import profiles as consumption_profiles
 from . import accounting_v2
 from . import estimation
-from .refill import USER_REFILL_DEDUPE_SECONDS, apply_refill
+from .refill import USER_REFILL_DEDUPE_SECONDS, apply_refill, confirm_same_refill, FULL_CONFIRMATION_SOURCES
 
 MOP_WASH_STATES = {
     "washing",
@@ -321,6 +321,11 @@ def _tick_device_pass(
     """Translate one v4 `_tickWaterState` pass into Python."""
     state = dict(state)
     state[_PASS_REASONS_KEY] = []
+    if "cycle_full_confirmed" not in state:
+        # Migration accepts the saved explicit full gesture, not initialization
+        # or a lid/alarm transition. Existing quality vetoes still apply.
+        state["cycle_full_confirmed"] = bool(state.get("initialized")
+            and state.get("last_reset_ts") and state.get("last_reset_source") in FULL_CONFIRMATION_SOURCES)
     if now_ts is None:
         now_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
     # A refill the user reports through a bound button or tank-lid sensor is
@@ -336,6 +341,7 @@ def _tick_device_pass(
             apply_refill(state, now_ts, user_refill_source, rebaseline=False)
             _record_accounting(state, "refill", None, None, f"refill_{user_refill_source}")
         else:
+            confirm_same_refill(state, user_refill_source)
             _record_accounting(state, "refill", None, None, "refill_already_recorded")
     vacuum_entity = device.get("vacuum_entity")
     vac = hass.states.get(vacuum_entity) if vacuum_entity else None

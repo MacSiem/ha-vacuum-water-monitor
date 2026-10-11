@@ -68,6 +68,8 @@ class CollectionTests(unittest.TestCase):
                                      dict(status='charging',area='10')])
         self.assertEqual(state['used_ml'],100)
         self.assertEqual(state['automatic_sessions'][0]['context']['action'],'whole_cycle')
+        self.assertFalse(state.get('accounting_incomplete',False))
+        self.assertIsNone(state.get('missing_usage_rate_reason'))
 
     def test_full_confirmation_after_auto_refill_promotes_without_resetting_again(self):
         import asyncio
@@ -92,3 +94,32 @@ class CollectionTests(unittest.TestCase):
             with self.subTest(source=source):
                 state = run(effective({},descriptor()),{**BASE,'last_reset_ts':9000000,'last_reset_source':source},[dict()])
                 self.assertEqual(state.get('cycle_full_confirmed',False),expected)
+
+    def _physical_device(self):
+        records = [cycle(i) for i in (1,2,3)]
+        for record in records:
+            record['context']['settings'].update(mop_mode='standard',water_level='medium')
+        samples = [calibration.build_local_measurement(s,measurement(),'vacuum.robot') for s in records]
+        return {**effective({},descriptor()),'consumption_context':records[0]['context'],
+                'consumption_calibration':[calibration.fit_local_measurements(samples)]}
+
+    def test_whole_cycle_outside_domain_preserves_automatic_estimate(self):
+        device = self._physical_device()
+        steps = [dict(status='cleaning',vac='cleaning',area='0'),
+                 dict(status='cleaning',vac='cleaning',area='5'),dict(status='charging',area='5')]
+        baseline = run({**device,'consumption_calibration':None},dict(BASE),steps)
+        state = run(device,dict(BASE),steps)
+        self.assertGreater(baseline['used_ml'],0)
+        self.assertEqual(state['used_ml'],baseline['used_ml'])
+        self.assertFalse(state.get('accounting_incomplete',False))
+        self.assertEqual(state['consumption_resolution']['reason'],'exposure_outside_validated_domain')
+
+    def test_dock_restored_controls_do_not_erase_qualified_whole_cycle(self):
+        device = self._physical_device()
+        state = run(device,dict(BASE),[dict(status='cleaning',vac='cleaning',area='0'),
+            dict(status='cleaning',vac='cleaning',area='10'),
+            dict(status='charging',area='10',intensity='high'),
+            dict(status='charging',area='10',intensity='high')])
+        self.assertEqual(state['used_ml'],100)
+        self.assertFalse(state.get('accounting_incomplete',False))
+        self.assertEqual(state['automatic_sessions'][0]['context']['settings']['water_level'],'medium')
