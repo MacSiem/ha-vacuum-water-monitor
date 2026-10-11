@@ -106,7 +106,7 @@ class ShadowReplayTests(unittest.TestCase):
         # 2850 ml target and counter agreement are retained as replay evidence,
         # while 3061 ml predicted for a configured 3000 ml tank cannot train.
         self.assertFalse(empty["accepted"])
-        self.assertEqual(empty["reason"], "calibration_sample_over_capacity")
+        self.assertEqual(empty["reason"], "calibration_sample_full_unconfirmed")
         self.assertEqual(vacuum["calibration_samples"], 0)
         self.assertEqual(vacuum["calibration_factor"], 1)
 

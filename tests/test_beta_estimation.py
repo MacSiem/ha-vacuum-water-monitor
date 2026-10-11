@@ -148,7 +148,7 @@ class EndToEndEstimateTests(unittest.TestCase):
 class CalibratorTests(unittest.TestCase):
     def _tank(self, device, state, predicted, ts):
         state = {**state, "used_ml": predicted, "water_empty_active": False, "last_dock_err": "ok",
-                 "initialized": True, "last_status": "charging", "last_area": 10.0}
+                 "initialized": True, "cycle_full_confirmed": True, "last_status": "charging", "last_area": 10.0}
         state, _ = tick.tick_device(a245_hass("charging", 10.0, "docked", "water_empty"), device, state, now_ts=ts)
         state, _ = tick.tick_device(a245_hass("charging", 10.0, "docked", "ok"), device, state, now_ts=ts + 120_000)
         return state

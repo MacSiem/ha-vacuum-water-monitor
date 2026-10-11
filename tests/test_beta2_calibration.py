@@ -20,7 +20,7 @@ S8 = effective({}, descriptor())  # owner_device estimate, 4000 ml dock tank, 5%
 
 def tank(state, used, ts):
     """One tank closing at the given predicted use, then the dock clears after a refill."""
-    return run(S8, {**state, "used_ml": used}, [dict(dock_err="water_empty"), dict(dock_err="ok", _gap=180_000)], ts=ts)
+    return run(S8, {**state, "used_ml": used, "cycle_full_confirmed": True}, [dict(dock_err="water_empty"), dict(dock_err="ok", _gap=180_000)], ts=ts)
 
 
 def cleaning(areas, **overrides):
@@ -39,7 +39,7 @@ class ConfirmationGateTests(unittest.TestCase):
         state=tank(dict(BASE),3000,10_000_000)
         changed={**S8,'tracked_capacity_ml':4500,'water_total_ml':4500}
         state=run(changed,state,[dict()],ts=15_000_000)
-        state=run(changed,{**state,'used_ml':3375},[dict(dock_err='water_empty')],ts=20_000_000)
+        state=run(changed,{**state,'used_ml':3375,'cycle_full_confirmed':True},[dict(dock_err='water_empty')],ts=20_000_000)
         self.assertEqual(state.get('calibration_samples',0),0)
         self.assertEqual(state['calibration_history'][0]['reason'],'calibration_sample_unconfirmed')
 
@@ -192,13 +192,13 @@ class GapBridgingTests(unittest.TestCase):
 
 
 class FailedWashTests(unittest.TestCase):
-    def test_wash_interrupted_by_an_empty_dock_is_half_refunded(self):
+    def test_wash_interrupted_by_an_empty_dock_has_no_invented_refund(self):
         state = run(S8, {**BASE, "used_ml": 3500}, self.session_to_wash() + [
             dict(status="washing_the_mop", vac="docked", area="10", dock_err="water_empty")])
         record = state["calibration_history"][0]
-        self.assertEqual(record["failed_wash_refund_ml"], 75.0)
+        self.assertNotIn("failed_wash_refund_ml", record)
         charged = 3500 + 10 * 6 + 150
-        self.assertAlmostEqual(record["predicted_ml"], charged - 75, delta=0.5)
+        self.assertAlmostEqual(record["predicted_ml"], charged, delta=0.5)
 
     def test_an_earlier_completed_wash_is_not_refunded(self):
         state = run(S8, {**BASE, "used_ml": 3500}, self.session_to_wash() + [

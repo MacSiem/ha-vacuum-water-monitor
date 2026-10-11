@@ -77,7 +77,7 @@ class UserEmptyAnchorTests(unittest.TestCase):
 
     def test_pressing_tank_empty_anchors_and_learns(self):
         capacity = tick._device_capacity_ml(self.device)
-        state = {**BASE, "used_ml": capacity * 0.8, "last_reset_ts": 1, "user_empty_active": True}
+        state = {**BASE, "used_ml": capacity * 0.8, "last_reset_ts": 1, "user_empty_active": True, "cycle_full_confirmed": True}
         state = run(self.device, state, [dict()])
         self.assertTrue(state["water_empty_active"])
         self.assertEqual(state["water_anchor_source"], "user_empty")
@@ -104,7 +104,7 @@ class UserEmptyAnchorTests(unittest.TestCase):
 
     def test_a_short_tank_is_anchored_but_not_learned(self):
         capacity = tick._device_capacity_ml(self.device)
-        state = {**BASE, "used_ml": capacity * 0.1, "last_reset_ts": 1, "user_empty_active": True}
+        state = {**BASE, "used_ml": capacity * 0.1, "last_reset_ts": 1, "user_empty_active": True, "cycle_full_confirmed": True}
         state = run(self.device, state, [dict()])
         self.assertTrue(state["water_empty_active"])
         self.assertEqual(state.get("calibration_samples", 0), 0)

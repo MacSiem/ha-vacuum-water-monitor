@@ -91,13 +91,13 @@ class AutomaticDockRefillChoiceTests(unittest.TestCase):
     EMPTY = [dict(dock_err="water_empty"), dict(dock_err="water_empty")]
 
     def test_default_dock_contract_refills_when_empty_clears(self):
-        state = run(device(), {**BASE, "used_ml": 3700}, self.EMPTY + [dict(dock_err="ok", _gap=120_000)])
+        state = run(device(), {**BASE, "used_ml": 3700, "cycle_full_confirmed": True}, self.EMPTY + [dict(dock_err="ok", _gap=120_000)])
         self.assertEqual(state["used_ml"], 0)
         self.assertEqual(state["last_reset_source"], "dock_cleared")
 
     def test_user_can_turn_automatic_refill_off(self):
         dev = device({"auto_refill": False})
-        state = run(dev, {**BASE, "used_ml": 3700}, self.EMPTY + [dict(dock_err="ok", _gap=120_000)])
+        state = run(dev, {**BASE, "used_ml": 3700, "cycle_full_confirmed": True}, self.EMPTY + [dict(dock_err="ok", _gap=120_000)])
         self.assertGreater(state["used_ml"], 3000, "the tank stays at its empty anchor until the user reports the refill")
         self.assertFalse(state["water_empty_active"], "the empty condition ended")
         # The user reports the refill; the next real empty is a new anchor again.
@@ -110,14 +110,14 @@ class AutomaticDockRefillChoiceTests(unittest.TestCase):
         cfg = {"vacuum_entity": "vacuum.robot", "refill_on_clear": False,
                "config_provenance": {"authored_fields": ["vacuum_entity", "refill_on_clear"]}}
         dev = effective({"configured_devices": [cfg], "refill_settings": {"vacuum.robot": {"auto_refill": True}}}, descriptor())
-        state = run(dev, {**BASE, "used_ml": 3700}, self.EMPTY + [dict(dock_err="ok", _gap=120_000)])
+        state = run(dev, {**BASE, "used_ml": 3700, "cycle_full_confirmed": True}, self.EMPTY + [dict(dock_err="ok", _gap=120_000)])
         self.assertEqual(state["used_ml"], 0)
 
 
 class RefillWhileDockStillEmptyTests(unittest.TestCase):
     def test_refilled_before_the_dock_clears_its_error_keeps_the_tank_full(self):
         dev = device()
-        state = run(dev, {**BASE, "used_ml": 3700}, [dict(dock_err="water_empty")])
+        state = run(dev, {**BASE, "used_ml": 3700, "cycle_full_confirmed": True}, [dict(dock_err="water_empty")])
         self.assertTrue(state["water_empty_active"])
         refill.apply_refill(state, 10_200_000, "card", rebaseline=True)
         state = run(dev, state, [dict(dock_err="water_empty"), dict(dock_err="water_empty"),
@@ -139,7 +139,7 @@ class ReviewFollowUpTests(unittest.TestCase):
 
     def test_flickering_empty_error_with_auto_refill_off_is_one_tank(self):
         dev = device({"auto_refill": False})
-        state = run(dev, {**BASE, "used_ml": 3700}, [
+        state = run(dev, {**BASE, "used_ml": 3700, "cycle_full_confirmed": True}, [
             dict(dock_err="water_empty"), dict(dock_err="ok"), dict(dock_err="water_empty"),
             dict(dock_err="ok"), dict(dock_err="water_empty")])
         self.assertEqual(state.get("calibration_samples", 0), 1)
@@ -171,7 +171,7 @@ class ReviewFollowUpTests(unittest.TestCase):
 
     def test_refilled_before_the_empty_error_was_seen_keeps_the_tank_full(self):
         dev = device({"auto_refill": False})
-        state = run(dev, {**BASE, "used_ml": 3700}, [dict()])
+        state = run(dev, {**BASE, "used_ml": 3700, "cycle_full_confirmed": True}, [dict()])
         refill.apply_refill(state, 10_060_000, "card", rebaseline=False)
         state = run(dev, state, [dict(dock_err="water_empty"), dict(dock_err="ok")], ts=10_060_000)
         self.assertEqual(state["used_ml"], 0)
@@ -190,7 +190,7 @@ class ReviewFollowUpTests(unittest.TestCase):
 
     def test_a_lid_closing_after_the_dock_already_cleared_is_the_same_refill(self):
         dev = device({"lid_entity": LID})
-        state = run(dev, {**BASE, "used_ml": 3700}, [
+        state = run(dev, {**BASE, "used_ml": 3700, "cycle_full_confirmed": True}, [
             dict(dock_err="water_empty", extra={LID: _S("off")}), dict(extra={LID: _S("on")}),
             dict(dock_err="ok", extra={LID: _S("on")}, _gap=120_000),
             dict(status="cleaning", vac="cleaning", area="0", extra={LID: _S("on")}),

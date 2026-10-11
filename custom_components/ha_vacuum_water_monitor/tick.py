@@ -305,8 +305,8 @@ def tick_device(
     reset_before = state.get("last_reset_ts")
     new_state, dirty = _tick_device_pass(hass, device, state, now_ts=now_ts)
     if (tank_empty and new_state.get("water_empty_active") and new_state.get("last_reset_ts") == reset_before
-            and _number(new_state.get("used_ml"), 0) > used_before):
-        new_state["used_ml"] = used_before
+            ):
+        new_state["used_ml"] = min(used_before, _number(new_state.get("used_ml"), 0))
         _record_accounting(new_state, "low_water", None, None, "tank_empty_no_draw")
     new_state.pop(_PASS_REASONS_KEY, None)
     return new_state, dirty
@@ -1289,12 +1289,16 @@ def _tick_device_pass(
                     window, calibration_factor * calibration_target / predicted_used,
                     band_fraction=estimation.band_fraction(device.get("estimate_basis"), device.get("uncertainty_percent")),
                     pending=pending)
+                if predicted_used > capacity and reason != "calibration_sample_out_of_range":
+                    # Full at the start does not prove no later unreported top-up.
+                    window, learned = estimation.seed_log_factors(state), calibration_factor
+                    accepted, reason, pending = False, "calibration_sample_over_capacity", None
                 state.update(calibration_log_factors=[round(value,6) for value in window],
                              calibration_factor=round(learned,4), calibration_samples=len(window),
                              calibration_pending_log_factor=round(pending,6) if pending is not None else None,
                              calibration_pending_context=calibration_context if pending is not None else None,
                              calibration_basis="confirmed_full_nominal_empty")
-            if predicted_used is not None:
+            if predicted_used is not None and cycle_long_enough:
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
                                             calibration_factor, accepted, reason)
                 state["last_calibration_predicted_ml"] = round(predicted_used, 2)

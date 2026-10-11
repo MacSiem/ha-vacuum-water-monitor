@@ -519,6 +519,7 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         }
         initial = {
             "used_ml": 4000,
+            "cycle_full_confirmed": True,
             "initialized": True,
             "last_tick_ts": 1_000_000,
             "water_empty_active": False,
@@ -584,6 +585,7 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         }
         initial = {
             "used_ml": 4000,
+            "cycle_full_confirmed": True,
             "initialized": True,
             "last_tick_ts": 1_000_000,
             "water_empty_active": False,
