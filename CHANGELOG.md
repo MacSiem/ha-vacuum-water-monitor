@@ -5,6 +5,7 @@
 - Separate per-action consumption estimates from reservoir-level anchors; remove the unmeasured half-wash refund. Require explicit or prospectively declared full refills and complete coverage for nominal tank learning. Retain useful learning by exact context.
 - Apply qualified local whole-cycle profiles to the real accounting consumer, replacing only the completed session’s provisional estimate. Retain available automatic estimates outside the measured domain and preserve dock-restored task settings in completed history.
 - Add prospective technical collection settings, confirmed physical measurements, robust training/outlier qualification and independent validation summaries. Preserve historical context and let observed HA settings take precedence.
+- Keep independent validation and uncertainty metadata from interrupting an unchanged fitted dose or discarding active exposure. Preserve conservative rebaselining when the rate, domain or eligibility changes, and adopt unchanged legacy fingerprints during upgrade.
 - Replace legacy nominal-summary sharing with OFF-by-default confirmed-measurement preview, consent for the exact packet and manual maintained dataset intake. No automatic upload; document technical re-identification and withdrawal limits.
 
 ## 5.9.1 (2026-10-06)
