@@ -123,3 +123,15 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(state['used_ml'],100)
         self.assertFalse(state.get('accounting_incomplete',False))
         self.assertEqual(state['automatic_sessions'][0]['context']['settings']['water_level'],'medium')
+
+    def test_successful_whole_cycle_replaces_provisional_floor_and_wash_once(self):
+        device = self._physical_device()
+        start = run(device,dict(BASE),[dict(status='cleaning',vac='cleaning',area='0'),
+            dict(status='cleaning',vac='cleaning',area='10'),dict(status='washing_the_mop',area='10')])
+        self.assertGreater(start['used_ml'],0)
+        state = run(device,start,[dict(status='charging',area='10'),dict(status='charging',area='10')],ts=start['last_tick_ts'])
+        self.assertEqual(state['used_ml'],100)
+        self.assertEqual(state['cycle_action_totals'],{'whole_cycle':100})
+        self.assertEqual(state['automatic_sessions'][0]['water'],100)
+        self.assertEqual(state['automatic_sessions'][0]['exposures']['area_m2'],10)
+        self.assertTrue(any(e.get('superseded_by')=='qualified_whole_cycle' for e in state['consumption_events']))
