@@ -75,6 +75,15 @@ const assert=require('assert/strict');
    accountingSource:'whole_cycle',consumptionResolution:{source:'device_calibration',method:'area',coefficient:10}});
  assert.ok(pendingGuidance.includes('Whole-cycle estimate pending'));
  assert.equal(pendingGuidance.includes('Physical whole-cycle calibration'),false);
+ const idleGuidance=card._buildAccountingGuidance({initialized:true,capability:'automatic_estimate',stateReason:'whole_cycle_pending',
+   sessionActive:false,accountingSource:'whole_cycle',usedMl:120,consumptionResolution:{source:'unknown',reason:'outside_exposure_domain'}});
+ assert.equal(idleGuidance.includes('Whole-cycle estimate pending'),false,'an idle completed cycle must not look unfinished');
+ assert.ok(idleGuidance.includes('Usage recorded'));
+ assert.equal(idleGuidance.includes('Physical whole-cycle calibration'),false,'idle interval does not certify a physical dose');
+ const activeGuidance=card._buildAccountingGuidance({initialized:true,capability:'automatic_estimate',stateReason:'whole_cycle_pending',
+   sessionActive:true,accountingSource:'whole_cycle',usedMl:120,consumptionResolution:{source:'unknown',reason:'outside_exposure_domain'}});
+ assert.ok(activeGuidance.includes('Whole-cycle estimate pending'),'an actually open cycle remains provisional');
+
  const doses=card._buildDiagnostics({cycleActionTotals:{floor_mopping:480.24,mop_wash:2550}});
  assert.ok(doses.includes('Recorded floor doses') && doses.includes('Recorded mop-wash doses'));
  assert.ok(doses.includes('nominal level anchors are separate'));
