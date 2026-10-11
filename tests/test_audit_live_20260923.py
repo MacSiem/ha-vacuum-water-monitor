@@ -274,6 +274,21 @@ class EventPayloadTests(unittest.TestCase):
         self.assertLess(len(json.dumps(event)), 2_000)
         self.assertIn("automatic_sessions", tank)  # the stored state is untouched
 
+    def test_new_action_ledger_stays_local_without_exceeding_recorder_cap(self):
+        import json
+        const = importlib.import_module("vwmruntimepkg.const")
+        tank = {"used_ml":100, "cycle_action_totals":{"floor_mopping":100},
+                "consumption_events":[{"context":{"settings":{"water_level":"medium"},
+                    "device_id":"vacuum.synthetic"}, "amount_ml":1}]*256,
+                "nominal_calibration_contexts":{"x":{"calibration_log_factors":[0.1]*50}}}
+        snapshot = json.dumps(tank)
+        event = const.event_tank_states({"vacuum.a":tank})['vacuum.a']
+        self.assertNotIn('consumption_events',event)
+        self.assertNotIn('nominal_calibration_contexts',event)
+        self.assertEqual(event['cycle_action_totals'],{'floor_mopping':100})
+        self.assertLess(len(json.dumps(event)),2000)
+        self.assertEqual(json.dumps(tank),snapshot)
+
     def test_the_card_reloads_history_when_a_refill_or_run_moves_it(self):
         card = (ROOT / "custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js").read_text(encoding="utf-8")
         self.assertIn("if (historyMoved) setTimeout(() => this._ensureServerState(true), 0);", card)
