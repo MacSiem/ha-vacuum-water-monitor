@@ -288,6 +288,26 @@ def _digest(values: Any) -> str:
     return hashlib.sha256(json.dumps(values, sort_keys=True, default=str).encode()).hexdigest()
 
 
+def _replace_session_consumption(state, amount, now_ts, area):
+    """Atomically replace this run's provisional doses, preserving their audit."""
+    provisional = state.get("session_action_totals") or {}
+    totals = deepcopy(state.get("cycle_action_totals") or {})
+    for action, value in provisional.items():
+        totals[action] = round(max(0, _number(totals.get(action), 0) - value), 2)
+    state["cycle_action_totals"] = {k:v for k,v in totals.items() if v}
+    state["used_ml"] = round(max(0, _number(state.get("used_ml"), 0) - sum(provisional.values())), 2)
+    events = deepcopy(state.get("consumption_events") or [])
+    for event in events:
+        if event.get("session_started_ts") == state.get("session_start_ts"):
+            event["superseded_by"] = "qualified_whole_cycle"
+    state["consumption_events"] = events
+    state["session_action_totals"] = {}
+    exposures = deepcopy(state.get("session_exposures") or {})
+    _charge_consumption(state, amount, "whole_cycle", "whole_cycle", "device_calibration", now_ts, {"area_m2":area})
+    state["session_exposures"] = {**exposures, "area_m2":area}
+    state["whole_cycle_fallback_reason"] = None
+
+
 def tick_device(
     hass: HomeAssistant,
     device: dict[str, Any],
@@ -605,6 +625,8 @@ def _tick_device_pass(
             if not consumption_context.setdefault("settings", {}).get(key) and value:
                 consumption_context["settings"][key] = value
     whole_cycle_calibration = None
+    closing_whole_cycle = False
+    whole_cycle_fallback = False
     if isinstance(consumption_context, dict) and consumption_context:
         settings_context = consumption_context.setdefault("settings", {})
         if isinstance(settings_context, dict):
@@ -634,9 +656,29 @@ def _tick_device_pass(
             if (record["context"]["action"] in {"whole_cycle", "floor_mopping"}
                     and _compatible_context(candidate_context, record["context"])):
                 matches.append((record, candidate_context))
+        pinned = state.get("session_whole_calibration")
+        historical_context = state.get("session_context")
+        if (state.get("session_start_ts") and isinstance(pinned, dict)
+                and pinned in records and isinstance(historical_context, dict)
+                and curr_status in _SESSION_END_STATES
+                and not _is_cleaning(vac_state, curr_status, cleaning_active)
+                and curr_area == previous_area
+                and state.get("last_floor_ts")
+                and 0 <= now_ts - state["last_floor_ts"] <= MAX_ACTIVE_INTERVAL_SECONDS * 1000):
+            restored_context = deepcopy(consumption_context)
+            restored_context["action"] = historical_context.get("action")
+            for key in ("mop_mode", "water_level", "cleaning_mode"):
+                restored_context["settings"][key] = historical_context["settings"].get(key)
+            if _compatible_context(restored_context, historical_context):
+                matches = [(pinned, restored_context)]
+                closing_whole_cycle = True
         if reservoir_matches and len(matches) == 1:
             whole_cycle_calibration, consumption_context = matches[0]
-            usage_per_m2 = usage_per_minute = wash_volume = None
+            # Keep an available labelled predictor while a measured whole-cycle
+            # profile is awaiting its complete exposure/domain check.
+            whole_cycle_fallback = usage_per_m2 is not None or usage_per_minute is not None
+            if not whole_cycle_fallback:
+                usage_per_m2 = usage_per_minute = wash_volume = None
         resolution = resolve_consumption_profile(
             consumption_context,
             {"area_m2": curr_area - previous_area if curr_area is not None and previous_area is not None else None,
@@ -728,7 +770,7 @@ def _tick_device_pass(
     state["accounting_interval_context"] = context
     state["accounting_calibration_context"] = calibration_context
     # 5.6 state has only the legacy hash; the first 5.7 pass adopts it silently.
-    if old_interval_context is not None and old_interval_context != context and not closing_floor:
+    if old_interval_context is not None and old_interval_context != context and not closing_floor and not closing_whole_cycle:
         # Rebaselining discards a setting-crossing interval. If that interval
         # could have used water, the tank is no longer a complete learning
         # sample, even though later intervals can continue to be recorded.
@@ -836,7 +878,8 @@ def _tick_device_pass(
                      session_action_totals={}, session_exposures={},
                      session_context=deepcopy(consumption_context),
                      session_resolution=deepcopy(state.get("consumption_resolution")),
-                     session_exposure_complete=curr_area == 0 or starts_wash, session_segments=1)
+                     session_exposure_complete=curr_area == 0 or starts_wash, session_segments=1,
+                     session_whole_calibration=deepcopy(whole_cycle_calibration))
         if (really_cleaning and mop_active and curr_area is not None and curr_area > 0
                 and _float_or_none(state.get("last_area")) is None):
             # Missing first exposure invalidates the tank as well as the run.
@@ -852,7 +895,7 @@ def _tick_device_pass(
             dirty |= _record_accounting(
                 state, "wash", wash_volume, evidence, "wash_initial_observation"
             )
-        elif wash_volume is None and wash_covered_by_cycle_rate:
+        elif wash_volume is None and (wash_covered_by_cycle_rate or whole_cycle_calibration is not None):
             # A whole-cycle area/time rate already includes the dock washes.
             dirty |= _record_accounting(state, "wash", None, evidence, "wash_included_in_cycle_rate")
         elif wash_volume is None:
@@ -1025,6 +1068,8 @@ def _tick_device_pass(
             dirty |= _record_accounting(state, "area", None, evidence, "not_cleaning")
         elif not mop_active:
             dirty |= _record_accounting(state, "area", None, evidence, "mop_off")
+        elif usage_per_m2 is None and whole_cycle_calibration is not None:
+            dirty |= _record_accounting(state, "whole_cycle", None, "device_calibration", "whole_cycle_pending")
         elif usage_per_m2 is None:
             dirty |= _record_accounting(state, "area", None, evidence, "missing_area_rate")
         elif isinstance(device.get("intensity_factor"), dict) and intensity_factor is None:
@@ -1430,10 +1475,17 @@ def _tick_device_pass(
             state["consumption_resolution"] = resolution
             if (state.get("session_exposure_complete") and state.get("session_accounting_valid")
                     and resolution.get("source") == "device_calibration" and resolution.get("method") == "area"):
-                _charge_consumption(state, exposure * resolution["coefficient"], "whole_cycle",
-                                    "whole_cycle", "device_calibration", now_ts, {"area_m2": exposure})
+                if not (state.get("water_empty_active") and not state.get("water_empty_acknowledged")):
+                    _replace_session_consumption(state, exposure * resolution["coefficient"], now_ts, exposure)
                 state["session_resolution"] = deepcopy(resolution)
                 _record_accounting(state, "whole_cycle", resolution["coefficient"], "device_calibration", None)
+            elif whole_cycle_fallback:
+                # A predictor's domain failure is not missing physical exposure.
+                # Keep the recorded automatic estimate and allow new measurements
+                # to extend the domain. Actual gaps remain marked separately.
+                state["session_resolution"] = deepcopy(resolution)
+                state["whole_cycle_fallback_reason"] = resolution.get("reason") or "incomplete_cycle"
+                _record_accounting(state, "area", usage_per_m2 or usage_per_minute, evidence, "whole_cycle_estimate_fallback")
             else:
                 state.update(session_accounting_valid=False, session_water_broken=True)
                 state["accounting_incomplete"] = True
@@ -1585,6 +1637,7 @@ def _finish_session(state, running, status, now_ts, area):
               "accounting_version": 3}
     state["automatic_sessions"] = [record, *(state.get("automatic_sessions") or [])][:50]
     state["session_start_ts"] = None
+    state["session_whole_calibration"] = None
 
 
 def list_vacuums(hass: HomeAssistant) -> list[dict[str, Any]]:
@@ -2140,7 +2193,7 @@ def _record_accounting(
     elif rate is not None and rate > 0 and reason is None:
         # Idle/docked decisions must not erase why a rate is still needed.
         # A successful dose on the affected route proves that it is supplied.
-        if (source == "wash" and previous == "missing_wash_rate") or (
+        if source == "whole_cycle" or (source == "wash" and previous == "missing_wash_rate") or (
                 source in {"area", "active_time"} and previous in missing - {"missing_wash_rate"}):
             payload["missing_usage_rate_reason"] = None
     reasons = state.get(_PASS_REASONS_KEY)
