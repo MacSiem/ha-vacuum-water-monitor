@@ -39,21 +39,36 @@ No raw registry, entity IDs, location, device names or Diagnostics are written.
 
 ## Share a useful, sanitized report
 
-In **History → Help improve consumption data**, select a recorded automatic cycle.
-Optionally enter measured refill volume and the instrument's resolution in ml, then
-choose **Preview contribution draft**. Review the content before **Download reviewed draft**.
-There is no upload, vacuum service call or calibration write in this flow.
+In **History → Optional measurements and contribution drafts**, normal tracking continues
+without manual measurements. Before a future cycle, expand **Prepare optional future
+measurements** and declare only known technical settings not exposed by HA. Leave unknown
+values blank; `not_applicable` means the device does not have that setting. Bound HA
+telemetry takes precedence, including an unavailable signal. Saving a plan does not
+operate the robot, alter a past cycle or certify the accuracy of declared settings.
 
-The draft contains only numeric cycle summaries, a new random draft ID and fixed guidance.
-It excludes device/entity IDs, names, maps and dates. Estimated water stays separate from
-your entered measurement. A changed cycle list is rejected instead of attaching the
-measurement to a different cycle. Changing the form requires a new preview.
+Select a complete recorded cycle, enter independently measured full-to-full refill volume,
+instrument and resolution, and confirm the reservoir boundaries and uninterrupted cycle.
+**Save private measurement** stores the measurement locally. Three distinct training samples
+with the same complete context fit an experimental whole-cycle ml/m² approximation within
+the measured area range. Outliers do not train it; separate validation samples do not change
+the fit. Training spread and resolution are not systematic-error bounds. Outside the range,
+available automatic estimates continue. Missing historical settings cannot be filled with
+current settings. Elapsed duration is not active mopping time.
 
-This is a preparation aid, not an approved dataset observation. Historical settings,
-public model/SKU/dock, firmware, integration, reservoir and measurement boundaries still
-need verification. Current settings are not assigned to an older cycle. Elapsed duration
-is not active mopping time, and recorded area delta may omit the first observed interval.
-Complete the missing context using the [contribution guide](llm-assisted-contribution.md).
+Expand **Share a confirmed measurement (optional)**, enable preview and select a saved
+physical measurement. Inspect every field of **Preview contribution draft**, then tick
+consent for that exact packet. Only then can **Download reviewed draft** save the displayed
+JSON. Attach it yourself to the maintained dataset measurement form. The form link contains
+only a template selector, never measurement data. No automatic upload or robot operation
+occurs. OFF, selection changes and changed saved measurements invalidate the old consent.
+
+The packet projects technical model/SKU/dock, firmware, integration, reservoir, settings,
+measured dose/area, resolution and quality. Private identifiers, absolute dates, names,
+accounts, tokens, MAC/IP addresses, rooms, maps and raw histories are excluded. Unknown
+technical values remain null and require review. Technical combinations may still identify
+a device indirectly; GitHub publishes the contributor account. Contributions remain
+experimental and runtime-ineligible until independent qualification. Request withdrawal
+in the dataset repository; public copies may remain. See [privacy](../PRIVACY.md).
 
 Use Home Assistant's integration Diagnostics download only when the device owner chooses
 to provide it. Keep the original local. Create a separate sanitized copy before sharing:
@@ -121,7 +136,8 @@ History now also offers **Save private measurement**, separate from contribution
 It requires complete historical context, a single uninterrupted cycle observed from zero
 area, measured refill/resolution and explicit boundaries. Three distinct training cycles
 fit one private whole-cycle ml/m² dose; validation cycles never change the fit. The dose
-is charged once at completion and excludes additional wash dosing. Missing historical
+replaces that session’s provisional floor/wash estimate atomically at completion; the
+audit retains superseded events, and unrelated session doses remain intact. Missing historical
 fields are displayed before fitting. See [the runtime contract](runtime-consumption-contract.md)
 for applicability, unknown totals, independent reservoir levels and limitations.
 

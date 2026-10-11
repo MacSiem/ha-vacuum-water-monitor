@@ -478,12 +478,16 @@ Browser-only v4 tank counters are not automatically imported. After installing v
 - Diagnostics downloads stay local and redact user-assigned names; they are not anonymous
   exports. Before posting diagnostics publicly, remove household identifiers and timestamps
   using the [sanitization guide](docs/diagnostics-and-calibration.md#share-a-useful-sanitized-report).
-- **Optional calibration sharing (off by default).** In ⚙️ Settings → *Help improve estimates*
-  you can enable a calibration summary for your robot model. The card then shows the exact
-  JSON: model, mop system, integration, tank capacity (rounded), correction factor and
-  per-tank results (rounded). It never contains entity or device names, identifiers, account
-  data, timestamps, rooms, maps, areas or firmware. You copy it or submit it yourself through
-  a public GitHub issue, which shows your GitHub username. Turning the option off hides it again.
+- **Confirmed measurements and optional sharing (off by default).** History and Settings
+  offer saved physical measurements, exact local JSON preview and consent for that packet.
+  Nominal tank calibration is not published as measured consumption. Download the reviewed
+  packet and attach it manually to the [maintained measurement form](https://github.com/MacSiem/vacuum-consumption-data/issues/new?template=measurement.yml).
+  The link opens a blank form and does not send the packet. Technical model/settings,
+  firmware and measurement metadata can indirectly identify a device; GitHub shows your
+  account. Turning sharing off clears the preview and consent. Request withdrawal in the
+  dataset repository; public copies may remain. Contributions require maintainer review
+  and cannot activate runtime rates. See [privacy](PRIVACY.md) and
+  [measurement instructions](docs/diagnostics-and-calibration.md).
 - Tank state is stored locally by Home Assistant in its normal storage area and is included
   in Home Assistant backups.
 
