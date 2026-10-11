@@ -68,6 +68,12 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "HA signal unavailable; declarations cannot override it.": "Sygnał HA jest niedostępny; deklaracje nie mogą go zastąpić.",
+  "Physical whole-cycle calibration.": "Fizyczna kalibracja całego cyklu.",
+  "The completed session uses a confirmed local total-dose profile within its measured area range. It replaces that session’s floor and wash estimate. Training spread is not verified physical accuracy; see local measurement quality for independent validation.": "Zakończona sesja korzysta z potwierdzonego lokalnego profilu całkowitej dawki w zmierzonym zakresie powierzchni. Zastępuje on estymatę podłogi i mycia tej sesji. Rozrzut prób treningowych nie potwierdza fizycznej dokładności; niezależną walidację sprawdzisz w jakości pomiarów lokalnych.",
+  "Whole-cycle estimate pending.": "Estymata całego cyklu oczekuje na kwalifikację.",
+  "A local total-dose profile can be qualified only after a complete session. Current usage is provisional; missing coverage or an area outside the measured range cannot use that profile.": "Lokalny profil całkowitej dawki można zakwalifikować dopiero po pełnej sesji. Obecne zużycie jest wstępne; niepełne dane lub powierzchnia poza zmierzonym zakresem wykluczają użycie profilu.",
+
   "The empty signal anchors the estimated level. Only a qualified full cycle can update nominal learning; it is not a physical volume measurement.": "Sygnał pustego zbiornika ustala szacowany poziom. Tylko pełny, zakwalifikowany cykl może aktualizować naukę nominalną; nie jest to fizyczny pomiar objętości.",
   "Confirm the technical settings before saving.": "Przed zapisem potwierdź ustawienia techniczne.",
   "Could not save collection settings. Check technical values and connection.": "Nie zapisano ustawień zbierania. Sprawdź wartości techniczne i połączenie.",
@@ -14266,6 +14272,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const tankLevel = this._getStateValue(device.tank_level_sensor);
     const dockTankLevel = this._getStateValue(device.dock_tank_level_sensor);
 
+    const physicalWhole = tankState.last_accounting_source === 'whole_cycle' && tankState.consumption_resolution?.source === 'device_calibration';
     return {
       totalMl, remainingL, percentRemaining, usedMl,
       partialUsedMl: stateReason === 'accounting_incomplete' && initialized
@@ -14286,14 +14293,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       consumptionResolution: tankState.consumption_resolution || null,
       reservoirLevels: tankState.reservoir_levels || null,
       accountingV2: tankState.accounting_v2 || null,
-      estimateBasis: userRate || measuredVolume ? null : (device.estimate_basis || null),
-      estimateSources: userRate || measuredVolume ? [] : (device.estimate_sources || []),
-      uncertaintyKind: !userRate && !measuredVolume && device.estimate_basis
+      estimateBasis: userRate || measuredVolume || physicalWhole ? null : (device.estimate_basis || null),
+      estimateSources: userRate || measuredVolume || physicalWhole ? [] : (device.estimate_sources || []),
+      uncertaintyKind: !userRate && !measuredVolume && !physicalWhole && device.estimate_basis
         ? (calibrationWindow.length >= 3 ? 'calibration_spread' : 'prior_band') : null,
       mopSystem: device.mop_system || null,
       calibrationLogFactors: _vwmStoredWindow(tankState) || [],
       calibrationHistory: Array.isArray(tankState.calibration_history) ? tankState.calibration_history : [],
-      uncertaintyPercent: userRate || measuredVolume ? null : device.estimate_basis
+      uncertaintyPercent: userRate || measuredVolume || physicalWhole ? null : device.estimate_basis
         ? _vwmUncertainty(device.estimate_basis, _vwmStoredWindow(tankState)
           || (Number(tankState.calibration_samples) > 0 && Number(tankState.calibration_factor) > 0 ? [Math.log(Number(tankState.calibration_factor))] : []))
         : (Number.isFinite(Number(device.uncertainty_percent)) ? Number(device.uncertainty_percent) : null),
@@ -14489,7 +14496,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${_esc(this._waterText(k))}:</b> ${v} ml/m²</span>`).join('');
       const referenceUsage = usage.standard || usage.medium || usage.default || Object.values(usage)[0] || null;
       const factor = Number(data.calibrationFactor) > 0 ? Number(data.calibrationFactor) : 1;
-      const estAreaPerTank = referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / (referenceUsage * factor)) : null;
+      const estAreaPerTank = data.accountingSource !== 'whole_cycle' && referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / (referenceUsage * factor)) : null;
       const scope = explicit.has('calibration_scope') ? effectiveDevice.calibration_scope
         : customCalib.calibration_scope || (configuredRates ? 'whole_cycle' : 'floor_only');
       const trackedCapacity = Number(data.totalMl) > 0 ? Number(data.totalMl) : null;
@@ -14590,6 +14597,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     if (data.stateReason === 'area_unavailable' || data.stateReason === 'area_gap' || data.stateReason === 'status_unavailable') {
       return box('Unavailable signal.', 'Automatic estimate is waiting for a usable configured same-device status or area signal.', '#f59e0b');
+    }
+    if (data.accountingSource === 'whole_cycle' && data.consumptionResolution?.source === 'device_calibration') {
+      return box('Physical whole-cycle calibration.', 'The completed session uses a confirmed local total-dose profile within its measured area range. It replaces that session’s floor and wash estimate. Training spread is not verified physical accuracy; see local measurement quality for independent validation.');
+    }
+    if (data.accountingSource === 'whole_cycle_pending') {
+      return box('Whole-cycle estimate pending.', 'A local total-dose profile can be qualified only after a complete session. Current usage is provisional; missing coverage or an area outside the measured range cannot use that profile.', '#f59e0b');
     }
     const active = Boolean(data.accountingSource && Number.isFinite(Number(data.accountingRate)) && Number(data.accountingRate) > 0 && !data.stateReason);
     const hasUncertainty = data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent));
@@ -15122,7 +15135,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return `<label style="display:block;margin:8px 0">${_esc(this._waterText(label))}
         <input id="cal-plan-${key}" class="maint-input" data-measurement-field="${key}" value="${_esc(value || '')}" maxlength="48"
           ${observed ? 'readonly' : ''} placeholder="${_esc(this._waterText('Unknown; use not_applicable only if absent'))}" />
-        <span>${this._waterText(observed ? 'Observed in HA; declarations cannot override it.' : 'Declare only a known technical setting for future cycles.')}</span></label>`;
+        <span>${this._waterText(context.field_sources?.[key] === 'unavailable' ? 'HA signal unavailable; declarations cannot override it.' : observed ? 'Observed in HA; declarations cannot override it.' : 'Declare only a known technical setting for future cycles.')}</span></label>`;
     }).join('');
     return `<details id="cal-plan" class="section-block"><summary>${this._waterText('Prepare optional future measurements')}</summary>
       <p>${this._waterText('Normal tracking continues automatically. Missing wash and device settings can be declared here for future collection. This does not change the robot or old history. Leave unknown values blank; use not_applicable only for settings this device does not have.')}</p>
@@ -15193,19 +15206,27 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (submit) { submit.removeAttribute('href'); submit.setAttribute('aria-disabled','true'); }
   }
 
+  _contributionStillCurrent() {
+    const sr = this.shadowRoot, sampleId = sr.getElementById('cal-share-sample')?.value;
+    const stored = this._serverState?.settings?.local_measurements?.[this._contributionDevice];
+    return Boolean(this._confirmedContribution && sr.getElementById('cal-share-enabled')?.checked
+      && sampleId === this._contributionSampleId && Array.isArray(stored)
+      && JSON.stringify(stored.find(s => s?.id === sampleId)) === this._contributionSourceFingerprint);
+  }
+
   _renderContributionConsent() {
     const sr = this.shadowRoot, packet = this._confirmedContribution;
     const enabled = sr.getElementById('cal-share-enabled')?.checked === true;
     const consented = enabled && sr.getElementById('cal-share-consent')?.checked === true;
     const preview = sr.getElementById('cal-export-preview'), download = sr.getElementById('cal-download'), submit = sr.getElementById('cal-submit');
-    if (!packet || !enabled || !preview) { this._invalidateContribution(); return; }
+    if (!packet || !enabled || !preview || !this._contributionStillCurrent()) { this._invalidateContribution(); return; }
     packet.publication_consent = consented;
     const content = JSON.stringify(packet, null, 2) + '\n';
     preview.value = content;
     if (download) {
       download.disabled = !consented;
       download.onclick = consented ? () => {
-        if (!sr.getElementById('cal-share-consent')?.checked || this._confirmedContribution !== packet || preview.value !== content) return;
+        if (!sr.getElementById('cal-share-consent')?.checked || this._confirmedContribution !== packet || preview.value !== content || !this._contributionStillCurrent()) return;
         const url = URL.createObjectURL(new Blob([content], {type:'application/json'}));
         const link = document.createElement('a'); link.href = url; link.download = 'vacuum-confirmed-measurement.json'; link.click();
         setTimeout(() => URL.revokeObjectURL(url),1000);
@@ -16400,8 +16421,8 @@ target:
       this._lastHtml = _newHtml;
       this._attachListeners(devices, device);
       this._restoreDraftState(draft);
-      this._restoreContributionPreview(device);
     }
+    this._restoreContributionPreview(device);
    } catch(err) {
     // Show error with tip banner
     const _newHtml = `
