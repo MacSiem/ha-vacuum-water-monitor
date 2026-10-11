@@ -77,7 +77,8 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
   delete settings.sharing_intro_choice;failSave=true;card=make();
   dom.window.console.error=()=>{}; // Expected transport failure; UI error is asserted below.
   card.shadowRoot.querySelector('[data-sharing-choice="not_now"]').click();await settle();
-  assert.ok(card.shadowRoot.getElementById('vwm-sharing-intro'),'failed save must not silently dismiss the question');
+  assert.ok(card.shadowRoot.querySelector('[data-sharing-choice="not_now"]'),'failed save must preserve the choice on the restored Settings tab');
+  assert.match(card.shadowRoot.getElementById('vwm-sharing-information').textContent,lang==='pl'?/Chcesz dowiedzieć/:/Would you like/);
   assert.ok(card.shadowRoot.getElementById('vwm-sharing-choice-status').textContent.trim());
   assert.equal(card.shadowRoot.querySelector('[data-sharing-choice="not_now"]').disabled,false);
   failSave=false;card=make(true,false);
