@@ -31,6 +31,21 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(state['session_context']['settings']['mop_mode'],'standard')
         self.assertEqual(state['session_context']['field_sources']['water_level'],'observed')
 
+    def test_sensor_describes_applied_physical_profile_and_keeps_fallback_prior(self):
+        from test_beta_runtime_path import sc
+        device = effective({},descriptor())
+        device['consumption_calibration'] = [{'id':'available-only'}]
+        physical = {**BASE,'last_accounting_source':'whole_cycle',
+                    'last_accounting_evidence':'device_calibration', 'last_accounting_reason':None,
+                    'consumption_resolution':{'source':'device_calibration'}}
+        measured = sc.estimate_water_state(device,physical)
+        self.assertIsNone(measured['estimate_basis'])
+        self.assertIsNone(measured['uncertainty_percent'])
+        fallback = sc.estimate_water_state(device,{**BASE,'last_accounting_source':'area',
+                          'last_accounting_evidence':'labeled_estimate'})
+        self.assertIsNotNone(fallback['estimate_basis'])
+        self.assertIsNotNone(fallback['uncertainty_percent'])
+
     def test_nominal_learning_is_retained_per_context_when_settings_return(self):
         device = effective({}, descriptor())
         device['measurement_plan'] = {'confirmed':True, 'settings':{'wash_mode':'standard'}}
