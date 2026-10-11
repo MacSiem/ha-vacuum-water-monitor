@@ -68,6 +68,42 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "The empty signal anchors the estimated level. Only a qualified full cycle can update nominal learning; it is not a physical volume measurement.": "Sygnał pustego zbiornika ustala szacowany poziom. Tylko pełny, zakwalifikowany cykl może aktualizować naukę nominalną; nie jest to fizyczny pomiar objętości.",
+  "Confirm the technical settings before saving.": "Przed zapisem potwierdź ustawienia techniczne.",
+  "Could not save collection settings. Check technical values and connection.": "Nie zapisano ustawień zbierania. Sprawdź wartości techniczne i połączenie.",
+  "Enable this contribution preview": "Włącz podgląd tego wkładu",
+  "Held-out maximum error": "Maksymalny błąd niezależnej weryfikacji",
+  "I checked these technical settings for future cycles.": "Sprawdziłem te ustawienia techniczne dla przyszłych sprzątań.",
+  "I reviewed this exact packet and agree to publish it under CC BY 4.0.": "Sprawdziłem dokładnie ten pakiet i zgadzam się na jego publikację na licencji CC BY 4.0.",
+  "Independent accuracy is unverified.": "Niezależna dokładność nie została potwierdzona.",
+  "Inspect every field before consent. Download the packet and attach it manually; opening the blank form does not upload it.": "Przed zgodą sprawdź każde pole. Pobierz pakiet i dołącz go ręcznie; otwarcie pustego formularza nie przesyła danych.",
+  "Local measurement quality": "Jakość lokalnych pomiarów",
+  "Normal tracking continues automatically. Missing wash and device settings can be declared here for future collection. This does not change the robot or old history. Leave unknown values blank; use not_applicable only for settings this device does not have.": "Zwykłe śledzenie działa automatycznie. Tutaj możesz zadeklarować brakujące ustawienia mycia i urządzenia dla przyszłych pomiarów. Nie zmienia to robota ani historii. Nieznane wartości zostaw puste; not_applicable oznacza ustawienie, którego urządzenie nie ma.",
+  "Open maintained measurement form": "Otwórz formularz zgłoszenia pomiaru",
+  "Prepare optional future measurements": "Przygotuj opcjonalne przyszłe pomiary",
+  "Rejected outliers": "Odrzucone próbki odstające",
+  "Resolution and training spread": "Rozdzielczość i rozrzut próbek kalibracji",
+  "Sample": "Próbka",
+  "Save a confirmed physical measurement before contributing.": "Przed udostępnieniem zapisz potwierdzony pomiar fizyczny.",
+  "Save collection settings": "Zapisz ustawienia zbierania",
+  "Saved for future collection. Old cycles stay unchanged.": "Zapisano dla przyszłych pomiarów. Dawne sprzątania pozostają bez zmian.",
+  "Saved physical measurement": "Zapisany pomiar fizyczny",
+  "Share a confirmed measurement (optional)": "Udostępnij potwierdzony pomiar (opcjonalnie)",
+  "Sharing starts OFF. Select a saved physical measurement, inspect its exact JSON, then consent to publication for this packet. Nothing is sent automatically.": "Udostępnianie jest domyślnie wyłączone. Wybierz zapisany pomiar fizyczny, sprawdź dokładny JSON i wyraź zgodę na publikację tego pakietu. Nic nie jest przesyłane automatycznie.",
+  "Technical metadata can identify a device indirectly. GitHub exposes your account. Request withdrawal in the repository; public copies may remain. Unknown context requires maintainer review and never enables a runtime rate.": "Dane techniczne mogą pośrednio identyfikować urządzenie. GitHub pokazuje Twoje konto. Wycofanie zgłoś w repozytorium; publiczne kopie mogą pozostać. Nieznany kontekst wymaga przeglądu maintainera i nie uruchamia współczynnika zużycia.",
+  "Unknown; use not_applicable only if absent": "Nieznane; not_applicable tylko przy braku ustawienia",
+  "Whole-cycle ml/m² is an experimental total-dose approximation within the measured area range. It does not identify separate wash or floor rates. Training spread excludes unknown systematic bias; outside the measured range, available automatic estimates continue.": "Zużycie całego cyklu w ml/m² to eksperymentalne przybliżenie w zmierzonym zakresie powierzchni. Nie wyznacza osobno dawek mycia i podłogi. Rozrzut próbek nie obejmuje nieznanego błędu systematycznego; poza zakresem pomiarów działają dostępne automatyczne estymaty.",
+  "confirmed sample(s)": "potwierdzonych próbek",
+  "Observed in HA; declarations cannot override it.": "Odczytane w HA; deklaracja tego nie zastępuje.",
+  "Declare only a known technical setting for future cycles.": "Podaj tylko znane ustawienie techniczne dla przyszłych sprzątań.",
+  "I always fill this reservoir to full at a detected refill.": "Przy wykrytym dolaniu zawsze napełniam ten zbiornik do pełna.",
+  "Future detected refills can qualify nominal full-to-empty learning. This declaration does not measure ml or change previous cycles. Leave it off if you sometimes top up partially.": "Przyszłe wykryte dolewy mogą kwalifikować nominalną naukę pełny–pusty. Deklaracja nie mierzy ml i nie zmienia dawnych cykli. Wyłącz ją, jeśli czasem dolewasz tylko częściowo.",
+  "Confirmed full-refill practice (optional)": "Potwierdzona praktyka pełnych dolewów (opcjonalnie)",
+  "Contribute confirmed measurements from the History tab. Nominal empty-tank corrections are not physical volume samples.": "Potwierdzone pomiary udostępnisz z zakładki Historia. Nominalne korekty pustego zbiornika nie są próbkami fizycznej objętości.",
+  "Closing the lid rebases the estimated level. Full-refill confirmation is required for nominal learning.": "Zamknięcie pokrywy ustawia szacowany poziom od nowa. Nauka nominalna wymaga potwierdzenia pełnego napełnienia.",
+  "I always refill to the same full level after these automatic signals.": "Po tych automatycznych sygnałach zawsze napełniam zbiornik do tego samego pełnego poziomu.",
+  "This declaration qualifies future automatic refills for nominal learning. It does not measure millilitres or change old cycles. Leave it OFF if a lid or cleared error can occur without a full refill.": "Ta deklaracja kwalifikuje przyszłe automatyczne napełnienia do nauki nominalnej. Nie mierzy mililitrów ani nie zmienia starych cykli. Pozostaw ją wyłączoną, jeśli pokrywa lub ustąpienie błędu nie oznacza pełnego napełnienia.",
+
   "active": "aktywny",
   "(active profile)": "(aktywny profil)",
   "mop system unknown": "system mopowania nieznany",
@@ -145,7 +181,7 @@ const VWM_WATER_TEXT_PL = {
   "Dismiss support link": "Ukryj odnośnik wsparcia",
   "Mop signal needed.": "Potrzebny sygnał mopowania.",
   "Tracked reservoir is empty.": "Śledzony zbiornik jest pusty.",
-  "A machine-readable empty state closed this calibration cycle. Refill the reservoir; the learned device factor is preserved.": "Sygnał pustego zbiornika zakończył cykl. Dolej wody; wyuczony współczynnik robota zostaje zachowany.",
+  "The empty signal anchors the estimated level. Only a qualified full cycle can update nominal learning; it is not a physical volume measurement.": "Sygnał pustego zbiornika zakończył cykl. Dolej wody; wyuczony współczynnik robota zostaje zachowany.",
   "Low-water alert confirmed.": "Potwierdzony niski poziom wody.",
   "Missing rate.": "Brak współczynnika zużycia.",
   "Automatic estimate is paused until an applicable measured calibration rate is available.": "Szacunek jest wstrzymany do czasu uzyskania współczynnika pasującego do tego sprzątania.",
@@ -359,7 +395,7 @@ const VWM_WATER_TEXT_PL = {
   "— Not used —": "— Nieużywane —",
   "+ Create input_button": "+ Utwórz przycisk",
   "Tank lid or door sensor": "Czujnik pokrywy zbiornika",
-  "A contact sensor on the tank or dock lid. Closing it counts as a full refill.": "Czujnik otwarcia pokrywy zbiornika lub stacji. Zamknięcie oznacza dolanie do pełna.",
+  "Closing the lid rebases the estimated level. Full-refill confirmation is required for nominal learning.": "Czujnik otwarcia pokrywy zbiornika lub stacji. Zamknięcie oznacza dolanie do pełna.",
   "Automation, script or NFC tag": "Automatyzacja, skrypt lub tag NFC",
   "Call this action from anything in Home Assistant:": "Wywołaj tę akcję w Home Assistant:",
   "Save refill options": "Zapisz sposoby dolania",
@@ -13044,7 +13080,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const controls = [...sr.querySelectorAll('input, select, textarea')];
     const activeIndex = activeEditable ? controls.indexOf(activeEditable) : -1;
     return {
-      controls: (activeEditable || calibrationExpanded ? controls : []).map((control, index) => ({
+      controls: (activeEditable || calibrationExpanded || details.some(d => d.open && (d.id === "cal-plan" || d.id === "cal-sharing" || d.className.includes("contribution-form"))) ? controls : []).map((control, index) => ({
         index,
         id: control.id || '',
         value: control.value,
@@ -13070,7 +13106,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const controls = [...sr.querySelectorAll('input, select, textarea')];
     for (const saved of draft.controls) {
       const control = saved.id ? sr.getElementById(saved.id) : controls[saved.index];
-      if (!control) continue;
+      if (!control || (control.readOnly && control.dataset.measurementField)) continue;
       control.value = saved.value;
       if ('checked' in control) control.checked = saved.checked;
     }
@@ -14543,7 +14579,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (blockedReasons[data.stateReason]) return box('Accounting paused.', blockedReasons[data.stateReason], '#f59e0b');
     if (data.accountingSource === 'real_sensor') return box('Measured volume.', 'The configured sensor for this reservoir takes precedence over all estimates.');
     if (data.stateReason === 'water_empty'  || data.waterEmpty) {
-      return box('Tracked reservoir is empty.', 'A machine-readable empty state closed this calibration cycle. Refill the reservoir; the learned device factor is preserved.', '#ef4444');
+      return box('Tracked reservoir is empty.', 'The empty signal anchors the estimated level. Only a qualified full cycle can update nominal learning; it is not a physical volume measurement.', '#ef4444');
     }
     if (data.stateReason === 'water_low' || data.waterLow || data.waterShortage) {
       const reserve = Number.isFinite(Number(data.percentRemaining)) ? (this._lang === 'pl' ? ` Szacunek zachowuje około ${Number(data.percentRemaining)}% rezerwy.` : ` The current estimate preserves approximately ${Number(data.percentRemaining)}% reserve.`) : '';
@@ -14959,6 +14995,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const recordedCycles = Array.isArray(rawCycles) ? rawCycles.filter(s => s && typeof s === 'object' && Number.isFinite(s.ts)) : [];
     const contributionForm = `<details class="section-block contribution-form">
       <summary class="section-title">${this._waterText("Optional measurements and contribution drafts")}</summary>
+      ${this._buildMeasurementPlan(device)}
+      ${this._buildLocalMeasurementSummary(device)}
       <p>${this._waterText("Normal water tracking does not require these measurements. Use them only if you want to provide independently measured data.")}</p>
       <p>${this._waterText("Select a recorded cycle. Optionally enter the water measured to refill the same reservoir to its starting level and your measurement resolution. Review the draft before downloading; nothing is uploaded.")}</p>
       <label>${this._waterText("Recorded cycle")} <select id="cal-cycle" class="maint-input" ${recordedCycles.length ? '' : 'disabled'}>
@@ -14975,11 +15013,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <label><span><input type="checkbox" id="cal-uninterrupted" /> ${this._waterText("Complete cycle observed from zero area, with unchanged settings and no interruption")}</span></label>
       <button type="button" id="cal-save" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>${this._waterText("Save private measurement")}</button>
       <div id="cal-local-status" role="status" aria-live="polite"></div>
-      <p>${this._waterText("The draft excludes identifiers and dates. Historical settings still need verification; estimates and elapsed time are not physical measurements or active mopping time.")}</p>
-      <button type="button" id="cal-preview" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>${this._waterText("Preview contribution draft")}</button>
-      <div id="cal-export-status" role="status" aria-live="polite"></div>
-      <textarea id="cal-export-preview" aria-label="${this._waterText("Contribution draft preview")}" readonly hidden style="width:100%;box-sizing:border-box;min-height:220px"></textarea>
-      <button type="button" id="cal-download" class="maint-add-btn" disabled>${this._waterText("Download reviewed draft")}</button>
+      ${this._buildConfirmedSharing(device)}
     </details>`;
 
     return `
@@ -15068,51 +15102,188 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
   }
 
-  async _previewCalibration(device) {
-    const sr = this.shadowRoot;
-    const status = sr.getElementById('cal-export-status');
-    const preview = sr.getElementById('cal-export-preview');
-    const download = sr.getElementById('cal-download');
-    const observed = sr.getElementById('cal-observed')?.value || '';
-    const resolution = sr.getElementById('cal-resolution')?.value || '';
-    const request = { type: 'ha_vacuum_water_monitor/calibration_preview',
-      vacuum_entity: device.vacuum_entity,
-      session_index: Number(sr.getElementById('cal-cycle')?.value || 0),
-      session_ts: Number(sr.getElementById('cal-cycle')?.selectedOptions[0]?.dataset.cycleTs) };
-    if (observed !== '' || resolution !== '') {
-      if (observed === '' || resolution === '' || !Number.isFinite(Number(observed)) ||
-          !Number.isFinite(Number(resolution)) || Number(observed) < 0 || Number(resolution) <= 0) {
-        if (status) status.textContent = this._waterText("Enter both measured refill and a positive resolution in ml.");
-        if (download) download.disabled = true;
-        return false;
-      }
-      request.observed_ml = Number(observed);
-      request.resolution_ml = Number(resolution);
-    }
-    if (download) download.disabled = true;
-    if (preview) { preview.value = ''; preview.hidden = true; }
-    const generation = this._calibrationPreviewGeneration = (this._calibrationPreviewGeneration || 0) + 1;
-    if (status) status.textContent = this._waterText("Preparing preview…");
-    try {
-      const draft = await this._hass.callWS(request);
-      if (generation !== this._calibrationPreviewGeneration || sr.getElementById('cal-export-preview') !== preview) return false;
-      const content = JSON.stringify(draft, null, 2);
-      if (preview) { preview.value = content; preview.hidden = false; }
-      if (status) status.textContent = this._waterText("Review every field. Missing context must be completed before submission. Nothing has been uploaded.");
-      if (download) {
-        download.disabled = false;
-        download.onclick = () => {
-          const url = URL.createObjectURL(new Blob([content + '\n'], {type: 'application/json'}));
-          const link = document.createElement('a');
-          link.href = url; link.download = 'vacuum-consumption-draft.json'; link.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        };
-      }
-      return true;
-    } catch (_) {
-      if (generation === this._calibrationPreviewGeneration && status) status.textContent = this._waterText("Could not prepare the draft. Check the connection and recorded cycle, then retry.");
+  _measurementFields() {
+    return {sku:'Retail variant',dock_variant:'Dock variant',firmware:'Firmware',integration_version:'Integration version',
+      mop_mode:'Mop mode',water_level:'Water level',route:'Route',passes:'Passes',wash_mode:'Mop wash mode',
+      wash_frequency:'Mop wash frequency',wash_temperature:'Mop wash temperature',adaptive_mode:'Adaptive mode',
+      detergent_mode:'Detergent mode',cleaning_mode:'Cleaning mode',task_scope:'Task scope',
+      suction_level:'Suction level',carpet_policy:'Carpet policy'};
+  }
+
+  _buildMeasurementPlan(device) {
+    if (!device?.vacuum_entity) return '';
+    const plan = this._serverState?.settings?.measurement_plans?.[device.vacuum_entity] || {};
+    const context = this._serverState?.tank_states?.[device.vacuum_entity]?.last_consumption_context || {};
+    const axes = new Set(['sku','dock_variant','firmware','integration_version']);
+    const fields = Object.entries(this._measurementFields()).map(([key,label]) => {
+      const observed = ['observed','unavailable'].includes(context.field_sources?.[key]);
+      const value = observed ? (axes.has(key) ? context[key] : context.settings?.[key])
+        : (axes.has(key) ? plan[key] : plan.settings?.[key]);
+      return `<label style="display:block;margin:8px 0">${_esc(this._waterText(label))}
+        <input id="cal-plan-${key}" class="maint-input" data-measurement-field="${key}" value="${_esc(value || '')}" maxlength="48"
+          ${observed ? 'readonly' : ''} placeholder="${_esc(this._waterText('Unknown; use not_applicable only if absent'))}" />
+        <span>${this._waterText(observed ? 'Observed in HA; declarations cannot override it.' : 'Declare only a known technical setting for future cycles.')}</span></label>`;
+    }).join('');
+    return `<details id="cal-plan" class="section-block"><summary>${this._waterText('Prepare optional future measurements')}</summary>
+      <p>${this._waterText('Normal tracking continues automatically. Missing wash and device settings can be declared here for future collection. This does not change the robot or old history. Leave unknown values blank; use not_applicable only for settings this device does not have.')}</p>
+      ${fields}
+      <label><input type="checkbox" id="cal-plan-confirm" ${plan.confirmed === true ? 'checked' : ''} /> ${this._waterText('I checked these technical settings for future cycles.')}</label>
+      <button type="button" id="cal-plan-save" class="maint-add-btn">${this._waterText('Save collection settings')}</button>
+      <p id="cal-plan-status" role="status" aria-live="polite"></p>
+    </details>`;
+  }
+
+  async _saveMeasurementPlan(device) {
+    const sr = this.shadowRoot, status = sr.getElementById('cal-plan-status'), button = sr.getElementById('cal-plan-save');
+    if (!sr.getElementById('cal-plan-confirm')?.checked) {
+      if (status) status.textContent = this._waterText('Confirm the technical settings before saving.');
       return false;
     }
+    const axes = new Set(['sku','dock_variant','firmware','integration_version']);
+    const plan = {confirmed:true,settings:{}};
+    sr.querySelectorAll('[data-measurement-field]').forEach(input => {
+      if (input.readOnly) return;
+      const key = input.dataset.measurementField, value = input.value.trim() || null;
+      if (axes.has(key)) plan[key] = value; else plan.settings[key] = value;
+    });
+    if (button) button.disabled = true;
+    try {
+      const result = await this._hass.callWS({type:'ha_vacuum_water_monitor/set_measurement_plan',vacuum_entity:device.vacuum_entity,plan});
+      if (result?.saved !== true) throw new Error('Unacknowledged plan');
+      if (sr.getElementById('cal-plan-status') === status && status) status.textContent = this._waterText('Saved for future collection. Old cycles stay unchanged.');
+      return true;
+    } catch (_) {
+      if (sr.getElementById('cal-plan-status') === status && status) status.textContent = this._waterText('Could not save collection settings. Check technical values and connection.');
+      return false;
+    } finally { if (sr.getElementById('cal-plan-save') === button && button) button.disabled = false; }
+  }
+
+  _buildConfirmedSharing(device) {
+    if (!device?.vacuum_entity) return '';
+    const records = this._serverState?.settings?.local_measurements?.[device.vacuum_entity];
+    const samples = (Array.isArray(records) ? records : []).filter(s => s?.confirmed === true && typeof s.id === 'string');
+    return `<details id="cal-sharing" class="section-block"><summary>${this._waterText('Share a confirmed measurement (optional)')}</summary>
+      <p>${this._waterText('Sharing starts OFF. Select a saved physical measurement, inspect its exact JSON, then consent to publication for this packet. Nothing is sent automatically.')}</p>
+      <label><input type="checkbox" id="cal-share-enabled" /> ${this._waterText('Enable this contribution preview')}</label>
+      <label>${this._waterText('Saved physical measurement')} <select class="maint-input" id="cal-share-sample" ${samples.length ? '' : 'disabled'}>
+        ${samples.slice(-50).reverse().map((s,i) => `<option value="${_esc(s.id)}">${this._waterText('Sample')} ${samples.length-i} — ${_esc(s.area_m2)} m² / ${_esc(s.observed_ml)} ml — ${this._waterText(s.purpose === 'validation' ? 'Independent validation' : 'Training')}</option>`).join('')}
+      </select></label>
+      <button type="button" id="cal-preview" class="maint-add-btn" disabled>${this._waterText('Preview contribution draft')}</button>
+      <p id="cal-export-status" role="status" aria-live="polite">${samples.length ? '' : this._waterText('Save a confirmed physical measurement before contributing.')}</p>
+      <textarea id="cal-export-preview" aria-label="${this._waterText('Contribution draft preview')}" readonly hidden style="width:100%;box-sizing:border-box;min-height:220px"></textarea>
+      <label><input type="checkbox" id="cal-share-consent" disabled /> ${this._waterText('I reviewed this exact packet and agree to publish it under CC BY 4.0.')}</label>
+      <p>${this._waterText('Technical metadata can identify a device indirectly. GitHub exposes your account. Request withdrawal in the repository; public copies may remain. Unknown context requires maintainer review and never enables a runtime rate.')}</p>
+      <button type="button" id="cal-download" class="maint-add-btn" disabled>${this._waterText('Download reviewed draft')}</button>
+      <a id="cal-submit" target="_blank" rel="noopener noreferrer" aria-disabled="true">${this._waterText('Open maintained measurement form')}</a>
+    </details>`;
+  }
+
+  _invalidateContribution() {
+    this._calibrationPreviewGeneration = (this._calibrationPreviewGeneration || 0) + 1;
+    this._confirmedContribution = null;
+    this._contributionSampleId = this._contributionSourceFingerprint = this._contributionDevice = null;
+    const sr = this.shadowRoot;
+    const preview = sr.getElementById('cal-export-preview');
+    if (preview) { preview.value = ''; preview.hidden = true; }
+    const consent = sr.getElementById('cal-share-consent');
+    if (consent) { consent.checked = false; consent.disabled = true; }
+    const download = sr.getElementById('cal-download');
+    if (download) { download.disabled = true; download.onclick = null; }
+    const submit = sr.getElementById('cal-submit');
+    if (submit) { submit.removeAttribute('href'); submit.setAttribute('aria-disabled','true'); }
+  }
+
+  _renderContributionConsent() {
+    const sr = this.shadowRoot, packet = this._confirmedContribution;
+    const enabled = sr.getElementById('cal-share-enabled')?.checked === true;
+    const consented = enabled && sr.getElementById('cal-share-consent')?.checked === true;
+    const preview = sr.getElementById('cal-export-preview'), download = sr.getElementById('cal-download'), submit = sr.getElementById('cal-submit');
+    if (!packet || !enabled || !preview) { this._invalidateContribution(); return; }
+    packet.publication_consent = consented;
+    const content = JSON.stringify(packet, null, 2) + '\n';
+    preview.value = content;
+    if (download) {
+      download.disabled = !consented;
+      download.onclick = consented ? () => {
+        if (!sr.getElementById('cal-share-consent')?.checked || this._confirmedContribution !== packet || preview.value !== content) return;
+        const url = URL.createObjectURL(new Blob([content], {type:'application/json'}));
+        const link = document.createElement('a'); link.href = url; link.download = 'vacuum-confirmed-measurement.json'; link.click();
+        setTimeout(() => URL.revokeObjectURL(url),1000);
+      } : null;
+    }
+    if (submit) {
+      if (consented) submit.href = 'https://github.com/MacSiem/vacuum-consumption-data/issues/new?template=measurement.yml';
+      else submit.removeAttribute('href');
+      submit.setAttribute('aria-disabled', String(!consented));
+    }
+  }
+
+  async _previewCalibration(device) {
+    const sr = this.shadowRoot, status = sr.getElementById('cal-export-status'), preview = sr.getElementById('cal-export-preview');
+    if (!sr.getElementById('cal-share-enabled')?.checked || !sr.getElementById('cal-share-sample')?.value) return false;
+    const sampleId = sr.getElementById('cal-share-sample').value;
+    const stored = this._serverState?.settings?.local_measurements?.[device.vacuum_entity];
+    const sample = Array.isArray(stored) ? stored.find(s => s?.id === sampleId) : null;
+    if (!sample) return false;
+    const fingerprint = JSON.stringify(sample);
+    this._invalidateContribution();
+    const generation = this._calibrationPreviewGeneration;
+    if (status) status.textContent = this._waterText('Preparing preview…');
+    try {
+      const packet = await this._hass.callWS({type:'ha_vacuum_water_monitor/contribution_preview',vacuum_entity:device.vacuum_entity,
+        sample_ids:[sampleId]});
+      if (generation !== this._calibrationPreviewGeneration || sr.getElementById('cal-export-preview') !== preview || !sr.getElementById('cal-share-enabled')?.checked) return false;
+      if (packet?.kind !== 'confirmed_measurement_contribution' || packet.publication_consent !== false || packet.runtime_eligible !== false) throw new Error('Invalid contribution preview');
+      const current = this._serverState?.settings?.local_measurements?.[device.vacuum_entity];
+      if (!Array.isArray(current) || JSON.stringify(current.find(s => s?.id === sampleId)) !== fingerprint) return false;
+      this._confirmedContribution = packet;
+      this._contributionSampleId = sampleId;
+      this._contributionSourceFingerprint = fingerprint;
+      this._contributionDevice = device.vacuum_entity;
+      preview.hidden = false;
+      sr.getElementById('cal-share-consent').disabled = false;
+      this._renderContributionConsent();
+      if (status) status.textContent = this._waterText('Inspect every field before consent. Download the packet and attach it manually; opening the blank form does not upload it.');
+      return true;
+    } catch (_) {
+      if (generation === this._calibrationPreviewGeneration && status) status.textContent = this._waterText('Could not prepare the draft. Check the connection and recorded cycle, then retry.');
+      return false;
+    }
+  }
+
+  _buildLocalMeasurementSummary(device) {
+    if (!device?.vacuum_entity) return '';
+    const settings = this._serverState?.settings || {};
+    const stored = settings.local_measurements?.[device.vacuum_entity];
+    const samples = (Array.isArray(stored) ? stored : []).filter(s => s?.confirmed === true);
+    const storedProfiles = settings.consumption_calibrations?.[device.vacuum_entity];
+    const profiles = (Array.isArray(storedProfiles) ? storedProfiles : storedProfiles ? [storedProfiles] : []).filter(p => p && typeof p === 'object');
+    return `<div class="section-block"><div class="section-title">${this._waterText('Local measurement quality')}</div>
+      <p>${samples.length} ${this._waterText('confirmed sample(s)')}; ${samples.filter(s => s.purpose === 'training').length} ${this._waterText('Training')}; ${samples.filter(s => s.purpose === 'validation').length} ${this._waterText('Independent validation')}.</p>
+      ${profiles.map(p => `<p>${_esc(p.context?.firmware || '')} / ${_esc(p.context?.settings?.wash_mode || '')}: ${_esc(p.sample_count || p.evidence_ids?.length || 0)} ${this._waterText('sample(s)')}, ${_esc(Number.isFinite(p.coefficient) ? p.coefficient.toFixed(2) : '?')} ml/m²,
+        ${_esc(p.exposure_domain?.min ?? '?')}–${_esc(p.exposure_domain?.max ?? '?')} m²;
+        ${this._waterText('Rejected outliers')}: ${_esc(p.rejected_ids?.length || 0)}.
+        ${this._waterText('Resolution and training spread')}: ${_esc(Number.isFinite(p.uncertainty_percent) ? p.uncertainty_percent.toFixed(1) + '%' : '?')}.
+        ${p.validation?.validation_ids?.length ? `${this._waterText('Held-out maximum error')}: ${_esc(Number.isFinite(p.validation.max_error_ml) ? p.validation.max_error_ml.toFixed(1) : '?')} ml / ${_esc(Number.isFinite(p.validation.max_relative_error) ? (p.validation.max_relative_error * 100).toFixed(1) + '%' : '?')}.` : this._waterText('Independent accuracy is unverified.')}</p>`).join('')}
+      <p>${this._waterText('Whole-cycle ml/m² is an experimental total-dose approximation within the measured area range. It does not identify separate wash or floor rates. Training spread excludes unknown systematic bias; outside the measured range, available automatic estimates continue.')}</p>
+    </div>`;
+  }
+
+  _restoreContributionPreview(device) {
+    const sr = this.shadowRoot, sampleId = sr.getElementById('cal-share-sample')?.value;
+    const button = sr.getElementById('cal-preview');
+    if (button) button.disabled = !sr.getElementById('cal-share-enabled')?.checked || !sampleId;
+    if (!this._confirmedContribution) return;
+    const stored = this._serverState?.settings?.local_measurements?.[device?.vacuum_entity];
+    const sample = Array.isArray(stored) ? stored.find(s => s?.id === sampleId) : null;
+    if (device?.vacuum_entity !== this._contributionDevice || sampleId !== this._contributionSampleId
+        || JSON.stringify(sample) !== this._contributionSourceFingerprint || !sr.getElementById('cal-share-enabled')?.checked) {
+      this._invalidateContribution(); return;
+    }
+    const preview = sr.getElementById('cal-export-preview'), consent = sr.getElementById('cal-share-consent');
+    if (preview) preview.hidden = false;
+    if (consent) consent.disabled = false;
+    this._renderContributionConsent();
   }
 
   _saveSession(device, session) {
@@ -15515,40 +15686,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _buildCalibrationSharingSection(device, data) {
-    if (!device || !data) return '';
-    const enabled = this._calibrationSharingEnabled();
-    const payload = this._buildCalibrationSharePayload(device, data);
-    const ready = enabled && payload.calibrated_tanks > 0 && payload.profile_key;
-    const json = JSON.stringify(payload, null, 2);
-    return `
-        <div style="background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px;margin-bottom:16px">
-          <div style="font-size:14px;font-weight:700;color:var(--bento-text);margin-bottom:4px">\uD83E\uDD1D ${this._waterText("Help improve estimates (optional, beta)")}</div>
-          <div style="font-size:12px;color:var(--bento-text-secondary);line-height:1.5;margin-bottom:10px">
-            ${this._waterText("Share this model’s calibration summary to help improve initial estimates. Nothing is sent automatically: review the data and submit it yourself. The summary contains model, mop system, integration, capacity and tank calibration results; it excludes device names, identifiers, accounts, dates, rooms, maps, areas and firmware. Your GitHub username is visible on the issue.")}
-          </div>
-          <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--bento-text)">
-            <input type="checkbox" id="vwm-share-optin" ${enabled ? 'checked' : ''}> ${this._waterText("I want to share calibration summaries without robot identifiers")}
-          </label>
-          ${enabled ? `
-          <pre id="vwm-share-payload" style="margin:10px 0;padding:10px;max-height:220px;overflow:auto;background:var(--bento-card,#fff);color:var(--bento-text,#1e293b);border:1px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:11px;white-space:pre-wrap">${_esc(json)}</pre>
-          ${ready ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-primary" id="vwm-share-copy" style="padding:6px 12px">${this._waterText("Copy summary")}</button>
-            <a class="btn-primary" id="vwm-share-submit" target="_blank" rel="noopener noreferrer" href="${_esc(this._calibrationShareUrl(payload))}" style="padding:6px 12px;text-decoration:none">${this._waterText("Submit on GitHub")}</a>
-          </div>` : `<div style="font-size:11px;color:var(--bento-text-secondary)">${this._waterText("Nothing to share yet: the summary becomes available after the first calibrated empty tank.")}</div>`}` : ''}
-        </div>`;
+    return this._buildConfirmedSharing(device);
   }
 
-  _calibrationShareUrl(payload) {
-    const summary = JSON.stringify(payload);
-    // GitHub reads issue forms only from the default branch. Until the form is
-    // there, the same summary lands in a plain issue body with consent unticked.
-    const params = new URLSearchParams({
-      template: 'calibration_share.yml',
-      title: `[calibration] ${payload.profile_key || 'unknown model'}`,
-      summary,
-      body: `Calibration summary (JSON):\n\n\`\`\`json\n${summary}\n\`\`\`\n\n- [ ] I reviewed the summary and agree to publish it under CC BY 4.0 in the vacuum consumption dataset.\n`,
-    });
-    return `${VWM_SHARE_ISSUE_URL}?${params.toString()}`;
+  _calibrationShareUrl() {
+    return 'https://github.com/MacSiem/vacuum-consumption-data/issues/new?template=measurement.yml';
   }
 
   async _setCalibrationSharing(enabled) {
@@ -15705,7 +15847,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
       <div style="${cardSt}">
         <div style="${labelSt}">④ ${this._waterText("Tank lid or door sensor")} ${selectedLid ? statusOn : statusOff}</div>
-        <div style="${descSt}">${this._waterText("A contact sensor on the tank or dock lid. Closing it counts as a full refill.")}</div>
+        <div style="${descSt}">${this._waterText("Closing the lid rebases the estimated level. Full-refill confirmation is required for nominal learning.")}</div>
         <select id="vwm-refill-lid" style="${selectSt}">
           <option value="">${this._waterText("\u2014 Not used \u2014")}</option>
           ${sensorOpts}
@@ -15720,6 +15862,8 @@ target:
   entity_id: ${_esc(vacuum)}</pre>
       </div>
 
+      <div style="${cardSt}"><label><input type="checkbox" id="vwm-refill-full-practice" ${choices.full_refill_practice_confirmed === true ? 'checked' : ''} /> ${this._waterText('I always refill to the same full level after these automatic signals.')}</label>
+        <p style="${descSt}">${this._waterText('This declaration qualifies future automatic refills for nominal learning. It does not measure millilitres or change old cycles. Leave it OFF if a lid or cleared error can occur without a full refill.')}</p></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn-primary" id="vwm-refill-save" style="padding:8px 16px">${this._waterText("Save refill options")}</button>
         <span id="vwm-refill-status" role="status" aria-live="polite" style="font-size:12px"></span>
@@ -15745,6 +15889,7 @@ target:
         auto_refill: auto && !auto.disabled ? auto.checked : null,
         button_entity: button,
         lid_entity: lid,
+        ...(sr.getElementById("vwm-refill-full-practice") ? {full_refill_practice_confirmed: sr.getElementById("vwm-refill-full-practice").checked} : {}),
       });
       if (result && result.settings) {
         this._serverState.settings = result.settings;
@@ -16255,6 +16400,7 @@ target:
       this._lastHtml = _newHtml;
       this._attachListeners(devices, device);
       this._restoreDraftState(draft);
+      this._restoreContributionPreview(device);
     }
    } catch(err) {
     // Show error with tip banner
@@ -16473,18 +16619,22 @@ target:
     // Refill methods toggle
     const calSave = sr.querySelector('#cal-save');
     if (calSave) calSave.addEventListener('click', () => this._saveLocalMeasurement(device));
-    const shareOptIn = sr.querySelector('#vwm-share-optin');
-    if (shareOptIn) shareOptIn.addEventListener('change', () => this._setCalibrationSharing(shareOptIn.checked));
-    const shareCopy = sr.querySelector('#vwm-share-copy');
-    if (shareCopy) shareCopy.addEventListener('click', async () => {
-      const text = sr.querySelector('#vwm-share-payload')?.textContent || '';
-      try { await navigator.clipboard.writeText(text); shareCopy.textContent = 'Copied'; } catch (e) { shareCopy.textContent = 'Select and copy the text above'; }
-    });
+    sr.getElementById('cal-plan-save')?.addEventListener('click', () => this._saveMeasurementPlan(device));
+    sr.querySelectorAll('[data-measurement-field]').forEach(input => input.addEventListener('input', () => {
+      const confirm = sr.getElementById('cal-plan-confirm'); if (confirm) confirm.checked = false;
+    }));
+    for (const id of ['cal-share-enabled','cal-share-sample']) {
+      sr.getElementById(id)?.addEventListener('change', () => {
+        this._invalidateContribution();
+        this._restoreContributionPreview(device);
+      });
+    }
+    sr.getElementById('cal-share-consent')?.addEventListener('change', () => this._renderContributionConsent());
     const calPreview = sr.querySelector('#cal-preview');
     if (calPreview) calPreview.addEventListener('click', () => this._previewCalibration(device));
     for (const id of ['cal-cycle', 'cal-observed', 'cal-resolution']) {
       sr.getElementById(id)?.addEventListener('input', () => {
-        this._calibrationPreviewGeneration = (this._calibrationPreviewGeneration || 0) + 1;
+        this._invalidateContribution();
         this._localMeasurementGeneration = (this._localMeasurementGeneration || 0) + 1;
         const localStatus = sr.getElementById('cal-local-status');
         if (localStatus) localStatus.textContent = '';

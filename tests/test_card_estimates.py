@@ -112,21 +112,19 @@ class CardEstimateTests(unittest.TestCase):
         self.assertEqual(zero["predicted_ml"], 0)
         self.assertEqual(zero["error_percent"], 0)
 
-    def test_sharing_requires_explicit_opt_in_and_shows_the_exact_payload(self):
-        self.assertIn('id="vwm-share-optin" checked', self.result["html"])
-        self.assertIn("GitHub username is visible", self.result["html"])
-        self.assertIn("roborock_qrevo_curv_2_flow", self.result["html"])
-        self.assertTrue(self.result["url"].startswith("https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new?template=calibration_share.yml"))
+    def test_sharing_starts_off_even_if_legacy_global_optin_was_enabled(self):
+        self.assertIn('id="cal-share-enabled" />', self.result["html"])
+        self.assertIn('id="cal-share-consent" disabled', self.result["html"])
+        self.assertIn("GitHub exposes your account", self.result["html"])
+        self.assertNotIn("roborock_qrevo_curv_2_flow", self.result["html"])
+
+    def test_share_link_opens_only_blank_maintained_form(self):
+        from urllib.parse import parse_qs, urlsplit
+        url = urlsplit(self.result["url"])
+        self.assertEqual(url.path, "/MacSiem/vacuum-consumption-data/issues/new")
+        self.assertEqual(parse_qs(url.query), {"template": ["measurement.yml"]})
         self.assertNotIn("chappie", self.result["url"].lower())
 
-    def test_share_link_prefills_form_and_plain_issue_without_ticking_consent(self):
-        from urllib.parse import parse_qs, urlsplit
-        query = parse_qs(urlsplit(self.result["url"]).query)
-        self.assertEqual(json.loads(query["summary"][0]), self.result["payload"])
-        body = query["body"][0]
-        self.assertIn(json.dumps(self.result["payload"], separators=(",", ":")), body)
-        self.assertIn("- [ ] I reviewed the summary", body)
-        self.assertNotIn("[x]", body.lower())
 
     def test_sharing_is_off_by_default(self):
         source = (PKG / "www/ha-vacuum-water-monitor.js").read_text()

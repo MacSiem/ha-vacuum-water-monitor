@@ -235,6 +235,38 @@ async def _ws_calibration_preview(hass, connection, msg):
 
 
 @websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/contribution_preview",
+    vol.Required("vacuum_entity"): str,
+    vol.Required("sample_ids"): vol.All([str], vol.Length(min=1, max=50)),
+})
+@websocket_api.async_response
+async def _ws_contribution_preview(hass, connection, msg):
+    """Project selected saved confirmations locally; never transmit or approve."""
+    from .contribution import build_confirmed_contribution
+    from .profiles import CATALOG
+    vacuum = msg["vacuum_entity"]
+    if not vacuum.startswith("vacuum.") or hass.states.get(vacuum) is None:
+        connection.send_error(msg["id"], "invalid_payload", "Select an existing vacuum entity")
+        return
+    current = await _storage(hass).async_get_state()
+    stored = current.get("settings", {}).get("local_measurements", {}).get(vacuum, [])
+    try:
+        if len(set(msg["sample_ids"])) != len(msg["sample_ids"]):
+            raise ValueError("Select distinct saved measurements")
+        selected = []
+        for identity in msg["sample_ids"]:
+            matches = [s for s in stored if isinstance(s, dict) and s.get("id") == identity]
+            if len(matches) != 1 or matches[0].get("device_id") != vacuum:
+                raise ValueError("Saved measurement changed; select it again")
+            selected.append(matches[0])
+        preview = build_confirmed_contribution(selected, public_catalog=CATALOG)
+    except (ValueError, TypeError, OverflowError) as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    connection.send_result(msg["id"], preview)
+
+
+@websocket_api.websocket_command({
     vol.Required("type"): f"{DOMAIN}/set_measurement_plan",
     vol.Required("vacuum_entity"): str,
     vol.Required("plan"): dict,
@@ -394,6 +426,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_calibration_preview,
         _ws_save_measurement,
         _ws_set_measurement_plan,
+        _ws_contribution_preview,
         _ws_health,
         _ws_set_device_options,
         _ws_set_robot_link,

@@ -16,6 +16,8 @@ class CollectionTests(unittest.TestCase):
         context = state['automatic_sessions'][0]['context']
         self.assertEqual(context['settings']['wash_mode'],'standard')
         self.assertEqual(context['integration_version'],'2026.10.0')
+        self.assertEqual(context['field_sources']['wash_mode'],'declared')
+        self.assertEqual(context['field_sources']['integration_version'],'declared')
         original = deepcopy(state['automatic_sessions'])
         device = effective({'measurement_plans':{'vacuum.robot':{**plan,'settings':{'wash_mode':'deep'}}}},descriptor())
         state = run(device,state,[dict()])
@@ -27,6 +29,7 @@ class CollectionTests(unittest.TestCase):
         state = run(device,dict(BASE),[dict(status='cleaning',vac='cleaning',area='0')])
         self.assertEqual(state['session_context']['settings']['water_level'],'medium')
         self.assertEqual(state['session_context']['settings']['mop_mode'],'standard')
+        self.assertEqual(state['session_context']['field_sources']['water_level'],'observed')
 
     def test_invalid_or_unconfirmed_plan_is_not_used(self):
         for plan in ({'confirmed':False,'settings':{'wash_mode':'deep'}},

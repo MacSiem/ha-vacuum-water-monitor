@@ -616,15 +616,23 @@ def _tick_device_pass(
     })
     if isinstance(consumption_context, dict) and device.get("observed_firmware") is not None:
         consumption_context["firmware"] = device["observed_firmware"]
+    field_sources = {key: "configured" if consumption_context.get(key) else "not_exposed"
+                     for key in ("sku", "dock_variant", "firmware", "integration_version")}
+    if device.get("observed_firmware") is not None:
+        field_sources["firmware"] = "observed"
+    field_sources.update({key: "configured" if consumption_context.get("settings", {}).get(key) else "not_exposed"
+                          for key in CONSUMPTION_SETTINGS})
     plan = device.get("measurement_plan") or {}
     if consumption_context and plan.get("confirmed") is True:
         # Deep copies captured at collection survive subsequent plan edits.
         for key in ("sku", "dock_variant", "firmware", "integration_version"):
             if not consumption_context.get(key) and plan.get(key):
                 consumption_context[key] = plan[key]
+                field_sources[key] = "declared"
         for key, value in plan.get("settings", {}).items():
             if not consumption_context.setdefault("settings", {}).get(key) and value:
                 consumption_context["settings"][key] = value
+                field_sources[key] = "declared"
     whole_cycle_calibration = None
     closing_whole_cycle = False
     whole_cycle_fallback = False
@@ -639,6 +647,11 @@ def _tick_device_pass(
             for setting in CONSUMPTION_SETTINGS:
                 if device.get(setting + "_entity"):
                     settings_context[setting] = _normalized_signal(_state_value(hass, device[setting + "_entity"]))
+        for setting in CONSUMPTION_SETTINGS:
+            role = "mop_intensity_entity" if setting == "water_level" else setting + "_entity"
+            if device.get(role):
+                field_sources[setting] = "observed" if settings_context.get(setting) is not None else "unavailable"
+        consumption_context["field_sources"] = field_sources
         consumption_context["device_id"] = vacuum_entity
         previous_area = _float_or_none(state.get("last_area"))
         previous_duration = _float_or_none(state.get("last_duration_seconds"))
@@ -719,7 +732,9 @@ def _tick_device_pass(
     context_values["dataset_revision"] = (consumption_profiles.CONSUMPTION_SNAPSHOT.get("dataset_version"), consumption_profiles.CONSUMPTION_SNAPSHOT.get("source_payload_sha256"))
     # The dataset revision identifies the shipped catalogue bytes. An upgrade
     # that does not change this device's rates must not break its baseline.
-    interval_values = {key: value for key, value in context_values.items() if key != "dataset_revision"}
+    interval_values = deepcopy({key: value for key, value in context_values.items() if key != "dataset_revision"})
+    if interval_values.get("consumption_context"):
+        interval_values["consumption_context"].pop("field_sources", None)
     context = _digest(interval_values)
     # Dock return can restore the next task's controls before publishing the
     # last area. Only those three controls may differ: identity, rates and all

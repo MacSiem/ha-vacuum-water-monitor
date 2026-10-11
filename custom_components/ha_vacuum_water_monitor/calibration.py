@@ -31,7 +31,7 @@ def validate_measurement_plan(plan):
 
 def _number(value):
     # Do not copy strings from HA or accept booleans as physical quantities.
-    if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+    if type(value) not in (int, float) or value < 0 or value > 1e100 or not math.isfinite(value):
         return None
     return value
 
