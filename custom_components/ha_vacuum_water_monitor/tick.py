@@ -823,9 +823,23 @@ def _tick_device_pass(
             # context calibration sample. Its numeric history remains useful.
             updates["session_accounting_valid"] = False
         if old_calibration_context is not None and old_calibration_context != calibration_context:
-            updates.update(calibration_factor=1, calibration_samples=0, calibration_log_factors=[],
-                           calibration_pending_log_factor=None, calibration_pending_context=None,
-                           session_accounting_valid=False, session_exposure_complete=False)
+            # Keep useful nominal learning under its exact rate/settings identity.
+            # A different context starts independently; history remains a shared audit.
+            bank = state.get("nominal_calibration_contexts")
+            bank = deepcopy(bank) if isinstance(bank, dict) else {}
+            fields = ("calibration_factor", "calibration_samples", "calibration_log_factors",
+                      "calibration_basis", "calibration_pending_log_factor", "calibration_pending_context")
+            bank[old_calibration_context] = {key: deepcopy(state.get(key)) for key in fields}
+            state["nominal_calibration_contexts"] = bank
+            restored = bank.get(calibration_context)
+            defaults = dict(calibration_factor=1, calibration_samples=0, calibration_log_factors=[],
+                            calibration_basis="nominal_capacity", calibration_pending_log_factor=None,
+                            calibration_pending_context=None)
+            if isinstance(restored, dict):
+                factor = _positive_number(restored.get("calibration_factor"))
+                if factor is not None and MIN_CALIBRATION_FACTOR <= factor <= MAX_CALIBRATION_FACTOR:
+                    defaults.update({key: deepcopy(restored[key]) for key in fields if key in restored})
+            updates.update(defaults, session_accounting_valid=False, session_exposure_complete=False)
         state.update(updates)
         if not lost_exposure and curr_area == state.get("session_start_area"):
             state["session_context"] = deepcopy(consumption_context)
