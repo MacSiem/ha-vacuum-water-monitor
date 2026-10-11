@@ -344,6 +344,7 @@ const VWM_WATER_TEXT_PL = {
   "Add Maintenance Item": "Dodaj czynność konserwacji",
   "Name (e.g. Clean sensors)": "Nazwa (np. Wyczyść czujniki)",
   "Every N days": "Co ile dni",
+  "Maintenance icon": "Ikona konserwacji",
   "Wrench": "Klucz",
   "Brush": "Szczotka",
   "Filter": "Filtr",
@@ -14880,9 +14881,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <div class="section-block">
           <div class="section-title">\u2795 ${this._waterText("Add Maintenance Item")}</div>
           <div class="add-maint-form">
-            <input class="maint-input" id="maint-name" placeholder="${_esc(this._waterText("Name (e.g. Clean sensors)"))}" type="text"/>
-            <input class="maint-input maint-days" id="maint-days" placeholder="${_esc(this._waterText("Every N days"))}" type="number" min="1" max="365"/>
-            <select class="maint-input maint-icon" id="maint-icon">
+            <input class="maint-input" id="maint-name" aria-label="${_esc(this._waterText("Name (e.g. Clean sensors)"))}" placeholder="${_esc(this._waterText("Name (e.g. Clean sensors)"))}" type="text"/>
+            <input class="maint-input maint-days" id="maint-days" aria-label="${_esc(this._waterText("Every N days"))}" placeholder="${_esc(this._waterText("Every N days"))}" type="number" min="1" max="365"/>
+            <select class="maint-input maint-icon" id="maint-icon" aria-label="${_esc(this._waterText("Maintenance icon"))}">
               <option value="\uD83D\uDD27">\uD83D\uDD27 ${this._waterText("Wrench")}</option>
               <option value="\uD83E\uDDF9">\uD83E\uDDF9 ${this._waterText("Brush")}</option>
               <option value="\uD83D\uDCA7">\uD83D\uDCA7 ${this._waterText("Water")}</option>
