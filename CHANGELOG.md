@@ -2,6 +2,8 @@
 
 ## 5.10.0 (2026-10-11)
 
+- Ask once about optional measurement sharing with explicit Not now / Learn more choices. Persist the preference across restarts and upgrades, explain data minimization and publication terms, and allow changes in Settings without enabling sharing or inheriting packet consent.
+
 - Keep Polish empty-tank and lid guidance explicit about confirmed full refills and nominal learning; remove stale translations that overrode these qualifications.
 
 - Separate per-action consumption estimates from reservoir-level anchors; remove the unmeasured half-wash refund. Require explicit or prospectively declared full refills and complete coverage for nominal tank learning. Retain useful learning by exact context.

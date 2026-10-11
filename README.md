@@ -480,6 +480,10 @@ Browser-only v4 tank counters are not automatically imported. After installing v
   using the [sanitization guide](docs/diagnostics-and-calibration.md#share-a-useful-sanitized-report).
 - **Confirmed measurements and optional sharing (off by default).** History and Settings
   offer saved physical measurements, exact local JSON preview and consent for that packet.
+  On first use, choose **Not now** or **I’d like to learn more**. Both keep sharing OFF;
+  declining leaves normal tracking and calibration available. Your choice persists in
+  this Home Assistant installation across restarts and upgrades. Revisit it in Settings.
+  Learning more explains the data and opens the optional section without granting consent.
   Nominal tank calibration is not published as measured consumption. Download the reviewed
   packet and attach it manually to the [maintained measurement form](https://github.com/MacSiem/vacuum-consumption-data/issues/new?template=measurement.yml).
   The link opens a blank form and does not send the packet. Technical model/settings,

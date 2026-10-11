@@ -13366,6 +13366,83 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return `<div class="tip-banner-title">\uD83D\uDCA1 ${pl ? 'Jak to dzia\u0142a' : 'How it works'}</div><ul>${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
   }
 
+  _sharingIntroText() {
+    return this._lang === 'pl' ? {
+      question: 'Chcesz dowiedzieć się więcej o opcjonalnym udostępnianiu pomiarów?',
+      title: 'Opcjonalny wkład do wspólnej bazy pomiarów',
+      purpose: 'Potwierdzone pomiary mogą pomóc ulepszyć szacunki dla różnych robotów i ustawień. Udostępnianie jest domyślnie wyłączone. Odmowa nie ogranicza monitorowania wody ani lokalnej kalibracji.',
+      summary: 'Nic nie wysyłamy automatycznie. Przed ręcznym udostępnieniem zobaczysz dokładny pakiet i udzielisz osobnej zgody na jego publikację.',
+      details: 'Jakie dane i na jakich zasadach?',
+      retained: 'Pakiet zawiera model, wariant urządzenia i stacji, firmware, integrację, ustawienia oraz wybrany potwierdzony pomiar i jego jakość. Pomijamy identyfikatory domu i urządzeń, nazwy, konta, tokeny, IP, mapy, pomieszczenia, dokładne daty i czasy zdarzeń oraz surowe historie.',
+      limits: 'Dane techniczne mogą pośrednio identyfikować urządzenie. Przy ręcznym zgłoszeniu GitHub pokazuje konto autora. Nie obiecujemy pełnej anonimowości.',
+      process: 'Nic nie jest wysyłane automatycznie. Najpierw wybierasz pomiar i sprawdzasz dokładny lokalny podgląd JSON. Każdy pakiet wymaga osobnej zgody na publiczne udostępnienie na licencji CC BY 4.0; dopiero potem możesz pobrać plik i samodzielnie go zgłosić. Samo zainteresowanie nie udziela tej zgody.',
+      change: 'Wybór możesz zmienić później w Ustawieniach. Zapisujemy go w tej instalacji Home Assistanta, aby nie pytać przy każdym otwarciu. Wycofanie opublikowanego wkładu zgłoś w repozytorium; publiczne kopie mogą pozostać.',
+      decline: 'Nie teraz', more: 'Chcę dowiedzieć się więcej',
+      declined: 'Zapisany wybór: nie teraz. Udostępnianie pozostaje wyłączone.',
+      interested: 'Zapisany wybór: chcę dowiedzieć się więcej. To nie jest zgoda na publikację pakietu.',
+      error: 'Nie udało się zapisać wyboru. Spróbuj ponownie; monitorowanie wody nadal działa.',
+    } : {
+      question: 'Would you like to learn about optional measurement sharing?',
+      title: 'Optional contribution to the shared measurement database',
+      purpose: 'Confirmed measurements can help improve estimates for different robots and settings. Sharing starts OFF. Declining does not limit water tracking or local calibration.',
+      summary: 'Nothing is sent automatically. Before sharing manually, you will see the exact packet and give separate consent to its publication.',
+      details: 'Which data and under what terms?',
+      retained: 'The packet contains the model, device and dock variant, firmware, integration, settings, and the selected confirmed measurement and its quality. We omit home and device identifiers, names, accounts, tokens, IP addresses, maps, rooms, exact event dates and times, and raw histories.',
+      limits: 'Technical metadata can identify a device indirectly. A manual GitHub submission shows the author’s account. Complete anonymity is not guaranteed.',
+      process: 'Nothing is sent automatically. First select a measurement and inspect the exact local JSON preview. Each packet requires separate consent to public sharing under CC BY 4.0; only then can you download it and submit it yourself. Learning more does not give that consent.',
+      change: 'You can change your choice later in Settings. It is saved in this Home Assistant installation so we do not ask on every visit. Request withdrawal of a published contribution in the repository; public copies may remain.',
+      decline: 'Not now', more: 'I’d like to learn more',
+      declined: 'Saved choice: not now. Sharing remains OFF.',
+      interested: 'Saved choice: learn more. This is not consent to publish a packet.',
+      error: 'Could not save your choice. Please try again; water tracking still works.',
+    };
+  }
+
+  _buildSharingIntro(inSettings = false) {
+    if (!this._serverReady) return '';
+    const choice = this._serverState?.settings?.sharing_intro_choice;
+    if (!inSettings && ['not_now', 'learn_more'].includes(choice)) return '';
+    const L = this._sharingIntroText();
+    return `<section id="${inSettings ? 'vwm-sharing-information' : 'vwm-sharing-intro'}" class="section-block" aria-label="${_esc(L.title)}" tabindex="-1">
+      <div class="section-title">${_esc(['not_now', 'learn_more'].includes(choice) ? L.title : L.question)}</div>
+      <p>${_esc(L.purpose)}</p><p>${_esc(L.summary)}</p>
+      <details id="vwm-sharing-explanation"${inSettings ? ' open' : ''}><summary>${_esc(L.details)}</summary>
+        <p>${_esc(L.retained)}</p><p>${_esc(L.limits)}</p><p>${_esc(L.process)}</p><p>${_esc(L.change)}</p>
+      </details>
+      ${inSettings && ['not_now', 'learn_more'].includes(choice) ? `<p>${_esc(choice === 'not_now' ? L.declined : L.interested)}</p>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+        <button type="button" class="vwm-setup-btn" data-sharing-choice="not_now"${this._sharingIntroSaving ? ' disabled' : ''}>${_esc(L.decline)}</button>
+        <button type="button" class="vwm-setup-btn" data-sharing-choice="learn_more"${this._sharingIntroSaving ? ' disabled' : ''}>${_esc(L.more)}</button>
+      </div><p id="vwm-sharing-choice-status" role="status" aria-live="polite"></p>
+    </section>`;
+  }
+
+  async _chooseSharingIntro(choice) {
+    if (!['not_now', 'learn_more'].includes(choice) || this._sharingIntroSaving) return false;
+    this._sharingIntroSaving = true;
+    const enabled = this.shadowRoot.getElementById('cal-share-enabled');
+    if (enabled) enabled.checked = false;
+    this._invalidateContribution();
+    this.shadowRoot.querySelectorAll('[data-sharing-choice]').forEach(button => { button.disabled = true; });
+    const result = await this._saveServerSettings({ sharing_intro_choice: choice });
+    this._sharingIntroSaving = false;
+    if (!result.ok || result.settings?.sharing_intro_choice !== choice) {
+      const status = this.shadowRoot.getElementById('vwm-sharing-choice-status');
+      if (status) status.textContent = this._sharingIntroText().error;
+      this.shadowRoot.querySelectorAll('[data-sharing-choice]').forEach(button => { button.disabled = false; });
+      return false;
+    }
+    if (choice === 'learn_more') this._activeTab = 'settings';
+    this._lastHtml = '';
+    this._render();
+    if (choice === 'learn_more') {
+      const sharing = this.shadowRoot.getElementById('cal-sharing');
+      if (sharing) sharing.open = true;
+      this.shadowRoot.getElementById('vwm-sharing-information')?.focus();
+    }
+    return true;
+  }
+
   _setupText() {
     return VWM_SETUP_TEXT[this._lang] || VWM_SETUP_TEXT.en;
   }
@@ -15723,7 +15800,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _buildCalibrationSharingSection(device, data) {
-    return this._buildConfirmedSharing(device);
+    return this._buildSharingIntro(true) + this._buildConfirmedSharing(device);
   }
 
   _calibrationShareUrl() {
@@ -16420,6 +16497,7 @@ target:
           <button class="tip-dismiss" id="tip-dismiss" aria-label="${_esc(this._waterText("Dismiss"))}">\u2715</button>
           ${this._tipHtml()}
         </div>
+        ${this._activeTab !== 'settings' ? this._buildSharingIntro() : ''}
         ${this._duplicateNoticeHtml()}
         ${deviceTabsHtml}
         ${deviceHeader}
@@ -16469,6 +16547,9 @@ target:
 
   _attachListeners(devices, device) {
     const sr = this.shadowRoot;
+    sr.querySelectorAll('[data-sharing-choice]').forEach(button => {
+      button.addEventListener('click', () => this._chooseSharingIntro(button.dataset.sharingChoice));
+    });
     sr.querySelector('.support-dismiss')?.addEventListener('click', () => {
       try { localStorage.setItem(SUPPORT_DISMISSED_KEY, '1'); } catch (_) {}
       sr.querySelector('.donate-section[data-source="own-card"]')?.remove();

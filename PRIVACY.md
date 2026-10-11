@@ -5,6 +5,12 @@ confirmed measurements locally in Home Assistant. Home Assistant backups include
 The integration does not automatically send telemetry, measurements or diagnostics.
 
 Optional sharing starts OFF, including installations with an older global opt-in.
+On the first card visit after installing or upgrading to this feature, an optional question
+offers **Not now** and **I’d like to learn more**. Both leave sharing OFF. The choice is
+stored locally in this Home Assistant installation, survives restarts and upgrades, and
+can be changed in Settings. Declining never limits tracking or local calibration. Learning
+more opens the explanation; it is not publication consent and sends no measurement.
+
 Only saved confirmed physical measurements can create a contribution. The local preview
 shows the exact packet. Separate consent changes its publication consent flag; the
 subsequent download contains exactly the displayed JSON. Selecting another sample,
