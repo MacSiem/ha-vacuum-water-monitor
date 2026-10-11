@@ -84,6 +84,7 @@ const assert=require('assert/strict');
    sessionActive:true,accountingSource:'whole_cycle',usedMl:120,consumptionResolution:{source:'unknown',reason:'outside_exposure_domain'}});
  assert.ok(activeGuidance.includes('Whole-cycle estimate pending'),'an actually open cycle remains provisional');
 
+ card._hass.states={};
  card._lang='pl';
  const emptyPL=card._buildAccountingGuidance({initialized:true,stateReason:'water_empty',waterEmpty:true});
  assert.ok(emptyPL.includes('Tylko pełny, zakwalifikowany cykl'), 'selected Polish empty guidance must qualify nominal learning');
