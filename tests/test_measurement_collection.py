@@ -152,6 +152,31 @@ class CollectionTests(unittest.TestCase):
         self.assertFalse(state.get('accounting_incomplete',False))
         self.assertEqual(state['consumption_resolution']['reason'],'exposure_outside_validated_domain')
 
+    def test_validation_metadata_does_not_break_an_active_measured_session(self):
+        device = self._physical_device()
+        state = run(device,dict(BASE),[dict(status='cleaning',vac='cleaning',area='0'),
+                                     dict(status='cleaning',vac='cleaning',area='5')])
+        profile = device['consumption_calibration'][0]
+        profile['validation'].update(validation_ids=['local.holdout'],max_error_ml=0,
+                                     max_relative_error=0)
+        profile['uncertainty_percent'] = 2
+        state = run(device,state,[dict(status='cleaning',vac='cleaning',area='10'),
+                                  dict(status='charging',area='10')],ts=state['last_tick_ts'])
+        self.assertEqual(state['used_ml'],100)
+        self.assertFalse(state.get('accounting_incomplete',False))
+        self.assertTrue(state['automatic_sessions'][0]['exposure_complete'])
+        self.assertEqual(state['automatic_sessions'][0]['water'],100)
+
+    def test_changed_physical_coefficient_still_invalidates_crossing_exposure(self):
+        device = self._physical_device()
+        state = run(device,dict(BASE),[dict(status='cleaning',vac='cleaning',area='0'),
+                                     dict(status='cleaning',vac='cleaning',area='5')])
+        device['consumption_calibration'][0]['coefficient'] = 12
+        state = run(device,state,[dict(status='cleaning',vac='cleaning',area='10')],
+                    ts=state['last_tick_ts'])
+        self.assertTrue(state['accounting_incomplete'])
+        self.assertEqual(state['last_accounting_reason'],'accounting_context_changed')
+
     def test_dock_restored_controls_do_not_erase_qualified_whole_cycle(self):
         device = self._physical_device()
         state = run(device,dict(BASE),[dict(status='cleaning',vac='cleaning',area='0'),
