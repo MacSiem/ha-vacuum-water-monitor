@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 
 from .sensor_calculations import apply_custom_calibration
 from .storage import VacuumWaterStorage
-from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compatible_context
+from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compatible_context, _valid_consumption_record
 from . import profiles as consumption_profiles
 from . import accounting_v2
 from . import estimation
@@ -613,6 +613,24 @@ def _tick_device_pass(
         consumption_context["device_id"] = vacuum_entity
         previous_area = _float_or_none(state.get("last_area"))
         previous_duration = _float_or_none(state.get("last_duration_seconds"))
+        reservoir_matches = not device.get("tracked_reservoir") or device["tracked_reservoir"] == consumption_context.get("reservoir")
+        personal = device.get("consumption_calibration")
+        records = personal if isinstance(personal, list) else [personal]
+        matches = []
+        for record in records:
+            if (not _valid_consumption_record(record, personal=True)
+                    or record.get("device_id") != vacuum_entity
+                    or record.get("scope") != "whole_cycle"):
+                continue
+            # Physical whole-cycle measurements have their own action. Older
+            # private profiles used floor_mopping; preserve their exact context.
+            candidate_context = {**consumption_context, "action": record["context"]["action"]}
+            if (record["context"]["action"] in {"whole_cycle", "floor_mopping"}
+                    and _compatible_context(candidate_context, record["context"])):
+                matches.append((record, candidate_context))
+        if reservoir_matches and len(matches) == 1:
+            whole_cycle_calibration, consumption_context = matches[0]
+            usage_per_m2 = usage_per_minute = wash_volume = None
         resolution = resolve_consumption_profile(
             consumption_context,
             {"area_m2": curr_area - previous_area if curr_area is not None and previous_area is not None else None,
@@ -620,21 +638,10 @@ def _tick_device_pass(
                  if curr_duration_seconds is not None and previous_duration is not None else None},
             device.get("consumption_calibration"),
         )
-        reservoir_matches = not device.get("tracked_reservoir") or device["tracked_reservoir"] == consumption_context.get("reservoir")
         if not reservoir_matches:
             resolution = {**resolution, "source": "unknown", "method": None, "coefficient": None,
                           "scope": None, "reason": "context_reservoir_mismatch"}
         state["consumption_resolution"] = resolution
-        personal = device.get("consumption_calibration")
-        if isinstance(personal, list):
-            matches = [r for r in personal if isinstance(r, dict) and r.get("device_id") == vacuum_entity
-                       and _compatible_context(consumption_context, r.get("context", {}))]
-            personal = matches[0] if len(matches) == 1 else None
-        if (reservoir_matches and isinstance(personal, dict) and personal.get("scope") == "whole_cycle"
-                and personal.get("device_id") == vacuum_entity
-                and _compatible_context(consumption_context, personal.get("context", {}))):
-            whole_cycle_calibration = personal
-            usage_per_m2 = usage_per_minute = wash_volume = None
         # Legacy authored calibration remains authoritative. Shared model rates
         # are only used when no authored coefficient is already effective.
         if usage_per_m2 is None and usage_per_minute is None and wash_volume is None:
