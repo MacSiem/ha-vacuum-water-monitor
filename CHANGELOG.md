@@ -2,6 +2,8 @@
 
 ## 5.10.0 (2026-10-11)
 
+- Keep Polish empty-tank and lid guidance explicit about confirmed full refills and nominal learning; remove stale translations that overrode these qualifications.
+
 - Separate per-action consumption estimates from reservoir-level anchors; remove the unmeasured half-wash refund. Require explicit or prospectively declared full refills and complete coverage for nominal tank learning. Retain useful learning by exact context.
 - Apply qualified local whole-cycle profiles to the real accounting consumer, replacing only the completed session’s provisional estimate. Retain available automatic estimates outside the measured domain and preserve dock-restored task settings in completed history.
 - Add prospective technical collection settings, confirmed physical measurements, robust training/outlier qualification and independent validation summaries. Preserve historical context and let observed HA settings take precedence.
