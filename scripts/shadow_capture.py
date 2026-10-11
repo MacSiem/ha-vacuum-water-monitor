@@ -74,7 +74,7 @@ def replay(events, devices, calc, tick, *, poll_seconds=0, compare=None, setting
     def run_tick(ts):
         for device in effective:
             key = device['vacuum_entity']
-            state, _ = tick.tick_device(hass, device, tanks.get(key, {**tick.VacuumWaterStorage.default_tank_state(), 'initialized': True}), now_ts=ts)
+            state, _ = tick.tick_device(hass, device, tanks.get(key, {'used_ml':0, 'initialized':True, 'calibration_factor':1, 'calibration_samples':0}), now_ts=ts)
             tanks[key] = state
             reasons[str(state.get('last_accounting_reason') or 'none')] += 1
             status = samples.get(device.get('status_sensor'))

@@ -135,3 +135,16 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(state['automatic_sessions'][0]['water'],100)
         self.assertEqual(state['automatic_sessions'][0]['exposures']['area_m2'],10)
         self.assertTrue(any(e.get('superseded_by')=='qualified_whole_cycle' for e in state['consumption_events']))
+
+    def test_declared_full_refill_practice_qualifies_future_auto_refills_only(self):
+        for confirmed in (False,True):
+            with self.subTest(confirmed=confirmed):
+                device = effective({'refill_settings':{'vacuum.robot':{'full_refill_practice_confirmed':confirmed}}},descriptor())
+                original = {**BASE,'used_ml':3700,'cycle_full_confirmed':False}
+                unchanged = run(device,original,[dict()])
+                self.assertFalse(unchanged['cycle_full_confirmed'])
+                state = run(device,original,[dict(dock_err='water_empty'),dict(dock_err='water_empty'),dict(dock_err='ok',_gap=120000)])
+                self.assertEqual(state['used_ml'],0)
+                self.assertEqual(state['cycle_full_confirmed'],confirmed)
+                if confirmed:
+                    self.assertEqual(state['cycle_full_confirmation_source'],'declared_full_refill_practice')
