@@ -1252,6 +1252,7 @@ def _tick_device_pass(
         predicted_used = _positive_number(state.get("used_ml"))
         initialized = bool(state.get("initialized") or state.get("last_reset_iso"))
         if capacity is not None and initialized:
+            state.setdefault("calibration_samples", 0)
             remaining_percent = (
                 _empty_residual_percent(device)
                 if anchor_kind == "empty"
@@ -1307,7 +1308,9 @@ def _tick_device_pass(
             # Relative anchor calibration remains separate from independently
             # measured local rates. Repetition does not confirm physical volume.
             _set_used_at_anchor(state, calibration_target)
-            dirty |= _record_accounting(state, "low_water", None, evidence, reason)
+            dirty |= _record_accounting(state, "low_water", None,
+                                       "device_calibrated" if accepted else evidence,
+                                       "low_water_calibrated" if accepted else reason)
         else:
             dirty |= _record_accounting(
                 state,

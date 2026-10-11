@@ -223,6 +223,9 @@ def estimate_water_state(
             else profile.get("uncertainty_percent")),
         "calibration_history": list(tank_state.get("calibration_history") or [])[:12],
         "calibration_factor": _number(tank_state.get("calibration_factor"), 1),
+        "calibration_basis": tank_state.get("calibration_basis") or "legacy_nominal",
+        "cycle_full_confirmed": tank_state.get("cycle_full_confirmed") is True,
+        "cycle_action_totals": deepcopy(tank_state.get("cycle_action_totals") or {}),
         "calibration_samples": max(
             0, int(_number(tank_state.get("calibration_samples"), 0))
         ),
