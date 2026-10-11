@@ -2,7 +2,31 @@
 from __future__ import annotations
 
 import math
+import re
+from statistics import median
 from uuid import uuid4
+
+
+def validate_measurement_plan(plan):
+    """Only prospectively declared technical fields; never robot commands."""
+    from .profiles import CONSUMPTION_SETTINGS
+    axes = {'sku', 'dock_variant', 'firmware', 'integration_version'}
+    if (not isinstance(plan, dict) or plan.get('confirmed') is not True
+            or set(plan) - axes - {'confirmed', 'settings'}):
+        raise ValueError('Confirm the technical settings for future collection')
+    settings = plan.get('settings', {})
+    if not isinstance(settings, dict) or set(settings) - set(CONSUMPTION_SETTINGS):
+        raise ValueError('Only known technical setting fields are permitted')
+    def checked(value):
+        if value is None or value == '':
+            return None
+        if not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9 ._:+%-]{0,47}', value):
+            raise ValueError('Use a short technical value, not a URL, identifier or free-form note')
+        if value.lower() in {'unknown', 'unavailable', 'none'}:
+            return None
+        return value
+    return {'confirmed':True, **{k:checked(plan[k]) for k in axes if k in plan},
+            'settings':{k:checked(v) for k,v in settings.items()}}
 
 
 def _number(value):
@@ -133,7 +157,7 @@ def build_local_measurement(session, values, device_id):
         raise ValueError('Choose the measurement instrument')
     if values.get('purpose') not in {'training', 'validation'}:
         raise ValueError('Choose training or independent validation')
-    if (session.get('exposure_complete') is not True or session.get('segments') != 1
+    if (session.get('accounting_valid') is not True or session.get('exposure_complete') is not True or session.get('segments') != 1
             or area is None or area <= 0):
         raise ValueError('A complete single-context cycle with measured area is required')
     context = session.get('context')
@@ -149,8 +173,15 @@ def build_local_measurement(session, values, device_id):
         _known_context = module._known_context
     if not _known_context(context) or not device_id or type(session.get('ts')) is not int:
         raise ValueError('Historical model, firmware, reservoir and every setting must be known')
+    context = deepcopy(context)
+    context['action'] = 'whole_cycle'
     return {'id': 'local.' + str(session['ts']), 'device_id': device_id,
-            'context': deepcopy(context), 'area_m2': area, 'observed_ml': volume,
+            'confirmed':True,
+            'quality': {'boundaries_confirmed':True, 'uninterrupted':True,
+                'exposure_complete':True, 'settings_constant':True,
+                'context_recorded_at_collection':True, 'intervening_refill':False,
+                'unmeasured_transfer':False},
+            'context': context, 'area_m2': area, 'observed_ml': volume,
             'resolution_ml': resolution, 'instrument': values['instrument'],
             'purpose': values['purpose'], 'scope': 'whole_cycle'}
 
@@ -165,6 +196,12 @@ def fit_local_measurements(samples):
     if not isinstance(samples, list) or not samples or any(not isinstance(s, dict) for s in samples):
         return None
     first = samples[0]
+    required_quality = {'boundaries_confirmed':True, 'uninterrupted':True,
+        'exposure_complete':True, 'settings_constant':True,
+        'context_recorded_at_collection':True, 'intervening_refill':False,
+        'unmeasured_transfer':False}
+    if any(s.get('confirmed') is not True or s.get('quality') != required_quality for s in samples):
+        return None
     ids = [s.get('id') for s in samples]
     if any(not isinstance(i, str) for i in ids) or len(set(ids)) != len(ids):
         return None
@@ -175,6 +212,13 @@ def fit_local_measurements(samples):
         return None
     training = [s for s in samples if s.get('purpose') == 'training']
     holdout = [s for s in samples if s.get('purpose') == 'validation']
+    if len(training) < 3:
+        return None
+    # Robustly qualify a group before fitting; keep rejected raw samples private
+    # for review. They never affect a rate or its reported measured domain.
+    center = median(math.log(s['observed_ml']/s['area_m2']) for s in training)
+    rejected = [s for s in training if abs(math.log(s['observed_ml']/s['area_m2'])-center) > math.log(2)]
+    training = [s for s in training if s not in rejected]
     if len(training) < 3:
         return None
     design = check_identifiability('area', [{'area': s['area_m2']} for s in training])
@@ -193,6 +237,11 @@ def fit_local_measurements(samples):
             'evidence_ids': [s['id'] for s in training],
             'provenance': [{'type': 'local_measurement', 'claim': 'Private full-to-full measured refill; not a shared approved profile'}],
             'exposure_domain': domain,
+            'sample_count': len(training), 'rejected_ids':[s['id'] for s in rejected],
+            'uncertainty_kind': 'measurement_and_training_repeatability',
+            'uncertainty_percent': max(
+                max(s['resolution_ml']/s['observed_ml']*100 for s in training),
+                median(abs(s['observed_ml']/s['area_m2']-coefficient)/coefficient*100 for s in training)),
             'validation': {'training_ids': [s['id'] for s in training],
                 'validation_ids': [s['id'] for s in comparable], 'device_count': 1,
                 'max_error_ml': max(errors) if errors else None,

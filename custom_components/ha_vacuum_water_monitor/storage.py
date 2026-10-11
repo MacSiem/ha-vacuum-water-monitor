@@ -324,6 +324,20 @@ class VacuumWaterStorage:
             await self._store.async_save(data)
             return {"saved": True, "sample_count": len(matching), "calibration": deepcopy(fitted)}
 
+    async def async_set_measurement_plan(self, vacuum_entity, plan):
+        """Save prospective declarations without altering any recorded session."""
+        from .calibration import validate_measurement_plan
+        if not isinstance(vacuum_entity, str) or not vacuum_entity.startswith("vacuum."):
+            raise ValueError("Select a vacuum entity")
+        clean = validate_measurement_plan(plan)
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            plans = deepcopy(data["settings"].get("measurement_plans") or {})
+            plans[vacuum_entity] = clean
+            data["settings"]["measurement_plans"] = plans
+            await self._store.async_save(data)
+            return deepcopy(data["settings"])
+
     async def async_reprofile(self, vacuum_entity: str) -> dict[str, Any]:
         """Refresh generated discovery, retaining authored config and all history."""
         if not vacuum_entity.startswith("vacuum."):

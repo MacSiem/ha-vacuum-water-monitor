@@ -358,6 +358,14 @@ def apply_custom_calibration(
     effective = dict(device) if isinstance(device, dict) else {}
     settings = settings if isinstance(settings, dict) else {}
     profile = resolve_profile(effective)
+    plans = settings.get("measurement_plans") or {}
+    plan = plans.get(effective.get("vacuum_entity")) if isinstance(plans, dict) else None
+    if plan is not None:
+        from .calibration import validate_measurement_plan
+        try:
+            effective["measurement_plan"] = validate_measurement_plan(plan)
+        except ValueError:
+            pass
     explicit_before_merge = _explicit_fields(effective)
     # Discovery descriptors carry the resolver's derived fields. They must be
     # re-derived here, after authored configuration and user calibration are

@@ -84,8 +84,7 @@ AREA_RATE_SMOOTHING = 0.3
 # An empty error first seen this soon after a refill the user reported is the
 # error that preceded that refill, not a tank emptied in minutes.
 REFILL_ACK_WINDOW_SECONDS = 600
-# A dock that reports empty during a wash could not finish it. Half of that
-# wash is the expected water it still drew.
+# A failed wash remains an uncertain dose; no measured fraction is available.
 MAX_ACTIVE_INTERVAL_SECONDS = 180
 WATER_ANCHOR_CONFIRMATION_SECONDS = 60
 DEFAULT_LOW_WATER_REMAINING_PERCENT = 10
@@ -590,6 +589,15 @@ def _tick_device_pass(
     })
     if isinstance(consumption_context, dict) and device.get("observed_firmware") is not None:
         consumption_context["firmware"] = device["observed_firmware"]
+    plan = device.get("measurement_plan") or {}
+    if consumption_context and plan.get("confirmed") is True:
+        # Deep copies captured at collection survive subsequent plan edits.
+        for key in ("sku", "dock_variant", "firmware", "integration_version"):
+            if not consumption_context.get(key) and plan.get(key):
+                consumption_context[key] = plan[key]
+        for key, value in plan.get("settings", {}).items():
+            if not consumption_context.setdefault("settings", {}).get(key) and value:
+                consumption_context["settings"][key] = value
     whole_cycle_calibration = None
     if isinstance(consumption_context, dict) and consumption_context:
         settings_context = consumption_context.setdefault("settings", {})
@@ -694,6 +702,12 @@ def _tick_device_pass(
             require_evidence=bool(device.get("mop_evidence_required")))
     calibration_values = {key: device.get(key) for key in _CALIBRATION_IDENTITY_KEYS}
     calibration_values["intensity_factor"] = device.get("intensity_factor")
+    if consumption_context:
+        calibration_values["identity"] = {key: consumption_context.get(key) for key in
+            ("sku", "dock_variant", "firmware", "integration_version")}
+        calibration_values["unsegmented_settings"] = {key:value for key,value in
+            consumption_context.get("settings", {}).items()
+            if key not in {"mop_mode", "water_level", "cleaning_mode"}}
     calibration_context = _digest(calibration_values)
     old_interval_context = state.get("accounting_interval_context")
     old_calibration_context = state.get("accounting_calibration_context")

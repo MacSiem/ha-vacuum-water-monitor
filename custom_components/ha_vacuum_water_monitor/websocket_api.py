@@ -235,6 +235,26 @@ async def _ws_calibration_preview(hass, connection, msg):
 
 
 @websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/set_measurement_plan",
+    vol.Required("vacuum_entity"): str,
+    vol.Required("plan"): dict,
+})
+@websocket_api.async_response
+async def _ws_set_measurement_plan(hass, connection, msg):
+    """Declare collection settings locally; never operate the robot or dock."""
+    if hass.states.get(msg["vacuum_entity"]) is None:
+        connection.send_error(msg["id"], "invalid_payload", "Select an existing vacuum entity")
+        return
+    try:
+        settings = await _storage(hass).async_set_measurement_plan(msg["vacuum_entity"], msg["plan"])
+    except ValueError as err:
+        connection.send_error(msg["id"], "invalid_payload", str(err))
+        return
+    _notify_store_updated(hass, {"settings":settings})
+    connection.send_result(msg["id"], {"saved":True, "settings":settings})
+
+
+@websocket_api.websocket_command({
     vol.Required("type"): f"{DOMAIN}/save_measurement",
     vol.Required("vacuum_entity"): str,
     vol.Required("session_index"): vol.All(int, vol.Range(min=0, max=49)),
@@ -371,6 +391,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_dismiss_intro,
         _ws_calibration_preview,
         _ws_save_measurement,
+        _ws_set_measurement_plan,
         _ws_health,
         _ws_set_device_options,
         _ws_set_robot_link,
