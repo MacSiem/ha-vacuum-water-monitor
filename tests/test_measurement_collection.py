@@ -31,6 +31,26 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(state['session_context']['settings']['mop_mode'],'standard')
         self.assertEqual(state['session_context']['field_sources']['water_level'],'observed')
 
+    def test_nominal_learning_is_retained_per_context_when_settings_return(self):
+        device = effective({}, descriptor())
+        device['measurement_plan'] = {'confirmed':True, 'settings':{'wash_mode':'standard'}}
+        state = run(device, dict(BASE), [dict()])
+        original_context = state['accounting_calibration_context']
+        state.update(calibration_factor=1.2, calibration_samples=4,
+                     calibration_log_factors=[0.18]*4, calibration_basis='nominal_capacity',
+                     calibration_history=[{'reason':'retained audit'}])
+        device['measurement_plan']['settings']['wash_mode'] = 'deep'
+        state = run(device, state, [dict()], ts=10060000)
+        self.assertEqual(state['calibration_factor'], 1)
+        self.assertEqual(state['calibration_samples'], 0)
+        device['measurement_plan']['settings']['wash_mode'] = 'standard'
+        state = run(device, state, [dict()], ts=10120000)
+        self.assertEqual(state['accounting_calibration_context'], original_context)
+        self.assertEqual(state['calibration_factor'], 1.2)
+        self.assertEqual(state['calibration_samples'], 4)
+        self.assertEqual(state['calibration_log_factors'], [0.18]*4)
+        self.assertEqual(state['calibration_history'], [{'reason':'retained audit'}])
+
     def test_invalid_or_unconfirmed_plan_is_not_used(self):
         for plan in ({'confirmed':False,'settings':{'wash_mode':'deep'}},
                      {'confirmed':True,'settings':{'room':'Kitchen'}},
