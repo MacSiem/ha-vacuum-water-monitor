@@ -15758,7 +15758,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         </div>`).join('')}
       </div>` : '';
 
-    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 ${this._waterText("Manually added")}</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(this._deviceIcon(ud.icon))} ${_esc(this._sanitize(ud.name))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="${_esc(this._waterText("Remove"))}">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
+    const userDevsHtml = (this._userDevices || []).length > 0 ? `<div class="section-block"><div class="section-title">\u2795 ${this._waterText("Manually added")}</div>${this._userDevices.map(ud => `<div class="disc-row"><span class="disc-name">${_esc(this._deviceIcon(ud.icon))} ${_esc(this._sanitize(ud.name || this._hass?.states?.[ud.vacuum_entity]?.attributes?.friendly_name || ud.vacuum_entity))}</span><span class="disc-id">${_esc(ud.vacuum_entity)}</span><button class="maint-del-btn user-dev-remove" data-entity="${_esc(ud.vacuum_entity)}" title="${_esc(this._waterText("Remove"))}">\uD83D\uDDD1\uFE0F</button></div>`).join('')}</div>` : '';
 
     return `
       <div class="tab-content">
