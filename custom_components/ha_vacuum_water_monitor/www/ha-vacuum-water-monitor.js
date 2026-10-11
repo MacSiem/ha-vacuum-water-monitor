@@ -14287,6 +14287,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         && typeof tankState.used_ml === 'number' && Number.isFinite(tankState.used_ml)
         && tankState.used_ml >= 0 ? tankState.used_ml : null,
       initialized, stateReason,
+      sessionActive: Boolean(tankState.session_start_ts),
       profileKey: device.profile_key || profileKey || null,
       profileSource: device.profile_source || (device.profile_key ? 'backend' : 'legacy_client_fallback'),
       profileConfidence: device.profile_confidence || null,
@@ -14611,6 +14612,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return box('Physical whole-cycle calibration.', 'The completed session uses a confirmed local total-dose profile within its measured area range. It replaces that session’s floor and wash estimate. Training spread is not verified physical accuracy; see local measurement quality for independent validation.');
     }
     if (data.stateReason === 'whole_cycle_pending') {
+      if (data.sessionActive === false) {
+        return box('Usage recorded.', 'Recorded consumption is retained between mopping and mop-wash events. Accounting continues when supported water-use signals are observed.');
+      }
       return box('Whole-cycle estimate pending.', 'A local total-dose profile can be qualified only after a complete session. Current usage is provisional; missing coverage or an area outside the measured range cannot use that profile.', '#f59e0b');
     }
     const active = Boolean(data.accountingSource && Number.isFinite(Number(data.accountingRate)) && Number(data.accountingRate) > 0 && !data.stateReason);

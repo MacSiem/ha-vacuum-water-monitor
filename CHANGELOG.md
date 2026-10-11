@@ -8,6 +8,8 @@
 - Keep independent validation and uncertainty metadata from interrupting an unchanged fitted dose or discarding active exposure. Preserve conservative rebaselining when the rate, domain or eligibility changes, and adopt unchanged legacy fingerprints during upgrade.
 - Replace legacy nominal-summary sharing with OFF-by-default confirmed-measurement preview, consent for the exact packet and manual maintained dataset intake. No automatic upload; document technical re-identification and withdrawal limits.
 
+- Show recorded consumption between completed whole-cycle sessions; reserve provisional guidance for an open cycle, without claiming that an idle interval is a physical measurement.
+
 - Name maintenance fields for keyboard and assistive technology in English and Polish. Show a usable entity name for manually configured robots without a saved display name.
 
 ## 5.9.1 (2026-10-06)
