@@ -11,7 +11,7 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
   let settings={calibration_sharing:{enabled:true},local_measurements:{'vacuum.demo':[{id:'sample.1',confirmed:true,observed_ml:100,area_m2:10,purpose:'validation'}]}};
   const calls=[];
   let failSave=false;
-  const hass={states:{'vacuum.demo':{state:'docked',attributes:{friendly_name:'Demo'}}},user:{id:'demo',is_admin:true},callWS:async msg=>{
+  const hass={states:{'vacuum.demo':{entity_id:'vacuum.demo',state:'docked',attributes:{friendly_name:'Demo'}}},user:{id:'demo',is_admin:true},callWS:async msg=>{
    calls.push(msg);
    if(msg.type==='ha_vacuum_water_monitor/set_settings'){
     if(failSave)throw new Error('offline');
