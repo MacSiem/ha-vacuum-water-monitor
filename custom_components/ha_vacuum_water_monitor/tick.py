@@ -288,6 +288,22 @@ def _digest(values: Any) -> str:
     return hashlib.sha256(json.dumps(values, sort_keys=True, default=str).encode()).hexdigest()
 
 
+def _physical_profile_identity(record):
+    """Only valid rate/applicability changes break an accounting interval.
+
+    Independent validation, uncertainty and provenance updates stay available
+    for display, but cannot discard exposure or change an unchanged fitted dose.
+    """
+    if not _valid_consumption_record(record, personal=True):
+        return None
+    identity = {key: deepcopy(record[key]) for key in
+                ("device_id", "method", "coefficient", "unit", "scope", "exposure_domain")}
+    context = record["context"]
+    identity["context"] = {key: deepcopy(context[key]) for key in
+                           (*consumption_profiles.CONSUMPTION_AXES, "settings")}
+    return identity
+
+
 def _replace_session_consumption(state, amount, now_ts, area):
     """Atomically replace this run's provisional doses, preserving their audit."""
     provisional = state.get("session_action_totals") or {}
@@ -673,7 +689,10 @@ def _tick_device_pass(
         pinned = state.get("session_whole_calibration")
         historical_context = state.get("session_context")
         if (state.get("session_start_ts") and isinstance(pinned, dict)
-                and pinned in records and isinstance(historical_context, dict)
+                and _physical_profile_identity(pinned) is not None
+                and any(_physical_profile_identity(pinned) == _physical_profile_identity(record)
+                        for record in records)
+                and isinstance(historical_context, dict)
                 and curr_status in _SESSION_END_STATES
                 and not _is_cleaning(vac_state, curr_status, cleaning_active)
                 and curr_area == previous_area
@@ -733,6 +752,12 @@ def _tick_device_pass(
     # The dataset revision identifies the shipped catalogue bytes. An upgrade
     # that does not change this device's rates must not break its baseline.
     interval_values = deepcopy({key: value for key, value in context_values.items() if key != "dataset_revision"})
+    personal = device.get("consumption_calibration")
+    personal_records = personal if isinstance(personal, list) else [personal]
+    identities = [identity for record in personal_records
+                  if (identity := _physical_profile_identity(record)) is not None]
+    interval_values["consumption_calibration"] = sorted(
+        identities, key=lambda item: json.dumps(item, sort_keys=True))
     if interval_values.get("consumption_context"):
         interval_values["consumption_context"].pop("field_sources", None)
     context = _digest(interval_values)
