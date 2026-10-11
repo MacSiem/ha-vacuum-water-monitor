@@ -68,3 +68,27 @@ class CollectionTests(unittest.TestCase):
                                      dict(status='charging',area='10')])
         self.assertEqual(state['used_ml'],100)
         self.assertEqual(state['automatic_sessions'][0]['context']['action'],'whole_cycle')
+
+    def test_full_confirmation_after_auto_refill_promotes_without_resetting_again(self):
+        import asyncio
+        from test_user_device_removal import storage
+        async def check(used):
+            st = storage.VacuumWaterStorage(None)
+            original = {'initialized':True,'last_reset_ts':1000000,'last_reset_source':'dock_cleared',
+                        'used_ml':used,'cycle_full_confirmed':False,
+                        'refill_history':[{'ts':1000000,'source':'dock_cleared'}]}
+            await st.async_set_tank_state('vacuum.robot',original)
+            return await st.async_reset_tank('vacuum.robot','2026-10-11T00:00:00Z',1001000,'card')
+        state = asyncio.run(check(0))
+        self.assertTrue(state['cycle_full_confirmed'])
+        self.assertEqual(state['last_reset_ts'],1000000)
+        self.assertEqual(len(state['refill_history']),1)
+        state = asyncio.run(check(50))
+        self.assertFalse(state['cycle_full_confirmed'])
+        self.assertEqual(state['used_ml'],50)
+
+    def test_migration_only_qualifies_explicit_old_full_confirmations(self):
+        for source,expected in [('card',True),('service',True),('button',True),('lid',False),('dock_cleared',False)]:
+            with self.subTest(source=source):
+                state = run(effective({},descriptor()),{**BASE,'last_reset_ts':9000000,'last_reset_source':source},[dict()])
+                self.assertEqual(state.get('cycle_full_confirmed',False),expected)
