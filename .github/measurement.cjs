@@ -84,6 +84,15 @@ const assert=require('assert/strict');
    sessionActive:true,accountingSource:'whole_cycle',usedMl:120,consumptionResolution:{source:'unknown',reason:'outside_exposure_domain'}});
  assert.ok(activeGuidance.includes('Whole-cycle estimate pending'),'an actually open cycle remains provisional');
 
+ card._lang='pl';
+ const emptyPL=card._buildAccountingGuidance({initialized:true,stateReason:'water_empty',waterEmpty:true});
+ assert.ok(emptyPL.includes('Tylko pełny, zakwalifikowany cykl'), 'selected Polish empty guidance must qualify nominal learning');
+ assert.ok(emptyPL.includes('nie jest to fizyczny pomiar objętości'));
+ const refillPL=card._buildRefillMethodCard(device);
+ assert.ok(refillPL.includes('Nauka nominalna wymaga potwierdzenia pełnego napełnienia.'), 'selected Polish lid guidance must require confirmation');
+ assert.equal(refillPL.includes('Zamknięcie oznacza dolanie do pełna.'),false);
+ card._lang='en';
+
  const doses=card._buildDiagnostics({cycleActionTotals:{floor_mopping:480.24,mop_wash:2550}});
  assert.ok(doses.includes('Recorded floor doses') && doses.includes('Recorded mop-wash doses'));
  assert.ok(doses.includes('nominal level anchors are separate'));
