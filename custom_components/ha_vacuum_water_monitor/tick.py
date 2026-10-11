@@ -795,7 +795,8 @@ def _tick_device_pass(
     resumed_after_idle = bool(state.get("session_idle_closed"))
     if really_cleaning:
         state["session_idle_closed"] = False
-    if session_running and not state.get("session_start_ts") and (really_cleaning or not state.get("session_idle_closed")):
+    starts_wash = (wash_now and not wash_active and previous_status is not None)
+    if (session_running or starts_wash) and not state.get("session_start_ts") and (really_cleaning or starts_wash or not state.get("session_idle_closed")):
         state.update(session_idle_since_ts=None)
         state.update(session_start_ts=now_ts, session_start_used_ml=_number(state.get("used_ml"),0),
                      # A run resumed after an idle close starts where the robot paused.
@@ -808,7 +809,12 @@ def _tick_device_pass(
                      session_action_totals={}, session_exposures={},
                      session_context=deepcopy(consumption_context),
                      session_resolution=deepcopy(state.get("consumption_resolution")),
-                     session_exposure_complete=curr_area == 0, session_segments=1)
+                     session_exposure_complete=curr_area == 0 or starts_wash, session_segments=1)
+        if (really_cleaning and mop_active and curr_area is not None and curr_area > 0
+                and _float_or_none(state.get("last_area")) is None):
+            # Missing first exposure invalidates the tank as well as the run.
+            state.update(accounting_incomplete=True, session_water_broken=True,
+                         session_accounting_valid=False)
     if wash_now:
         state["last_wash_seen_ts"] = now_ts
         if wash_active:
@@ -827,8 +833,9 @@ def _tick_device_pass(
                 state["accounting_incomplete"] = True
             dirty |= _record_accounting(state, "wash", None, evidence, "missing_wash_rate")
         else:
-            _charge_consumption(state, wash_volume, "mop_wash", "wash", evidence,
-                                now_ts, {"wash_attempt_count": 1})
+            if not device.get("water_volume_sensor"):
+                _charge_consumption(state, wash_volume, "mop_wash", "wash", evidence,
+                                    now_ts, {"wash_attempt_count": 1})
             state["last_wash_charged_ts"] = now_ts
             state["last_wash_charged_ml"] = round(wash_volume, 2)
             dirty = True
@@ -858,10 +865,6 @@ def _tick_device_pass(
     # declared reservoir. Its missing samples never silently become estimates.
     real_sensor = bool(device.get("water_volume_sensor"))
     if real_sensor:
-        state["used_ml"] = _number(state.get("used_ml"), 0) - (
-            wash_volume if wash_now and not wash_active and previous_status is not None
-            and wash_volume is not None else 0
-        )
         volume_state = hass.states.get(device["water_volume_sensor"])
         volume = _float_or_none(volume_state.state) if volume_state else None
         unit = str(volume_state.attributes.get("unit_of_measurement", "")) if volume_state else ""
@@ -899,7 +902,8 @@ def _tick_device_pass(
                 # A rise proves added volume, not a completely full reservoir.
                 state["used_ml"] = max(0, _number(state.get("used_ml"), 0) - (volume - previous_volume))
             else:
-                state["used_ml"] = round(_number(state.get("used_ml"), 0) + previous_volume - volume, 2)
+                _charge_consumption(state, previous_volume - volume, "reservoir_draw",
+                                    "real_sensor", "measured_volume", now_ts)
         state["consumption_resolution"] = {"source": "real_sensor", "method": "volume", "reason": reason, "profile_id": None}
         _record_accounting(state, "real_sensor", None, "measured_volume", reason)
         state.update(last_area=curr_area, last_duration_seconds=curr_duration_seconds,
@@ -949,8 +953,11 @@ def _tick_device_pass(
         # continues from the new task's zero.
         # Roborock clears the previous task's area during the initial dock wash,
         # before a floor session exists. No floor exposure is lost at that zero.
-        prewash_zero = (wash_now and vac_state == "docked" and not had_open_session
-                        and curr_area < AREA_MIN_DELTA)
+        prewash_zero = (curr_area < AREA_MIN_DELTA
+                        and (wash_now or state.get("wash_sequence_active"))
+                        and not (state.get("session_exposures") or {}).get("area_m2"))
+        if prewash_zero and state.get("session_start_ts"):
+            state["session_start_area"] = 0
         if delta < 0 and ((task_restarted and whole_cycle_calibration is None)
                           or (not previously_active and not had_open_session)
                           or prewash_zero):
@@ -1263,19 +1270,38 @@ def _tick_device_pass(
                 and predicted_used >= capacity * max(
                     MIN_CALIBRATION_USAGE_FRACTION, estimation.MIN_CALIBRATION_CYCLE_FRACTION)
             )
-            reason = "calibration_requires_measurement"
+            accepted = False
+            reason = "calibration_sample_full_unconfirmed"
             if not refilled_since_last_anchor:
                 reason = "calibration_sample_no_refill_since_empty"
             elif state.get("accounting_incomplete"):
                 reason = "calibration_sample_incomplete_cycle"
+            elif not cycle_long_enough:
+                reason = "low_water_detected_without_sample"
+            elif state.get("cycle_full_confirmed") is True:
+                # One confirmed full-to-empty cycle fits the effective balance
+                # against nominal usable capacity. It is NOT a measured volume.
+                window = estimation.seed_log_factors(state)
+                pending = _float_or_none(state.get("calibration_pending_log_factor"))
+                if state.get("calibration_pending_context") != calibration_context:
+                    pending = None
+                window, learned, accepted, reason, pending = estimation.update_calibration(
+                    window, calibration_factor * calibration_target / predicted_used,
+                    band_fraction=estimation.band_fraction(device.get("estimate_basis"), device.get("uncertainty_percent")),
+                    pending=pending)
+                state.update(calibration_log_factors=[round(value,6) for value in window],
+                             calibration_factor=round(learned,4), calibration_samples=len(window),
+                             calibration_pending_log_factor=round(pending,6) if pending is not None else None,
+                             calibration_pending_context=calibration_context if pending is not None else None,
+                             calibration_basis="confirmed_full_nominal_empty")
             if predicted_used is not None:
                 _append_calibration_history(state, now_ts, predicted_used, calibration_target,
-                                            calibration_factor, False, reason)
+                                            calibration_factor, accepted, reason)
                 state["last_calibration_predicted_ml"] = round(predicted_used, 2)
                 state["last_calibration_target_ml"] = round(calibration_target, 2)
             # Preserve legacy factor/windows/history for upgrade and rollback.
-            # Only independently confirmed local measurements may train new
-            # rates. Repetition of a nominal anchor does not confirm volume.
+            # Relative anchor calibration remains separate from independently
+            # measured local rates. Repetition does not confirm physical volume.
             _set_used_at_anchor(state, calibration_target)
             dirty |= _record_accounting(state, "low_water", None, evidence, reason)
         else:

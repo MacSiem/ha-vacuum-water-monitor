@@ -72,6 +72,9 @@ def apply_refill(
         last_reset_ts=now_ts,
         last_reset_iso=datetime.fromtimestamp(now_ts / 1000, tz=timezone.utc).isoformat(),
         last_reset_source=source,
+        # Alarm clearing and opening the lid prove a change, not a full tank.
+        # A user-facing full confirmation qualifies a relative balance cycle.
+        cycle_full_confirmed=source in {"card", "service", "button", "entity", "repair"},
         water_empty_active=acknowledged,
         water_empty_acknowledged=acknowledged,
         user_empty_active=False,

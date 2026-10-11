@@ -11,9 +11,13 @@ Record floor area, active-time and dock doses separately, including the resolved
 context and provenance. Preserve totals and legacy history; an empty anchor is a
 reservoir-level observation, not a new consumption dose. No percentage of a wash
 is refunded without a measured volume. Interrupted washes keep an uncertain
-estimate and explanation. Unknown settings and observation gaps cannot train a
-device correction. Historical nominal factors remain available as legacy data;
-new empty events cannot promote them to confirmed measurements.
+estimate and explanation. Observation gaps disqualify a tank from learning.
+Keep automatic relative balance calibration after an explicitly confirmed full
+tank and a complete full-to-empty cycle, with robust outlier/confirmation gates.
+Its target is labelled nominal usable capacity, not an independently measured
+volume. Unknown settings limit applicability and remain visible; they cannot
+match a measured setting-specific rate. Historical nominal factors stay intact.
+No nominal empty event can become a confirmed physical measurement.
 
 ## Local collection
 
