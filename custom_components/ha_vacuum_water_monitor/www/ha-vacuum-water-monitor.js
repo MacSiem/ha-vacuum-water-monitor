@@ -68,6 +68,18 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "Warning threshold (%)": "Próg ostrzeżenia (%)",
+  "Critical threshold (%)": "Próg krytyczny (%)",
+  "Save thresholds": "Zapisz progi",
+  "Thresholds saved": "Progi zapisane",
+  "Enter thresholds from 1 to 99%; critical must be lower than warning.": "Wpisz progi od 1 do 99%; krytyczny musi być niższy niż ostrzeżenie.",
+  "Could not save thresholds. Try again.": "Nie udało się zapisać progów. Spróbuj ponownie.",
+  "Only an administrator can change integration thresholds.": "Progi integracji może zmienić tylko administrator.",
+  "Card YAML overrides this threshold": "YAML karty nadpisuje ten próg",
+  "Create a reminder from the blueprint": "Utwórz przypomnienie z blueprintu",
+  "The automation has its own threshold; changing these defaults does not change existing reminders.": "Automatyzacja ma własny próg; zmiana tych ustawień nie zmienia istniejących przypomnień.",
+  "At this tank capacity": "Przy tej pojemności zbiornika",
+
   "Maintenance": "Konserwacja",
   "How it works": "Jak to działa",
   "Details": "Szczegóły",
@@ -13549,8 +13561,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const custom = settings.custom_calibration || {};
     const activeDevice = this._getDevices?.()[this._activeDeviceIdx] || null;
     this._customCalib = this._customCalibrationFor(activeDevice, custom);
-    if (settings.warning_threshold && this._config.warning_threshold == null) this._config.warning_threshold = settings.warning_threshold;
-    if (settings.critical_threshold && this._config.critical_threshold == null) this._config.critical_threshold = settings.critical_threshold;
+    if (settings.warning_threshold != null && !this._authoredConfigKeys?.has('warning_threshold')) this._config.warning_threshold = settings.warning_threshold;
+    if (settings.critical_threshold != null && !this._authoredConfigKeys?.has('critical_threshold')) this._config.critical_threshold = settings.critical_threshold;
   }
 
   async _saveServerSettings(patch) {
@@ -15881,6 +15893,24 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return result;
   }
 
+  _buildThresholdSettings(data) {
+    const settings = this._serverState?.settings || {};
+    const admin = Boolean(this._hass?.user?.is_admin);
+    const row = (key, label, fallback) => {
+      const value = settings[key] ?? fallback;
+      const override = this._authoredConfigKeys?.has(key);
+      return `<label>${this._waterText(label)}<input id="vwm-${key.replace('_','-')}" type="number" min="1" max="99" step="any" value="${_esc(String(value))}" ${admin ? '' : 'disabled'}></label>
+        ${data.totalMl > 0 ? `<small>${this._waterText('At this tank capacity')}: <output data-threshold-liters="${key}" data-capacity="${data.totalMl}">${(data.totalMl * value / 100000).toFixed(2)} L</output></small>` : ''}
+        ${override ? `<p>${this._waterText('Card YAML overrides this threshold')}: ${_esc(String(this._config[key]))}%</p>` : ''}`;
+    };
+    return `<div class="threshold-form">${row('warning_threshold','Warning threshold (%)',20)}${row('critical_threshold','Critical threshold (%)',10)}
+      <button id="vwm-save-thresholds" type="button" ${admin ? '' : 'disabled'}>${this._waterText('Save thresholds')}</button>
+      ${admin ? '' : `<p>${this._waterText('Only an administrator can change integration thresholds.')}</p>`}
+      <div id="vwm-threshold-status" role="status" aria-live="polite"></div>
+      <p><a href="https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMacSiem%2Fha-vacuum-water-monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fvacuum_water_refill_reminder.yaml" target="_blank" rel="noopener">${this._waterText('Create a reminder from the blueprint')}</a></p>
+      <p>${this._waterText('The automation has its own threshold; changing these defaults does not change existing reminders.')}</p></div>`;
+  }
+
   _buildSettingsTab(device, data) {
     const devices = this._getDevices();
 
@@ -16578,6 +16608,7 @@ target:
 .card-title { display:flex; justify-content:space-between; gap:8px; align-items:center; }
 #vwm-help { min-width:44px; min-height:44px; border:1px solid var(--bento-border); border-radius:50%; background:var(--bento-card); color:var(--bento-text); cursor:pointer; }
 .water-details > summary, .dock-status > summary, .signal-summary > summary { min-height:44px; padding:12px 0; cursor:pointer; }
+.threshold-form label { display:flex; flex-direction:column; gap:6px; margin:12px 0 6px; } .threshold-form input, .threshold-form button { min-height:44px; padding:8px; color:var(--bento-text); background:var(--bento-card); border:1px solid var(--bento-border); border-radius:8px; }
 .settings-toc { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
 .settings-toc a { display:inline-flex; align-items:center; min-height:44px; padding:8px 12px; border-radius:8px; border:1px solid var(--bento-border); color:var(--bento-primary); }
 [id^="vwm-settings-"] { scroll-margin:12px; min-width:0; overflow-wrap:anywhere; margin-bottom:24px; }
@@ -16765,6 +16796,26 @@ input, select, textarea { max-width:100%; min-width:0; }
       });
     });
 
+    for (const key of ['warning_threshold','critical_threshold']) {
+      sr.getElementById('vwm-' + key.replace('_','-'))?.addEventListener('input', event => {
+        const output = sr.querySelector(`[data-threshold-liters="${key}"]`);
+        if (output) output.textContent = event.target.value !== '' && Number.isFinite(Number(event.target.value)) ? (Number(output.dataset.capacity) * Number(event.target.value) / 100000).toFixed(2) + ' L' : '—';
+      });
+    }
+    sr.querySelector('#vwm-save-thresholds')?.addEventListener('click', async event => {
+      if (!this._hass?.user?.is_admin) return;
+      const warning = Number(sr.getElementById('vwm-warning-threshold').value);
+      const critical = Number(sr.getElementById('vwm-critical-threshold').value);
+      const status = sr.getElementById('vwm-threshold-status');
+      if (!(warning >= 1 && warning <= 99 && critical >= 1 && critical < warning)) {
+        status.textContent = this._waterText('Enter thresholds from 1 to 99%; critical must be lower than warning.'); return;
+      }
+      event.currentTarget.disabled = true;
+      const result = await this._saveServerSettings({warning_threshold:warning, critical_threshold:critical});
+      const button = sr.getElementById('vwm-save-thresholds'); if (button) button.disabled = false;
+      const message = sr.getElementById('vwm-threshold-status');
+      if (message) message.textContent = this._waterText(result.ok ? 'Thresholds saved' : 'Could not save thresholds. Try again.');
+    });
     // Tab navigation
     sr.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {

@@ -16,6 +16,8 @@ from .const import (
     DOMAIN,
 )
 
+from .storage import validate_threshold_settings
+
 
 class HAVacuumWaterMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Single-instance setup flow."""
@@ -29,18 +31,22 @@ class HAVacuumWaterMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
 
+        errors = {}
         if user_input is not None:
-            return self.async_create_entry(
-                title="Vacuum Water Monitor",
-                data={},
-                options={
-                    CONF_WARNING_THRESHOLD: user_input[CONF_WARNING_THRESHOLD],
-                    CONF_CRITICAL_THRESHOLD: user_input[CONF_CRITICAL_THRESHOLD],
-                },
-            )
+            try:
+                validate_threshold_settings(user_input)
+            except (ValueError, KeyError):
+                errors["base"] = "invalid_input"
+            else:
+                return self.async_create_entry(
+                    title="Vacuum Water Monitor",
+                    data={},
+                    options={key: user_input[key] for key in (CONF_WARNING_THRESHOLD, CONF_CRITICAL_THRESHOLD)},
+                )
 
         return self.async_show_form(
             step_id="user",
+            errors=errors,
             data_schema=_threshold_schema(
                 DEFAULT_WARNING_THRESHOLD,
                 DEFAULT_CRITICAL_THRESHOLD,
@@ -66,12 +72,19 @@ class HAVacuumWaterMonitorOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Manage integration options."""
+        errors = {}
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            try:
+                validate_threshold_settings(user_input)
+            except (ValueError, KeyError):
+                errors["base"] = "invalid_input"
+            else:
+                return self.async_create_entry(title="", data={**self._config_entry.options, **user_input})
 
         options = self._config_entry.options
         return self.async_show_form(
             step_id="init",
+            errors=errors,
             data_schema=_threshold_schema(
                 options.get(CONF_WARNING_THRESHOLD, DEFAULT_WARNING_THRESHOLD),
                 options.get(CONF_CRITICAL_THRESHOLD, DEFAULT_CRITICAL_THRESHOLD),
@@ -84,10 +97,10 @@ def _threshold_schema(warning: int, critical: int) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(CONF_WARNING_THRESHOLD, default=warning): vol.All(
-                vol.Coerce(int), vol.Range(min=1, max=99)
+                vol.Coerce(float), vol.Range(min=1, max=99)
             ),
             vol.Required(CONF_CRITICAL_THRESHOLD, default=critical): vol.All(
-                vol.Coerce(int), vol.Range(min=1, max=99)
+                vol.Coerce(float), vol.Range(min=1, max=99)
             ),
         }
     )

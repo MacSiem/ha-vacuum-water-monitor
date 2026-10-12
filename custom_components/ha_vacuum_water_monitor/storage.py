@@ -21,6 +21,19 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+THRESHOLD_KEYS = ("warning_threshold", "critical_threshold")
+
+
+def validate_threshold_settings(settings: dict[str, Any]) -> None:
+    """Validate the complete effective pair before changing either value."""
+    for key in THRESHOLD_KEYS:
+        value = settings[key]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 1 <= value <= 99:
+            raise ValueError(f"{key} must be a number between 1 and 99")
+    if settings["critical_threshold"] >= settings["warning_threshold"]:
+        raise ValueError("critical_threshold must be lower than warning_threshold")
+
+
 def _default_state() -> dict[str, Any]:
     return {
         "settings": {
@@ -95,9 +108,14 @@ class VacuumWaterStorage:
                     _LOGGER.warning("Refusing empty-list settings patch for %s", key)
                     continue
                 clean[str(key)] = deepcopy(value)
-            settings.update(clean)
-            await self._store.async_save(data)
-            return deepcopy(settings)
+            updated_settings = {**settings, **clean}
+            if any(key in clean for key in THRESHOLD_KEYS):
+                validate_threshold_settings(updated_settings)
+            # Publish the entire patch only after validation and persistence succeed.
+            updated_data = {**data, "settings": updated_settings}
+            await self._store.async_save(updated_data)
+            self._data = updated_data
+            return deepcopy(updated_settings)
 
     async def async_replace_settings_key(self, key: str, value: Any) -> None:
         """Replace one settings key, bypassing the empty-list guard.

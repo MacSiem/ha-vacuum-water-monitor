@@ -49,7 +49,7 @@ from .robots import (
 )
 from .storage import VacuumWaterStorage
 from .tick import async_tick_water_state
-from .websocket_api import async_register_commands
+from .websocket_api import _notify_store_updated, async_register_commands
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -108,7 +108,11 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
         if key in entry.options
     }
     if option_patch:
-        await storage.async_set_settings(option_patch)
+        current = await storage.async_get_settings()
+        if all(current.get(key) == value for key, value in option_patch.items()):
+            return
+        settings = await storage.async_set_settings(option_patch)
+        _notify_store_updated(hass, {"settings": settings})
         _LOGGER.debug("Applied updated options: %s", sorted(option_patch))
 
 

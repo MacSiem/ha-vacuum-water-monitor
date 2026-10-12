@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import DATA_TICKER, DOMAIN, EVENT_STATE_CHANGED, event_tank_states, signal_vacuum_water_updated
-from .storage import VacuumWaterStorage
+from .storage import THRESHOLD_KEYS, VacuumWaterStorage
 from .tick import list_vacuums
 from .calibration import build_contribution_draft, select_recorded_cycle
 
@@ -42,10 +42,8 @@ def _notify_store_updated(hass: HomeAssistant, payload: dict[str, Any]) -> None:
     async_schedule_issue_sync(hass)
 
 
-# NOTE: no require_admin on any command. The card must work for every
-# logged-in HA user (household members are rarely admins); WS already
-# enforces authentication, and none of these commands expose secrets or
-# perform privileged operations (issue #1 follow-up, v5.1.6).
+# Household commands are available to every authenticated HA user. Threshold
+# changes mirror the administrator permission of the integration's HA options.
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/subscribe"})
 @callback
 def _ws_subscribe(
@@ -98,12 +96,27 @@ async def _ws_set_settings(
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Patch persisted settings."""
+    """Patch persisted settings and keep the HA threshold options in sync."""
+    threshold_patch = any(key in msg["patch"] for key in THRESHOLD_KEYS)
+    entry = None
+    if threshold_patch:
+        if not connection.user.is_admin:
+            connection.send_error(msg["id"], "unauthorized", "Administrator required to change thresholds")
+            return
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if not entries:
+            connection.send_error(msg["id"], "invalid_payload", "Integration config entry is unavailable")
+            return
+        entry = entries[0]
     try:
         settings = await _storage(hass).async_set_settings(msg["patch"])
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
+    if entry is not None:
+        options = {**entry.options, **{key: settings[key] for key in THRESHOLD_KEYS}}
+        if options != entry.options:
+            hass.config_entries.async_update_entry(entry, options=options)
     _notify_store_updated(hass, {"settings": settings})
     connection.send_result(msg["id"], {"settings": settings})
 
