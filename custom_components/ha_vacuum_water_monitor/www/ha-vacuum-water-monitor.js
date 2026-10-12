@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.10.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.11.0 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -11,7 +11,7 @@ const supportDismissed = () => { try { return localStorage.getItem(SUPPORT_DISMI
 const ownDonateFooter = (lang = "en") => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">${lang === "pl" ? "Opcjonalne wsparcie HA Tools" : "Optional support for HA Tools"}</a><button type="button" class="support-dismiss" aria-label="${lang === "pl" ? "Ukryj odnośnik wsparcia" : "Dismiss support link"}">×</button></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.10.0';
+const VWM_VERSION = '5.11.0';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -130,6 +130,7 @@ const VWM_WATER_TEXT_PL = {
   "Clean water tank empty or not installed": "Zbiornik czystej wody pusty lub niewłożony",
   "Dirty water tank removed": "Zbiornik brudnej wody wyjęty",
   "Dirty water tank full": "Zbiornik brudnej wody pełny",
+  "Check the listed tanks. Empty the dirty-water tank or put it back in place.": "Sprawdź wymienione zbiorniki. Opróżnij zbiornik brudnej wody lub włóż go na miejsce.",
   "Check the tanks": "Sprawdź zbiorniki",
   "Check the listed tanks. Refill the tracked clean-water tank, then confirm Refilled.": "Sprawdź wymienione zbiorniki. Napełnij śledzony zbiornik czystej wody, a potem potwierdź przyciskiem Dolane.",
   "Time unavailable": "Czas niedostępny",
@@ -14595,7 +14596,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!reasons.length) return '';
     return `<section class="water-alert section-block" role="status" aria-live="polite"><b>⚠ ${this._waterText('Water needs attention')}</b><ul>${reasons.join('')}</ul>
       ${(data.waterEmpty || data.waterLow) ? `<p>${this._waterText('Level anchored by an estimate; this is not a physical volume measurement.')} ${this._waterText('The empty signal anchors the estimated level. Only a qualified full cycle can update nominal learning; it is not a physical volume measurement.')}${data.waterLow && data.percentRemaining != null ? ` ${data.percentRemaining}%` : ''}</p>` : ''}
-      <p>${this._waterText('Check the listed tanks. Refill the tracked clean-water tank, then confirm Refilled.')}</p>
+      <p>${this._waterText(data.dockDirtyWaterProblem && !data.waterEmpty && !data.waterLow && !data.waterShortage && !data.dockCleanWaterProblem && !(data.percentRemaining != null && data.percentRemaining <= this._config.critical_threshold) ? 'Check the listed tanks. Empty the dirty-water tank or put it back in place.' : 'Check the listed tanks. Refill the tracked clean-water tank, then confirm Refilled.')}</p>
       <button type="button" data-water-action>${this._waterText('Check the tanks')}</button></section>`;
   }
 

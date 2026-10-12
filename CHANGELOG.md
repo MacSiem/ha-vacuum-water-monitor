@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.11.0 (2026-10-12)
+
+- Combine water alerts with their source, time and a single action; correct Polish integration labels.
+- Organize the card into Water, History, Maintenance and Settings, with keyboard navigation, 44 px tabs and reusable help. Group calibration, private measurements and sharing in Settings; preserve their existing API and consent behavior.
+- Edit warning and critical thresholds in the card with administrator permissions, server validation, live integration-option synchronization, YAML override guidance and the existing reminder blueprint.
+- Present existing water and supply estimates as uncertainty ranges, and show the last five tank comparisons with reasons and Chart/Data views. These compare against station signals, not physical measurements; independent accuracy validation remains open.
+
 ## 5.10.0 (2026-10-11)
 
 - Ask once about optional measurement sharing with explicit Not now / Learn more choices. Persist the preference across restarts and upgrades, explain data minimization and publication terms, and allow changes in Settings without enabling sharing or inheriting packet consent.
