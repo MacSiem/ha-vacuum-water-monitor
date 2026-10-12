@@ -16274,7 +16274,6 @@ target:
     // Tabs definition
     const tabs = [
       { id: 'water', icon: '\uD83D\uDCA7', label: 'Water' },
-      { id: 'maintenance', icon: '\uD83D\uDD27', label: 'Maint.' },
       { id: 'history', icon: '\uD83D\uDDD3\uFE0F', label: 'History' },
       { id: 'maintenance', icon: '\uD83D\uDD27', label: 'Maintenance' },
       { id: 'settings', icon: '\u2699\uFE0F', label: 'Settings' },
