@@ -68,6 +68,29 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "Will the water last?": "Czy wystarczy wody?",
+  "About": "Około",
+  "cleanings": "sprzątań",
+  "Forecast after 3 mopping runs \u2014 {n} of 3 recorded": "Prognoza po 3 sprzątaniach z mopem — jest {n} z 3",
+  "Forecast unavailable: tank balance or consumption profile is unknown.": "Brak prognozy: stan zbiornika lub profil zużycia jest nieznany.",
+  "Uncertainty range unavailable": "Zakres niepewności niedostępny",
+  "How certain is the estimate?": "Jak pewny jest szacunek?",
+  "Estimated range; not a physical volume measurement.": "Zakres szacunkowy; to nie jest fizyczny pomiar objętości.",
+  "Comparison with the station signal, not a physical measurement.": "Porównanie z sygnałem stacji, nie pomiar fizyczny.",
+  "Chart": "Wykres",
+  "Data": "Dane",
+  "Tank": "Zbiornik",
+  "Error before learning": "Błąd przed nauką",
+  "Learning": "Nauka",
+  "Accepted": "Przyjęty",
+  "Not learned": "Nienauczony",
+  "Reason unavailable": "Powód niedostępny",
+  "No empty-tank history yet": "Brak historii pustych zbiorników",
+  "Typical error": "Typowy błąd",
+  "Typical error after 3 accepted tanks": "Typowy błąd po 3 zaakceptowanych zbiornikach",
+  "Estimate uncertainty": "Niepewność szacunku",
+  "Error": "Błąd",
+
   "Warning threshold (%)": "Próg ostrzeżenia (%)",
   "Critical threshold (%)": "Próg krytyczny (%)",
   "Save thresholds": "Zapisz progi",
@@ -14632,13 +14655,72 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return calibHtml;
   }
 
+  _supplyPresentation(device, data) {
+    const report = this._healthFor(device);
+    const uncertainty = report?.uncertainty_percent ?? data.uncertaintyPercent;
+    const band = typeof uncertainty === 'number' && Number.isFinite(uncertainty) && uncertainty >= 0 ? uncertainty / 100 : null;
+    const known = data.initialized && typeof data.remainingL === 'number' && Number.isFinite(data.remainingL) && data.remainingL >= 0 && Boolean(data.profileKey) && data.profileKey !== 'generic' && report?.initialized !== false;
+    const range = (value, digits=0, capacity=Infinity) => {
+      if (band == null || typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null;
+      const lower = Math.max(0, value * (1-band));
+      const upper = Math.min(capacity, value * (1+band));
+      const format = n => n.toLocaleString(this._lang === 'pl' ? 'pl-PL' : 'en-US', {minimumFractionDigits:digits,maximumFractionDigits:digits});
+      return `${format(digits ? lower : Math.floor(lower))}–${format(digits ? upper : Math.ceil(upper))}`;
+    };
+    return {report, known, band, range};
+  }
+
+  _buildSupplyAnswer(device, data) {
+    const {report, known, band, range} = this._supplyPresentation(device, data);
+    const supply = report?.supply;
+    const water = known ? range(data.remainingL, 2, data.totalMl > 0 ? data.totalMl/1000 : Infinity) : null;
+    let answer = `<p>${this._waterText('Forecast unavailable: tank balance or consumption profile is unknown.')}</p>`;
+    if (known) {
+      if (!supply || Number(supply.basis_runs || 0) < 3) answer = `<p data-learning>${this._waterText('Forecast after 3 mopping runs — {n} of 3 recorded').replace('{n}', String(Math.max(0, Number(supply?.basis_runs || 0))))}</p>`;
+      else {
+        const runs = range(supply.cleanings_left);
+        const days = range(supply.days_left);
+        answer = runs ? `<p class="supply-main" data-cleanings-range>${this._waterText('About')} <b>${runs} ${this._waterText('cleanings')}</b></p>${days ? `<p data-days-range>${this._waterText('About')} ${days} ${this._waterText('days')}</p>` : ''}` : `<p>${this._waterText('Uncertainty range unavailable')}</p>`;
+      }
+    }
+    return `<section class="supply-answer"><h3>${this._waterText('Will the water last?')}</h3>${answer}
+      ${water ? `<p data-water-range>${this._setupText().remaining}: <b>${water} L</b></p>` : ''}
+      <small>${this._waterText('Estimated range; not a physical volume measurement.')}${known && band != null ? ` ±${Number((band*100).toFixed(2))}%` : ''}</small>
+      <button class="vwm-link" data-open-confidence>${this._waterText('How certain is the estimate?')}</button></section>`;
+  }
+
+  _tankErrorText(tank) {
+    const error = typeof tank.error_percent === 'number' && Number.isFinite(tank.error_percent) ? `${tank.error_percent > 0 ? '+' : ''}${tank.error_percent}%` : '?';
+    const reason = (this._lang === 'pl' ? VWM_TANK_REASON_LABEL_PL : VWM_TANK_REASON_LABEL)[tank.reason] || this._waterText('Reason unavailable');
+    return error + (tank.accepted ? '' : ` (${reason})`);
+  }
+
+  _buildEstimateConfidence(device, data) {
+    const history = data.calibrationHistory || [];
+    const tanks = history.slice(0,5);
+    const report = this._healthFor(device);
+    const accepted = history.filter(t => t.accepted === true && typeof t.error_percent === 'number' && Number.isFinite(t.error_percent)).length;
+    const typical = accepted >= 3 && typeof report?.typical_error_percent === 'number' && Number.isFinite(report.typical_error_percent) ? report.typical_error_percent : null;
+    const labels = this._lang === 'pl' ? VWM_TANK_REASON_LABEL_PL : VWM_TANK_REASON_LABEL;
+    const rows = tanks.map((tank,i) => `<tr><th scope="row">${i+1}</th><td data-tank-error>${typeof tank.error_percent === 'number' && Number.isFinite(tank.error_percent) ? `${tank.error_percent>0?'+':''}${tank.error_percent}%` : '?'}</td><td>${tank.accepted ? this._waterText('Accepted') : _esc(labels[tank.reason] || this._waterText('Reason unavailable'))}</td></tr>`).join('');
+    const max = Math.max(1,...tanks.map(t => typeof t.error_percent === 'number' && Number.isFinite(t.error_percent) ? Math.abs(t.error_percent) : 0));
+    const chart = tanks.map((tank,i) => `<div class="tank-chart-row"><span>${this._waterText('Tank')} ${i+1}</span><span class="tank-chart-track"><i style="width:${typeof tank.error_percent === 'number' && Number.isFinite(tank.error_percent) ? Math.abs(tank.error_percent)/max*100 : 0}%;background:${tank.accepted ? 'var(--bento-primary,#3b82f6)' : 'var(--bento-text-secondary,#64748b)'}"></i></span><span>${_esc(this._tankErrorText(tank))}</span></div>`).join('');
+    return `<details id="vwm-confidence" class="section-block"><summary>${this._waterText('How certain is the estimate?')}</summary>
+      <p data-confidence-caption>${this._waterText('Comparison with the station signal, not a physical measurement.')}</p>
+      ${typical != null ? `<p data-typical-error>${this._waterText('Typical error')}: ${typical}%</p>` : `<p>${this._waterText('Typical error after 3 accepted tanks')}</p>`}
+      ${tanks.length ? `<div class="confidence-switch" role="group" aria-label="${this._waterText('How certain is the estimate?')}"><button data-confidence-view="chart" aria-pressed="true">${this._waterText('Chart')}</button><button data-confidence-view="data" aria-pressed="false">${this._waterText('Data')}</button></div>
+      <div data-confidence-panel="chart">${chart}</div><div data-confidence-panel="data" hidden><table><thead><tr><th>${this._waterText('Tank')}</th><th>${this._waterText('Error before learning')}</th><th>${this._waterText('Learning')}</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p>${this._waterText('No empty-tank history yet')}</p>`}</details>`;
+  }
+
   _buildWaterTab(device, data) {
     const L = this._setupText();
     const cfg = this._config;
     const status = this._getStatus(data, cfg);
     const gaugeSvg = data.totalMl > 0 ? this._buildGaugeSVG(data.percentRemaining, status.color) : '';
 
-    const remainingText = data.remainingL != null ? `${Number(data.remainingL).toFixed(2)} L` : '--';
+    const presentation = this._supplyPresentation(device, data);
+    const waterRange = presentation.known ? presentation.range(data.remainingL, 2, data.totalMl > 0 ? data.totalMl/1000 : Infinity) : null;
+    const remainingText = waterRange ? `${waterRange} L` : data.remainingL != null ? `${Number(data.remainingL).toFixed(2)} L` : '--';
     const usedText = data.usedMl != null ? `${(Number(data.usedMl) / 1000).toFixed(2)} L` : '--';
     const partialUsedRow = data.partialUsedMl != null
       ? `<div class="row"><span class="row-label">${this._waterText('Recorded estimate (incomplete)')}</span><span class="row-val">${(data.partialUsedMl / 1000).toFixed(2)} L</span></div>` : '';
@@ -14697,6 +14779,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     return `
       <div class="tab-content">
+        ${this._buildSupplyAnswer(device, data)}
         ${alertBanner}
         ${noWaterTracking ? `<div class="no-water-note">\uD83D\uDCCC ${this._waterText("This device doesn't track water levels")}</div>` : `
         <div class="device-body">
@@ -14715,6 +14798,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ${noWaterTracking && data.charge !== null ? `<div class="details">${this._buildBatteryBar(data.charge)}</div>` : ''}
         ${dockHtml}
         <details class="water-details section-block"><summary>${this._waterText('Details')}</summary>${configMissingBanner}${setupHtml}${accountingHtml}${diagnosticsHtml}</details>
+        ${this._buildEstimateConfidence(device, data)}
       </div>`;
   }
 
@@ -14862,9 +14946,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.estimatedM2PerActiveMinute != null && Number.isFinite(Number(data.estimatedM2PerActiveMinute))) rows.push(['Active-time conversion', `${Number(data.estimatedM2PerActiveMinute)} m\u00B2/min`]);
     if (data.estimateBasis) rows.push(['Estimate basis', VWM_BASIS_LABEL[data.estimateBasis] || data.estimateBasis]);
     if (data.mopSystem) rows.push(['Mop system', String(data.mopSystem).replace(/_/g, ' ')]);
-    if (data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent))) rows.push(['Estimated accuracy', `\u00B1${Number(data.uncertaintyPercent)}%`]);
+    if (data.uncertaintyPercent != null && Number.isFinite(Number(data.uncertaintyPercent))) rows.push(['Estimate uncertainty', `\u00B1${Number(data.uncertaintyPercent)}%`]);
     const tanks = (data.calibrationHistory || []).slice(0, 5);
-    if (tanks.length) rows.push(['Last empty tanks', tanks.map(t => `${typeof t.error_percent === 'number' && Number.isFinite(t.error_percent) ? (Number(t.error_percent) > 0 ? '+' : '') + Number(t.error_percent) + '%' : '?'}${t.accepted ? '' : ` (${VWM_TANK_REASON_LABEL[t.reason] || 'skipped'})`}`).join(', ')]);
+    if (tanks.length) rows.push(['Last empty tanks', tanks.map(t => this._tankErrorText(t)).join(', ')]);
     if (data.calibrationPending) rows.push(['Calibration check', 'An unusual tank result waits for the next tank to confirm it']);
     if (data.intensityUnmapped) rows.push(['Water level', `\u201C${data.intensityUnmapped}\u201D has no own factor; the average level is used`]);
     if (Number(data.bridgedGaps) > 0) rows.push(['Signal gaps bridged', String(Number(data.bridgedGaps))]);
@@ -16609,6 +16693,14 @@ target:
 #vwm-help { min-width:44px; min-height:44px; border:1px solid var(--bento-border); border-radius:50%; background:var(--bento-card); color:var(--bento-text); cursor:pointer; }
 .water-details > summary, .dock-status > summary, .signal-summary > summary { min-height:44px; padding:12px 0; cursor:pointer; }
 .threshold-form label { display:flex; flex-direction:column; gap:6px; margin:12px 0 6px; } .threshold-form input, .threshold-form button { min-height:44px; padding:8px; color:var(--bento-text); background:var(--bento-card); border:1px solid var(--bento-border); border-radius:8px; }
+.supply-answer { padding:16px; margin:8px 0 12px; background:var(--bento-primary-light); border:1px solid var(--bento-border); border-radius:12px; }
+.supply-answer h3 { margin:0; font-size:12px; text-transform:uppercase; color:var(--bento-text-secondary); } .supply-main { font-size:20px; } .supply-answer small { display:block; }
+#vwm-confidence > summary { min-height:44px; padding:12px 0; cursor:pointer; }
+.confidence-switch { display:flex; gap:8px; margin:12px 0; } .confidence-switch button { min-height:44px; padding:8px 12px; background:var(--bento-card); color:var(--bento-text); border:1px solid var(--bento-border); border-radius:8px; }
+.confidence-switch button[aria-pressed="true"] { border-color:var(--bento-primary); }
+.tank-chart-row { display:grid; grid-template-columns:70px minmax(30px,1fr); gap:6px; margin:12px 0; font-size:12px; } .tank-chart-row > span:last-child { grid-column:1/-1; }
+.tank-chart-track { background:var(--bento-bg); border-radius:4px; height:14px; } .tank-chart-track i { display:block; height:100%; border-radius:4px; }
+#vwm-confidence table { width:100%; table-layout:fixed; font-size:12px; border-collapse:collapse; } #vwm-confidence th, #vwm-confidence td { padding:8px 4px; text-align:left; overflow-wrap:anywhere; border-bottom:1px solid var(--bento-border); }
 .settings-toc { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
 .settings-toc a { display:inline-flex; align-items:center; min-height:44px; padding:8px 12px; border-radius:8px; border:1px solid var(--bento-border); color:var(--bento-primary); }
 [id^="vwm-settings-"] { scroll-margin:12px; min-width:0; overflow-wrap:anywhere; margin-bottom:24px; }
@@ -16816,6 +16908,13 @@ input, select, textarea { max-width:100%; min-width:0; }
       const message = sr.getElementById('vwm-threshold-status');
       if (message) message.textContent = this._waterText(result.ok ? 'Thresholds saved' : 'Could not save thresholds. Try again.');
     });
+    sr.querySelector('[data-open-confidence]')?.addEventListener('click', () => {
+      const panel = sr.getElementById('vwm-confidence'); if (panel) { panel.open = true; panel.scrollIntoView?.({block:'nearest'}); panel.querySelector('summary')?.focus(); }
+    });
+    sr.querySelectorAll('[data-confidence-view]').forEach(button => button.addEventListener('click', () => {
+      sr.querySelectorAll('[data-confidence-view]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+      sr.querySelectorAll('[data-confidence-panel]').forEach(panel => { panel.hidden = panel.dataset.confidencePanel !== button.dataset.confidenceView; });
+    }));
     // Tab navigation
     sr.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
