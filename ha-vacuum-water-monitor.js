@@ -16686,8 +16686,9 @@ target:
 
 
 
-.tab-nav { display:grid !important; grid-template-columns:repeat(4,minmax(0,1fr)); gap:2px !important; overflow:visible !important; }
-.tab-nav .tab-btn { min-height:44px !important; padding:8px 2px !important; font-size:11px !important; min-width:0; white-space:nowrap; }
+.tab-nav { display:grid !important; grid-template-columns:minmax(0,.85fr) minmax(0,.9fr) minmax(0,1.2fr) minmax(0,1.05fr); gap:2px !important; overflow:visible !important; }
+.tab-nav .tab-btn { min-height:44px !important; padding:8px 2px !important; font-size:11px !important; min-width:0; white-space:nowrap !important; }
+.tab-nav .tab-btn[aria-selected="true"] { background:var(--bento-card) !important; color:var(--bento-primary) !important; box-shadow:var(--bento-shadow-sm) !important; }
 .tab-icon { display:none; }
 :focus-visible { outline:3px solid var(--primary-color,#2563eb) !important; outline-offset:2px; }
 .card-title { display:flex; justify-content:space-between; gap:8px; align-items:center; }
