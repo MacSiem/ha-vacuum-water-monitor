@@ -437,10 +437,16 @@ async def test_v8_options_flow_rejects_invalid_pair_without_persistence(hass, wa
     before = await storage.async_get_state()
     before_options = dict(entry.options)
     flow = await hass.config_entries.options.async_init(entry.entry_id)
-    result = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
-        "warning_threshold": warning, "critical_threshold": critical})
-    assert result["type"] == "form"
-    assert result["errors"]
+    from homeassistant.data_entry_flow import InvalidData
+    if not (1 <= warning <= 99 and 1 <= critical <= 99):
+        with pytest.raises(InvalidData):
+            await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+                "warning_threshold": warning, "critical_threshold": critical})
+    else:
+        result = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+            "warning_threshold": warning, "critical_threshold": critical})
+        assert result["type"] == "form"
+        assert result["errors"]
     await hass.async_block_till_done()
     assert dict(entry.options) == before_options
     assert await storage.async_get_state() == before

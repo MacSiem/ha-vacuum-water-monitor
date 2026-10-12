@@ -15907,7 +15907,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <button id="vwm-save-thresholds" type="button" ${admin ? '' : 'disabled'}>${this._waterText('Save thresholds')}</button>
       ${admin ? '' : `<p>${this._waterText('Only an administrator can change integration thresholds.')}</p>`}
       <div id="vwm-threshold-status" role="status" aria-live="polite"></div>
-      <p><a href="https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMacSiem%2Fha-vacuum-water-monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fvacuum_water_refill_reminder.yaml" target="_blank" rel="noopener">${this._waterText('Create a reminder from the blueprint')}</a></p>
+      <p><a href="https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMacSiem%2Fha-vacuum-water-monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fha_vacuum_water_monitor%2Frefill_reminder.yaml" target="_blank" rel="noopener">${this._waterText('Create a reminder from the blueprint')}</a></p>
       <p>${this._waterText('The automation has its own threshold; changing these defaults does not change existing reminders.')}</p></div>`;
   }
 
