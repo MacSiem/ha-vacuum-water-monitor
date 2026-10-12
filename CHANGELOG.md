@@ -4,6 +4,7 @@
 
 - Accept a confirmed full-tank repair after the balance became incomplete, even within the refill deduplication window. Continue suppressing duplicate refill reports for a healthy balance.
 
+- Reflow diagnostics into one column in narrow dashboard cards so the recorded reason codes remain readable.
 - Retain the first accounting interruption and its recorded reason codes independently of later idle reads. Keep it after a confirmed refill or Repairs action, with the resolution source visible in card Diagnostics.
 - Explain Repairs using those recorded codes rather than implying that another application controlled the robot. Preserve estimates, learning and sharing behavior; a user report without the original log still has an unconfirmed cause.
 

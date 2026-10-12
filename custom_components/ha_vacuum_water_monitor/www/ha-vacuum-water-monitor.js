@@ -16724,7 +16724,7 @@ target:
 [id^="vwm-settings-"] { scroll-margin:12px; min-width:0; overflow-wrap:anywhere; margin-bottom:24px; }
 [id^="vwm-settings-"] h3 { font-size:16px; margin:12px 0; }
 input, select, textarea { max-width:100%; min-width:0; }
-@container (max-width:520px) { #vwm-custom-form, #vwm-custom-modes { grid-template-columns:1fr !important; } [id^="vwm-settings-"] [style*="grid-template-columns"] { grid-template-columns:1fr !important; } }
+@container (max-width:520px) { .diagnostics-grid { grid-template-columns:minmax(0,1fr); gap:3px; } .diagnostics-value { margin-bottom:7px; } #vwm-custom-form, #vwm-custom-modes { grid-template-columns:1fr !important; } [id^="vwm-settings-"] [style*="grid-template-columns"] { grid-template-columns:1fr !important; } }
 </style>
       <div class="card">
         <div class="card-title">${_esc(this._config.title)}<button id="vwm-help" aria-label="${this._waterText('How it works')}">?</button></div>
