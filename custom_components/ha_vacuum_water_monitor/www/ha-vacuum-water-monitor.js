@@ -131,6 +131,9 @@ const VWM_WATER_TEXT_PL = {
   "Dirty water tank removed": "Zbiornik brudnej wody wyjęty",
   "Dirty water tank full": "Zbiornik brudnej wody pełny",
   "Check the listed tanks. Empty the dirty-water tank or put it back in place.": "Sprawdź wymienione zbiorniki. Opróżnij zbiornik brudnej wody lub włóż go na miejsce.",
+  "Learning status": "Stan nauki",
+  "Learned tanks": "Zbiorniki wykorzystane w nauce",
+  "Correction factor": "Współczynnik korekty",
   "Check the tanks": "Sprawdź zbiorniki",
   "Check the listed tanks. Refill the tracked clean-water tank, then confirm Refilled.": "Sprawdź wymienione zbiorniki. Napełnij śledzony zbiornik czystej wody, a potem potwierdź przyciskiem Dolane.",
   "Time unavailable": "Czas niedostępny",
@@ -16066,6 +16069,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <section id="vwm-settings-thresholds" tabindex="-1"><h3>${this._waterText('Thresholds and reminders')}</h3>${this._buildThresholdSettings ? this._buildThresholdSettings(data) : ''}</section>
         <section id="vwm-settings-signals" tabindex="-1"><h3>${this._waterText('Signals')}</h3>${this._buildSignalSummary(device)}</section>
         <section id="vwm-settings-calibration" tabindex="-1"><h3>${this._waterText('Calibration and measurements')}</h3>
+          <p data-learning-status>${this._waterText('Learning status')}: ${this._waterText('Learned tanks')} <b>${Math.max(0, Number(data.calibrationSamples) || 0)}</b> · ${this._waterText('Correction factor')} <b>×${Number(Number(data.calibrationFactor || 1).toFixed(2))}</b></p>
           ${this._buildCalibrationInfo(device, data)}${this._buildCustomMeasurements(device, data)}${this._buildPrivateMeasurements(device)}${this._buildCalibrationSharingSection(device, data)}
         </section>
         <section id="vwm-settings-model" tabindex="-1"><h3>${this._waterText('Model and capacity')}</h3>${this._buildSetupPanel(device, this._healthFor(device))}${this._buildDatabaseTab()}</section>
