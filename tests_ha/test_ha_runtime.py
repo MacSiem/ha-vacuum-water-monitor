@@ -302,3 +302,155 @@ async def test_household_can_subscribe_to_water_balance_updates(hass: HomeAssist
     assert event["event"] == {"data": payload}
     await client.send_json_auto_id({"type": "unsubscribe_events", "subscription": response["id"]})
     assert (await client.receive_json())["success"]
+
+
+# V8: thresholds share one atomic validation path and round-trip through HA options.
+@pytest.mark.parametrize("patch", [
+    {"warning_threshold": 0}, {"warning_threshold": 100},
+    {"critical_threshold": 0}, {"critical_threshold": 100},
+    {"warning_threshold": 10, "critical_threshold": 10},
+    {"warning_threshold": 9, "critical_threshold": 10},
+    {"warning_threshold": 9}, {"critical_threshold": 25},
+    {"warning_threshold": True}, {"critical_threshold": "5"},
+    {"warning_threshold": float("nan")},
+])
+async def test_v8_storage_rejects_invalid_threshold_patch_atomically(hass, patch):
+    storage = await _setup(hass)
+    before = await storage.async_get_state()
+    with pytest.raises(ValueError):
+        await storage.async_set_settings({"intro_dismissed": {"vacuum.robot": True}, **patch})
+    assert await storage.async_get_state() == before
+    from custom_components.ha_vacuum_water_monitor.storage import VacuumWaterStorage
+    reloaded = VacuumWaterStorage(hass)
+    assert await reloaded.async_get_state() == before
+
+
+async def test_v8_admin_websocket_thresholds_persist_through_options_and_reload(hass, hass_ws_client):
+    storage = await _setup(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    hass.config_entries.async_update_entry(entry, options={"unrelated_option": "kept"})
+    await hass.async_block_till_done()
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/set_settings", "patch": {
+        "warning_threshold": 99, "critical_threshold": 1, "intro_dismissed": {VACUUM: True}}})
+    response = await client.receive_json()
+    assert response["success"]
+    await hass.async_block_till_done()
+    assert entry.options == {"unrelated_option": "kept", "warning_threshold": 99, "critical_threshold": 1}
+    assert (await storage.async_get_settings())["intro_dismissed"] == {VACUUM: True}
+    assert response["result"]["settings"]["warning_threshold"] == 99
+    # This is a real entry reload: stale options must not undo the card's write.
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    current = await hass.data[DOMAIN]["storage"].async_get_settings()
+    assert (current["warning_threshold"], current["critical_threshold"]) == (99, 1)
+    assert current["intro_dismissed"] == {VACUUM: True}
+
+
+async def test_v8_household_settings_remain_allowed_but_threshold_patch_is_atomic_unauthorized(
+    hass, hass_ws_client, hass_user,
+):
+    storage = await _setup(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    # Fixture user remains authenticated but lacks administrator privileges.
+    hass_user.groups = []
+    assert not hass_user.is_admin
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/set_settings", "patch": {
+        "intro_dismissed": {VACUUM: True}}})
+    assert (await client.receive_json())["success"]
+    before = await storage.async_get_state()
+    options_before = dict(entry.options)
+    await client.send_json({"id": 2, "type": f"{DOMAIN}/set_settings", "patch": {
+        "warning_threshold": 90, "critical_threshold": 5, "intro_dismissed": {VACUUM: False}}})
+    response = await client.receive_json()
+    assert not response["success"]
+    assert response["error"]["code"] == "unauthorized"
+    assert await storage.async_get_state() == before
+    assert dict(entry.options) == options_before
+
+
+@pytest.mark.parametrize("patch", [
+    {"warning_threshold": 0}, {"critical_threshold": 100},
+    {"warning_threshold": 10, "critical_threshold": 10},
+])
+async def test_v8_admin_websocket_invalid_thresholds_do_not_save_other_settings(hass, hass_ws_client, patch):
+    storage = await _setup(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    before = await storage.async_get_state()
+    options_before = dict(entry.options)
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/set_settings", "patch": {
+        "intro_dismissed": {VACUUM: True}, **patch}})
+    response = await client.receive_json()
+    assert not response["success"]
+    assert response["error"]["code"] == "invalid_payload"
+    assert await storage.async_get_state() == before
+    assert dict(entry.options) == options_before
+
+
+async def test_v8_options_flow_validation_and_immediate_storage_roundtrip(hass, hass_ws_client):
+    storage = await _setup(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/set_settings", "patch": {
+        "warning_threshold": 80, "critical_threshold": 20}})
+    assert (await client.receive_json())["success"]
+    await hass.async_block_till_done()
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    before = await storage.async_get_state()
+    invalid = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+        "warning_threshold": 20, "critical_threshold": 20})
+    assert invalid["type"] == "form"
+    assert invalid["errors"]
+    assert entry.options["warning_threshold"] == 80
+    assert await storage.async_get_state() == before
+    valid = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+        "warning_threshold": 70, "critical_threshold": 15})
+    assert valid["type"] == "create_entry"
+    await hass.async_block_till_done()
+    current = await storage.async_get_settings()
+    assert (current["warning_threshold"], current["critical_threshold"]) == (70, 15)
+    assert hass.data[DOMAIN]["storage"] is storage  # no integration restart
+    from custom_components.ha_vacuum_water_monitor.storage import VacuumWaterStorage
+    persisted = await VacuumWaterStorage(hass).async_get_settings()
+    assert (persisted["warning_threshold"], persisted["critical_threshold"]) == (70, 15)
+
+
+async def test_v8_partial_threshold_write_preserves_the_other_option(hass, hass_ws_client):
+    storage = await _setup(hass)
+    before = await storage.async_get_settings()
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/set_settings", "patch": {"warning_threshold": 90}})
+    assert (await client.receive_json())["success"]
+    await hass.async_block_till_done()
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert entry.options["warning_threshold"] == 90
+    assert entry.options["critical_threshold"] == before["critical_threshold"]
+    assert (await storage.async_get_settings())["critical_threshold"] == before["critical_threshold"]
+
+
+@pytest.mark.parametrize("warning,critical", [(0, 1), (100, 1), (99, 0), (99, 100), (20, 21)])
+async def test_v8_options_flow_rejects_invalid_pair_without_persistence(hass, warning, critical):
+    storage = await _setup(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    before = await storage.async_get_state()
+    before_options = dict(entry.options)
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+        "warning_threshold": warning, "critical_threshold": critical})
+    assert result["type"] == "form"
+    assert result["errors"]
+    await hass.async_block_till_done()
+    assert dict(entry.options) == before_options
+    assert await storage.async_get_state() == before
+
+
+async def test_v8_failed_save_does_not_publish_part_of_threshold_patch(hass, monkeypatch):
+    from unittest.mock import AsyncMock
+    storage = await _setup(hass)
+    before = await storage.async_get_state()
+    monkeypatch.setattr(storage._store, "async_save", AsyncMock(side_effect=OSError("save failed")))
+    with pytest.raises(OSError):
+        await storage.async_set_settings({"warning_threshold": 90, "intro_dismissed": {VACUUM: True}})
+    assert await storage.async_get_state() == before
