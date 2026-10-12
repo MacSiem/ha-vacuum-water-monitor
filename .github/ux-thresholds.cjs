@@ -6,6 +6,7 @@ const {JSDOM}=require('jsdom');const fs=require('fs');const assert=require('node
  c._hass={states:{'vacuum.demo':{entity_id:'vacuum.demo',state:'docked',attributes:{}}},user:{is_admin:true},callWS:async m=>{calls.push(m);return {settings:settings={...settings,...m.patch}};}};
  c._serverState={settings,tank_states:{}};c._serverReady=true;c._applyServerSettings();assert.equal(c._config.warning_threshold,30,'server overrides defaults');
  dom.window.document.body.append(c);c.setActiveTab('settings');let sr=c.shadowRoot;
+ assert.ok(sr.querySelector('#vwm-settings-calibration [data-learning-status]'), 'learning status has its home in calibration settings');
  assert.equal(sr.querySelectorAll('.settings-toc a').length,6);assert.equal(sr.querySelector('.signal-summary').open,false);
  sr.querySelector('#vwm-warning-threshold').value='40';sr.querySelector('#vwm-critical-threshold').value='12';sr.querySelector('#vwm-save-thresholds').click();await settle();assert.equal(settings.warning_threshold,40);assert.equal(c._config.critical_threshold,12);
  sr=c.shadowRoot;sr.querySelector('#vwm-critical-threshold').value='80';sr.querySelector('#vwm-save-thresholds').click();await settle();assert.equal(calls.length,1,'invalid pair never sent');assert.ok(sr.querySelector('#vwm-threshold-status').textContent);
