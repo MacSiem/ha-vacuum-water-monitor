@@ -3,10 +3,10 @@
     "step": {
       "user": {
         "title": "Vacuum Water Monitor",
-        "description": "Rejestruje integracje Vacuum Water Monitor. Licznik wody dziala po stronie serwera, a wbudowana karta Lovelace jest ladowana automatycznie.",
+        "description": "Rejestruje integrację Vacuum Water Monitor. Licznik wody działa po stronie serwera, a wbudowana karta Lovelace jest ładowana automatycznie.",
         "data": {
-          "warning_threshold": "Prog ostrzezenia o niskim poziomie wody",
-          "critical_threshold": "Prog krytyczny poziomu wody"
+          "warning_threshold": "Próg ostrzeżenia o niskim poziomie wody (%)",
+          "critical_threshold": "Próg krytyczny poziomu wody (%)"
         }
       }
     },
@@ -18,10 +18,10 @@
     "step": {
       "init": {
         "title": "Opcje Vacuum Water Monitor",
-        "description": "Ustaw domyslne progi ostrzezen o potrzebie dolewki.",
+        "description": "Ustaw domyślne progi ostrzeżeń o potrzebie dolewki.",
         "data": {
-          "warning_threshold": "Prog ostrzezenia o niskim poziomie wody",
-          "critical_threshold": "Prog krytyczny poziomu wody"
+          "warning_threshold": "Próg ostrzeżenia o niskim poziomie wody (%)",
+          "critical_threshold": "Próg krytyczny poziomu wody (%)"
         }
       }
     }

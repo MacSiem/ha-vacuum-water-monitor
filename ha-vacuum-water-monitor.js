@@ -68,6 +68,27 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "Water needs attention": "Sprawdź wodę",
+  "Tracked tank: empty anchor": "Śledzony zbiornik: kotwica pustego zbiornika",
+  "Tracked tank: low-water anchor": "Śledzony zbiornik: kotwica niskiego poziomu",
+  "VWM estimate": "Szacunek VWM",
+  "Critical water level": "Krytyczny poziom wody",
+  "Station reports water shortage": "Stacja zgłasza brak wody",
+  "Clean water tank removed": "Zbiornik czystej wody wyjęty",
+  "Clean water tank empty or not installed": "Zbiornik czystej wody pusty lub niewłożony",
+  "Dirty water tank removed": "Zbiornik brudnej wody wyjęty",
+  "Dirty water tank full": "Zbiornik brudnej wody pełny",
+  "Check the tanks": "Sprawdź zbiorniki",
+  "Check the listed tanks. Refill the tracked clean-water tank, then confirm Refilled.": "Sprawdź wymienione zbiorniki. Napełnij śledzony zbiornik czystej wody, a potem potwierdź przyciskiem Dolane.",
+  "Time unavailable": "Czas niedostępny",
+  "Source": "Źródło",
+  "Station water-shortage sensor": "Czujnik braku wody stacji",
+  "Clean-water sensor": "Czujnik czystej wody",
+  "Dirty-water sensor": "Czujnik brudnej wody",
+  "No alert from this sensor": "Brak alarmu z tego czujnika",
+  "Station signal unavailable": "Sygnał stacji niedostępny",
+  "Level anchored by an estimate; this is not a physical volume measurement.": "Poziom oparty na szacowanej kotwicy; to nie jest fizyczny pomiar objętości.",
+
   "Recorded floor doses": "Zapisane dawki podłogi",
   "Recorded mop-wash doses": "Zapisane dawki mycia mopów",
   "Recorded whole-cycle doses": "Zapisane dawki całego cyklu",
@@ -14498,6 +14519,30 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   // ── TAB: WATER ─────────────────────────────────────────────────────────────
 
+  _buildWaterAlert(device, data) {
+    const reasons = [];
+    const tank = this._serverState?.tank_states?.[device.vacuum_entity] || {};
+    const add = (key, label, entity, source, ts) => {
+      const state = entity && this._hass?.states?.[entity];
+      const date = state?.last_changed ? new Date(state.last_changed) : ts > 0 ? new Date(ts) : null;
+      const time = date && Number.isFinite(date.getTime())
+        ? `<time datetime="${date.toISOString()}">${_esc(date.toLocaleString(this._lang))}</time>`
+        : `<span class="unknown-time">${this._waterText('Time unavailable')}</span>`;
+      reasons.push(`<li data-alert-reason="${key}"><b>${this._waterText(label)}</b><br><small data-alert-source>${this._waterText('Source')}: ${_esc(state?.attributes?.friendly_name || this._waterText(source))} · ${time}</small></li>`);
+    };
+    if (data.waterEmpty) add('empty', 'Tracked tank: empty anchor', null, 'VWM estimate', tank.last_empty_anchor_ts);
+    if (data.waterLow) add('low', 'Tracked tank: low-water anchor', null, 'VWM estimate', tank.last_empty_anchor_ts);
+    if (data.waterShortage) add('shortage', 'Station reports water shortage', device.water_shortage_sensor, 'Station water-shortage sensor');
+    if (data.dockCleanWaterProblem) add('clean', data.dockCleanWaterState === 'missing' ? 'Clean water tank removed' : 'Clean water tank empty or not installed', device.dock_clean_water_sensor, 'Clean-water sensor');
+    if (data.dockDirtyWaterProblem) add('dirty', data.dockDirtyWaterState === 'missing' ? 'Dirty water tank removed' : 'Dirty water tank full', device.dock_dirty_water_sensor, 'Dirty-water sensor');
+    if (!data.waterEmpty && !data.waterLow && data.percentRemaining != null && data.percentRemaining <= this._config.critical_threshold) add('critical', 'Critical water level', null, 'VWM estimate', tank.last_tick_ts);
+    if (!reasons.length) return '';
+    return `<section class="water-alert section-block" role="status" aria-live="polite"><b>⚠ ${this._waterText('Water needs attention')}</b><ul>${reasons.join('')}</ul>
+      ${(data.waterEmpty || data.waterLow) ? `<p>${this._waterText('Level anchored by an estimate; this is not a physical volume measurement.')}</p>` : ''}
+      <p>${this._waterText('Check the listed tanks. Refill the tracked clean-water tank, then confirm Refilled.')}</p>
+      <button type="button" data-water-action>${this._waterText('Check the tanks')}</button></section>`;
+  }
+
   _buildWaterTab(device, data) {
     const L = this._setupText();
     const cfg = this._config;
@@ -14533,11 +14578,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const refillBtn = (cfg.show_refill_button !== false)
       ? `<button class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolane' : 'Refilled'}</button>` : '';
 
-    const alertBanner = (data.waterEmpty || data.waterShortage)
-      ? `<div class="alert-banner">\u26A0\uFE0F Water shortage! Please refill now.</div>`
-      : (data.dockDirtyWaterFull ? `<div class="alert-banner alert-warn">\u26A0\uFE0F Dirty water box is full - empty it.</div>` : '')
-        + (data.percentRemaining !== null && data.percentRemaining <= (cfg.critical_threshold || 10) && !data.waterEmpty
-          ? `<div class="alert-banner alert-warn">\u26A0\uFE0F Water low (${Math.round(data.percentRemaining)}%) - refill soon.</div>` : '');
+    const alertBanner = this._buildWaterAlert(device, data);
 
     const configMissingBanner = data.configMissing
       ? `<div style="padding:12px 16px;background:rgba(245,158,11,0.08);border:1.5px solid #f59e0b;border-radius:8px;margin-bottom:12px;">
@@ -14670,13 +14711,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     };
     if (blockedReasons[data.stateReason]) return box('Accounting paused.', blockedReasons[data.stateReason], '#f59e0b');
     if (data.accountingSource === 'real_sensor') return box('Measured volume.', 'The configured sensor for this reservoir takes precedence over all estimates.');
-    if (data.stateReason === 'water_empty'  || data.waterEmpty) {
-      return box('Tracked reservoir is empty.', 'The empty signal anchors the estimated level. Only a qualified full cycle can update nominal learning; it is not a physical volume measurement.', '#ef4444');
-    }
-    if (data.stateReason === 'water_low' || data.waterLow || data.waterShortage) {
-      const reserve = Number.isFinite(Number(data.percentRemaining)) ? (this._lang === 'pl' ? ` Szacunek zachowuje około ${Number(data.percentRemaining)}% rezerwy.` : ` The current estimate preserves approximately ${Number(data.percentRemaining)}% reserve.`) : '';
-      return box('Low-water alert confirmed.', (this._lang === 'pl' ? `Ten próg jest szacowanym punktem odniesienia kalibracji, a nie pomiarem objętości.${reserve} Dolej wody; wyuczony współczynnik zostaje zachowany.` : `This threshold is an estimated calibration anchor, not a direct volume measurement.${reserve} Refill the reservoir when convenient; the learned device factor is preserved.`), '#f59e0b');
-    }
+    if (data.waterEmpty || data.waterLow || data.waterShortage || ['water_empty', 'water_low'].includes(data.stateReason)) return '';
     if (data.stateReason === 'missing_area_rate' || data.stateReason === 'missing_wash_rate' || data.stateReason === 'missing_time_rate') {
       return box('Missing rate.', 'Automatic estimate is paused until an applicable measured calibration rate is available.', '#f59e0b');
     }
@@ -14824,18 +14859,18 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const problem = data.dockCleanWaterProblem ?? data.dockCleanWaterFull;
       const value = data.dockCleanWaterState === 'empty' ? 'Empty'
         : data.dockCleanWaterState === 'missing' ? 'Not installed'
-        : problem ? 'Out / not installed' : 'OK';
+        : problem ? 'Out / not installed' : ['off', 'ok', 'normal', 'installed'].includes(data.dockCleanWaterState) ? 'No alert from this sensor' : 'Station signal unavailable';
       items.push({ label: '\uD83D\uDCA7 ' + this._waterText('Clean Water Box'), value, color: problem ? '#ef4444' : '#22c55e', icon: problem ? '\u26A0\uFE0F' : '\u2705' });
     }
     if (device.dock_dirty_water_sensor) {
       const problem = data.dockDirtyWaterProblem ?? data.dockDirtyWaterFull;
       const value = data.dockDirtyWaterState === 'full' ? 'Full — empty it'
         : data.dockDirtyWaterState === 'missing' ? 'Not installed'
-        : problem ? 'Full — empty it' : 'OK';
+        : problem ? 'Full — empty it' : ['off', 'ok', 'normal', 'installed'].includes(data.dockDirtyWaterState) ? 'No alert from this sensor' : 'Station signal unavailable';
       items.push({ label: '\uD83E\uDEA3 ' + this._waterText('Dirty Water Box'), value, color: problem ? '#ef4444' : '#22c55e', icon: problem ? '\uD83D\uDEA8' : '\u2705' });
     }
     if (device.water_shortage_sensor) {
-      items.push({ label: '\uD83D\uDD30 ' + this._waterText('Water Shortage'), value: data.waterShortage ? 'Shortage!' : 'Normal', color: data.waterShortage ? '#ef4444' : '#22c55e', icon: data.waterShortage ? '\u26A0\uFE0F' : '\u2705' });
+      items.push({ label: '\uD83D\uDD30 ' + this._waterText('Water Shortage'), value: data.waterShortage ? 'Station reports water shortage' : ['off', 'false', 'normal', 'ok'].includes(this._normaliseModelKey(this._getStateValue(device.water_shortage_sensor))) ? 'No alert from this sensor' : 'Station signal unavailable', color: data.waterShortage ? '#ef4444' : '#22c55e', icon: data.waterShortage ? '\u26A0\uFE0F' : '\u2705' });
     }
     if (device.mop_attached_sensor) {
       items.push({ label: '\uD83E\uDDF9 ' + this._waterText('Mop Pad'), value: data.mopAttached ? (data.mopDrying ? 'Drying...' : 'Attached') : 'Detached', color: data.mopAttached ? (data.mopDrying ? '#f59e0b' : '#22c55e') : '#6b7280', icon: data.mopAttached ? (data.mopDrying ? '\uD83C\uDF2C\uFE0F' : '\u2705') : '\u274C' });
@@ -16269,6 +16304,9 @@ target:
 :host(.bento-dark) .intro-banner .intro-dismiss:hover { background: #27272f; color: #fafaf9; }
 
 
+        .water-alert { border:1px solid var(--error-color,#ef4444); background:rgba(239,68,68,.06); padding:14px; border-radius:12px; overflow-wrap:anywhere; }
+        .water-alert ul { padding-left:20px; } .water-alert li { margin:8px 0; } .water-alert small { color:var(--secondary-text-color,#64748b); }
+        .water-alert button { min-height:44px; color:inherit; background:var(--bento-card); border:1px solid var(--bento-border); border-radius:8px; padding:8px 12px; }
         * { box-sizing: border-box; }
 
         
@@ -16553,6 +16591,11 @@ target:
     sr.querySelector('.support-dismiss')?.addEventListener('click', () => {
       try { localStorage.setItem(SUPPORT_DISMISSED_KEY, '1'); } catch (_) {}
       sr.querySelector('.donate-section[data-source="own-card"]')?.remove();
+    });
+    sr.querySelector('[data-water-action]')?.addEventListener('click', () => {
+      const dock = sr.querySelector('.dock-status');
+      if (dock) { dock.open = true; dock.scrollIntoView?.({block:'nearest'}); dock.querySelector('summary')?.focus(); }
+      else { sr.querySelector('.refill-btn')?.focus(); }
     });
     // Tip banner dismiss
     const _tipB = this.shadowRoot.querySelector('#tip-banner');
