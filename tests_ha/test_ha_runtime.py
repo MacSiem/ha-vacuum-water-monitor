@@ -460,3 +460,23 @@ async def test_v8_failed_save_does_not_publish_part_of_threshold_patch(hass, mon
     with pytest.raises(OSError):
         await storage.async_set_settings({"warning_threshold": 90, "intro_dismissed": {VACUUM: True}})
     assert await storage.async_get_state() == before
+
+
+async def test_repair_keeps_interruption_reason_on_disk(hass: HomeAssistant, hass_storage) -> None:
+    from custom_components.ha_vacuum_water_monitor.repairs import ConfirmFullFlow
+    storage = await _setup(hass)
+    incident = {"ts": 1791800000000, "reasons": ["accounting_context_changed"]}
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 240,
+        "accounting_incomplete": True, "last_accounting_reason": "not_mopping",
+        "last_accounting_interruption": incident, "calibration_factor": 1.1})
+    flow = ConfirmFullFlow({"vacuum_entity": VACUUM, "check": "accounting_paused"})
+    flow.hass = hass
+    form = await flow.async_step_confirm()
+    assert form["description_placeholders"]["reason"] == "accounting_context_changed"
+    result = await flow.async_step_confirm({})
+    assert result["type"] == "create_entry"
+    stored = hass_storage[DOMAIN]["data"]["tank_states"][VACUUM]
+    assert stored["last_accounting_interruption"]["reasons"] == incident["reasons"]
+    assert stored["last_accounting_interruption"]["refill_source"] == "repair"
+    assert stored["last_accounting_interruption"]["resolved_ts"] > incident["ts"]
+    assert stored["calibration_factor"] == 1.1
