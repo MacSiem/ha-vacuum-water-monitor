@@ -248,8 +248,8 @@ async function smokeDraftAndCalibration(target) {
     el.shadowRoot.getElementById('vwm-custom-wash').value = '175';
     el.shadowRoot.querySelector('.vwm-mode-name').value = 'standard';
     el.shadowRoot.querySelector('.vwm-mode-val').value = '5.5';
-    const textInput = el.shadowRoot.getElementById('maint-name');
-    textInput.value = 'Water filter';
+    const textInput = el.shadowRoot.querySelector('.vwm-mode-name');
+    textInput.value = 'standard';
     textInput.focus();
     textInput.setSelectionRange(5, 5);
 
@@ -265,8 +265,8 @@ async function smokeDraftAndCalibration(target) {
         || el.shadowRoot.querySelector('.vwm-mode-val').value !== '5.5') {
       throw new Error('Store refresh discarded typed mopping-mode calibration');
     }
-    const restoredText = el.shadowRoot.getElementById('maint-name');
-    if (restoredText.value !== 'Water filter') throw new Error('Store refresh discarded typed text');
+    const restoredText = el.shadowRoot.querySelector('.vwm-mode-name');
+    if (restoredText.value !== 'standard') throw new Error('Store refresh discarded typed text');
     if (el.shadowRoot.activeElement !== restoredText) throw new Error('Store refresh discarded input focus');
     if (restoredText.selectionStart !== 5 || restoredText.selectionEnd !== 5) {
       throw new Error('Store refresh discarded input caret');

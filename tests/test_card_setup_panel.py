@@ -72,7 +72,7 @@ const reports = JSON.parse(process.argv[1]);
   card._serverState.settings = { configured_devices: [{ vacuum_entity: 'vacuum.robot', water_total_ml: 3000 }] };
   const fromServer = card._calcDeviceData({ vacuum_entity: 'vacuum.robot', water_total_ml: 4000, config_provenance: { authored_fields: ['vacuum_entity', 'water_total_ml'] }, brand_profile: 'roborock_s8_maxv_ultra' });
   out.configuredTotalMl = fromServer.totalMl;
-  out.configuredWaterTab = card._buildWaterTab({ vacuum_entity: 'vacuum.robot', brand_profile: 'roborock_s8_maxv_ultra' }, fromServer);
+  out.configuredWaterTab = card._buildCalibrationInfo({ vacuum_entity: 'vacuum.robot', brand_profile: 'roborock_s8_maxv_ultra' }, fromServer);
   out.invalidBatteries = [undefined, null, 'unknown', 'unavailable', '', ' ', -1, 101, '21foo', false, {}].map(value => card._buildBatteryBar(value));
   out.zeroBattery = card._buildBatteryBar(0);
   card._serverState = { settings: {}, tank_states: {} };
