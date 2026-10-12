@@ -13,6 +13,6 @@ for(const file of ['ha-vacuum-water-monitor.js','custom_components/ha_vacuum_wat
  for(const [old,target] of [['stats','history'],['database','settings'],['maintenance','maintenance']]){c.setActiveTab(old);assert.equal(c._activeTab,target);}
  c.setActiveTab('settings');assert.ok(c.shadowRoot.querySelector('#vwm-settings-calibration'));assert.ok(c.shadowRoot.querySelector('#vwm-custom-save'));
  c.setActiveTab('maintenance');assert.equal(c.shadowRoot.querySelector('#vwm-custom-save'),null);
- for(const [old,target] of [['stats','history'],['database','settings']]){dom.window.localStorage.setItem('ha-tools-vacuum-water-monitor-settings',JSON.stringify({_activeTab:old}));const n=dom.window.document.createElement('ha-vacuum-water-monitor');n.setConfig({type:'custom:ha-vacuum-water-monitor'});assert.equal(n._activeTab,target);}
+ for(const [old,target] of [['stats','history'],['database','settings']]){dom.window.history.replaceState(null,'','/');dom.window.localStorage.setItem('ha-tools-vacuum-water-monitor-settings',JSON.stringify({_activeTab:old}));const n=dom.window.document.createElement('ha-vacuum-water-monitor');n.setConfig({type:'custom:ha-vacuum-water-monitor'});assert.equal(n._activeTab,target);}
  dom.window.close();
 }console.log('V5/V6 layout, keyboard, help and legacy routes PASS');
