@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.11.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.11.1 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -11,7 +11,7 @@ const supportDismissed = () => { try { return localStorage.getItem(SUPPORT_DISMI
 const ownDonateFooter = (lang = "en") => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">${lang === "pl" ? "Opcjonalne wsparcie HA Tools" : "Optional support for HA Tools"}</a><button type="button" class="support-dismiss" aria-label="${lang === "pl" ? "Ukryj odnośnik wsparcia" : "Dismiss support link"}">×</button></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.11.0';
+const VWM_VERSION = '5.11.1';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -132,6 +132,9 @@ const VWM_WATER_TEXT_PL = {
   "Dirty water tank full": "Zbiornik brudnej wody pełny",
   "Check the listed tanks. Empty the dirty-water tank or put it back in place.": "Sprawdź wymienione zbiorniki. Opróżnij zbiornik brudnej wody lub włóż go na miejsce.",
   "Refill needed — the tracked tank is empty.": "Dolej wodę — śledzony zbiornik jest pusty.",
+  "Last accounting interruption": "Ostatnie przerwanie bilansu",
+  "Interruption reason codes": "Kody przyczyn przerwania",
+  "Balance restored": "Bilans przywrócony",
   "Learning status": "Stan nauki",
   "Learned tanks": "Zbiorniki wykorzystane w nauce",
   "Correction factor": "Współczynnik korekty",
@@ -14454,6 +14457,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       capability: device.capability || 'unknown',
       evidence: device.evidence || null,
       accountingEvidence: tankState.last_accounting_evidence || ((customCalib.usage_ml_per_m2 || customCalib.wash_volume_ml) ? 'user_calibration' : device.accounting_evidence || null),
+      lastAccountingInterruption: tankState.last_accounting_interruption || null,
       accountingSource: tankState.last_accounting_source || null,
       accountingRate: tankState.last_accounting_rate_ml ?? null,
       consumptionResolution: tankState.consumption_resolution || null,
@@ -14888,6 +14892,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _buildDiagnostics(data) {
     const rows = [];
+    const interruption = data.lastAccountingInterruption;
+    if (interruption && typeof interruption === 'object') {
+      rows.push(['Last accounting interruption', interruption.ts > 0 ? this._formatReset(interruption.ts) : this._waterText('Time unavailable')]);
+      rows.push(['Interruption reason codes', Array.isArray(interruption.reasons) ? interruption.reasons.join(', ') : this._waterText('Reason unavailable')]);
+      if (interruption.resolved_ts > 0) rows.push(['Balance restored', `${this._formatReset(interruption.resolved_ts)} (${this._waterText(VWM_REFILL_SOURCE_LABEL[interruption.refill_source] || 'unknown')})`]);
+    }
     const actionLabels = {floor_mopping:'Recorded floor doses',mop_wash:'Recorded mop-wash doses',whole_cycle:'Recorded whole-cycle doses',real_sensor:'Recorded sensor doses'};
     for (const [action, amount] of Object.entries(data.cycleActionTotals || {})) {
       if (typeof amount === 'number' && Number.isFinite(amount) && amount >= 0) rows.push([actionLabels[action] || action, this._formatMl(amount)]);

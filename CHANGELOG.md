@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.11.1 (2026-10-12)
+
+- Retain the first accounting interruption and its recorded reason codes independently of later idle reads. Keep it after a confirmed refill or Repairs action, with the resolution source visible in card Diagnostics.
+- Explain Repairs using those recorded codes rather than implying that another application controlled the robot. Preserve estimates, learning and sharing behavior; a user report without the original log still has an unconfirmed cause.
+
 ## 5.11.0 (2026-10-12)
 
 - Combine water alerts with their source, time and a single action; correct Polish integration labels.

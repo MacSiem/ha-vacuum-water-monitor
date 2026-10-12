@@ -49,6 +49,11 @@ def apply_refill(
     error acknowledges that error: the persisting error must not become a new
     empty anchor, and its later clearing must not reset the tank a second time.
     """
+    interruption = state.get("last_accounting_interruption")
+    if isinstance(interruption, dict) and not interruption.get("resolved_ts"):
+        state["last_accounting_interruption"] = {
+            **interruption, "resolved_ts": now_ts, "refill_source": source,
+        }
     used_before = state.get("used_ml")
     empty_active = bool(state.get("water_empty_active"))
     # A "Tank empty" the user pressed ends with the refill; only a dock error

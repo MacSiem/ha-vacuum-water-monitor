@@ -32,7 +32,9 @@ class _RobotFlow(RepairsFlow):
 
     async def _placeholders(self) -> dict[str, str]:
         report = await self._report() or {}
+        pause = next((c for c in report.get("checks", []) if c.get("id") == "accounting_paused"), {})
         return {
+            "reason": str(pause.get("params", {}).get("reason") or "reason_unavailable"),
             "name": str(report.get("name") or self._vacuum),
             "target_name": str(self._data.get("target") or ""),
             "model_capacity": str(int(report["model_capacity_ml"])) if report.get("model_capacity_ml") else "",

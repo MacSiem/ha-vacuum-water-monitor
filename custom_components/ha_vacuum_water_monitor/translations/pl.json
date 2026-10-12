@@ -78,7 +78,7 @@
         "step": {
           "confirm": {
             "title": "Czy zbiornik czystej wody robota {name} jest teraz pełny?",
-            "description": "Brakowało sygnału z robota w chwili, gdy mógł zużywać wodę, więc pozostała ilość jest nieznana. Napełnij zbiornik i wybierz Zatwierdź, a liczenie wróci od pełnego. To, czego robot nauczył się o zużyciu wody, zostaje."
+            "description": "Bilans zbiornika stał się niepełny w czasie, gdy mogła być zużywana woda. Zapisane kody przyczyn: {reason}. Może to wynikać z braku sygnału lub zmiany ustawień naliczania; nie dowodzi sterowania robotem przez inną aplikację. Napełnij zbiornik i wybierz Prześlij tylko wtedy, gdy jest pełny. Kalibracja zostaje zachowana, a zapis przerwania pozostaje dostępny w Diagnostyce karty po tej naprawie."
           }
         },
         "abort": {

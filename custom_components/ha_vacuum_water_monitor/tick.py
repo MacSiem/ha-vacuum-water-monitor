@@ -343,6 +343,15 @@ def tick_device(
             ):
         new_state["used_ml"] = min(used_before, _number(new_state.get("used_ml"), 0))
         _record_accounting(new_state, "low_water", None, None, "tank_empty_no_draw")
+    # Retain the first interruption independently of the latest tick decision.
+    # Later idle/healthy reads must not erase why this tank became incomplete.
+    if not state.get("accounting_incomplete") and new_state.get("accounting_incomplete"):
+        reasons = list(dict.fromkeys(new_state.get(_PASS_REASONS_KEY) or []))[:8]
+        new_state["last_accounting_interruption"] = {
+            "ts": now_ts or new_state.get("last_tick_ts") or 0,
+            "reasons": reasons or ["reason_unavailable"],
+        }
+        dirty = True
     new_state.pop(_PASS_REASONS_KEY, None)
     return new_state, dirty
 
