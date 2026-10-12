@@ -348,13 +348,13 @@ async def test_v8_admin_websocket_thresholds_persist_through_options_and_reload(
 
 
 async def test_v8_household_settings_remain_allowed_but_threshold_patch_is_atomic_unauthorized(
-    hass, hass_ws_client, hass_user,
+    hass, hass_ws_client, hass_admin_user,
 ):
     storage = await _setup(hass)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     # Fixture user remains authenticated but lacks administrator privileges.
-    hass_user.groups = []
-    assert not hass_user.is_admin
+    hass_admin_user.groups = []
+    assert not hass_admin_user.is_admin
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": f"{DOMAIN}/set_settings", "patch": {
         "intro_dismissed": {VACUUM: True}}})
