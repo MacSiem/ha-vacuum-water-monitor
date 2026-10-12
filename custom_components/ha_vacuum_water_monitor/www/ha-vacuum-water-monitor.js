@@ -131,6 +131,7 @@ const VWM_WATER_TEXT_PL = {
   "Dirty water tank removed": "Zbiornik brudnej wody wyjęty",
   "Dirty water tank full": "Zbiornik brudnej wody pełny",
   "Check the listed tanks. Empty the dirty-water tank or put it back in place.": "Sprawdź wymienione zbiorniki. Opróżnij zbiornik brudnej wody lub włóż go na miejsce.",
+  "Refill needed — the tracked tank is empty.": "Dolej wodę — śledzony zbiornik jest pusty.",
   "Learning status": "Stan nauki",
   "Learned tanks": "Zbiorniki wykorzystane w nauce",
   "Correction factor": "Współczynnik korekty",
@@ -14680,7 +14681,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const water = known ? range(data.remainingL, 2, data.totalMl > 0 ? data.totalMl/1000 : Infinity) : null;
     let answer = `<p>${this._waterText('Forecast unavailable: tank balance or consumption profile is unknown.')}</p>`;
     if (known) {
-      if (!supply || Number(supply.basis_runs || 0) < 3) answer = `<p data-learning>${this._waterText('Forecast after 3 mopping runs — {n} of 3 recorded').replace('{n}', String(Math.max(0, Number(supply?.basis_runs || 0))))}</p>`;
+      if (data.waterEmpty || data.remainingL === 0) answer = `<p data-refill-needed>${this._waterText('Refill needed — the tracked tank is empty.')}</p>`;
+      else if (!supply || Number(supply.basis_runs || 0) < 3) answer = `<p data-learning>${this._waterText('Forecast after 3 mopping runs — {n} of 3 recorded').replace('{n}', String(Math.max(0, Number(supply?.basis_runs || 0))))}</p>`;
       else {
         const runs = range(supply.cleanings_left);
         const days = range(supply.days_left);
