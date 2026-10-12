@@ -103,7 +103,7 @@ async function smokeHostileIcons(target) {
     el._render();
     assertNoHostileMarkup(el.shadowRoot, payload, `${path.basename(target.file)} water/config`);
 
-    el._activeTab = 'maintenance';
+    el._activeTab = 'settings';
     el._lastHtml = '';
     el._render();
     assertNoHostileMarkup(el.shadowRoot, payload, `${path.basename(target.file)} maintenance/persisted`);
@@ -237,7 +237,7 @@ async function smokeDraftAndCalibration(target) {
       throw new Error('Store refresh reopened closed diagnostics');
     }
 
-    el._activeTab = 'maintenance';
+    el._activeTab = 'settings';
     el._lastHtml = '';
     el._render();
     const body = el.shadowRoot.getElementById('vwm-custom-calibration-body');
@@ -448,7 +448,7 @@ async function smokeBackendDescriptorsAndTruthfulAccounting(target) {
     }
 
     el._activeDeviceIdx = devices.findIndex(d => d.vacuum_entity === 'vacuum.a170');
-    el._activeTab = 'maintenance'; el._lastHtml = ''; el._render();
+    el._activeTab = 'settings'; el._lastHtml = ''; el._render();
     el.shadowRoot.getElementById('vwm-custom-calibration-body').style.display = 'block';
     el.shadowRoot.getElementById('vwm-custom-tank').value = '4200';
     const saved = await el._saveCustomCalibration();
@@ -563,7 +563,7 @@ async function smokeRoundOneDescriptorContracts(target) {
     if (el._autoDiscoverVacuums().filter(d => d.entity_id === 'vacuum.native_one' || d.entity_id === 'vacuum.matter_two').length !== 2) throw new Error('old-backend fallback deduplicated separate same-manufacturer vacuums');
     el._discoveredVacuums = discoveredBeforeFallback;
 
-    el._activeDeviceIdx = devices.indexOf(a170); el._activeTab = 'maintenance'; el._lastHtml = ''; el._render();
+    el._activeDeviceIdx = devices.indexOf(a170); el._activeTab = 'settings'; el._lastHtml = ''; el._render();
     el.shadowRoot.getElementById('vwm-custom-calibration-body').style.display = 'block';
     if (!/Effective dock clean capacity/.test(el.shadowRoot.textContent) || !el.shadowRoot.textContent.includes('4,200 ml')) throw new Error('calibration UI does not render effective tracked reservoir capacity');
     el.shadowRoot.getElementById('vwm-custom-tank').value = '4300';
@@ -697,7 +697,7 @@ async function smokeFinalFixContracts(target) {
 
     for (const entity of ['vacuum.numeric', 'vacuum.object']) {
       const device = el._getDevices().find(d => d.vacuum_entity === entity);
-      const html = el._buildMaintenanceTab(device, el._calcDeviceData(device));
+      const html = el._buildCustomMeasurements(device, el._calcDeviceData(device));
       if (!html.includes('Tracked reservoir') && !html.includes('Effective')) throw new Error(`${entity} diagnostics did not render`);
       const holder = window.document.createElement('div'); holder.innerHTML = html;
       if (holder.querySelector('[data-vwm-reservoir-xss]')) throw new Error(`${entity} hostile reservoir created markup`);

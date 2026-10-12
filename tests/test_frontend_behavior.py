@@ -101,7 +101,7 @@ const learned = card._buildAccountingGuidance({
   calibrationFactor: 1.2,
   stateReason: null,
 });
-const lowGuidance = card._buildAccountingGuidance({
+const lowGuidance = card._buildWaterAlert({vacuum_entity:"vacuum.robot"}, {
   initialized: true,
   capability: 'automatic_estimate',
   waterLow: true,
@@ -234,7 +234,7 @@ process.stdout.write(JSON.stringify({ dock, dockEmpty, dockMissing, guidance, aw
 
     def test_low_water_anchor_is_not_presented_as_an_exact_empty_tank(self) -> None:
         guidance = self.output["lowGuidance"]
-        self.assertIn("Low-water", guidance)
+        self.assertIn("low-water", guidance)
         self.assertIn("10%", guidance)
         self.assertNotIn("reservoir is empty", guidance)
         self.assertEqual(self.output["lowStatus"]["label"], "LOW WATER")

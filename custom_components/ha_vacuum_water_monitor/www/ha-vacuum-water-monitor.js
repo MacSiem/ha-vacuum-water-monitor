@@ -13283,8 +13283,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     } catch (e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
     this._activeTab = validTabs.has(config.default_tab) ? config.default_tab
       : validTabs.has(savedNavigation._activeTab) ? savedNavigation._activeTab : 'water';
-    const hashTab = location.hash.split('/').pop();
-    if (!config.default_tab && location.hash.startsWith('#' + this._toolId + '/') && validTabs.has(hashTab)) this._activeTab = hashTab;
+    const hashTab = (location.hash || '').split('/').pop();
+    if (!config.default_tab && (location.hash || '').startsWith('#' + this._toolId + '/') && validTabs.has(hashTab)) this._activeTab = hashTab;
     if (this._activeTab === 'database') this._pendingSettingsAnchor = 'model';
     this._activeTab = this._canonicalTab(this._activeTab);
     this._activeDeviceIdx = Number.isInteger(savedNavigation._activeDeviceIdx) && savedNavigation._activeDeviceIdx >= 0
@@ -13879,13 +13879,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _getStateValue(entityId) {
     if (!this._hass || !entityId) return null;
-    const state = this._hass.states[entityId];
+    const state = this._hass.states?.[entityId];
     return state ? state.state : null;
   }
 
   _getAttr(entityId, attr) {
     if (!this._hass || !entityId) return null;
-    const state = this._hass.states[entityId];
+    const state = this._hass.states?.[entityId];
     return state && state.attributes ? state.attributes[attr] : null;
   }
 
@@ -14594,7 +14594,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!data.waterEmpty && !data.waterLow && data.percentRemaining != null && data.percentRemaining <= this._config.critical_threshold) add('critical', 'Critical water level', null, 'VWM estimate', tank.last_tick_ts);
     if (!reasons.length) return '';
     return `<section class="water-alert section-block" role="status" aria-live="polite"><b>⚠ ${this._waterText('Water needs attention')}</b><ul>${reasons.join('')}</ul>
-      ${(data.waterEmpty || data.waterLow) ? `<p>${this._waterText('Level anchored by an estimate; this is not a physical volume measurement.')}</p>` : ''}
+      ${(data.waterEmpty || data.waterLow) ? `<p>${this._waterText('Level anchored by an estimate; this is not a physical volume measurement.')} ${this._waterText('The empty signal anchors the estimated level. Only a qualified full cycle can update nominal learning; it is not a physical volume measurement.')}${data.waterLow && data.percentRemaining != null ? ` ${data.percentRemaining}%` : ''}</p>` : ''}
       <p>${this._waterText('Check the listed tanks. Refill the tracked clean-water tank, then confirm Refilled.')}</p>
       <button type="button" data-water-action>${this._waterText('Check the tanks')}</button></section>`;
   }

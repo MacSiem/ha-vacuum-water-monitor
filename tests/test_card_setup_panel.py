@@ -68,7 +68,7 @@ const reports = JSON.parse(process.argv[1]);
   card._config = { devices: [] };
   const data = card._calcDeviceData({ vacuum_entity: 'vacuum.robot', water_total_ml: 4000, config_provenance: { authored_fields: ['vacuum_entity', 'water_total_ml'] } });
   out.totalMl = data.totalMl; out.percent = data.percentRemaining;
-  out.waterTab = card._buildWaterTab({ vacuum_entity: 'vacuum.robot', brand_profile: 'roborock_s8_maxv_ultra' }, data);
+  out.waterTab = card._buildCalibrationInfo({ vacuum_entity: 'vacuum.robot', brand_profile: 'roborock_s8_maxv_ultra' }, data);
   card._serverState.settings = { configured_devices: [{ vacuum_entity: 'vacuum.robot', water_total_ml: 3000 }] };
   const fromServer = card._calcDeviceData({ vacuum_entity: 'vacuum.robot', water_total_ml: 4000, config_provenance: { authored_fields: ['vacuum_entity', 'water_total_ml'] }, brand_profile: 'roborock_s8_maxv_ultra' });
   out.configuredTotalMl = fromServer.totalMl;
@@ -86,20 +86,20 @@ const reports = JSON.parse(process.argv[1]);
   card._discoveredVacuums = [{ entity_id: 'vacuum.robot', manufacturer: 'QA synthetic', model: '1797', profile_key: null, tracked_capacity_ml: null, capability: 'unknown' }];
   card._health['vacuum.robot'] = reports.notTracked;
   card._lang = 'pl';
-  out.unknownVendorPl = card._buildWaterTab(s7, card._calcDeviceData(s7));
+  out.unknownVendorPl = card._buildCalibrationInfo(s7, card._calcDeviceData(s7));
   for (const lang of ['en', 'pl']) {
     card._lang = lang;
-    out['noCapacity' + lang] = card._buildWaterTab(s7, card._calcDeviceData(s7));
+    out['noCapacity' + lang] = card._buildCalibrationInfo(s7, card._calcDeviceData(s7));
     card._health['vacuum.robot'] = { ...reports.notTracked, capacity_ml: 1987, status: 'ok', checks: [] };
     for (const initialized of [false, true]) {
       card._serverState = { settings: { device_options: { 'vacuum.robot': { capacity_ml: 1987 } } },
         tank_states: { 'vacuum.robot': { initialized, used_ml: 0 } } };
       const saved = card._calcDeviceData(s7);
-      out['savedCapacity' + lang + initialized] = card._buildWaterTab(s7, saved);
+      out['savedCapacity' + lang + initialized] = card._buildCalibrationInfo(s7, saved);
       out['savedPercent' + lang + initialized] = saved.percentRemaining;
     }
     card._serverState.settings.custom_calibration = { 'entity:vacuum.robot': { usage_ml_per_active_minute: { default: 2.3 } } };
-    out['savedMinuteRate' + lang] = card._buildWaterTab(s7, card._calcDeviceData(s7));
+    out['savedMinuteRate' + lang] = card._buildCalibrationInfo(s7, card._calcDeviceData(s7));
     card._serverState = { settings: {}, tank_states: {} };
     card._health['vacuum.robot'] = reports.notTracked;
   }

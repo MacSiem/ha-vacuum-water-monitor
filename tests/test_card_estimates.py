@@ -140,11 +140,11 @@ const device=card._decorateLegacyProfile({vacuum_entity:'vacuum.robot', profile_
 card._discoveredVacuums=[device];
 card._serverState={settings:{custom_calibration:{'entity:vacuum.robot':{usage_ml_per_m2:{standard:10},calibration_scope:'floor_only'}}},tank_states:{'vacuum.robot':{initialized:true,used_ml:40}}};
 const data=card._calcDeviceData(device);data.totalMl=1234;
-const configured=card._buildWaterTab(device,data);
+const configured=card._buildCalibrationInfo(device,data);
 const authored=card._decorateLegacyProfile({...device,usage_ml_per_m2:{standard:12},config_provenance:{authored_fields:['vacuum_entity','usage_ml_per_m2']}});
-const explicit=card._buildWaterTab(authored,{...data});
+const explicit=card._buildCalibrationInfo(authored,{...data});
 card._serverState.settings.custom_calibration={'entity:vacuum.robot':{tracked_capacity_ml:1234}};
-const prior=card._buildWaterTab(device,card._calcDeviceData(device));
+const prior=card._buildCalibrationInfo(device,card._calcDeviceData(device));
 console.log(JSON.stringify({configured,explicit,prior}));
 """
 

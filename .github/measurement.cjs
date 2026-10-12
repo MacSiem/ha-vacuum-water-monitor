@@ -86,7 +86,7 @@ const assert=require('assert/strict');
 
  card._hass.states={};
  card._lang='pl';
- const emptyPL=card._buildAccountingGuidance({initialized:true,stateReason:'water_empty',waterEmpty:true});
+ const emptyPL=card._buildWaterAlert({vacuum_entity:'vacuum.demo'},{initialized:true,stateReason:'water_empty',waterEmpty:true});
  assert.ok(emptyPL.includes('Tylko pełny, zakwalifikowany cykl'), 'selected Polish empty guidance must qualify nominal learning');
  assert.ok(emptyPL.includes('nie jest to fizyczny pomiar objętości'));
  const refillPL=card._buildRefillMethodCard(device);
