@@ -68,6 +68,22 @@ const VWM_REFILL_SOURCE_LABEL = {
 // 5.8.0 setup wizard and "Is everything working?" panel (texts per language).
 // Translate display labels; preserve integration identifiers and evidence codes.
 const VWM_WATER_TEXT_PL = {
+  "How it works": "Jak to działa",
+  "Details": "Szczegóły",
+  "Calibration and measurements": "Kalibracja i pomiary",
+  "Robots": "Roboty",
+  "Refilling": "Dolewanie",
+  "Thresholds and reminders": "Progi i przypomnienia",
+  "Signals": "Sygnały",
+  "Model and capacity": "Model i pojemność",
+  "Settings sections": "Sekcje ustawień",
+  "signals": "sygnałów",
+  "automatic": "automatycznie",
+  "manual": "ręcznie",
+  "No station alert": "Brak alarmu stacji",
+  "Station needs attention": "Stacja wymaga uwagi",
+  "Card appearance and sensor overrides remain in the dashboard YAML editor.": "Wygląd karty i nadpisania czujników pozostają w edytorze YAML pulpitu.",
+
   "Water needs attention": "Sprawdź wodę",
   "Tracked tank: empty anchor": "Śledzony zbiornik: kotwica pustego zbiornika",
   "Tracked tank: low-water anchor": "Śledzony zbiornik: kotwica niskiego poziomu",
@@ -13231,6 +13247,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     } catch (e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
     this._activeTab = validTabs.has(config.default_tab) ? config.default_tab
       : validTabs.has(savedNavigation._activeTab) ? savedNavigation._activeTab : 'water';
+    const hashTab = location.hash.split('/').pop();
+    if (!config.default_tab && location.hash.startsWith('#' + this._toolId + '/') && validTabs.has(hashTab)) this._activeTab = hashTab;
+    if (this._activeTab === 'database') this._pendingSettingsAnchor = 'model';
+    this._activeTab = this._canonicalTab(this._activeTab);
     this._activeDeviceIdx = Number.isInteger(savedNavigation._activeDeviceIdx) && savedNavigation._activeDeviceIdx >= 0
       ? savedNavigation._activeDeviceIdx : 0;
     try { localStorage.setItem('ha-tools-vacuum-water-monitor-settings', JSON.stringify({ _activeTab: this._activeTab, _activeDeviceIdx: this._activeDeviceIdx })); } catch(e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
@@ -14543,6 +14563,62 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <button type="button" data-water-action>${this._waterText('Check the tanks')}</button></section>`;
   }
 
+  _buildCalibrationInfo(device, data) {
+    const cfg = this._config;
+    // Q1/Q2: Calibration info based on brand profile
+    let calibHtml = '';
+    // Prefer per-device brand_profile (auto-detected) over card-level YAML config.
+    // Mirror of the v4 plugin fix — see ha-vacuum-water-monitor.js commit
+    // 6f6444a for rationale.
+    const profileKey = (device && this._resolveProfileKey(device)) || cfg.brand_profile || 'generic';
+    const calib = typeof CALIBRATION_DATA !== 'undefined' ? CALIBRATION_DATA[profileKey] || CALIBRATION_DATA['generic'] : null;
+    if (calib) {
+      const effectiveDevice = this._withBackendDescriptor(device);
+      const customCalib = this._effectiveCustomCalibration(effectiveDevice);
+      const explicit = this._explicitDeviceKeys(effectiveDevice);
+      const validRates = value => Object.fromEntries(Object.entries(value || {})
+        .filter(([, rate]) => Number.isFinite(Number(rate)) && Number(rate) > 0)
+        .map(([key, rate]) => [key, Number(rate)]));
+      const customRates = validRates(customCalib.usage_ml_per_m2 || customCalib.water_per_m2);
+      const explicitRates = explicit.has('usage_ml_per_m2') ? validRates(effectiveDevice.usage_ml_per_m2) : {};
+      const configuredRates = Object.keys(customRates).length > 0 || Object.keys(explicitRates).length > 0;
+      const usage = {...(configuredRates && calib.estimate_basis ? {} : validRates(calib.water_per_m2)),
+        ...customRates, ...explicitRates};
+      const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${_esc(this._waterText(k))}:</b> ${v} ml/m²</span>`).join('');
+      const referenceUsage = usage.standard || usage.medium || usage.default || Object.values(usage)[0] || null;
+      const factor = Number(data.calibrationFactor) > 0 ? Number(data.calibrationFactor) : 1;
+      const estAreaPerTank = data.accountingSource !== 'whole_cycle' && referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / (referenceUsage * factor)) : null;
+      const scope = explicit.has('calibration_scope') ? effectiveDevice.calibration_scope
+        : customCalib.calibration_scope || (configuredRates ? 'whole_cycle' : 'floor_only');
+      const trackedCapacity = Number(data.totalMl) > 0 ? Number(data.totalMl) : null;
+      const modelCapacity = Number(calib.tank_ml) > 0 ? Number(calib.tank_ml) : null;
+      const capacityGuidance = trackedCapacity
+        ? 'Tank capacity saved. No built-in consumption estimate for this model.'
+        : 'No estimate for this model yet; set the tank capacity to enable tracking.';
+      const calibrationNote = trackedCapacity && calib === CALIBRATION_DATA.generic
+        ? 'Automatic consumption accounting needs a matching water-use rate and mopping signals.'
+        : calib.notes;
+      const facts = _calibrationFacts(calib, this._lang);
+      calibHtml = `
+        <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 ${this._waterText('Calibration')}: ${_esc(this._waterText(calib.label))}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+            <div>🪣 ${this._waterText('Tracked tank')}: <b>${trackedCapacity ? `${trackedCapacity.toLocaleString('en-US')} ml` : this._waterText('unknown')}</b></div>
+            ${modelCapacity && modelCapacity !== trackedCapacity ? `<div>📚 ${this._waterText('Model reference')}: <b>${modelCapacity.toLocaleString('en-US')} ml</b></div>` : ''}
+            <div>🧹 ${this._waterText('Mop')}: <b>${_esc(this._waterText(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : this._waterText('unknown'))))}</b></div>
+            ${calib.avg_area_per_charge ? `<div>📏 ${this._waterText('Est. area/charge')}: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
+            ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText(scope === 'whole_cycle' ? 'whole cycle, including washes' : 'standard route, excl. washes')})</span></div>` : ''}
+          </div>
+          ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
+          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(this._waterText(VWM_BASIS_LABEL[calib.estimate_basis] || '')) + ' \u00B7 ' + this._waterText('calibrates automatically.') : this._waterText(capacityGuidance)}</div>`}
+          ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calibrationNote ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + _esc(this._waterText(calibrationNote)) + '</div>' : ''}
+        </div>`;
+    }
+
+
+    return calibHtml;
+  }
+
   _buildWaterTab(device, data) {
     const L = this._setupText();
     const cfg = this._config;
@@ -14600,57 +14676,6 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const diagnosticsHtml = this._buildDiagnostics(data);
 
     const dockHtml = (cfg.show_dock_status !== false) ? this._buildDockSection(device, data) : '';
-    // Q1/Q2: Calibration info based on brand profile
-    let calibHtml = '';
-    // Prefer per-device brand_profile (auto-detected) over card-level YAML config.
-    // Mirror of the v4 plugin fix — see ha-vacuum-water-monitor.js commit
-    // 6f6444a for rationale.
-    const profileKey = (device && this._resolveProfileKey(device)) || cfg.brand_profile || 'generic';
-    const calib = typeof CALIBRATION_DATA !== 'undefined' ? CALIBRATION_DATA[profileKey] || CALIBRATION_DATA['generic'] : null;
-    if (calib) {
-      const effectiveDevice = this._withBackendDescriptor(device);
-      const customCalib = this._effectiveCustomCalibration(effectiveDevice);
-      const explicit = this._explicitDeviceKeys(effectiveDevice);
-      const validRates = value => Object.fromEntries(Object.entries(value || {})
-        .filter(([, rate]) => Number.isFinite(Number(rate)) && Number(rate) > 0)
-        .map(([key, rate]) => [key, Number(rate)]));
-      const customRates = validRates(customCalib.usage_ml_per_m2 || customCalib.water_per_m2);
-      const explicitRates = explicit.has('usage_ml_per_m2') ? validRates(effectiveDevice.usage_ml_per_m2) : {};
-      const configuredRates = Object.keys(customRates).length > 0 || Object.keys(explicitRates).length > 0;
-      const usage = {...(configuredRates && calib.estimate_basis ? {} : validRates(calib.water_per_m2)),
-        ...customRates, ...explicitRates};
-      const levels = Object.entries(usage).map(([k,v]) => `<span style="display:inline-block;padding:3px 10px;background:var(--bento-bg,#f0f4f8);border-radius:6px;margin:2px 4px;font-size:12px;"><b>${_esc(this._waterText(k))}:</b> ${v} ml/m²</span>`).join('');
-      const referenceUsage = usage.standard || usage.medium || usage.default || Object.values(usage)[0] || null;
-      const factor = Number(data.calibrationFactor) > 0 ? Number(data.calibrationFactor) : 1;
-      const estAreaPerTank = data.accountingSource !== 'whole_cycle' && referenceUsage && data.totalMl > 0 ? Math.round(data.totalMl / (referenceUsage * factor)) : null;
-      const scope = explicit.has('calibration_scope') ? effectiveDevice.calibration_scope
-        : customCalib.calibration_scope || (configuredRates ? 'whole_cycle' : 'floor_only');
-      const trackedCapacity = Number(data.totalMl) > 0 ? Number(data.totalMl) : null;
-      const modelCapacity = Number(calib.tank_ml) > 0 ? Number(calib.tank_ml) : null;
-      const capacityGuidance = trackedCapacity
-        ? 'Tank capacity saved. No built-in consumption estimate for this model.'
-        : 'No estimate for this model yet; set the tank capacity to enable tracking.';
-      const calibrationNote = trackedCapacity && calib === CALIBRATION_DATA.generic
-        ? 'Automatic consumption accounting needs a matching water-use rate and mopping signals.'
-        : calib.notes;
-      const facts = _calibrationFacts(calib, this._lang);
-      calibHtml = `
-        <div style="margin-top:16px;padding:16px;background:var(--bento-bg,#f8fafc);border:1.5px solid var(--bento-border,#e2e8f0);border-radius:12px;">
-          <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📐 ${this._waterText('Calibration')}: ${_esc(this._waterText(calib.label))}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
-            <div>🪣 ${this._waterText('Tracked tank')}: <b>${trackedCapacity ? `${trackedCapacity.toLocaleString('en-US')} ml` : this._waterText('unknown')}</b></div>
-            ${modelCapacity && modelCapacity !== trackedCapacity ? `<div>📚 ${this._waterText('Model reference')}: <b>${modelCapacity.toLocaleString('en-US')} ml</b></div>` : ''}
-            <div>🧹 ${this._waterText('Mop')}: <b>${_esc(this._waterText(calib.mop_type || (calib.mop_system && calib.mop_system !== 'unknown' ? String(calib.mop_system).replace(/_/g, ' ') : this._waterText('unknown'))))}</b></div>
-            ${calib.avg_area_per_charge ? `<div>📏 ${this._waterText('Est. area/charge')}: <b>~${calib.avg_area_per_charge} m²</b></div>` : ''}
-            ${estAreaPerTank ? `<div>📏 ${this._waterText('Est. floor area/tank')}: <b>~${estAreaPerTank} m²</b> <span style="font-size:11px;color:var(--bento-text-secondary,#64748b)">(${this._waterText(scope === 'whole_cycle' ? 'whole cycle, including washes' : 'standard route, excl. washes')})</span></div>` : ''}
-          </div>
-          ${facts.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px">${facts.map(fact => `<span style="padding:3px 8px;border-radius:6px;background:rgba(59,130,246,0.08);font-size:11px;color:var(--bento-text-secondary,#64748b)">${_esc(fact)}</span>`).join('')}</div>` : ''}
-          ${levels ? `<div style="margin-top:10px;font-size:12px;"><b>${this._waterText(configuredRates ? 'Configured base usage per m²' : 'Estimated water usage per m²')}:</b> ${levels}</div>` : `<div style="margin-top:10px;font-size:12px;color:var(--bento-text-secondary,#64748b)">${calib.estimate_basis ? _esc(this._waterText(VWM_BASIS_LABEL[calib.estimate_basis] || '')) + ' \u00B7 ' + this._waterText('calibrates automatically.') : this._waterText(capacityGuidance)}</div>`}
-          ${configuredRates ? `<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);">${this._waterText('Configured rates; accuracy is not verified.')}</div>` : calibrationNote ? '<div style="margin-top:8px;font-size:12px;color:var(--bento-text-secondary,#64748b);font-style:italic;">💡 ' + _esc(this._waterText(calibrationNote)) + '</div>' : ''}
-        </div>`;
-    }
-
-
     // A mop-capable robot still needs water setup when its tank size is unknown.
     const noWaterTracking = !device.water_total_ml &&
       !data.totalMl &&  // No calibration data either
@@ -14660,9 +14685,6 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return `
       <div class="tab-content">
         ${alertBanner}
-        ${configMissingBanner}
-        ${setupBlocking ? setupHtml : ''}
-        ${accountingHtml}
         ${noWaterTracking ? `<div class="no-water-note">\uD83D\uDCCC ${this._waterText("This device doesn't track water levels")}</div>` : `
         <div class="device-body">
           <div class="gauge-wrap">
@@ -14677,11 +14699,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
           </div>
         </div>
         ${refillBtn ? `<div class="refill-wrap">${refillBtn}</div>` : ''}`}
-        ${setupBlocking ? '' : setupHtml}
         ${noWaterTracking && data.charge !== null ? `<div class="details">${this._buildBatteryBar(data.charge)}</div>` : ''}
         ${dockHtml}
-        ${diagnosticsHtml}
-        ${calibHtml}
+        <details class="water-details section-block"><summary>${this._waterText('Details')}</summary>${configMissingBanner}${setupHtml}${accountingHtml}${diagnosticsHtml}</details>
       </div>`;
   }
 
@@ -14876,14 +14896,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
       items.push({ label: '\uD83E\uDDF9 ' + this._waterText('Mop Pad'), value: data.mopAttached ? (data.mopDrying ? 'Drying...' : 'Attached') : 'Detached', color: data.mopAttached ? (data.mopDrying ? '#f59e0b' : '#22c55e') : '#6b7280', icon: data.mopAttached ? (data.mopDrying ? '\uD83C\uDF2C\uFE0F' : '\u2705') : '\u274C' });
     }
     if (items.length === 0) return '';
-    return `<div class="section-block"><div class="section-title">\uD83C\uDFE0 ${this._waterText('Dock Status')}</div>
+    const problem = data.waterEmpty || data.waterLow || data.waterShortage || data.dockCleanWaterProblem || data.dockDirtyWaterProblem;
+    return `<details class="section-block dock-status" ${problem ? 'open' : ''}><summary class="section-title">\uD83C\uDFE0 ${this._waterText('Dock Status')} · ${this._waterText(problem ? 'Station needs attention' : 'No station alert')}</summary>
       ${items.map(item => `<div class="dock-row"><span class="row-label">${item.label}</span><span class="dock-val" style="color:${item.color}">${item.icon} ${this._waterText(item.value)}</span></div>`).join('')}
-    </div>`;
+    </details>`;
   }
 
   // ── TAB: MAINTENANCE ───────────────────────────────────────────────────────
 
-  _buildMaintenanceTab(device, data) {
+  _buildCustomMeasurements(device, data) {
     const customCalibration = this._customCalibrationFor(device) || {};
     const effectiveCalibrationData = this._effectiveCustomCalibration(device);
     const reservoirRows = Object.entries(data.reservoirsMl || {})
@@ -14901,6 +14922,83 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <input type="text" value="${_esc(String(name))}" placeholder="e.g. standard" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-name" aria-label="${_esc(this._waterText("Mopping mode name"))}">
         <input type="number" min="0.1" step="0.1" value="${_esc(value === '' ? '' : String(value))}" placeholder="ml/m\u00B2" style="width:70px;padding:4px 6px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-bg);color:var(--bento-text);font-size:11px" class="vwm-mode-val" aria-label="${_esc(this._waterText("Measured ml per square metre"))}">
       </div>`).join('');
+    return `        <div class="section-block">
+          <button type="button" class="section-title" aria-expanded="false" aria-controls="vwm-custom-calibration-body" style="cursor:pointer;background:transparent;border:0;color:inherit;text-align:left" onclick="const open=this.nextElementSibling.style.display==='none';this.nextElementSibling.style.display=open?'block':'none';this.setAttribute('aria-expanded',String(open))">
+            \u2699\uFE0F ${this._waterText("Your measurements (optional)")} <span style="font-size:10px;color:var(--bento-text-muted);font-weight:400">${this._waterText("click to expand")}</span>
+          </button>
+          <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
+            ${effectiveCalibration}
+            <button type="button" style="padding:8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);cursor:pointer" onclick="this.getRootNode().host._reprofileDevice()">${this._waterText("Refresh detected profile")}</button>
+            <div id="vwm-reprofile-status" role="status" aria-live="polite"></div>
+            <p>${this._waterText("Refresh updates robot recognition from Home Assistant. Your tank sizes, calibration, signal assignments and history are kept.")}</p>
+            <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
+              ${this._waterText("With supported refill and empty-tank signals, calibration learns during normal cleaning. You do not need to test each mode. The measurements below are optional overrides.")}
+            </div>
+            <p>${this._waterText("Use measured water loss for this reservoir and mode. A whole-cycle dock measurement includes washes: do not also enter a wash dose for that same water. Capacity and advertised floor coverage are not consumption measurements. The scope applies only to rates you enter here; changing the tank size restarts this robot's learned correction.")}</p>
+            <label>${this._waterText("Calibration measurement scope")}
+              <select id="vwm-custom-scope" style="width:100%;max-width:100%;min-width:0;background:var(--bento-bg);color:var(--bento-text);padding:8px;border:1px solid var(--bento-border);border-radius:6px">
+                <option value="whole_cycle" ${(customCalibration.calibration_scope || (device && device.calibration_scope)) === 'whole_cycle' ? 'selected' : ''}>${this._waterText("Whole cycle (includes dock washes)")}</option>
+                <option value="floor_only" ${(customCalibration.calibration_scope || (device && device.calibration_scope)) !== 'whole_cycle' ? 'selected' : ''}>${this._waterText("Floor only (dock washes measured separately)")}</option>
+              </select>
+            </label>
+            <label>${this._waterText("Measured water use (ml/active minute)")}
+              <input type="number" id="vwm-custom-minute-rate" min="0.001" step="any" value="${_esc(String(customCalibration.usage_ml_per_active_minute?.default || ''))}">
+            </label>
+            <div id="vwm-custom-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <label style="font-size:11px;color:var(--bento-text-secondary)">
+                ${_esc(reservoirLabel)} (ml)
+                <input type="number" id="vwm-custom-tank" min="1" step="1" value="${_esc(String(customCalibration.tracked_capacity_ml || customCalibration.tank_ml || ''))}" placeholder="e.g. 3000" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+              </label>
+              <label style="font-size:11px;color:var(--bento-text-secondary)">
+                ${this._waterText("Robot tank (ml)")}
+                <input type="number" id="vwm-custom-robot-tank" min="1" step="1" value="${_esc(String(customCalibration.robot_tank_ml || ''))}" placeholder="e.g. 350" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+              </label>
+              <label style="font-size:11px;color:var(--bento-text-secondary)">
+                ${this._waterText("Mop washing (ml/cycle)")}
+                <input type="number" id="vwm-custom-wash" min="1" step="1" value="${_esc(String(customCalibration.wash_volume_ml || customCalibration.mop_wash_ml || ''))}" placeholder="e.g. 150" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+              </label>
+              <label style="font-size:11px;color:var(--bento-text-secondary)">
+                ${this._waterText("Coverage / charge (m²)")}
+                <input type="number" id="vwm-custom-area" min="1" step="1" value="${_esc(String(customCalibration.avg_area_per_charge || ''))}" placeholder="e.g. 250" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+              </label>
+              <label style="font-size:11px;color:var(--bento-text-secondary)">
+                ${this._waterText("Remaining water at low-water alert (%)")}
+                <input type="number" id="vwm-custom-low-water" min="0" max="50" step="1" value="${_esc(String(customCalibration.low_water_anchor_remaining_percent ?? ''))}" placeholder="10" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
+              </label>
+
+            </div>
+            <div style="margin-top:10px">
+              <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:6px">${this._waterText("Mopping modes — mode name and ml/m² usage:")}</div>
+              <div id="vwm-custom-modes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">
+                ${calibrationModeRows}
+              </div>
+              <div style="margin-top:6px;text-align:right">
+                <button onclick="this.getRootNode().host._addCustomMode()" style="padding:4px 10px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:10px;cursor:pointer">${this._waterText("+ Add mode")}</button>
+              </div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button id="vwm-custom-save" onclick="this.getRootNode().host._saveCustomCalibration()" style="flex:1;padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:600;font-size:12px;cursor:pointer">\uD83D\uDCBE ${this._waterText("Save")}</button>
+              <button onclick="this.getRootNode().host._clearCustomCalibration()" style="padding:8px 16px;border:1px solid var(--bento-border);border-radius:8px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:12px;cursor:pointer">\uD83D\uDDD1 ${this._waterText("Clear")}</button>
+            </div>
+            <div id="vwm-custom-status" role="status" aria-live="polite" style="min-height:18px;margin-top:6px;font-size:11px;color:var(--bento-text-secondary)"></div>
+          </div>
+        </div>
+        <div class="section-block" style="text-align:center;padding:16px">
+          <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:8px">
+            ${this._waterText("Missing your robot or have more accurate data?")}
+          </div>
+          <a href="https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new?title=Calibration+data+for+[MODEL]&body=Model:%0ATank+ml:%0AWater+per+m2:%0AMop+wash+ml:%0ASource:%0A" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:8px;background:#24292e;color:white;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            ${this._waterText("Report data or correction on GitHub")}
+          </a>
+          <div style="margin-top:6px;font-size:10px;color:var(--bento-text-muted)">
+            ${this._waterText("Model details link to their sources. Water usage is an estimate unless a physical water sensor measures it.")}
+          </div>
+        </div>
+`;
+  }
+
+  _buildMaintenanceTab(device, data) {
     // Known default max lifespans (hours) per consumable type.
     // These match Roborock factory defaults; other brands vary but are similar order-of-magnitude.
     // The HA sensor may expose a `max` attribute — we prefer that when available.
@@ -15009,83 +15107,39 @@ class HAVacuumWaterMonitor extends HTMLElement {
           </div>
         </div>
 
-        <div class="section-block">
-          <button type="button" class="section-title" aria-expanded="false" aria-controls="vwm-custom-calibration-body" style="cursor:pointer;background:transparent;border:0;color:inherit;text-align:left" onclick="const open=this.nextElementSibling.style.display==='none';this.nextElementSibling.style.display=open?'block':'none';this.setAttribute('aria-expanded',String(open))">
-            \u2699\uFE0F ${this._waterText("Your measurements (optional)")} <span style="font-size:10px;color:var(--bento-text-muted);font-weight:400">${this._waterText("click to expand")}</span>
-          </button>
-          <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
-            ${effectiveCalibration}
-            <button type="button" style="padding:8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);cursor:pointer" onclick="this.getRootNode().host._reprofileDevice()">${this._waterText("Refresh detected profile")}</button>
-            <div id="vwm-reprofile-status" role="status" aria-live="polite"></div>
-            <p>${this._waterText("Refresh updates robot recognition from Home Assistant. Your tank sizes, calibration, signal assignments and history are kept.")}</p>
-            <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
-              ${this._waterText("With supported refill and empty-tank signals, calibration learns during normal cleaning. You do not need to test each mode. The measurements below are optional overrides.")}
-            </div>
-            <p>${this._waterText("Use measured water loss for this reservoir and mode. A whole-cycle dock measurement includes washes: do not also enter a wash dose for that same water. Capacity and advertised floor coverage are not consumption measurements. The scope applies only to rates you enter here; changing the tank size restarts this robot's learned correction.")}</p>
-            <label>${this._waterText("Calibration measurement scope")}
-              <select id="vwm-custom-scope" style="width:100%;max-width:100%;min-width:0;background:var(--bento-bg);color:var(--bento-text);padding:8px;border:1px solid var(--bento-border);border-radius:6px">
-                <option value="whole_cycle" ${(customCalibration.calibration_scope || (device && device.calibration_scope)) === 'whole_cycle' ? 'selected' : ''}>${this._waterText("Whole cycle (includes dock washes)")}</option>
-                <option value="floor_only" ${(customCalibration.calibration_scope || (device && device.calibration_scope)) !== 'whole_cycle' ? 'selected' : ''}>${this._waterText("Floor only (dock washes measured separately)")}</option>
-              </select>
-            </label>
-            <label>${this._waterText("Measured water use (ml/active minute)")}
-              <input type="number" id="vwm-custom-minute-rate" min="0.001" step="any" value="${_esc(String(customCalibration.usage_ml_per_active_minute?.default || ''))}">
-            </label>
-            <div id="vwm-custom-form" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <label style="font-size:11px;color:var(--bento-text-secondary)">
-                ${_esc(reservoirLabel)} (ml)
-                <input type="number" id="vwm-custom-tank" min="1" step="1" value="${_esc(String(customCalibration.tracked_capacity_ml || customCalibration.tank_ml || ''))}" placeholder="e.g. 3000" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
-              </label>
-              <label style="font-size:11px;color:var(--bento-text-secondary)">
-                ${this._waterText("Robot tank (ml)")}
-                <input type="number" id="vwm-custom-robot-tank" min="1" step="1" value="${_esc(String(customCalibration.robot_tank_ml || ''))}" placeholder="e.g. 350" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
-              </label>
-              <label style="font-size:11px;color:var(--bento-text-secondary)">
-                ${this._waterText("Mop washing (ml/cycle)")}
-                <input type="number" id="vwm-custom-wash" min="1" step="1" value="${_esc(String(customCalibration.wash_volume_ml || customCalibration.mop_wash_ml || ''))}" placeholder="e.g. 150" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
-              </label>
-              <label style="font-size:11px;color:var(--bento-text-secondary)">
-                ${this._waterText("Coverage / charge (m²)")}
-                <input type="number" id="vwm-custom-area" min="1" step="1" value="${_esc(String(customCalibration.avg_area_per_charge || ''))}" placeholder="e.g. 250" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
-              </label>
-              <label style="font-size:11px;color:var(--bento-text-secondary)">
-                ${this._waterText("Remaining water at low-water alert (%)")}
-                <input type="number" id="vwm-custom-low-water" min="0" max="50" step="1" value="${_esc(String(customCalibration.low_water_anchor_remaining_percent ?? ''))}" placeholder="10" style="width:100%;padding:6px 8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);font-size:12px;margin-top:2px">
-              </label>
-
-            </div>
-            <div style="margin-top:10px">
-              <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:6px">${this._waterText("Mopping modes — mode name and ml/m² usage:")}</div>
-              <div id="vwm-custom-modes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">
-                ${calibrationModeRows}
-              </div>
-              <div style="margin-top:6px;text-align:right">
-                <button onclick="this.getRootNode().host._addCustomMode()" style="padding:4px 10px;border:1px solid var(--bento-border);border-radius:4px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:10px;cursor:pointer">${this._waterText("+ Add mode")}</button>
-              </div>
-            </div>
-            <div style="margin-top:12px;display:flex;gap:8px">
-              <button id="vwm-custom-save" onclick="this.getRootNode().host._saveCustomCalibration()" style="flex:1;padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-weight:600;font-size:12px;cursor:pointer">\uD83D\uDCBE ${this._waterText("Save")}</button>
-              <button onclick="this.getRootNode().host._clearCustomCalibration()" style="padding:8px 16px;border:1px solid var(--bento-border);border-radius:8px;background:var(--bento-card);color:var(--bento-text-secondary);font-size:12px;cursor:pointer">\uD83D\uDDD1 ${this._waterText("Clear")}</button>
-            </div>
-            <div id="vwm-custom-status" role="status" aria-live="polite" style="min-height:18px;margin-top:6px;font-size:11px;color:var(--bento-text-secondary)"></div>
-          </div>
-        </div>
-        <div class="section-block" style="text-align:center;padding:16px">
-          <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:8px">
-            ${this._waterText("Missing your robot or have more accurate data?")}
-          </div>
-          <a href="https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new?title=Calibration+data+for+[MODEL]&body=Model:%0ATank+ml:%0AWater+per+m2:%0AMop+wash+ml:%0ASource:%0A" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:8px;background:#24292e;color:white;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-            ${this._waterText("Report data or correction on GitHub")}
-          </a>
-          <div style="margin-top:6px;font-size:10px;color:var(--bento-text-muted)">
-            ${this._waterText("Model details link to their sources. Water usage is an estimate unless a physical water sensor measures it.")}
-          </div>
-        </div>
       </div>`;
   }
 
   // ── TAB: HISTORY ───────────────────────────────────────────────────────────
+
+  _buildPrivateMeasurements(device) {
+    const rawCycles = this._serverState?.tank_states?.[device?.vacuum_entity]?.automatic_sessions;
+    const recordedCycles = Array.isArray(rawCycles) ? rawCycles.filter(s => s && typeof s === 'object' && Number.isFinite(s.ts)) : [];
+    const contributionForm = `<details class="section-block contribution-form">
+      <summary class="section-title">${this._waterText("Optional measurements and contribution drafts")}</summary>
+      ${this._buildMeasurementPlan(device)}
+      ${this._buildLocalMeasurementSummary(device)}
+      <p>${this._waterText("Normal water tracking does not require these measurements. Use them only if you want to provide independently measured data.")}</p>
+      <p>${this._waterText("Select a recorded cycle. Optionally enter the water measured to refill the same reservoir to its starting level and your measurement resolution. Review the draft before downloading; nothing is uploaded.")}</p>
+      <label>${this._waterText("Recorded cycle")} <select id="cal-cycle" class="maint-input" ${recordedCycles.length ? '' : 'disabled'}>
+        ${recordedCycles.slice(0, 50).map((s, i) => `<option value="${rawCycles.indexOf(s)}" data-cycle-ts="${Number(s.ts)}">${this._waterText("Cycle")} ${i + 1} — ${_esc(new Date(s.ts).toLocaleString())}</option>`).join('')}
+      </select></label>
+      <label>${this._waterText("Measured refill (ml)")} <input id="cal-observed" class="maint-input" type="number" min="0" step="any" /></label>
+      <label>${this._waterText("Measurement resolution (ml)")} <input id="cal-resolution" class="maint-input" type="number" min="0" step="any" /></label>
+      <div class="section-title">${this._waterText("Private measured calibration")}</div>
+      <p id="cal-readiness">${_esc(this._measurementReadiness(recordedCycles[0]))}</p>
+      <p>${this._waterText("Save a full-to-full refill for this device. Three distinct complete cycles with the same historical settings fit a whole-cycle dose per m². Independent validation cycles never change that fit. Partial cycles, missing context and changed settings cannot be used.")}</p>
+      <label>${this._waterText("Instrument")} <select id="cal-instrument" class="maint-input"><option value="graduated_jug">${this._waterText("Graduated jug")}</option><option value="scale_water">${this._waterText("Scale (water, converted to ml)")}</option><option value="flow_meter">${this._waterText("Flow meter")}</option></select></label>
+      <label>${this._waterText("Sample purpose")} <select id="cal-purpose" class="maint-input"><option value="training">${this._waterText("Training")}</option><option value="validation">${this._waterText("Independent validation")}</option></select></label>
+      <label><span><input type="checkbox" id="cal-boundaries" /> ${this._waterText("Same full reservoir level before and after; no intermediate refill or unmeasured transfer")}</span></label>
+      <label><span><input type="checkbox" id="cal-uninterrupted" /> ${this._waterText("Complete cycle observed from zero area, with unchanged settings and no interruption")}</span></label>
+      <button type="button" id="cal-save" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>${this._waterText("Save private measurement")}</button>
+      <div id="cal-local-status" role="status" aria-live="polite"></div>
+      ${this._buildConfirmedSharing(device)}
+    </details>`;
+
+    return contributionForm;
+  }
 
   _buildHistoryTab(device, data) {
     const sessions = this._getSessionsFromStorage(device);
@@ -15132,38 +15186,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }).join('');
 
     const noHistory = !lastSessionHtml && !manualRows && !data.isCleaning;
-    const rawCycles = this._serverState?.tank_states?.[device?.vacuum_entity]?.automatic_sessions;
-    const recordedCycles = Array.isArray(rawCycles) ? rawCycles.filter(s => s && typeof s === 'object' && Number.isFinite(s.ts)) : [];
-    const contributionForm = `<details class="section-block contribution-form">
-      <summary class="section-title">${this._waterText("Optional measurements and contribution drafts")}</summary>
-      ${this._buildMeasurementPlan(device)}
-      ${this._buildLocalMeasurementSummary(device)}
-      <p>${this._waterText("Normal water tracking does not require these measurements. Use them only if you want to provide independently measured data.")}</p>
-      <p>${this._waterText("Select a recorded cycle. Optionally enter the water measured to refill the same reservoir to its starting level and your measurement resolution. Review the draft before downloading; nothing is uploaded.")}</p>
-      <label>${this._waterText("Recorded cycle")} <select id="cal-cycle" class="maint-input" ${recordedCycles.length ? '' : 'disabled'}>
-        ${recordedCycles.slice(0, 50).map((s, i) => `<option value="${rawCycles.indexOf(s)}" data-cycle-ts="${Number(s.ts)}">${this._waterText("Cycle")} ${i + 1} — ${_esc(new Date(s.ts).toLocaleString())}</option>`).join('')}
-      </select></label>
-      <label>${this._waterText("Measured refill (ml)")} <input id="cal-observed" class="maint-input" type="number" min="0" step="any" /></label>
-      <label>${this._waterText("Measurement resolution (ml)")} <input id="cal-resolution" class="maint-input" type="number" min="0" step="any" /></label>
-      <div class="section-title">${this._waterText("Private measured calibration")}</div>
-      <p id="cal-readiness">${_esc(this._measurementReadiness(recordedCycles[0]))}</p>
-      <p>${this._waterText("Save a full-to-full refill for this device. Three distinct complete cycles with the same historical settings fit a whole-cycle dose per m². Independent validation cycles never change that fit. Partial cycles, missing context and changed settings cannot be used.")}</p>
-      <label>${this._waterText("Instrument")} <select id="cal-instrument" class="maint-input"><option value="graduated_jug">${this._waterText("Graduated jug")}</option><option value="scale_water">${this._waterText("Scale (water, converted to ml)")}</option><option value="flow_meter">${this._waterText("Flow meter")}</option></select></label>
-      <label>${this._waterText("Sample purpose")} <select id="cal-purpose" class="maint-input"><option value="training">${this._waterText("Training")}</option><option value="validation">${this._waterText("Independent validation")}</option></select></label>
-      <label><span><input type="checkbox" id="cal-boundaries" /> ${this._waterText("Same full reservoir level before and after; no intermediate refill or unmeasured transfer")}</span></label>
-      <label><span><input type="checkbox" id="cal-uninterrupted" /> ${this._waterText("Complete cycle observed from zero area, with unchanged settings and no interruption")}</span></label>
-      <button type="button" id="cal-save" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>${this._waterText("Save private measurement")}</button>
-      <div id="cal-local-status" role="status" aria-live="polite"></div>
-      ${this._buildConfirmedSharing(device)}
-    </details>`;
 
     return `
       <div class="tab-content">
+        ${this._buildStatsTab(this._getDevices())}
         ${currentSession}
         ${lastSessionHtml ? `<div class="section-block"><div class="section-title">\uD83D\uDDD3\uFE0F ${this._waterText("Last Session (HA)")}</div>${lastSessionHtml}</div>` : ''}
         ${manualRows ? `<div class="section-block"><div class="section-title">\uD83D\uDCCA ${this._waterText("Logged Sessions")}</div>${manualRows}</div>` : ''}
         ${noHistory ? `<div class="empty-state">${this._waterText("No session history available. Start a cleaning to record sessions.")}</div>` : ''}
-        ${contributionForm}
         <div class="section-block">
           <div class="section-title">\u270F\uFE0F ${this._waterText("Log Manual Session")}</div>
           <div class="add-maint-form">
@@ -15881,6 +15911,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div style="font-size:12px;color:var(--bento-text-secondary)">${this._waterText("Device management, tank reset methods and automations.")}</div>
         </div>
 
+        <nav class="settings-toc" aria-label="${this._waterText('Settings sections')}">${[['robots','Robots'],['refill','Refilling'],['thresholds','Thresholds and reminders'],['signals','Signals'],['calibration','Calibration and measurements'],['model','Model and capacity']].map(([id,label]) => `<a href="#vwm-settings-${id}" data-settings-anchor="${id}">${this._waterText(label)}</a>`).join('')}</nav>
+        <section id="vwm-settings-robots" tabindex="-1"><h3>${this._waterText('Robots')}</h3>
         <!-- Device management -->
         <div style="background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px;margin-bottom:16px">
           <div style="font-size:14px;font-weight:700;color:var(--bento-text);margin-bottom:4px;display:flex;align-items:center;gap:8px">
@@ -15902,12 +15934,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           </div>
         </div>
 
-        <!-- Signal mapping -->
-        ${this._buildSignalMappingSection(device)}
-
-        <!-- Anonymous calibration sharing (opt-in) -->
-        ${this._buildCalibrationSharingSection(device, data)}
-
+        </section><section id="vwm-settings-refill" tabindex="-1"><h3>${this._waterText('Refilling')}</h3>
         <!-- Refill methods -->
         <div style="background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px">
           <div style="font-size:14px;font-weight:700;color:var(--bento-text);margin-bottom:4px;display:flex;align-items:center;gap:8px">
@@ -15919,6 +15946,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
           ${this._buildRefillMethodCard(device, data)}
         </div>
+        </section>
+        <section id="vwm-settings-thresholds" tabindex="-1"><h3>${this._waterText('Thresholds and reminders')}</h3>${this._buildThresholdSettings ? this._buildThresholdSettings(data) : ''}</section>
+        <section id="vwm-settings-signals" tabindex="-1"><h3>${this._waterText('Signals')}</h3>${this._buildSignalSummary(device)}</section>
+        <section id="vwm-settings-calibration" tabindex="-1"><h3>${this._waterText('Calibration and measurements')}</h3>
+          ${this._buildCalibrationInfo(device, data)}${this._buildCustomMeasurements(device, data)}${this._buildPrivateMeasurements(device)}${this._buildCalibrationSharingSection(device, data)}
+        </section>
+        <section id="vwm-settings-model" tabindex="-1"><h3>${this._waterText('Model and capacity')}</h3>${this._buildSetupPanel(device, this._healthFor(device))}${this._buildDatabaseTab()}</section>
+        <p>${this._waterText('Card appearance and sensor overrides remain in the dashboard YAML editor.')}</p>
       </div>`;
   }
 
@@ -16124,6 +16159,14 @@ target:
     return entry && typeof entry === 'object' ? entry : {};
   }
 
+  _buildSignalSummary(device) {
+    const roles = this._signalRoleCatalog().map(([role]) => role);
+    const overrides = this._signalOverridesFor(device?.vacuum_entity || '');
+    const manual = roles.filter(role => overrides[role]).length;
+    const automatic = roles.filter(role => !overrides[role] && device?.signals?.[role]).length;
+    return `<details class="signal-summary"><summary>${manual + automatic} ${this._waterText('signals')}: ${automatic} ${this._waterText('automatic')}, ${manual} ${this._waterText('manual')}</summary>${this._buildSignalMappingSection(device)}</details>`;
+  }
+
   _buildSignalMappingSection(device) {
     const sectionSt = 'background:var(--vwm-overlay-light,rgba(0,0,0,0.03));border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:14px;padding:16px;margin-bottom:16px';
     const header = `
@@ -16233,13 +16276,12 @@ target:
       { id: 'water', icon: '\uD83D\uDCA7', label: 'Water' },
       { id: 'maintenance', icon: '\uD83D\uDD27', label: 'Maint.' },
       { id: 'history', icon: '\uD83D\uDDD3\uFE0F', label: 'History' },
-      { id: 'stats', icon: '\uD83D\uDCCA', label: 'Stats' },
-      { id: 'database', icon: '\uD83D\uDCDA', label: 'Database' },
+      { id: 'maintenance', icon: '\uD83D\uDD27', label: 'Maintenance' },
       { id: 'settings', icon: '\u2699\uFE0F', label: 'Settings' },
     ];
 
-    const tabNav = `<div class="tab-nav">
-      ${tabs.map(t => `<button class="tab-btn ${this._activeTab === t.id ? 'tab-active' : ''}" data-tab="${t.id}" aria-pressed="${this._activeTab === t.id}">${t.icon} ${_esc(this._waterText(t.label))}</button>`).join('')}
+    const tabNav = `<div class="tab-nav" role="tablist">
+      ${tabs.map(t => `<button class="tab-btn ${this._activeTab === t.id ? 'tab-active' : ''}" data-tab="${t.id}" role="tab" id="vwm-tab-${t.id}" aria-controls="vwm-tab-panel" tabindex="${this._activeTab === t.id ? 0 : -1}" aria-selected="${this._activeTab === t.id}" aria-pressed="${this._activeTab === t.id}"><span aria-hidden="true" class="tab-icon">${t.icon}</span> ${_esc(this._waterText(t.label))}</button>`).join('')}
     </div>`;
 
     const deviceHeader = devices.length > 0 ? `
@@ -16528,9 +16570,23 @@ target:
 /* === DARK MODE ADDED - old comment below === */
 
 
+
+.tab-nav { display:grid !important; grid-template-columns:repeat(4,minmax(0,1fr)); gap:2px !important; overflow:visible !important; }
+.tab-nav .tab-btn { min-height:44px; padding:8px 2px !important; font-size:11px !important; min-width:0; white-space:nowrap; }
+.tab-icon { display:none; }
+:focus-visible { outline:3px solid var(--primary-color,#2563eb) !important; outline-offset:2px; }
+.card-title { display:flex; justify-content:space-between; gap:8px; align-items:center; }
+#vwm-help { min-width:44px; min-height:44px; border:1px solid var(--bento-border); border-radius:50%; background:var(--bento-card); color:var(--bento-text); cursor:pointer; }
+.water-details > summary, .dock-status > summary, .signal-summary > summary { min-height:44px; padding:12px 0; cursor:pointer; }
+.settings-toc { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+.settings-toc a { display:inline-flex; align-items:center; min-height:44px; padding:8px 12px; border-radius:8px; border:1px solid var(--bento-border); color:var(--bento-primary); }
+[id^="vwm-settings-"] { scroll-margin:12px; min-width:0; overflow-wrap:anywhere; margin-bottom:24px; }
+[id^="vwm-settings-"] h3 { font-size:16px; margin:12px 0; }
+input, select, textarea { max-width:100%; min-width:0; }
+@container (max-width:520px) { #vwm-custom-form, #vwm-custom-modes { grid-template-columns:1fr !important; } [id^="vwm-settings-"] [style*="grid-template-columns"] { grid-template-columns:1fr !important; } }
 </style>
       <div class="card">
-        <div class="card-title">${_esc(this._config.title)}</div>
+        <div class="card-title">${_esc(this._config.title)}<button id="vwm-help" aria-label="${this._waterText('How it works')}">?</button></div>
         <div class="tip-banner" id="tip-banner">
           <button class="tip-dismiss" id="tip-dismiss" aria-label="${_esc(this._waterText("Dismiss"))}">\u2715</button>
           ${this._tipHtml()}
@@ -16540,7 +16596,7 @@ target:
         ${deviceTabsHtml}
         ${deviceHeader}
         ${tabNav}
-        ${tabContent}
+        <div id="vwm-tab-panel" role="tabpanel" aria-labelledby="vwm-tab-${this._activeTab}">${tabContent}</div>
 
         ${this._hass?.user?.is_admin && this._config.show_support !== false && !supportDismissed() ? ownDonateFooter(this._lang) : ''}
 
@@ -16712,13 +16768,29 @@ target:
     // Tab navigation
     sr.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        this._activeTab = btn.dataset.tab;
+        this._activeTab = this._canonicalTab(btn.dataset.tab);
         history.replaceState(null, '', location.pathname + '#' + this._toolId + '/' + this._activeTab);
         try { localStorage.setItem('ha-tools-vacuum-water-monitor-settings', JSON.stringify({ _activeTab: this._activeTab, _activeDeviceIdx: this._activeDeviceIdx })); } catch(e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
         this._render();
       });
     });
 
+    sr.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('keydown', event => {
+      const tabs = [...sr.querySelectorAll('.tab-btn')];
+      const index = tabs.indexOf(btn);
+      const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null;
+      if (next === null) return;
+      event.preventDefault(); const id = tabs[next].dataset.tab; tabs[next].click(); sr.querySelector(`[data-tab="${id}"]`)?.focus();
+    }));
+    sr.querySelector('#vwm-help')?.addEventListener('click', () => {
+      try { localStorage.removeItem('vacuum-water-monitor-tips-v3.0.0'); } catch (_) {}
+      sr.querySelector('#tip-banner')?.classList.remove('hidden'); sr.querySelector('#tip-dismiss')?.focus();
+    });
+    sr.querySelectorAll('[data-settings-anchor]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault(); const section = sr.getElementById('vwm-settings-' + link.dataset.settingsAnchor);
+      section?.scrollIntoView?.({block:'start'}); section?.focus();
+    }));
+    if (this._pendingSettingsAnchor) { const section = sr.getElementById('vwm-settings-' + this._pendingSettingsAnchor); section?.scrollIntoView?.({block:'start'}); section?.focus(); this._pendingSettingsAnchor = null; }
     // Device tabs
     sr.querySelectorAll('.dtab').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -16951,10 +17023,17 @@ target:
     this._renderScheduled = false;
   }
 
+  _canonicalTab(tabId) {
+    return ({stats:'history', database:'settings'})[tabId] || (['water','history','maintenance','settings'].includes(tabId) ? tabId : 'water');
+  }
+
   setActiveTab(tabId) {
-    this._activeTab = tabId;
+    this._pendingSettingsAnchor = tabId === 'database' ? 'model' : null;
+    this._activeTab = this._canonicalTab(tabId);
+    try { localStorage.setItem('ha-tools-vacuum-water-monitor-settings', JSON.stringify({_activeTab:this._activeTab, _activeDeviceIdx:this._activeDeviceIdx})); } catch (_) {}
     this._render();
   }
+
 }
 
 if (!customElements.get('ha-vacuum-water-monitor')) customElements.define('ha-vacuum-water-monitor', HAVacuumWaterMonitor);
