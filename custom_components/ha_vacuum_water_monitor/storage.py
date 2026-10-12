@@ -204,6 +204,7 @@ class VacuumWaterStorage:
             # the same window to lid and button entities.
             previous_reset = int(state.get("last_reset_ts") or 0)
             if (state.get("initialized") and not state.get("water_empty_active")
+                    and not state.get("accounting_incomplete")
                     and 0 <= when_ts - previous_reset <= USER_REFILL_DEDUPE_SECONDS * 1000):
                 if confirm_same_refill(state, source):
                     data["tank_states"][vacuum_entity] = state
