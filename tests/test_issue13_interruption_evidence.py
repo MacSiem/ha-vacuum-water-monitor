@@ -45,3 +45,20 @@ class InterruptionEvidenceTests(unittest.TestCase):
   health=report(tank=state,desc=descriptor('a27'))
   check=next(c for c in health['checks'] if c['id']=='accounting_paused')
   self.assertIn('accounting_context_changed',check['params']['reason'])
+
+ def test_new_full_confirmation_recovers_broken_balance_inside_dedupe_window(self):
+  _,state=self.interrupted();state['last_reset_ts']=19_950_000
+  async def scenario():
+   st=storage.VacuumWaterStorage(None);await st.async_set_tank_state('vacuum.robot',state)
+   return await st.async_reset_tank('vacuum.robot','2026-10-12T12:00:00Z',20_000_000,source='repair')
+  fixed=asyncio.run(scenario())
+  self.assertFalse(fixed['accounting_incomplete'],'a fresh full confirmation must recover an incomplete balance')
+  self.assertEqual(fixed['used_ml'],0)
+  self.assertEqual(fixed['last_reset_ts'],20_000_000)
+  self.assertEqual(fixed['last_accounting_interruption']['refill_source'],'repair')
+ def test_healthy_duplicate_confirmation_does_not_erase_counted_water(self):
+  async def scenario():
+   st=storage.VacuumWaterStorage(None)
+   await st.async_set_tank_state('vacuum.robot',{'initialized':True,'used_ml':240,'last_reset_ts':19_950_000,'accounting_incomplete':False})
+   return await st.async_reset_tank('vacuum.robot','2026-10-12T12:00:00Z',20_000_000,source='card')
+  same=asyncio.run(scenario());self.assertEqual(same['used_ml'],240);self.assertEqual(same['last_reset_ts'],19_950_000)

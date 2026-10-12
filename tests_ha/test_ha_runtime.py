@@ -468,7 +468,8 @@ async def test_repair_keeps_interruption_reason_on_disk(hass: HomeAssistant, has
     incident = {"ts": 1791800000000, "reasons": ["accounting_context_changed"]}
     await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 240,
         "accounting_incomplete": True, "last_accounting_reason": "not_mopping",
-        "last_accounting_interruption": incident, "calibration_factor": 1.1})
+        "last_accounting_interruption": incident, "calibration_factor": 1.1,
+        "last_reset_ts": int((dt_util.utcnow() - timedelta(seconds=30)).timestamp() * 1000)})
     flow = ConfirmFullFlow({"vacuum_entity": VACUUM, "check": "accounting_paused"})
     flow.hass = hass
     form = await flow.async_step_confirm()
