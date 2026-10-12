@@ -23,6 +23,7 @@ for(const file of ['ha-vacuum-water-monitor.js','custom_components/ha_vacuum_wat
     assert.equal(root.querySelectorAll('.alert-banner').length,0,'legacy banner removed');
     assert.ok(!root.textContent.includes('Tracked reservoir is empty.'),'no duplicate guidance');
     if(lang==='pl') assert.match(root.querySelector('.water-alert').textContent,/wod|zbiornik/i);
+    if(name==='dirty') assert.ok(!root.querySelector('.water-alert').textContent.includes(lang==='pl' ? 'Napełnij śledzony' : 'Refill the tracked'), 'dirty-only alert must not request a clean-water refill');
     if(name==='combined') assert.ok(root.querySelectorAll('.water-alert li').length>=3,'all concurrent causes');
    }catch(e){failures.push(`${file} ${lang} ${name}: ${e.message}`);}
   }
