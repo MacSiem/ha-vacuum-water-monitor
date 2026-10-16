@@ -2112,8 +2112,17 @@ def _water_anchor_states(
 
 def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
+    # The sequence latch can outlive a completed session while it deduplicates
+    # dock transitions. A settled observation ends exposure, not deduplication.
+    # An open session, explicit dock wash or unverified completion still matters.
+    last_status = state.get("last_status")
+    last_dock_status = state.get("last_dock_status")
+    settled = (last_status in _SESSION_END_STATES
+               and last_dock_status not in DOCK_WASH_STATES)
     exposure = bool(state.get("session_start_ts") or state.get("verified_wash_active")
-                    or state.get("wash_sequence_active"))
+                    or last_status in MOP_WASH_STATES
+                    or last_dock_status in DOCK_WASH_STATES
+                    or (state.get("wash_sequence_active") and not settled))
     if not _positive_number(state.get("gap_started_ts")):
         state["gap_started_ts"] = started_ts
     state["gap_exposure_possible"] = bool(state.get("gap_exposure_possible")) or exposure
