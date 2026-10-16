@@ -10,6 +10,8 @@ it as sensors plus a bundled dashboard card.
 
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.1+-blue.svg?logo=homeassistant)](https://www.home-assistant.io/) [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/github/v/release/MacSiem/ha-vacuum-water-monitor)](https://github.com/MacSiem/ha-vacuum-water-monitor/releases)
 
+Home Assistant restarts preserve a complete balance after an observed completed cleaning/wash session. Interruptions during active cleaning or washing still require continuous evidence; unchanged floor area alone cannot prove that no water was used for washing. An already incomplete balance keeps its recorded reason and is not silently repaired by an update.
+
 ## Check your model and help improve the consumption database
 
 We are building **Vacuum Consumption Data**, a separate open dataset for model-specific

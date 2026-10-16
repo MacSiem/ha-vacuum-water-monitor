@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.11.2 (2026-10-16)
+
+- Keep a complete water balance after Home Assistant restarts when a wash and cleaning session have already ended. A retained wash deduplication window no longer counts as ongoing water exposure after an observed idle/charging state.
+- Preserve detection of interrupted active cleaning or washing, unobserved area changes, and the original accounting-interruption evidence. Existing incomplete balances remain explicit until a confirmed refill; no consumption or history is erased.
+
 ## 5.11.1 (2026-10-12)
 
 - Accept a confirmed full-tank repair after the balance became incomplete, even within the refill deduplication window. Continue suppressing duplicate refill reports for a healthy balance.
