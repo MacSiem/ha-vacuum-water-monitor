@@ -481,3 +481,47 @@ async def test_repair_keeps_interruption_reason_on_disk(hass: HomeAssistant, has
     assert stored["last_accounting_interruption"]["refill_source"] == "repair"
     assert stored["last_accounting_interruption"]["resolved_ts"] > incident["ts"]
     assert stored["calibration_factor"] == 1.1
+
+
+async def test_completed_wash_survives_storage_reload_and_startup_unknown(hass: HomeAssistant, hass_storage) -> None:
+    """The real HA Store restores the completed cycle without a false Repair."""
+    import copy
+    from custom_components.ha_vacuum_water_monitor.storage import VacuumWaterStorage
+    from custom_components.ha_vacuum_water_monitor.tick import tick_device
+    from custom_components.ha_vacuum_water_monitor.sensor_calculations import build_vacuum_devices, apply_custom_calibration
+    from custom_components.ha_vacuum_water_monitor.discovery import descriptors_from_hass
+
+    storage = await _setup(hass)
+    settings = await storage.async_get_settings()
+    device = apply_custom_calibration(build_vacuum_devices(settings, {}, descriptors_from_hass(hass))[0], settings)
+    state = {"initialized": True, "used_ml": 0, "last_status": "charging", "last_area": 0,
+             "last_tick_ts": 9_940_000, "last_reset_ts": 0, "calibration_factor": 1,
+             "calibration_samples": 0}
+    for ts, status, vacuum, area in (
+        (10_060_000, "cleaning", "cleaning", "0"),
+        (10_120_000, "cleaning", "cleaning", "4"),
+        (10_180_000, "washing_the_mop", "docked", "4"),
+        (10_240_000, "charging", "docked", "4"),
+    ):
+        _robot_states(hass, status=status, vacuum=vacuum, area=area)
+        state, _ = tick_device(hass, device, state, now_ts=ts)
+    assert state["used_ml"] == 174
+    assert state["wash_sequence_active"] and not state.get("session_start_ts")
+    assert not state.get("accounting_incomplete")
+    before = copy.deepcopy(state)
+    await storage.async_set_tank_state(VACUUM, state)
+    restored = VacuumWaterStorage(hass)
+    state = (await restored.async_get_state())["tank_states"][VACUUM]
+    assert state == before
+    for ts in (10_840_000, 10_850_000):
+        _robot_states(hass, status="unknown", vacuum="unknown", area="4")
+        state, _ = tick_device(hass, device, state, now_ts=ts)
+        assert state["gap_started_ts"] == 10_240_000
+    _robot_states(hass, area="4")
+    state, _ = tick_device(hass, device, state, now_ts=10_860_000)
+    await restored.async_set_tank_state(VACUUM, state)
+    on_disk = hass_storage[DOMAIN]["data"]["tank_states"][VACUUM]
+    assert not on_disk.get("accounting_incomplete")
+    assert on_disk["used_ml"] == 174
+    assert on_disk["automatic_sessions"] == before["automatic_sessions"]
+    assert on_disk.get("last_accounting_interruption") is None

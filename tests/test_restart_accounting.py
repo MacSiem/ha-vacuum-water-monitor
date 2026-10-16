@@ -100,3 +100,28 @@ class RestartAccountingTests(unittest.TestCase):
         ], ts=10_240_000)
         self.assertTrue(after["accounting_incomplete"])
         self.assertEqual(after["used_ml"], 174)
+
+    def test_dedupe_latch_is_kept_during_short_dock_transition(self):
+        before = self.completed()
+        after = run(self.device, copy.deepcopy(before), [
+            dict(vac="unavailable", area="4", _gap=10_000),
+            dict(status="washing_the_mop", vac="docked", area="4", _gap=10_000),
+        ], ts=10_240_000)
+        self.assertEqual(after["used_ml"], 174)
+        self.assertTrue(after["wash_sequence_active"])
+
+    def test_unconfirmed_completed_wash_counter_remains_possible_exposure(self):
+        before = self.completed()
+        before["verified_wash_active"] = True
+        after = run(self.device, before, [
+            dict(vac="unavailable", area="4", _gap=600_000), dict(area="4"),
+        ], ts=10_240_000)
+        self.assertTrue(after["accounting_incomplete"])
+
+    def test_dock_wash_remains_possible_exposure_even_if_robot_reports_charging(self):
+        before = self.completed()
+        before["last_dock_status"] = "washing_the_mop"
+        after = run(self.device, before, [
+            dict(vac="unavailable", area="4", _gap=600_000), dict(area="4"),
+        ], ts=10_240_000)
+        self.assertTrue(after["accounting_incomplete"])
