@@ -2,6 +2,8 @@
 
 ## 5.11.2 (2026-10-16)
 
+- Stack water-summary labels and values in narrow cards so long refill descriptions remain readable at 320 px.
+
 - Keep a complete water balance after Home Assistant restarts when a wash and cleaning session have already ended. A retained wash deduplication window no longer counts as ongoing water exposure after an observed idle/charging state.
 - Preserve detection of interrupted active cleaning or washing, unobserved area changes, and the original accounting-interruption evidence. Existing incomplete balances remain explicit until a confirmed refill; no consumption or history is erased.
 

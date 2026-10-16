@@ -16547,15 +16547,6 @@ target:
         .dtab { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
         .tab-nav { flex-wrap: wrap; }
         .tab-btn { flex-basis: 54px; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-        @container (max-width: 300px) {
-          .device-body { flex-direction: column; align-items: stretch; }
-          .gauge-wrap { align-self: center; }
-          .details { width: 100%; }
-          .row { flex-wrap: wrap; gap: 4px 8px; }
-          .row-label, .row-val { flex-basis: 100%; text-align: left; }
-          .diagnostics-grid { grid-template-columns: minmax(0,1fr); padding: 8px; }
-          .diagnostics-label { min-width: 0; }
-        }
         .tab-content { }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         .device-body { display: flex; align-items: center; gap: 16px; }
@@ -16564,6 +16555,15 @@ target:
         .row { display: flex; justify-content: space-between; align-items: center; gap:12px; min-height:30px; padding:4px 0; font-size: 12px; }
         .row-label { color: var(--bento-text-secondary); min-width:0; line-height:1.4; }
         .row-val { font-weight: 600; color: var(--bento-text); flex:1; min-width:0; white-space:normal; overflow-wrap:anywhere; text-align:right; }
+        @container (max-width: 360px) {
+          .device-body { flex-direction: column; align-items: stretch; }
+          .gauge-wrap { align-self: center; }
+          .details { width: 100%; }
+          .row { flex-wrap: wrap; gap: 4px 8px; }
+          .row-label, .row-val { flex-basis: 100%; text-align: left; }
+          .diagnostics-grid { grid-template-columns: minmax(0,1fr); padding: 8px; }
+          .diagnostics-label { min-width: 0; }
+        }
         .accounting-guidance { display:grid; gap:4px; padding:12px 14px; margin-bottom:14px; border:1px solid; border-radius:10px; font-size:12px; line-height:1.55; color:var(--bento-text,#1a1a2e); }
         .accounting-guidance b { font-size:12px; }
         .diagnostics { margin-top:16px; color:var(--bento-text-secondary,#64748b); }
