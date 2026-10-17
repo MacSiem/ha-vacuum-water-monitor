@@ -1118,6 +1118,10 @@ def _tick_device_pass(
             # Retain just the numeric evidence at the first interruption.
             # No entity IDs, arbitrary attributes or growing sample history.
             area_sensor = hass.states.get(device.get("area_sensor")) if device.get("area_sensor") else None
+            if area_sensor is not None and _area_value_square_meters(
+                area_sensor.state, area_sensor.attributes.get("unit_of_measurement"), hass
+            ) is None:
+                area_sensor = None
             raw_area = area_sensor.state if area_sensor is not None else vac.attributes.get(device.get("area_attribute"))
             area_unit = (area_sensor.attributes.get("unit_of_measurement") if area_sensor is not None
                          else device.get("area_attribute_unit"))
