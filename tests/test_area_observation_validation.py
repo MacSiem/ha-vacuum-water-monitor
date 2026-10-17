@@ -7,7 +7,7 @@ import copy
 import json
 import unittest
 
-from test_beta_runtime_path import BASE, _S, descriptor, effective, run
+from test_beta_runtime_path import BASE, _S, descriptor, effective, hass, run, tick
 
 
 class AreaObservationValidationTests(unittest.TestCase):
@@ -85,5 +85,21 @@ class AreaObservationValidationTests(unittest.TestCase):
         })], ts=10_120_000)
         observation = after["last_accounting_interruption"]["area_observation"]
         self.assertEqual(observation["raw_value"], 500)
+        self.assertEqual(observation["unit"], "ft²")
+        self.assertAlmostEqual(observation["current_m2"], 46.45152)
+
+    def test_system_area_unit_records_the_effective_imperial_unit(self):
+        device = {**self.device, "area_sensor": None, "area_attribute": "cleaned_area",
+                  "area_attribute_unit": "ha_unit_system"}
+        before = run(self.device, dict(BASE), [
+            dict(status="cleaning", vac="cleaning", area="0"),
+            dict(status="cleaning", vac="cleaning", area="4"),
+        ])
+        host = hass(status="cleaning", vac="cleaning", extra={
+            "vacuum.robot": _S("cleaning", {"status": "cleaning", "cleaned_area": 500}),
+        })
+        host.config.units.length_unit = "mi"
+        after, _ = tick.tick_device(host, device, before, now_ts=10_180_000)
+        observation = after["last_accounting_interruption"]["area_observation"]
         self.assertEqual(observation["unit"], "ft²")
         self.assertAlmostEqual(observation["current_m2"], 46.45152)
