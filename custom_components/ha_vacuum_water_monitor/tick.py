@@ -1125,6 +1125,7 @@ def _tick_device_pass(
             raw_area = area_sensor.state if area_sensor is not None else vac.attributes.get(device.get("area_attribute"))
             area_unit = (area_sensor.attributes.get("unit_of_measurement") if area_sensor is not None
                          else device.get("area_attribute_unit"))
+            area_unit = _resolved_area_unit(area_unit, hass)
             state[_PASS_AREA_OBSERVATION_KEY] = {
                 "raw_value": _float_or_none(raw_area),
                 "unit": str(area_unit)[:32] if area_unit is not None else None,
@@ -1978,6 +1979,15 @@ def _area_square_meters(
     )
 
 
+def _resolved_area_unit(unit_value: Any, hass: HomeAssistant | None = None) -> Any:
+    """Resolve the adapter's unit-system marker at the time of observation."""
+    if unit_value == "ha_unit_system":
+        units = getattr(getattr(hass, "config", None), "units", None)
+        length_unit = str(getattr(units, "length_unit", "")).casefold()
+        return "ft²" if length_unit in {"mi", "mile", "miles"} else "m²"
+    return unit_value
+
+
 def _area_value_square_meters(
     value: Any, unit_value: Any, hass: HomeAssistant | None = None
 ) -> float | None:
@@ -1985,10 +1995,7 @@ def _area_value_square_meters(
     parsed = _float_or_none(value)
     if parsed is None or parsed < 0:
         return None
-    if unit_value == "ha_unit_system":
-        units = getattr(getattr(hass, "config", None), "units", None)
-        length_unit = str(getattr(units, "length_unit", "")).casefold()
-        unit_value = "ft2" if length_unit in {"mi", "mile", "miles"} else "m2"
+    unit_value = _resolved_area_unit(unit_value, hass)
     if unit_value is None or str(unit_value).strip() == "":
         # Existing custom sensors historically supplied m² without metadata.
         return parsed
