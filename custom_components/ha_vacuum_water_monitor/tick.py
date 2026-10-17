@@ -942,9 +942,10 @@ def _tick_device_pass(
     if (session_running or starts_wash) and not state.get("session_start_ts") and (really_cleaning or starts_wash or not state.get("session_idle_closed")):
         state.update(session_idle_since_ts=None)
         state.update(session_start_ts=now_ts, session_start_used_ml=_number(state.get("used_ml"),0),
-                     # A run resumed after an idle close starts where the robot paused.
+                     # Start from the previous observed baseline, matching the
+                     # first area dose. A reset to a new task's zero is handled below.
                      session_start_area=(_float_or_none(state.get("last_area"))
-                                         if resumed_after_idle and _float_or_none(state.get("last_area")) is not None
+                                         if _float_or_none(state.get("last_area")) is not None
                                          and curr_area is not None and _float_or_none(state.get("last_area")) <= curr_area
                                          else curr_area),
                      session_accounting_valid=True, session_water_broken=False,
