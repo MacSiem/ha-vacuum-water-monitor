@@ -41,6 +41,17 @@ class AreaObservationValidationTests(unittest.TestCase):
         # The accepted pace, not the rejected jump, must survive persisted state.
         self.assertEqual(json.loads(json.dumps(after))["area_rate_m2_per_s"], before["area_rate_m2_per_s"])
 
+    def test_first_positive_increment_uses_the_previously_observed_baseline(self):
+        for previous_area, first_area, final_area in ((0, 2, 4), (10, 12, 14)):
+            with self.subTest(previous_area=previous_area):
+                state = run(self.device, {**BASE, "last_area": previous_area}, [
+                    dict(status="cleaning", vac="cleaning", area=str(first_area)),
+                    dict(status="cleaning", vac="cleaning", area=str(final_area)),
+                    dict(status="charging", vac="docked", area=str(final_area)),
+                ])
+                self.assertEqual(state["used_ml"], 24)
+                self.assertEqual(state["automatic_sessions"][0]["area"], 4)
+
     def test_first_area_interruption_keeps_bounded_observation_after_idle_and_refill(self):
         before = run(self.device, dict(BASE), [
             dict(status="cleaning", vac="cleaning", area="0"),
