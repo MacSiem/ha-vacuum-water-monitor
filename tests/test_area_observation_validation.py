@@ -72,3 +72,18 @@ class AreaObservationValidationTests(unittest.TestCase):
         persisted = json.loads(json.dumps(later))
         self.assertEqual(persisted["last_accounting_interruption"]["area_observation"], observation)
         self.assertFalse(any(key.startswith("_pass_") for key in persisted))
+
+    def test_area_attribute_fallback_records_the_value_actually_used(self):
+        device = {**self.device, "area_attribute": "cleaned_area", "area_attribute_unit": "ft²"}
+        before = run(device, dict(BASE), [
+            dict(status="cleaning", vac="cleaning", area="0"),
+            dict(status="cleaning", vac="cleaning", area="4"),
+        ])
+        after = run(device, before, [dict(status="cleaning", vac="cleaning", extra={
+            "sensor.robot_area": _S("unavailable", {"unit_of_measurement": "m²"}),
+            "vacuum.robot": _S("cleaning", {"status": "cleaning", "cleaned_area": 500}),
+        })], ts=10_120_000)
+        observation = after["last_accounting_interruption"]["area_observation"]
+        self.assertEqual(observation["raw_value"], 500)
+        self.assertEqual(observation["unit"], "ft²")
+        self.assertAlmostEqual(observation["current_m2"], 46.45152)
