@@ -4,6 +4,19 @@ Open the card's Water → Diagnostics. Record the method, evidence/confidence, t
 reservoir, profile resolution, signal contract and reason code. `unknown` is intentional:
 a model name or capacity cannot establish a consumption rate.
 
+## An area interruption
+
+For a newly recorded `area_anomaly` or `area_reset`, Water → Diagnostics keeps the
+numeric area reading and its unit, previous/current square metres, change and limit,
+interval between observations, and the VWM version at the interruption. These details
+stay attached to the first interruption after later idle readings or a confirmed refill.
+Older interruptions may have only a reason code; missing values are not reconstructed.
+
+A rejected jump is not used to train cleaning pace. It still leaves the balance incomplete:
+the diagnostic record is evidence for investigation, not proof that the warning was false.
+When reporting a recurrence, share just these numeric rows and the reason/version, after
+reviewing the screenshot for private identifiers. No reset or additional cleaning is needed.
+
 ## Calibrate one reservoir
 
 1. Confirm whether the counter tracks dock clean, dock dirty, robot clean/internal or

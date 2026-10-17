@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.11.3 (2026-10-17)
+
+- Keep the full area of a new task in session history when its first observation is already above zero, matching the area counted for water use.
+- Exclude rejected area jumps from learned cleaning pace. The anomaly limit and incomplete-balance warning remain in place.
+- Retain the first area interruption's numeric readings, units, interval and VWM version. Water diagnostics show these values in English and Polish, including after idle updates or a confirmed refill.
+- These source fixes do not establish the cause of every reported interruption. Existing incomplete balances are preserved; no reset or extra cleaning run is needed for the update.
+
+
 ## 5.11.2 (2026-10-16)
 
 - Stack water-summary labels and values in narrow cards so long refill descriptions remain readable at 320 px.

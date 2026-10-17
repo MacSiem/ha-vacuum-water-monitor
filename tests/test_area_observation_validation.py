@@ -89,13 +89,14 @@ class AreaObservationValidationTests(unittest.TestCase):
         self.assertAlmostEqual(observation["current_m2"], 46.45152)
 
     def test_system_area_unit_records_the_effective_imperial_unit(self):
-        device = {**self.device, "area_sensor": None, "area_attribute": "cleaned_area",
+        device = {**self.device, "area_attribute": "cleaned_area",
                   "area_attribute_unit": "ha_unit_system"}
-        before = run(self.device, dict(BASE), [
+        before = run(device, dict(BASE), [
             dict(status="cleaning", vac="cleaning", area="0"),
             dict(status="cleaning", vac="cleaning", area="4"),
         ])
         host = hass(status="cleaning", vac="cleaning", extra={
+            "sensor.robot_area": _S("unavailable", {"unit_of_measurement": "m²"}),
             "vacuum.robot": _S("cleaning", {"status": "cleaning", "cleaned_area": 500}),
         })
         host.config.units.length_unit = "mi"
