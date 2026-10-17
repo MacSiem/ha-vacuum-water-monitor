@@ -121,6 +121,11 @@ const lowStatus = card._getStatus({
   percentRemaining: 10,
 }, {});
 const diagnostics = card._buildDiagnostics({
+  lastAccountingInterruption: {ts: 1780000000000, reasons: ['area_anomaly'], area_observation: {
+    raw_value: 400000, unit: 'cm²', previous_m2: 4, current_m2: 40,
+    delta_m2: 36, ceiling_m2: 25, interval_seconds: 60, cleaning: true,
+    duration_seconds: 300, version: '5.11.2',
+  }},
   integrationAdapter: 'roomba',
   signalContractVersion: 1,
   mopEvidenceRequired: true,
@@ -248,6 +253,13 @@ process.stdout.write(JSON.stringify({ dock, dockEmpty, dockMissing, guidance, aw
         self.assertIn("Signal contract", diagnostics)
         self.assertIn("affirmative mop mode", diagnostics)
         self.assertIn("not used automatically", diagnostics)
+
+    def test_area_interruption_diagnostics_show_the_recorded_sample(self) -> None:
+        diagnostics = self.output["diagnostics"]
+        for label in ("Reported area", "Area at interruption", "Area change / limit", "Observation interval", "VWM version at interruption"):
+            self.assertIn(label, diagnostics)
+        for reading in ("400,000 cm²", "4 → 40 m²", "36 / 25 m²", "60 s", "5.11.2"):
+            self.assertIn(reading, diagnostics)
         self.assertIn("water_shortage", diagnostics)
         self.assertIn("Manufacturer data", diagnostics)
         self.assertIn("180 ml/action", diagnostics)
