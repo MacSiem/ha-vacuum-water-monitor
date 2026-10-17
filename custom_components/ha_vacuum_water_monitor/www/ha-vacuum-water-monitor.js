@@ -134,6 +134,11 @@ const VWM_WATER_TEXT_PL = {
   "Refill needed — the tracked tank is empty.": "Dolej wodę — śledzony zbiornik jest pusty.",
   "Last accounting interruption": "Ostatnie przerwanie bilansu",
   "Interruption reason codes": "Kody przyczyn przerwania",
+  "Reported area": "Powierzchnia zgłoszona przez robota",
+  "Area at interruption": "Powierzchnia przy przerwaniu",
+  "Area change / limit": "Zmiana powierzchni / limit",
+  "Observation interval": "Odstęp między odczytami",
+  "VWM version at interruption": "Wersja VWM przy przerwaniu",
   "Balance restored": "Bilans przywrócony",
   "Learning status": "Stan nauki",
   "Learned tanks": "Zbiorniki wykorzystane w nauce",
@@ -14896,6 +14901,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (interruption && typeof interruption === 'object') {
       rows.push(['Last accounting interruption', interruption.ts > 0 ? this._formatReset(interruption.ts) : this._waterText('Time unavailable')]);
       rows.push(['Interruption reason codes', Array.isArray(interruption.reasons) ? interruption.reasons.join(', ') : this._waterText('Reason unavailable')]);
+      const sample = interruption.area_observation;
+      if (sample && typeof sample === 'object') {
+        const finite = value => typeof value === 'number' && Number.isFinite(value);
+        const number = value => value.toLocaleString(this._lang === 'pl' ? 'pl-PL' : 'en-US', {maximumFractionDigits: 3});
+        if (finite(sample.raw_value)) rows.push(['Reported area', `${number(sample.raw_value)} ${typeof sample.unit === 'string' ? sample.unit.slice(0, 32) : 'm²'}`]);
+        if (finite(sample.previous_m2) && finite(sample.current_m2)) rows.push(['Area at interruption', `${number(sample.previous_m2)} → ${number(sample.current_m2)} m²`]);
+        if (finite(sample.delta_m2) && finite(sample.ceiling_m2)) rows.push(['Area change / limit', `${number(sample.delta_m2)} / ${number(sample.ceiling_m2)} m²`]);
+        if (finite(sample.interval_seconds)) rows.push(['Observation interval', `${number(sample.interval_seconds)} s`]);
+        if (typeof sample.version === 'string') rows.push(['VWM version at interruption', sample.version.slice(0, 32)]);
+      }
       if (interruption.resolved_ts > 0) rows.push(['Balance restored', `${this._formatReset(interruption.resolved_ts)} (${this._waterText(VWM_REFILL_SOURCE_LABEL[interruption.refill_source] || 'unknown')})`]);
     }
     const actionLabels = {floor_mopping:'Recorded floor doses',mop_wash:'Recorded mop-wash doses',whole_cycle:'Recorded whole-cycle doses',real_sensor:'Recorded sensor doses'};
