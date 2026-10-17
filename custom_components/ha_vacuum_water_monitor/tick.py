@@ -19,6 +19,7 @@ from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compat
 from . import profiles as consumption_profiles
 from . import accounting_v2
 from . import estimation
+from .const import VERSION
 from .refill import USER_REFILL_DEDUPE_SECONDS, apply_refill, confirm_same_refill, FULL_CONFIRMATION_SOURCES
 
 MOP_WASH_STATES = {
@@ -49,6 +50,7 @@ WASH_SEQUENCE_GAP_SECONDS = 240
 # Area change across an observation gap below this is counter noise, not a session.
 GAP_AREA_TOLERANCE_M2 = 0.5
 _PASS_REASONS_KEY = "_pass_reasons"
+_PASS_AREA_OBSERVATION_KEY = "_pass_area_observation"
 # Reasons that prove water was dispensed without an applicable rate.
 _MISSING_RATE_REASONS = frozenset({"missing_area_rate", "missing_time_rate", "missing_intensity_factor"})
 # Reasons that only mean an exposure baseline was lost; they make the balance
@@ -351,8 +353,12 @@ def tick_device(
             "ts": now_ts or new_state.get("last_tick_ts") or 0,
             "reasons": reasons or ["reason_unavailable"],
         }
+        observation = new_state.get(_PASS_AREA_OBSERVATION_KEY)
+        if isinstance(observation, dict):
+            new_state["last_accounting_interruption"]["area_observation"] = observation
         dirty = True
     new_state.pop(_PASS_REASONS_KEY, None)
+    new_state.pop(_PASS_AREA_OBSERVATION_KEY, None)
     return new_state, dirty
 
 
@@ -366,6 +372,7 @@ def _tick_device_pass(
     """Translate one v4 `_tickWaterState` pass into Python."""
     state = dict(state)
     state[_PASS_REASONS_KEY] = []
+    state.pop(_PASS_AREA_OBSERVATION_KEY, None)
     if "cycle_full_confirmed" not in state:
         # Migration accepts the saved explicit full gesture, not initialization
         # or a lid/alarm transition. Existing quality vetoes still apply.
@@ -1107,6 +1114,22 @@ def _tick_device_pass(
                 # new task, including its first nonzero observation.
                 state["session_start_area"] = 0.0
         last_area_ts = _positive_number(state.get("last_area_ts"))
+        if delta < 0 or delta > ceiling:
+            # Retain just the numeric evidence at the first interruption.
+            # No entity IDs, arbitrary attributes or growing sample history.
+            area_sensor = hass.states.get(device.get("area_sensor")) if device.get("area_sensor") else None
+            raw_area = area_sensor.state if area_sensor is not None else vac.attributes.get(device.get("area_attribute"))
+            area_unit = (area_sensor.attributes.get("unit_of_measurement") if area_sensor is not None
+                         else device.get("area_attribute_unit"))
+            state[_PASS_AREA_OBSERVATION_KEY] = {
+                "raw_value": _float_or_none(raw_area),
+                "unit": str(area_unit)[:32] if area_unit is not None else None,
+                "previous_m2": last_area, "current_m2": curr_area,
+                "delta_m2": delta, "ceiling_m2": ceiling,
+                "interval_seconds": (now_ts - last_area_ts) / 1000 if last_area_ts is not None else None,
+                "cleaning": _is_cleaning(vac_state, curr_status, cleaning_active),
+                "duration_seconds": curr_duration_seconds, "version": VERSION,
+            }
         if (AREA_MIN_DELTA <= delta <= ceiling and not bridge_area and last_area_ts is not None
                 and _is_cleaning(None, state.get("last_status"), None)
                 and _is_cleaning(vac_state, curr_status, cleaning_active)):
