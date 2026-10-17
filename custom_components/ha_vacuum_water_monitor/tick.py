@@ -1102,8 +1102,12 @@ def _tick_device_pass(
             # at zero when a new session starts: the area since restart is new.
             area_baseline = 0.0
             delta = curr_area
+            if not had_open_session:
+                # History must use the same zero as the accepted dose of this
+                # new task, including its first nonzero observation.
+                state["session_start_area"] = 0.0
         last_area_ts = _positive_number(state.get("last_area_ts"))
-        if (delta >= AREA_MIN_DELTA and not bridge_area and last_area_ts is not None
+        if (AREA_MIN_DELTA <= delta <= ceiling and not bridge_area and last_area_ts is not None
                 and _is_cleaning(None, state.get("last_status"), None)
                 and _is_cleaning(vac_state, curr_status, cleaning_active)):
             interval_seconds = (now_ts - last_area_ts) / 1000
