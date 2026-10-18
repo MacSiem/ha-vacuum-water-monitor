@@ -1,0 +1,110 @@
+// Standalone RED/GREEN harness. Run under the owner's FIFO receipt on frozen sources.
+// VWM_CARD_FILE=<baseline or candidate JS> node .github/card-v5-dom.cjs
+const {JSDOM}=require('jsdom');
+const fs=require('fs');const assert=require('assert/strict');
+const source=fs.readFileSync(process.env.VWM_CARD_FILE || 'ha-vacuum-water-monitor.js','utf8');
+const tests=[];const test=(name,fn)=>tests.push([name,fn]);
+function fixture(language='en',config={}) {
+ const dom=new JSDOM('<!doctype html><html><body></body></html>',{runScripts:'dangerously',url:'http://localhost/'});
+ dom.window.eval(source);
+ const card=dom.window.document.createElement('ha-vacuum-water-monitor');
+ card.setConfig({type:'custom:ha-vacuum-water-monitor',...config});
+ card._lang=language;card._hass={language,locale:{language,time_format:'24',time_zone:'server'},config:{time_zone:'Europe/Warsaw'},states:{},user:{is_admin:false}};
+ const device={vacuum_entity:'vacuum.demo',name:'Robot',water_total_ml:4000};
+ const data={totalMl:4000,percentRemaining:null,remainingL:null,usedMl:null,charge:null,stateReason:'missing_time_rate',initialized:false,calibrationHistory:[],refillHistory:[],vacState:'docked'};
+ card._getDevices=()=>[device];card._calcDeviceData=()=>data;card._healthFor=()=>null;
+ card._ensureServerState=()=>null;card._render();return {dom,card,device,data,sr:card.shadowRoot};
+}
+test('unknown state replaces the empty ring in PL and EN',()=>{
+ for(const [lang,unknown,refill] of [['pl','Stan zbiornika nieznany','Dolano'],['en','Tank state unknown','Refilled']]) {
+  const {dom,sr}=fixture(lang);
+  assert.ok(sr.querySelector('.tank-unknown')?.textContent.includes(unknown));
+  assert.equal(sr.querySelector('.gauge-wrap svg'),null);
+  assert.ok(sr.querySelector('.refill-btn')?.textContent.includes(refill));
+  dom.window.close();
+ }
+});
+test('missing rate is visible and refill does not claim to repair it',()=>{
+ const {dom,card,data,sr}=fixture('en',{compact:true});
+ assert.match(sr.querySelector('.vwm-compact').textContent,/Time consumption rate missing/);
+ assert.match(sr.querySelector('.vwm-compact').textContent,/does not provide a consumption rate/);
+ data.initialized=false;
+ assert.doesNotMatch(card._buildAccountingGuidance(data),/until you press Refilled/);
+ dom.window.close();
+});
+test('compact exposes refill and full card, then restores compact with keyboard focus',()=>{
+ const {dom,card,sr}=fixture('pl',{compact:true,default_tab:'history'});
+ assert.ok(sr.querySelector('.refill-btn'));assert.ok(sr.querySelector('#vwm-expand'));
+ assert.equal(sr.querySelector('[role=tablist]'),null);
+ assert.ok(card.getGridOptions().min_columns<=3);assert.ok(card.getGridOptions().rows<=6);
+ sr.querySelector('#vwm-expand').click();
+ assert.ok(sr.querySelector('[role=tablist]'));assert.ok(sr.querySelector('#vwm-collapse'));
+ sr.querySelector('#vwm-collapse').click();
+ assert.equal(sr.activeElement?.id,'vwm-expand');assert.ok(sr.querySelector('.vwm-compact'));
+ dom.window.close();
+});
+test('help is one closed summary and remembers explicit close over render/recreation',async()=>{
+ const {dom,card,sr}=fixture('en');
+ let help=sr.querySelector('details#tip-banner');assert.ok(help);assert.equal(help.open,false);
+ assert.equal(help.querySelectorAll(':scope > summary').length,1);
+ help.open=true;help.dispatchEvent(new dom.window.Event('toggle'));
+ help.open=false;help.dispatchEvent(new dom.window.Event('toggle'));
+ card._lastHtml='';card._render();assert.equal(sr.querySelector('#tip-banner').open,false);
+ const second=dom.window.document.createElement('ha-vacuum-water-monitor');second.setConfig({});second._hass=card._hass;second._getDevices=card._getDevices;second._calcDeviceData=card._calcDeviceData;second._healthFor=()=>null;second._render();
+ assert.equal(second.shadowRoot.querySelector('#tip-banner').open,false);
+ card._config.show_help=false;card._render();assert.equal(sr.querySelector('#tip-banner'),null);
+ dom.window.close();
+});
+test('diagnostic codes are confined to escaped copyable report; evidence retained',async()=>{
+ for(const language of ['pl','en']) {
+ const {dom,card,sr}=fixture(language);
+ const data={reservoirLevels:{dock_clean:{reason:'volume_sensor_unbound'},dock_dirty:{volume_ml:3900}},profileKey:'<script>bad()</script>',profileSource:'model_id',profileConfidence:'high',consumptionResolution:{source:'unknown',reason:'incomplete_context'},lastAccountingInterruption:{ts:1000,reasons:['area_delta_too_large'],area_observation:{raw_value:120,previous_m2:2,current_m2:120,delta_m2:118,ceiling_m2:10,interval_seconds:60,version:'5.11.3'}},nominalTimeResolution:{status:'provisional',sample_count:1,accuracy:'not_established',basis:'nominal_full_to_empty_time'}};
+ sr.innerHTML=card._buildDiagnostics(data);
+ const human=sr.querySelector('.diagnostics-grid').textContent;
+ assert.doesNotMatch(human,/dock_clean|dock_dirty|volume_sensor_unbound|incomplete_context|model_id|area_delta_too_large/);
+ assert.match(human,language==='pl'?/Czujnik objętości nieprzypisany/:/Volume sensor not assigned/);
+ assert.match(human,/118/);assert.match(human,/120/);assert.match(human,/60/);
+ assert.match(human,language==='pl'?/Dokładność nie została ustalona/:/Accuracy has not been established/);
+ const report=sr.querySelector('#vwm-diagnostic-report');assert.match(report.textContent,/volume_sensor_unbound/);assert.match(report.textContent,/area_delta_too_large/);assert.equal(sr.querySelector('script'),null);
+ let copied;Object.defineProperty(dom.window.navigator,'clipboard',{value:{writeText:async text=>{copied=text;}}});
+ card._attachListeners([],{});sr.querySelector('#vwm-copy-diagnostics').click();await Promise.resolve();
+ assert.equal(copied,report.textContent);
+ dom.window.close();
+ }
+});
+test('visual editor previews all options while retaining unknown keys and device roles',()=>{
+ const {dom,card}=fixture('en');
+ const editor=dom.window.document.createElement('ha-vacuum-water-monitor-editor');
+ const original={type:'custom:ha-vacuum-water-monitor',title:'Original',default_tab:'water',tabs:['water','history','extension-tab'],show_help:true,show_support:true,compact:false,custom_extension:{keep:true},devices:[{vacuum_entity:'vacuum.demo',duration_sensor:'sensor.runtime'}]};
+ editor.setConfig(original);let config;editor.addEventListener('config-changed',event=>{config=event.detail.config;});
+ const es=editor.shadowRoot;
+ es.querySelector('#cf_title').value='Preview title';es.querySelector('#cf_title').dispatchEvent(new dom.window.Event('input'));
+ for(const key of ['show_help','show_support','compact']) {const input=es.querySelector('#cf_'+key);assert.ok(input,key);input.checked=key==='compact';input.dispatchEvent(new dom.window.Event('change'));}
+ const select=es.querySelector('#cf_default_tab');assert.ok(select);select.value='history';select.dispatchEvent(new dom.window.Event('change'));
+ es.querySelector('[data-tab-option=history]').checked=false;es.querySelector('[data-tab-option=history]').dispatchEvent(new dom.window.Event('change'));
+ assert.deepEqual(JSON.parse(JSON.stringify(config.custom_extension)),original.custom_extension);
+ assert.deepEqual(JSON.parse(JSON.stringify(config.devices)),original.devices);assert.ok(config.tabs.includes('extension-tab'));
+ assert.equal(config.default_tab,'water');assert.equal(config.show_help,false);assert.equal(config.show_support,false);assert.equal(config.compact,true);
+ card.setConfig(config);card._render();
+ assert.match(card.shadowRoot.querySelector('.card-title').textContent,/Preview title/);assert.ok(card.shadowRoot.querySelector('.vwm-compact'));assert.equal(card.shadowRoot.querySelector('#tip-banner'),null);
+ dom.window.close();
+});
+test('tab arrows, Home and End activate and focus visible tabs',()=>{
+ const {dom,sr}=fixture('en',{tabs:['water','history','settings']});
+ const send=(id,key)=>sr.querySelector('[data-tab='+id+']').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key,bubbles:true}));
+ send('water','ArrowRight');assert.equal(sr.activeElement?.dataset.tab,'history');assert.equal(sr.activeElement?.getAttribute('aria-selected'),'true');
+ send('history','End');assert.equal(sr.activeElement?.dataset.tab,'settings');
+ send('settings','Home');assert.equal(sr.activeElement?.dataset.tab,'water');
+ assert.equal(sr.querySelector('[data-tab=maintenance]'),null);
+ dom.window.close();
+});
+test('HA time zone and numeric locale are used in actual visible history output',()=>{
+ const {dom,card}=fixture('pl');
+ card._getSessionsFromStorage=()=>[{ts:Date.parse('2026-10-18T10:30:00Z'),area:10,water_ml:100,source:'manual'}];
+ const html=card._buildHistoryTab({vacuum_entity:'vacuum.demo'},{});
+ card.shadowRoot.innerHTML=html;
+ assert.match(card.shadowRoot.textContent,/12:30/);
+ assert.match(card._formatMl(1234.5),/1[\s\u00a0\u202f]?234,5/);
+ dom.window.close();
+});
+(async()=>{let failed=0;for(const [name,fn] of tests){try{await fn();console.log('PASS '+name);}catch(error){failed++;console.error('FAIL '+name+'\n'+error.stack);}}if(failed)process.exitCode=1;})();
