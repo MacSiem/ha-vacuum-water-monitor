@@ -15128,7 +15128,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       reportRows.push(['nominal_time_resolution', JSON.stringify(nominal)]);
     }
     return `<details class="diagnostics"><summary>${this._setupText().diagnostics}</summary><div class="diagnostics-grid">${humanRows.map(([label, value]) => `<span class="diagnostics-label">${_esc(label)}</span><span class="diagnostics-value">${_esc(value)}</span>`).join('')}</div>
-      <details class="diagnostics-report"><summary>${pl ? 'Do zgłoszenia' : 'For reporting'}</summary><pre id="vwm-diagnostic-report">${_esc(reportRows.map(([label,value]) => `${label}: ${value}`).join('\n'))}</pre><button type="button" id="vwm-copy-diagnostics">${pl ? 'Kopiuj' : 'Copy'}</button><span id="vwm-copy-status" role="status"></span></details></details>`;
+      <details class="diagnostics-report"><summary>${pl ? 'Do zgłoszenia' : 'For reporting'}</summary><pre id="vwm-diagnostic-report" tabindex="0" aria-label="${pl ? 'Szczegóły do zgłoszenia' : 'Reporting details'}">${_esc(reportRows.map(([label,value]) => `${label}: ${value}`).join('\n'))}</pre><button type="button" id="vwm-copy-diagnostics">${pl ? 'Kopiuj' : 'Copy'}</button><span id="vwm-copy-status" role="status"></span></details></details>`;
   }
 
   _formatUi() { return createFormatUi.forHass(this._hass); }
@@ -16936,6 +16936,16 @@ target:
 input, select, textarea { max-width:100%; min-width:0; }
 @container (max-width:520px) { .diagnostics-grid { grid-template-columns:minmax(0,1fr); gap:3px; } .diagnostics-value { margin-bottom:7px; } #vwm-custom-form, #vwm-custom-modes { grid-template-columns:1fr !important; } [id^="vwm-settings-"] [style*="grid-template-columns"] { grid-template-columns:1fr !important; } }
 
+/* Bound tokens are checked in CI; native QA checks the consumed result. */
+.card .tab-nav .tab-btn { font-size:12px !important; }
+.card .tab-nav .tab-btn[aria-selected="true"] { color:#1d4ed8 !important; }
+:host(.bento-dark) .card .tab-nav .tab-btn[aria-selected="true"] { color:#c7d2fe !important; }
+.card .vwm-link { color:#1d4ed8 !important; }
+:host(.bento-dark) .card .vwm-link { color:#c7d2fe !important; }
+.card :focus-visible { outline-color:#1d4ed8 !important; }
+:host(.bento-dark) .card :focus-visible { outline-color:#c7d2fe !important; }
+.card h3, .card .section-title { letter-spacing:.04em !important; }
+
 /* v5 family readability and native fields: evaluated against consumed theme in QA. */
 :host { color-scheme:light; font-size:14px; min-width:0; }
 :host(.bento-dark) { color-scheme:dark; }
@@ -16957,7 +16967,7 @@ input, select, textarea { max-width:100%; min-width:0; }
 .tip-banner { padding:0 12px; }
 .tip-banner > summary { cursor:pointer; padding-block:12px; }
 .card svg text { font-size:12px !important; }
-.diagnostics-report pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px !important; }
+.diagnostics-report pre { white-space:pre; overflow:auto; overflow-wrap:normal; word-break:normal; max-width:100%; font-size:12px !important; }
 .vwm-compact { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .vwm-compact > p { flex-basis:100%; }
 </style>
@@ -17028,9 +17038,15 @@ input, select, textarea { max-width:100%; min-width:0; }
     });
     const help = sr.querySelector('#tip-banner');
     if (help) {
-      try { help.open = localStorage.getItem('vwm-help-state') === 'open'; } catch (_) {}
+      const user = this._hass?.user?.id || 'local';
+      const narrow = window.innerWidth < 500;
+      const key = 'vwm-help-state:' + user;
+      if (this._helpNarrow !== narrow || this._helpUser !== user) this._helpOpen = undefined;
+      this._helpNarrow = narrow; this._helpUser = user;
+      try { help.open = this._helpOpen ?? (!narrow && localStorage.getItem(key) === 'open'); } catch (_) {}
       help.addEventListener('toggle', () => {
-        try { localStorage.setItem('vwm-help-state', help.open ? 'open' : 'closed'); } catch (_) {}
+        this._helpOpen = help.open;
+        try { localStorage.setItem(key, help.open ? 'open' : 'closed'); } catch (_) {}
       });
     }
     sr.querySelector('#vwm-expand')?.addEventListener('click', () => {
@@ -17479,6 +17495,7 @@ class HaVacuumWaterMonitorEditor extends HTMLElement {
     const language = value?.locale?.language || value?.language || 'en';
     const changed = language !== (this._hass?.locale?.language || this._hass?.language || 'en');
     this._hass = value;
+    this.classList.toggle('bento-dark', !!value?.themes?.darkMode);
     if (changed || !this.shadowRoot.firstChild) this._render();
   }
   _render() {
@@ -17489,7 +17506,8 @@ class HaVacuumWaterMonitorEditor extends HTMLElement {
     const visibleTabs = tabs.filter(([id])=>!Array.isArray(this._config.tabs)||this._config.tabs.includes(id));
     if (!visibleTabs.length) visibleTabs.push(tabs[0]);
     this.shadowRoot.innerHTML = `<style>
-      :host {display:block;padding:16px;color:var(--primary-text-color);color-scheme:light dark;font-size:14px}
+      :host {display:block;padding:16px;color:var(--primary-text-color);color-scheme:light;font-size:14px}
+      :host(.bento-dark){color-scheme:dark}
       label {display:block;margin-block:12px} input,select {min-height:44px;max-width:100%;box-sizing:border-box;font-size:14px;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);padding:8px} fieldset{min-width:0} legend{font-size:14px}
       :focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
       </style><h3>Vacuum Water Monitor</h3>
