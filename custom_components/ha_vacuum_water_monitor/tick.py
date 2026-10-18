@@ -1266,6 +1266,10 @@ def _tick_device_pass(
     last_duration_seconds = _float_or_none(state.get("last_duration_seconds"))
     should_use_time = (curr_area is None or state.get("area_time_fallback")
                        or (usage_per_m2 is None and usage_per_minute is not None)) and not wash_now
+    # Nominal observation measures the preceding interval. Entering a wash
+    # closes the last floor interval; it does not make that interval a wash.
+    if nominal_time_applied and nominal_time_elapsed and nominal_time_elapsed > 0:
+        should_use_time = True
     elapsed_seconds: float | None = None
     time_interval_counted = False
     if should_use_time and curr_duration_seconds is not None:
