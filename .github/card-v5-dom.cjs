@@ -89,6 +89,18 @@ test('visual editor previews all options while retaining unknown keys and device
  assert.match(card.shadowRoot.querySelector('.card-title').textContent,/Preview title/);assert.ok(card.shadowRoot.querySelector('.vwm-compact'));assert.equal(card.shadowRoot.querySelector('#tip-banner'),null);
  dom.window.close();
 });
+test('editor state refresh preserves a focused draft and offers only visible default tabs',()=>{
+ const {dom}=fixture('en');
+ const editor=dom.window.document.createElement('ha-vacuum-water-monitor-editor');
+ editor.setConfig({tabs:['water','history'],default_tab:'water'});
+ editor.hass={language:'en',states:{}};dom.window.document.body.append(editor);
+ const input=editor.shadowRoot.querySelector('#cf_title');input.focus();input.value='Editing';input.dispatchEvent(new dom.window.Event('input'));
+ editor.hass={language:'en',states:{'sensor.unrelated':{state:'2'}}};
+ assert.equal(editor.shadowRoot.activeElement?.id,'cf_title');
+ assert.equal(editor.shadowRoot.querySelector('#cf_title').value,'Editing');
+ assert.deepEqual([...editor.shadowRoot.querySelector('#cf_default_tab').options].map(option=>option.value),['water','history']);
+ dom.window.close();
+});
 test('tab arrows, Home and End activate and focus visible tabs',()=>{
  const {dom,sr}=fixture('en',{tabs:['water','history','settings']});
  const send=(id,key)=>sr.querySelector('[data-tab='+id+']').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key,bubbles:true}));
