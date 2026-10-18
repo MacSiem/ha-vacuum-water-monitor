@@ -15477,7 +15477,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.isCleaning && data.areaCleaned) {
       currentSession = `<div class="current-session-card">
         <div class="cs-title">\uD83D\uDD04 ${this._waterText("Current session")}</div>
-        <div class="cs-row"><span>\uD83D\uDDFA\uFE0F ${this._waterText("Area cleaned")}</span><span>${data.areaCleaned != null ? parseFloat(data.areaCleaned).toFixed(1) : '--'} m\u00B2</span></div>
+        <div class="cs-row"><span>\uD83D\uDDFA\uFE0F ${this._waterText("Area cleaned")}</span><span>${data.areaCleaned != null ? this._formatUi().number(Number(data.areaCleaned), {minimumFractionDigits:1,maximumFractionDigits:1}) : '--'} m\u00B2</span></div>
         ${data.sessionMl ? `<div class="cs-row"><span>\uD83D\uDCA7 ${this._waterText("Water used")}</span><span>${_esc(this._formatMl(data.sessionMl))}</span></div>` : ''}
         ${data.durationSec ? `<div class="cs-row"><span>\u23F1\uFE0F ${this._waterText("Duration")}</span><span>${this._formatDuration(data.durationSec)}</span></div>` : ''}
       </div>`;
@@ -15492,7 +15492,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       lastSessionHtml = `<div class="session-row">
         <div class="session-date">${label} <span class="session-time">${this._formatUi().clock(endDate.getTime())}</span></div>
         <div class="session-stats">
-          ${data.areaCleaned ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${data.areaCleaned != null ? parseFloat(data.areaCleaned).toFixed(0) : '--'} m\u00B2</span>` : ''}
+          ${data.areaCleaned ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${data.areaCleaned != null ? this._formatUi().number(Number(data.areaCleaned), {maximumFractionDigits:0}) : '--'} m\u00B2</span>` : ''}
           ${data.durationSec ? `<span class="session-stat">\u23F1\uFE0F ${this._formatDuration(data.durationSec)}</span>` : ''}
         </div>
       </div>`;
@@ -15506,9 +15506,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return `<div class="session-row">
         <div class="session-date">${label} <span class="session-time">${this._formatUi().clock(d.getTime())}</span></div>
         <div class="session-stats">
-          ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${s.area} m\u00B2</span>` : ''}
+          ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${this._formatUi().number(Number(s.area))} m\u00B2</span>` : ''}
           ${s.water ? `<span class="session-stat" title="${this._waterText(s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded')}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${_esc(this._formatMl(s.water))}</span>` : ''}
-          ${s.duration ? `<span class="session-stat">\u23F1\uFE0F ${s.duration}</span>` : ''}
+          ${s.duration ? `<span class="session-stat">\u23F1\uFE0F ${_esc(Number.isFinite(Number(s.duration)) ? this._formatUi().number(Number(s.duration))+' min' : s.duration)}</span>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -15845,8 +15845,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div class="section-title">\uD83D\uDCC5 ${this._waterText("This Week (logged)")}</div>
       <div class="stats-grid">
         <div class="stat-box"><div class="stat-num">${totalSessions}</div><div class="stat-label">${this._waterText("sessions")}</div></div>
-        <div class="stat-box"><div class="stat-num">${(totalArea || 0).toFixed(0)}</div><div class="stat-label">${this._waterText("m² cleaned")}</div></div>
-        <div class="stat-box"><div class="stat-num">${knownWater.length ? (totalWater / 1000).toFixed(1) : '—'}</div><div class="stat-label">${this._waterText("L water")} (${knownWater.length}/${thisWeek.length} ${this._waterText("known")})</div></div>
+        <div class="stat-box"><div class="stat-num">${this._formatUi().number(totalArea || 0, {maximumFractionDigits:0})}</div><div class="stat-label">${this._waterText("m² cleaned")}</div></div>
+        <div class="stat-box"><div class="stat-num">${knownWater.length ? this._formatUi().number(totalWater / 1000, {minimumFractionDigits:1,maximumFractionDigits:1}) : '—'}</div><div class="stat-label">${this._waterText("L water")} (${knownWater.length}/${thisWeek.length} ${this._waterText("known")})</div></div>
       </div>
     </div>`;
   }
