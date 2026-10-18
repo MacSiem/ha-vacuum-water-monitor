@@ -141,4 +141,25 @@ test('HA time zone and numeric locale are used in actual visible history output'
  assert.match(card._formatMl(1234.5),/1[\s\u00a0\u202f]?234,5/);
  dom.window.close();
 });
+test('active nominal time data removes the unrelated model prior and describes its actual method',()=>{
+ const {dom,card,device}=fixture('en');
+ delete card._calcDeviceData;
+ card._withBackendDescriptor=d=>d;card._backendDescriptor=()=>null;card._effectiveCustomCalibration=()=>({});
+ card._serverState={tank_states:{'vacuum.demo':{initialized:true,used_ml:100,last_accounting_evidence:'nominal_full_to_empty_time',nominal_time_resolution:{status:'active',sample_count:3,accuracy:'not_established'}}}};
+ const data=card._calcDeviceData({...device,estimate_basis:'class_prior',uncertainty_percent:50});
+ assert.equal(data.estimateBasis,null);assert.equal(data.uncertaintyPercent,null);
+ assert.equal(data.uncertaintyKind,'nominal_tank_repeatability');
+ card.shadowRoot.innerHTML=card._buildDiagnostics(data);
+ const human=card.shadowRoot.querySelector('.diagnostics-grid').textContent;
+ assert.match(human,/whole-tank depletion per active mopping minute/i);
+ assert.doesNotMatch(human,/cleaned area|±50%/);
+ dom.window.close();
+});
+test('partial recorded consumption follows the HA numeric locale',()=>{
+ const {dom,card,device,data}=fixture('pl');
+ data.partialUsedMl=1250;data.initialized=true;data.stateReason='accounting_incomplete';
+ card.shadowRoot.innerHTML=card._buildWaterTab(device,data);
+ assert.match(card.shadowRoot.textContent,/1,25 L/);assert.doesNotMatch(card.shadowRoot.textContent,/1\.25 L/);
+ dom.window.close();
+});
 (async()=>{let failed=0;for(const [name,fn] of tests){try{await fn();console.log('PASS '+name);}catch(error){failed++;console.error('FAIL '+name+'\n'+error.stack);}}if(failed)process.exitCode=1;})();
