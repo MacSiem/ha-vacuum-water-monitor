@@ -15156,10 +15156,6 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const pl = this._lang === 'pl';
     const code = value => this._humanDiagnosticCode(String(value));
     const text = value => this._waterText(value);
-    if (label.startsWith('Physical ')) {
-      const name = label.slice('Physical '.length), level = data.reservoirLevels?.[name];
-      return [code(name), level?.volume_ml == null ? code(level?.reason || 'unknown') : this._formatMl(level.volume_ml)];
-    }
     // Original translated prefix must also be recognized in PL.
     for (const [name, level] of Object.entries(data.reservoirLevels || {})) {
       if (label === `${text('Physical')} ${name}`) return [code(name), level?.volume_ml == null ? code(level?.reason || 'unknown') : this._formatMl(level.volume_ml)];
