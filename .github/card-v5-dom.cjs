@@ -36,7 +36,7 @@ test('compact exposes refill and full card, then restores compact with keyboard 
  const {dom,card,sr}=fixture('pl',{compact:true,default_tab:'history'});
  assert.ok(sr.querySelector('.refill-btn'));assert.ok(sr.querySelector('#vwm-expand'));
  assert.equal(sr.querySelector('[role=tablist]'),null);
- assert.ok(card.getGridOptions().min_columns<=3);assert.ok(card.getGridOptions().rows<=6);
+ assert.ok(card.getGridOptions().min_columns<=3);assert.equal(card.getGridOptions().rows,'auto');
  sr.querySelector('#vwm-expand').click();
  assert.ok(sr.querySelector('[role=tablist]'));assert.ok(sr.querySelector('#vwm-collapse'));
  sr.querySelector('#vwm-collapse').click();
@@ -50,7 +50,7 @@ test('compact tile reserves a usable narrow height and keeps details behind expa
  assert.equal(sr.querySelector('[data-extra-duplicate]'),null);
  assert.equal(sr.querySelector('.device-header'),null);
  assert.equal(card.getGridOptions().columns,6);
- assert.equal(card.getGridOptions().rows,6);
+ assert.equal(card.getGridOptions().rows,'auto');
  sr.querySelector('#vwm-expand').click();
  assert.ok(sr.querySelector('[data-extra-duplicate]'));assert.ok(sr.querySelector('.device-header'));
  assert.equal(card.getGridOptions().rows,'auto');

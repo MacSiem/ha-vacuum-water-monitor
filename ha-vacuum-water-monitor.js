@@ -13434,7 +13434,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   getCardSize() { return this._config?.compact && !this._compactExpanded ? 3 : 4; }
 
-  getGridOptions() { return { columns: 12, rows: this._config?.compact && !this._compactExpanded ? 3 : 6, min_rows: 3, min_columns: 3 }; }
+  getGridOptions() { return { columns: this._config?.compact && !this._compactExpanded ? 6 : 12, rows:'auto', min_rows:3, min_columns:3 }; }
 
   // Home Assistant calls the hass setter on every state change in the house.
   // Once loaded, the card follows Store changes through events; a full reload
@@ -14909,6 +14909,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       !(healthReport && healthReport.tracks_water === true);
 
     if (cfg.compact && !this._compactExpanded) return `<div class="tab-content vwm-compact">
+      <small class="compact-device">${_esc(device.name || device.device_name || device.vacuum_entity || '')}</small>
       ${data.remainingL == null ? `<p class="tank-unknown" role="status">${this._lang === 'pl' ? 'Stan zbiornika nieznany' : 'Tank state unknown'}</p>` : `<p class="supply-main">${L.remaining}: ${_esc(remainingText)}</p>`}
       ${['missing_area_rate','missing_time_rate','missing_wash_rate'].includes(data.stateReason) ? `<p>${_esc(this._humanDiagnosticCode(data.stateReason))}. ${this._lang === 'pl' ? 'Dolanie ustala poziom początkowy; nie uzupełnia współczynnika zużycia.' : 'Refill sets the baseline; it does not provide a consumption rate.'}</p>` : ''}${refillBtn}<button type="button" id="vwm-expand">${this._lang === 'pl' ? 'Otwórz pełną kartę' : 'Open full card'}</button>
     </div>`;
@@ -16631,7 +16632,7 @@ target:
       </div>` : '';
 
     let tabContent = '';
-    if (cfg.compact && !this._compactExpanded) tabContent = this._buildWaterTab(device, data);
+    if (cfg.compact && !this._compactExpanded) tabContent = devices.length ? this._buildWaterTab(device, data) : `<div class="empty-state">${this._t.noDevices}<br>${this._t.addVacuum}<button type="button" id="vwm-expand">${this._lang==='pl'?'Otwórz pełną kartę':'Open full card'}</button></div>`;
     else if (this._activeTab === 'water') tabContent = devices.length
       ? this._buildWaterTab(device, data)
       : `<div class="empty-state">${this._t.noDevices}<br>${this._t.addVacuum}</div>`;
@@ -16969,15 +16970,16 @@ input, select, textarea { max-width:100%; min-width:0; }
 .card svg text { font-size:12px !important; }
 .diagnostics-report pre { white-space:pre; overflow:auto; overflow-wrap:normal; word-break:normal; max-width:100%; font-size:12px !important; }
 .vwm-compact { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
-.vwm-compact > p { flex-basis:100%; }
+.vwm-compact > p, .vwm-compact > small { flex-basis:100%; margin:0; }
+.card .vwm-compact .supply-main { font-size:14px !important; }
 </style>
       <div class="card">
         <div class="card-title">${_esc(this._config.title)}${cfg.compact && this._compactExpanded ? `<button type="button" id="vwm-collapse">${this._lang === 'pl' ? 'Zwiń kartę' : 'Collapse card'}</button>` : ''}</div>
         ${cfg.show_help !== false && !(cfg.compact && !this._compactExpanded) ? `<details class="tip-banner" id="tip-banner"><summary>${this._waterText('How it works')}</summary>${this._tipHtml()}</details>` : ''}
         ${this._activeTab !== 'settings' && !(cfg.compact && !this._compactExpanded) ? this._buildSharingIntro() : ''}
-        ${this._duplicateNoticeHtml()}
-        ${deviceTabsHtml}
-        ${deviceHeader}
+        ${cfg.compact && !this._compactExpanded ? '' : this._duplicateNoticeHtml()}
+        ${cfg.compact && !this._compactExpanded ? '' : deviceTabsHtml}
+        ${cfg.compact && !this._compactExpanded ? '' : deviceHeader}
         ${cfg.compact && !this._compactExpanded ? '' : tabNav}
         <div id="vwm-tab-panel" ${cfg.compact && !this._compactExpanded ? 'role="region" aria-label="'+(this._lang==='pl'?'Woda':'Water')+'"' : 'role="tabpanel" aria-labelledby="vwm-tab-'+this._activeTab+'"'}>${tabContent}</div>
 
