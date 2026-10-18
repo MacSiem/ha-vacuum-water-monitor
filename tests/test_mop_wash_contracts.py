@@ -62,3 +62,16 @@ class MopWashContracts(unittest.TestCase):
         device=sc.build_vacuum_devices({}, {}, [desc])[0]
         for role,(domain,key) in keys.items():
             self.assertEqual(device.get(role),domain+'.'+key)
+
+    def test_wash_threshold_changes_consumption_context_without_charging_water(self):
+        dev = {'vacuum_entity':'vacuum.robot', 'wash_frequency_entity':'select.frequency',
+               'wash_area_threshold_entity':'number.area', 'wash_time_threshold_entity':'number.time'}
+        state = {'used_ml':0, 'initialized':True}
+        contexts=[]
+        for i,area in enumerate((20,25)):
+            hass=_Hass({'vacuum.robot':_State('docked'), 'select.frequency':_State('by_area'),
+                        'number.area':_State(str(area)), 'number.time':_State('15')})
+            state,_=tick.tick_device(hass,dev,state,now_ts=1000000+i*60000)
+            contexts.append(state['last_consumption_context']['settings']['wash_frequency'])
+        self.assertNotEqual(*contexts)
+        self.assertEqual(state['used_ml'],0)
