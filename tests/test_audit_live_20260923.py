@@ -289,6 +289,20 @@ class EventPayloadTests(unittest.TestCase):
         self.assertLess(len(json.dumps(event)),2000)
         self.assertEqual(json.dumps(tank),snapshot)
 
+    def test_nominal_sample_bank_stays_local_while_live_progress_is_published(self):
+        import json
+        const = importlib.import_module("vwmruntimepkg.const")
+        private = {"cycle": {"context": {"device_id": "private-device"}, "started_ts": 123},
+                   "contexts": [{"samples": [{"finished_ts": 456, "active_minutes": 9}]}]}
+        summary = {"status": "provisional", "sample_count": 1, "accuracy": "not_established"}
+        tank = {"used_ml": 100, "nominal_time_learning": private, "nominal_time_resolution": summary}
+        before = json.dumps(tank)
+        event = const.event_tank_states({"vacuum.a": tank})["vacuum.a"]
+        self.assertNotIn("nominal_time_learning", event)
+        self.assertNotIn("private-device", json.dumps(event))
+        self.assertEqual(event["nominal_time_resolution"], summary)
+        self.assertEqual(json.dumps(tank), before)
+
     def test_the_card_reloads_history_when_a_refill_or_run_moves_it(self):
         card = (ROOT / "custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js").read_text(encoding="utf-8")
         self.assertIn("if (historyMoved) setTimeout(() => this._ensureServerState(true), 0);", card)
