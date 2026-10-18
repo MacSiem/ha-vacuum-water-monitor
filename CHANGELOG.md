@@ -3,6 +3,7 @@
 ## 5.12.0 (2026-10-18)
 
 - Learn a private nominal whole-tank time estimate after three compatible confirmed full-to-empty tanks on supported no-counter mop devices, including Tapo over Matter. Show provisional progress and the residual assumption; physical accuracy remains unestablished. Measured rates and volume sensors retain priority.
+- Keep manual Tank empty available when a generic robot alarm has no verified scope for the tracked station tank. Show active nominal time accounting without the unrelated model-prior uncertainty band.
 - Treat return-to-wash as transit. Actual washing, drying and independent wash cycles remain distinct; an aborted return does not consume a wash dose.
 - Bind exact Dreame wash-mode, frequency, temperature and separate area/time-threshold controls. Preserve setting changes in calibration applicability without inventing ml from those controls.
 - Keep unknown or sequential mop-mode labels from proving current mop activity.
