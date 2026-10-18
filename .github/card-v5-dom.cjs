@@ -13,7 +13,7 @@ function fixture(language='en',config={}) {
  const device={vacuum_entity:'vacuum.demo',name:'Robot',water_total_ml:4000};
  const data={totalMl:4000,percentRemaining:null,remainingL:null,usedMl:null,charge:null,stateReason:'missing_time_rate',initialized:false,calibrationHistory:[],refillHistory:[],vacState:'docked'};
  card._getDevices=()=>[device];card._calcDeviceData=()=>data;card._healthFor=()=>null;
- card._ensureServerState=()=>null;card._render();return {dom,card,device,data,sr:card.shadowRoot};
+ card._ensureServerState=()=>null;dom.window.document.body.append(card);card._render();return {dom,card,device,data,sr:card.shadowRoot};
 }
 test('unknown state replaces the empty ring in PL and EN',()=>{
  for(const [lang,unknown,refill] of [['pl','Stan zbiornika nieznany','Dolano'],['en','Tank state unknown','Refilled']]) {

@@ -49,3 +49,16 @@ class MopWashContracts(unittest.TestCase):
             state, _ = tick.tick_device(hass, device, state, now_ts=1000000 + index * 60000)
             used.append(state['used_ml'])
         self.assertEqual(used, [0, 150, 150, 150, 150])
+
+    def test_dreame_thresholds_and_alternate_frequency_are_bound_separately(self):
+        keys = {'wash_frequency_entity': ('select', 'mop_clean_frequency'),
+                'wash_area_threshold_entity': ('number', 'self_clean_area'),
+                'wash_time_threshold_entity': ('number', 'self_clean_time')}
+        entities = [{'entity_id': 'vacuum.robot', 'platform': 'dreame_vacuum', 'device_id': 'one'}]
+        entities += [{'entity_id': domain+'.'+key, 'translation_key': key,
+                      'platform': 'dreame_vacuum', 'device_id': 'one'}
+                     for domain,key in keys.values()]
+        desc=discovery.discover_descriptors(entities,[{'id':'one','manufacturer':'Dreame','model':'L10s Ultra'}],{})[0]
+        device=sc.build_vacuum_devices({}, {}, [desc])[0]
+        for role,(domain,key) in keys.items():
+            self.assertEqual(device.get(role),domain+'.'+key)
