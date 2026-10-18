@@ -17052,7 +17052,7 @@ input, select, textarea { max-width:100%; min-width:0; }
       const key = 'vwm-help-state:' + user;
       if (this._helpNarrow !== narrow || this._helpUser !== user) this._helpOpen = undefined;
       this._helpNarrow = narrow; this._helpUser = user;
-      try { help.open = this._helpOpen ?? (!narrow && localStorage.getItem(key) === 'open'); } catch (_) {}
+      try { help.open = this._helpOpen ?? (!narrow && localStorage.getItem(key) !== 'closed'); } catch (_) {}
       help.addEventListener('toggle', () => {
         this._helpOpen = help.open;
         try { localStorage.setItem(key, help.open ? 'open' : 'closed'); } catch (_) {}

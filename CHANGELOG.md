@@ -7,7 +7,7 @@
 - Treat return-to-wash as transit. Actual washing, drying and independent wash cycles remain distinct; an aborted return does not consume a wash dose.
 - Bind exact Dreame wash-mode, frequency, temperature and separate area/time-threshold controls. Preserve setting changes in calibration applicability without inventing ml from those controls.
 - Keep unknown or sequential mop-mode labels from proving current mop activity.
-- Show readable Polish/English diagnostics with escaped copyable reporting details, a closed help section that remembers its state, an explicit unknown-tank view, compact mode and a fuller visual editor. Keep editor drafts focused across unrelated HA updates.
+- Show readable Polish/English diagnostics with escaped copyable reporting details, collapsible help that starts closed on mobile and remembers explicit closing, an explicit unknown-tank view, compact mode and a fuller visual editor. Keep editor drafts focused across unrelated HA updates.
 - Use the shared HA-profile formatter for visible time/number labels and improve field, text, focus and action readability.
 
 ## 5.11.3 (2026-10-17)
