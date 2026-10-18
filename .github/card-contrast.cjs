@@ -1,6 +1,6 @@
 // Contrast checks derive literal tokens from the actual shipped CSS rules.
 const fs=require('fs'),assert=require('assert/strict');
-const rulesFor=source=>[...source.matchAll(/([^{}]+)\{([^{}]+)\}/g)].map(match=>({selectors:match[1].trim().split(',').map(s=>s.trim()),body:match[2]}));
+const rulesFor=source=>[...source.replace(/\/\*[\s\S]*?\*\//g,'').matchAll(/([^{}]+)\{([^{}]+)\}/g)].map(match=>({selectors:match[1].trim().split(',').map(s=>s.trim()),body:match[2]}));
 function declaration(rules,selector,key){
  let value;
  for(const rule of rules)if(rule.selectors.includes(selector)){
