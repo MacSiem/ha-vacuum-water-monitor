@@ -56,6 +56,7 @@ jobs:
           python scripts/check_sprint_ledger.py
           python scripts/generate_frontend_catalog.py --check
           node .github/sprint.cjs
+          node .github/card-v5-dom.cjs
       - name: Full catalog JSON Schema
         run: |
           pip install jsonschema

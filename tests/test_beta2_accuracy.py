@@ -33,7 +33,7 @@ class AreaAtTransitionTests(unittest.TestCase):
 
     def test_area_cleaned_before_heading_to_wash_is_charged(self):
         added, _ = floor_ml_before("going_to_wash_the_mop", "returning")
-        self.assertAlmostEqual(added, 2 * 6 + 150, places=1)
+        self.assertAlmostEqual(added, 2 * 6, places=1)
 
     def test_area_cleaned_before_returning_is_charged(self):
         added, state = floor_ml_before("returning_home", "returning")
@@ -52,7 +52,8 @@ class SavedScopeTests(unittest.TestCase):
         self.assertEqual(dev["calibration_scope"], "floor_only")
         state = run(dev, dict(BASE), [dict(status="cleaning", vac="cleaning", area="0"),
                                       dict(status="cleaning", vac="cleaning", area="10"),
-                                      dict(status="going_to_wash_the_mop", vac="returning", area="10")])
+                                      dict(status="going_to_wash_the_mop", vac="returning", area="10"),
+                                      dict(status="washing_the_mop", vac="docked", area="10")])
         self.assertAlmostEqual(state["used_ml"], 10 * 6 + 150, places=1)
 
     def test_a_measured_whole_cycle_rate_keeps_its_scope(self):

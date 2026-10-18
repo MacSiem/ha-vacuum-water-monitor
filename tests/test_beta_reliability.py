@@ -171,6 +171,7 @@ class WashSequenceTests(unittest.TestCase):
             {"status": "washing_the_mop", "vac": "docked", "area": "20.0"},
             {"status": "cleaning", "vac": "cleaning", "area": "20.0"},
             {"status": "going_to_wash_the_mop", "vac": "cleaning", "area": "20.0"},
+            {"status": "washing_the_mop", "vac": "docked", "area": "20.0"},
         ])
         self.assertEqual(state["used_ml"], 300)
 

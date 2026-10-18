@@ -781,7 +781,7 @@ def _tick_device_pass(
         nominal_time_context.pop("field_sources", None)
         nominal_time_context.pop("action", None)
         nominal_time_context["device_id"] = vacuum_entity
-        known_mode = bool(cleaning_mode and ("mop" in cleaning_mode
+        known_mode = bool(cleaning_mode and (_recognized_mop_cleaning_mode(cleaning_mode)
             or cleaning_mode in _MOP_DISABLED_MODES or "vacuum_only" in cleaning_mode))
         learning = state.get("nominal_time_learning") or {}
         if state.pop("nominal_time_start_pending", False):
@@ -1934,6 +1934,11 @@ def _is_cleaning(
     )
 
 
+def _recognized_mop_cleaning_mode(value: str | None) -> bool:
+    return bool(value and re.fullmatch(
+        r"(?:auto_)?(?:vacuum_and_mop|vacuum_mop|sweep_and_mop|sweep_mop|sweeping_and_mopping|wet_mopping|mop|mop_only|mopping)(?:_(?:deep_clean|deep|standard|normal|eco|turbo))?", value))
+
+
 def _is_mop_active(
     cleaning_mode: str | None,
     mop_mode: str | None,
@@ -1967,9 +1972,16 @@ def _is_mop_active(
             return False
         if value and "vacuum_only" in value:
             return False
-    if cleaning_mode and "mop" in cleaning_mode:
+    # A sequential plan does not identify the current vacuum/mop phase.
+    # Manufacturer labels are not Matter mode tags; only recognized labels
+    # can serve as positive evidence without another explicit water signal.
+    if cleaning_mode and any(part in cleaning_mode.split("_") for part in ("then", "after")):
+        return False
+    if _recognized_mop_cleaning_mode(cleaning_mode):
         return True
-    if mop_mode is not None:
+    if mop_mode is not None and (not require_evidence or mop_mode in {
+            "mop", "mopping", "standard", "deep", "deep_plus", "intensive",
+            "intensive_plus", "normal", "daily", "wet_mopping"}):
         return mop_mode not in _MOP_DISABLED_MODES
     if mop_attached is True or water_box_attached is True:
         return True
