@@ -348,7 +348,9 @@ def _config_entries(device: Any) -> set[str]:
 def _role_score(
     record: Any, role: str, exact_identifiers: set[str], integration_adapter: Any
 ) -> int:
-    setting_domains = {"route_entity": "select", "passes_entity": "number"}
+    setting_domains = {"route_entity": "select", "passes_entity": "number",
+                       "wash_mode_entity": "select", "wash_frequency_entity": "select",
+                       "wash_temperature_entity": "select"}
     if role in setting_domains and str(_value(record, "entity_id") or "").split(".")[0] != setting_domains[role]:
         return 0
     translation = normalize_identifier(_value(record, "translation_key"))

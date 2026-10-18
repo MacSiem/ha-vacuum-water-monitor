@@ -26,8 +26,6 @@ MOP_WASH_STATES = {
     "washing",
     "washing_the_mop",
     "washing_the_mop_2",
-    "going_to_wash_the_mop",
-    "back_to_dock_washing_duster",
     "clean_mop_cleaning",
     "segment_clean_mop_cleaning",
     "zoned_clean_mop_cleaning",

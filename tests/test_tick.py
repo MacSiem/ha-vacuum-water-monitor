@@ -860,14 +860,14 @@ class WaterAccountingTransitionTests(unittest.TestCase):
             used_ml=first["used_ml"],
         )
 
-        self.assertEqual(first["used_ml"], 150)
+        self.assertEqual(first["used_ml"], 0)
         self.assertEqual(second["used_ml"], 150)
 
     def test_separate_wash_sequences_are_counted_separately(self):
         rate = {"wash_volume_ml": 150}
         first = _run("docked", "washing_the_mop", rate)
         left_wash = _run("washing_the_mop", "cleaning", rate, used_ml=first["used_ml"])
-        second = _run("cleaning", "going_to_wash_the_mop", rate, used_ml=left_wash["used_ml"])
+        second = _run("cleaning", "washing_the_mop", rate, used_ml=left_wash["used_ml"])
 
         self.assertEqual(first["used_ml"], 150)
         self.assertEqual(left_wash["used_ml"], 150)

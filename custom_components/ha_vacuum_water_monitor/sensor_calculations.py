@@ -992,6 +992,11 @@ def _generated_fields(device: dict[str, Any]) -> set[str]:
 
 
 _DIRECT_SIGNAL_FIELDS = {
+    "route_entity",
+    "passes_entity",
+    "wash_mode_entity",
+    "wash_frequency_entity",
+    "wash_temperature_entity",
     "status_sensor",
     "cleaning_active_sensor",
     "area_sensor",

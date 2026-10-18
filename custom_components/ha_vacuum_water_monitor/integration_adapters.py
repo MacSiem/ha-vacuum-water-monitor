@@ -16,6 +16,10 @@ ROLE_IDENTIFIERS: dict[str, set[str]] = {
     # These settings are bound only by exact adapter contracts, never names.
     "route_entity": set(),
     "passes_entity": set(),
+    # Exact station controls affect calibration applicability, never ml by themselves.
+    "wash_mode_entity": set(),
+    "wash_frequency_entity": set(),
+    "wash_temperature_entity": set(),
     "status_sensor": {
         "status",
         "cleaning_status",
@@ -206,6 +210,9 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
     # This is the HACS integration maintained at Tasshack/dreame-vacuum, not
     # an HA Core integration.  The aliases are its documented entity keys.
     "dreame_vacuum": {
+        "wash_mode_entity": ("washing_mode", "mop_wash_level"),
+        "wash_frequency_entity": ("self_clean_frequency", "self_clean_value"),
+        "wash_temperature_entity": ("water_temperature",),
         # ``state`` includes WASHING/RETURNING_WASHING; ``status`` does not.
         # Tuple order is a preference order, not an unordered alias bag.
         "status_sensor": ("state", "status", "task_status"),
