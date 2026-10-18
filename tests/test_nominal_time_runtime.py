@@ -49,6 +49,11 @@ class NominalTimeRuntimeTests(unittest.TestCase):
         self.assertAlmostEqual(state['used_ml'], dev['tracked_capacity_ml'] * .95 / 10, places=2)
         self.assertFalse(state.get('accounting_incomplete'))
         self.assertEqual(state['last_accounting_evidence'], 'nominal_full_to_empty_time')
+        self.assertEqual(state['consumption_events'][0]['action'], 'whole_cycle')
+        projection = sc.estimate_water_state(dev, state)
+        self.assertEqual(projection['nominal_time_resolution']['status'], 'active')
+        self.assertEqual(projection['uncertainty_kind'], 'nominal_tank_repeatability')
+        self.assertIsNone(projection['uncertainty_percent'])
 
     def test_missing_mop_mode_does_not_create_learning_exposure(self):
         dev = device()
@@ -58,3 +63,14 @@ class NominalTimeRuntimeTests(unittest.TestCase):
             state = observe(dev, state, 10_000_000 + minute * 60_000, True, mode='Vacuum Only')
         self.assertEqual(state['used_ml'], 0)
         self.assertFalse((state.get('nominal_time_learning') or {}).get('contexts'))
+
+    def test_unavailable_before_first_observation_discards_pending_full(self):
+        state = {'nominal_time_start_pending': True}
+        tick._open_observation_gap(state, 1000000)
+        self.assertFalse(state.get('nominal_time_start_pending'))
+
+    def test_area_method_cannot_retain_full_pending_for_later_time_learning(self):
+        dev = device()
+        dev['area_sensor'] = 'sensor.area'
+        state = observe(dev, {'nominal_time_start_pending': True}, 1000000, False)
+        self.assertFalse(state.get('nominal_time_start_pending'))
