@@ -162,4 +162,12 @@ test('partial recorded consumption follows the HA numeric locale',()=>{
  assert.match(card.shadowRoot.textContent,/1,25 L/);assert.doesNotMatch(card.shadowRoot.textContent,/1\.25 L/);
  dom.window.close();
 });
+test('recorded history formats decimal summaries, areas and numeric minutes with HA locale',()=>{
+ const {dom,card,device}=fixture('pl');
+ card._getSessionsFromStorage=()=>[{ts:Date.now(),area:4.5,water:600,duration:45.5}];
+ card.shadowRoot.innerHTML=card._buildHistoryTab(device,{});
+ const text=card.shadowRoot.textContent;
+ assert.match(text,/0,6/);assert.match(text,/4,5 m²/);assert.match(text,/45,5 min/);
+ dom.window.close();
+});
 (async()=>{let failed=0;for(const [name,fn] of tests){try{await fn();console.log('PASS '+name);}catch(error){failed++;console.error('FAIL '+name+'\n'+error.stack);}}if(failed)process.exitCode=1;})();
