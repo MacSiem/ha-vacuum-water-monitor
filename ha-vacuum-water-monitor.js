@@ -16975,6 +16975,7 @@ input, select, textarea { max-width:100%; min-width:0; }
 .tip-banner { padding:0 12px; }
 .tip-banner > summary { cursor:pointer; padding-block:12px; }
 .card svg text { font-size:12px !important; }
+.card pre { font-size:12px !important; }
 .diagnostics-report pre { white-space:pre; overflow:auto; overflow-wrap:normal; word-break:normal; max-width:100%; font-size:12px !important; }
 .vwm-compact { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .vwm-compact > p, .vwm-compact > small { flex-basis:100%; margin:0; }

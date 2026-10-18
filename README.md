@@ -256,19 +256,31 @@ keeps benefiting from future detection improvements. Roles where several
 candidates ranked equally are flagged for confirmation instead of being dropped
 silently.
 
+## Card display options
+
+The visual editor supports the title, initial tab, visible tabs, help, support footer and compact view. It preserves device bindings and additional YAML keys. Compact view shows remaining water and **Refilled**, with **Open full card** for the other functions. Sections supports narrow tiles and automatic content height; Masonry and Panel remain supported.
+
+Help starts collapsed below 500 px. On a wide screen it opens initially and remembers an explicit close. Numbers and times follow the Home Assistant profile. Diagnostic explanations use readable labels; **Details → Diagnostics → For reporting** keeps the technical information in a separate copyable block.
+
+```yaml
+type: custom:ha-vacuum-water-monitor
+title: Water supply
+default_tab: water
+tabs: [water, history, maintenance, settings]
+compact: true
+show_help: true
+show_support: false
+```
+
 ## Screenshots
 
-The Water tab shows a labelled estimate, usage since the last refill, and the
-Refilled button. Light and dark modes follow your Home Assistant theme.
-Owner-device estimates are checked against empty-tank signals, without an
-independent measurement of physical water volume. The initial uncertainty band
-is a prior assumption; later cycle spread describes repeatability, not verified
-physical accuracy. Unknown capacities remain unknown.
+Version **5.12.0**, captured **18 October 2026** with synthetic device data. Estimates and nominal tank learning are not independent measurements of physical volume. Unknown water balances keep an explicit unknown state.
 
-![Settings tab](docs/screenshots/card-settings.png)
+![Water tab — light](docs/screenshots/5.12/final-light1280.jpg)
 
-*The ⚙️ Settings tab lets you add discovered robots, map signals, tune calibration,
-and manage maintenance. This screenshot also uses synthetic device data.*
+![Water tab — dark](docs/screenshots/5.12/final-dark390.jpg)
+
+The [eight-view QA gallery](docs/screenshots/5.12/README.md) includes 1280 light/dark, 390 light/dark, 320 dark, native Chrome 200%, Sections at 3 columns and Panel. Additional checks cover Sections at 6/12 columns, the visual editor and Polish/English output.
 
 ## Installation
 
