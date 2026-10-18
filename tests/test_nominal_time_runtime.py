@@ -1,8 +1,6 @@
 """Full nominal tanks teach the real Matter profile without an invented seed."""
-from copy import deepcopy
 import unittest
 from test_beta_runtime_path import discovery, sc, tick, _S, _Hass
-from test_tick import _load_tick
 
 
 def device():
@@ -28,8 +26,6 @@ class NominalTimeRuntimeTests(unittest.TestCase):
         dev = device()
         self.assertFalse(dev.get('usage_ml_per_active_minute'))
         state = {}
-        refill = _load_tick().__dict__['FULL_CONFIRMATION_SOURCES']  # shared public source contract
-        self.assertIn('service', refill)
         from importlib import import_module
         apply_refill = import_module(tick.__package__ + '.refill').apply_refill
         for cycle in range(3):

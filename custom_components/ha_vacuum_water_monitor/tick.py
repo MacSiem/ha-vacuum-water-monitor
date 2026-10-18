@@ -19,6 +19,7 @@ from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compat
 from . import profiles as consumption_profiles
 from . import accounting_v2
 from . import estimation
+from . import nominal_time_learning
 from .const import VERSION
 from .refill import USER_REFILL_DEDUPE_SECONDS, apply_refill, confirm_same_refill, FULL_CONFIRMATION_SOURCES
 
@@ -752,6 +753,61 @@ def _tick_device_pass(
                 state["consumption_resolution"] = {**resolution, "source": "unknown", "reason": "action_accounting_required"}
     else:
         consumption_context = None
+    # Missing ml/min must not prevent learning independently observed exposure.
+    # This fallback is for adapters with no area/duration counter. It estimates
+    # whole-reservoir depletion, including unobserved dock water, not floor flow.
+    nominal_time_context = None
+    nominal_time_elapsed = None
+    nominal_time_applied = False
+    nominal_capacity = _device_capacity_ml(device)
+    nominal_eligible = bool(
+        consumption_context and nominal_capacity and device.get("cleaning_mode_entity")
+        and not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute", "water_volume_sensor"))
+        and usage_per_minute is None and whole_cycle_calibration is None)
+    if nominal_eligible:
+        nominal_time_context = deepcopy(consumption_context)
+        nominal_time_context.pop("field_sources", None)
+        nominal_time_context.pop("action", None)
+        nominal_time_context["device_id"] = vacuum_entity
+        known_mode = bool(cleaning_mode and ("mop" in cleaning_mode
+            or cleaning_mode in _MOP_DISABLED_MODES or "vacuum_only" in cleaning_mode))
+        learning = state.get("nominal_time_learning") or {}
+        if state.pop("nominal_time_start_pending", False):
+            learning = nominal_time_learning.start_full(learning,
+                context=nominal_time_context, capacity_ml=nominal_capacity, now_ts=now_ts,
+                residual_percent=_nominal_residual_percent(device))
+            initial = nominal_time_learning.resolve(learning, context=nominal_time_context,
+                capacity_ml=nominal_capacity, residual_percent=_nominal_residual_percent(device))
+            state["nominal_time_cycle_rate"] = initial["usage_ml_per_active_minute"]
+            state["nominal_time_rate_context"] = _digest(nominal_time_context)
+        previous_minutes = _number((learning.get("cycle") or {}).get("active_minutes"), 0)
+        learning = nominal_time_learning.observe(learning, context=nominal_time_context,
+            capacity_ml=nominal_capacity, now_ts=now_ts,
+            active=bool(_is_cleaning(vac_state, curr_status, None) and mop_active
+                and curr_status not in MOP_WASH_STATES and curr_dock_status not in DOCK_WASH_STATES),
+            available=known_mode)
+        current_cycle = learning.get("cycle")
+        nominal_time_elapsed = (max(0, current_cycle["active_minutes"] - previous_minutes) * 60
+                                if current_cycle else 0)
+        state["nominal_time_learning"] = learning
+        state["nominal_time_resolution"] = nominal_time_learning.resolve(learning,
+            context=nominal_time_context, capacity_ml=nominal_capacity,
+            residual_percent=_nominal_residual_percent(device))
+        learned_rate = _positive_number(state.get("nominal_time_cycle_rate"))
+        if (learned_rate and known_mode and state.get("nominal_time_rate_context") == _digest(nominal_time_context)
+                and state["nominal_time_resolution"]["status"] == "active"):
+            usage_per_minute = learned_rate
+            time_evidence = "nominal_full_to_empty_time"
+            calibration_factor = 1
+            wash_volume = None
+            wash_covered_by_cycle_rate = True
+            nominal_time_applied = True
+        dirty = True
+    elif state.get("nominal_time_learning"):
+        state["nominal_time_learning"] = nominal_time_learning.invalidate(
+            state["nominal_time_learning"], "time_method_replaced")
+        state.pop("nominal_time_start_pending", None)
+        state["nominal_time_resolution"] = {"status": "unavailable", "reason": "time_method_replaced"}
     state["last_consumption_context"] = deepcopy(consumption_context)
     context_values = {key: device.get(key) for key in (
         "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",
@@ -1207,12 +1263,18 @@ def _tick_device_pass(
     elif should_use_time and not (device.get("duration_sensor") or device.get("duration_attribute")) and previous_tick_ts is not None:
         elapsed_seconds = (now_ts - previous_tick_ts) / 1000
 
+    if should_use_time and nominal_time_applied:
+        elapsed_seconds = nominal_time_elapsed
+
     if should_use_time and elapsed_seconds is not None:
-        if elapsed_seconds <= 0 or elapsed_seconds > MAX_ACTIVE_INTERVAL_SECONDS:
+        if nominal_time_applied and elapsed_seconds == 0:
+            dirty |= _record_accounting(state, "active_time", usage_per_minute,
+                                       time_evidence, "duration_baseline_initialized")
+        elif elapsed_seconds <= 0 or elapsed_seconds > MAX_ACTIVE_INTERVAL_SECONDS:
             dirty |= _record_accounting(
                 state, "active_time", None, time_evidence, "active_time_gap"
             )
-        elif not _is_cleaning(vac_state, curr_status, cleaning_active):
+        elif not _is_cleaning(vac_state, curr_status, cleaning_active) and not (nominal_time_applied and nominal_time_elapsed):
             dirty |= _record_accounting(
                 state, "active_time", None, time_evidence, "not_cleaning"
             )
@@ -1404,6 +1466,13 @@ def _tick_device_pass(
         assert active_anchor is not None
         anchor_source, anchor_kind = active_anchor
         refilled_since_last_anchor = int(state.get("last_empty_anchor_ts") or 0) <= reset_ts
+        if nominal_time_context is not None and anchor_kind == "empty" and refilled_since_last_anchor:
+            learned = nominal_time_learning.finish_empty(state.get("nominal_time_learning") or {},
+                context=nominal_time_context, capacity_ml=nominal_capacity, now_ts=now_ts)
+            state["nominal_time_learning"] = learned
+            state["nominal_time_resolution"] = nominal_time_learning.resolve(learned,
+                context=nominal_time_context, capacity_ml=nominal_capacity,
+                residual_percent=_nominal_residual_percent(device))
         state["last_empty_anchor_ts"] = now_ts
         state["water_empty_active"] = True
         state["water_anchor_source"] = anchor_source
@@ -1424,7 +1493,7 @@ def _tick_device_pass(
         if capacity is not None and initialized:
             state.setdefault("calibration_samples", 0)
             remaining_percent = (
-                _empty_residual_percent(device)
+                (_nominal_residual_percent(device) if nominal_eligible else _empty_residual_percent(device))
                 if anchor_kind == "empty"
                 else _clamp(
                     _number(
@@ -1638,6 +1707,12 @@ def _idle_close_ts(state: dict[str, Any], vac_state: str | None, status: str | N
     since = int(state.get("session_idle_since_ts") or now_ts)
     state["session_idle_since_ts"] = since
     return since if now_ts - since >= SESSION_IDLE_CLOSE_SECONDS * 1000 else None
+
+
+def _nominal_residual_percent(device: dict[str, Any]) -> float:
+    """Explicit nominal assumption; never claim an observed pump threshold."""
+    value = _float_or_none(device.get("empty_residual_percent"))
+    return _clamp(value, 0, 20) if value is not None else estimation.DEFAULT_EMPTY_RESIDUAL_PERCENT
 
 
 def _empty_residual_percent(device: dict[str, Any]) -> float:
@@ -2149,6 +2224,9 @@ def _water_anchor_states(
 
 def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
+    if state.get("nominal_time_learning"):
+        state["nominal_time_learning"] = nominal_time_learning.invalidate(
+            state["nominal_time_learning"], "time_observation_unavailable")
     # The sequence latch can outlive a completed session while it deduplicates
     # dock transitions. A settled observation ends exposure, not deduplication.
     # An open session, explicit dock wash or unverified completion still matters.

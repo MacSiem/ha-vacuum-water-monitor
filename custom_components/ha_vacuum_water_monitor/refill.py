@@ -54,6 +54,12 @@ def apply_refill(
         state["last_accounting_interruption"] = {
             **interruption, "resolved_ts": now_ts, "refill_source": source,
         }
+    learning = state.get("nominal_time_learning")
+    if isinstance(learning, dict):
+        state["nominal_time_learning"] = {**learning, "cycle": None,
+            "last_reason": "refill_during_cycle" if learning.get("cycle") else learning.get("last_reason")}
+    state.pop("nominal_time_cycle_rate", None)
+    state.pop("nominal_time_rate_context", None)
     used_before = state.get("used_ml")
     empty_active = bool(state.get("water_empty_active"))
     # A "Tank empty" the user pressed ends with the refill; only a dock error
@@ -93,6 +99,7 @@ def apply_refill(
         last_wash_charged_ts=0,
         last_wash_charged_ml=0,
     )
+    state["nominal_time_start_pending"] = state["cycle_full_confirmed"]
     record = {
         "ts": now_ts,
         "source": source,
@@ -110,5 +117,6 @@ def confirm_same_refill(state: dict[str, Any], source: str) -> bool:
             or state.get("session_start_ts")):
         return False
     state["cycle_full_confirmed"] = True
+    state["nominal_time_start_pending"] = True
     state["cycle_full_confirmation_source"] = source
     return True
