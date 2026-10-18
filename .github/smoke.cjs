@@ -765,8 +765,8 @@ async function smokeHistoryAccessibleNames(target) {
         throw new Error(`${language}: measured event provenance not localized`);
       }
       const help = el.shadowRoot.querySelector('details#tip-banner');
-      if (!help || help.open || help.querySelector('summary')?.textContent !== (language === 'pl' ? 'Jak to działa' : 'How it works')) {
-        throw new Error(`${language}: closed help summary is not localized`);
+      if (!help || !help.open || help.querySelector('summary')?.textContent !== (language === 'pl' ? 'Jak to działa' : 'How it works')) {
+        throw new Error(`${language}: first wide help is not open or its summary is not localized`);
       }
     } finally { dom.window.close(); }
   }
