@@ -75,3 +75,9 @@ class MopWashContracts(unittest.TestCase):
             contexts.append(state['last_consumption_context']['settings']['wash_frequency'])
         self.assertNotEqual(*contexts)
         self.assertEqual(state['used_ml'],0)
+
+    def test_unknown_mop_label_is_not_positive_mode_evidence(self):
+        self.assertFalse(tick._is_mop_active(None,'manufacturer_new_mode',None,require_evidence=True))
+
+    def test_sequential_vacuum_then_mop_is_not_current_mopping(self):
+        self.assertFalse(tick._is_mop_active('vacuum_then_mop',None,True,require_evidence=True))
