@@ -14817,7 +14817,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     return `<section class="supply-answer"><h3>${this._waterText('Will the water last?')}</h3>${answer}
       ${water ? `<p data-water-range>${this._setupText().remaining}: <b>${water} L</b></p>` : ''}
-      <small>${this._waterText('Estimated range; not a physical volume measurement.')}${known && band != null ? ` ±${Number((band*100).toFixed(2))}%` : ''}</small>
+      <small>${this._waterText('Estimated range; not a physical volume measurement.')}${known && band != null ? ` ±${this._formatUi().number(band*100, {maximumFractionDigits:2})}%` : ''}</small>
       <button class="vwm-link" data-open-confidence>${this._waterText('How certain is the estimate?')}</button></section>`;
   }
 
@@ -14867,7 +14867,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     if (cfg.show_filter !== false && data.filterDays != null && !isNaN(data.filterDays)) {
       const filterColor = data.filterDays < 7 ? '#ef4444' : data.filterDays < 30 ? '#f59e0b' : '#22c55e';
-      extraRows += `<div class="row"><span class="row-label">\uD83D\uDD0D ${this._waterText('Filter life')}</span><span class="row-val" style="color:${filterColor}">${(data.filterDays || 0).toFixed(0)} ${this._waterText('days')}</span></div>`;
+      extraRows += `<div class="row"><span class="row-label">\uD83D\uDD0D ${this._waterText('Filter life')}</span><span class="row-val" style="color:${filterColor}">${this._formatUi().number(data.filterDays || 0, {maximumFractionDigits:0})} ${this._waterText('days')}</span></div>`;
     }
     if (data.lastReset) {
       const refillSource = data.lastResetSource && VWM_REFILL_SOURCE_LABEL[data.lastResetSource] ? ` \u00B7 ${this._waterText(VWM_REFILL_SOURCE_LABEL[data.lastResetSource])}` : '';
@@ -14993,7 +14993,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       : (this._lang === 'pl' ? ` Wstępne pasmo niepewności: około ±${Number(data.uncertaintyPercent)}%; dokładność fizyczna nie jest potwierdzona.` : ` Estimated prior band: about \u00B1${Number(data.uncertaintyPercent)}%; physical accuracy is not verified.`)) : '';
     if (samples > 0) {
       const factor = Number.isFinite(Number(data.calibrationFactor)) ? Number(data.calibrationFactor) : 1;
-      return box('Calibrated for this robot.', (this._lang === 'pl' ? `Kalibracja na ${samples} cyklach zbiornika (współczynnik ×${Number(factor.toFixed(2))}).${accuracy} Kolejne poprawne cykle pełnego zbiornika ulepszają szacunek automatycznie.` : `Calibrated on ${samples} empty ${samples === 1 ? 'tank' : 'tanks'} (correction \u00D7${Number(factor.toFixed(2))}).${accuracy} Complete refill-to-empty cycles refine it automatically.`), '#22c55e');
+      return box('Calibrated for this robot.', (this._lang === 'pl' ? `Kalibracja na ${samples} cyklach zbiornika (współczynnik ×${this._formatUi().number(factor, {maximumFractionDigits:2})}).${accuracy} Kolejne poprawne cykle pełnego zbiornika ulepszają szacunek automatycznie.` : `Calibrated on ${samples} empty ${samples === 1 ? 'tank' : 'tanks'} (correction \u00D7${this._formatUi().number(factor, {maximumFractionDigits:2})}).${accuracy} Complete refill-to-empty cycles refine it automatically.`), '#22c55e');
     }
     if (data.estimateBasis) {
       const label = this._waterText(VWM_BASIS_LABEL[data.estimateBasis] || 'Labelled estimate');
@@ -15027,7 +15027,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const sample = interruption.area_observation;
       if (sample && typeof sample === 'object') {
         const finite = value => typeof value === 'number' && Number.isFinite(value);
-        const number = value => value.toLocaleString(this._lang === 'pl' ? 'pl-PL' : 'en-US', {maximumFractionDigits: 3});
+        const number = value => this._formatUi().number(value, {maximumFractionDigits:3});
         if (finite(sample.raw_value)) rows.push(['Reported area', `${number(sample.raw_value)} ${typeof sample.unit === 'string' ? sample.unit.slice(0, 32) : 'm²'}`]);
         if (finite(sample.previous_m2) && finite(sample.current_m2)) rows.push(['Area at interruption', `${number(sample.previous_m2)} → ${number(sample.current_m2)} m²`]);
         if (finite(sample.delta_m2) && finite(sample.ceiling_m2)) rows.push(['Area change / limit', `${number(sample.delta_m2)} / ${number(sample.ceiling_m2)} m²`]);
@@ -15113,7 +15113,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (Number(data.bridgedGaps) > 0) rows.push(['Signal gaps bridged', String(Number(data.bridgedGaps))]);
     const refills = (data.refillHistory || []).slice(0, 5);
     if (refills.length) rows.push(['Recent refills', refills.map(r => `${this._formatReset(r.ts)} (${this._waterText(VWM_REFILL_SOURCE_LABEL[r.source] || r.source)})`).join(', ')]);
-    if (Number(data.calibrationSamples) > 0) rows.push(['Device calibration', `${Number(data.calibrationSamples)} ${Number(data.calibrationSamples) === 1 ? 'tank' : 'tanks'} / correction \u00D7${Number(Number(data.calibrationFactor || 1).toFixed(2))}`]);
+    if (Number(data.calibrationSamples) > 0) rows.push(['Device calibration', `${Number(data.calibrationSamples)} ${Number(data.calibrationSamples) === 1 ? 'tank' : 'tanks'} / correction \u00D7${this._formatUi().number(Number(data.calibrationFactor || 1), {maximumFractionDigits:2})}`]);
     if (data.waterAnchorSource || data.waterAnchorKind || data.waterAnchorConfidence) rows.push(['Water anchor', [data.waterAnchorSource, data.waterAnchorKind, data.waterAnchorConfidence].filter(Boolean).join(' / ')]);
     if ((data.tankLevel != null || data.dockTankLevel != null) && !data.tankSemanticsConfirmed) {
       rows.push(['Tank percentages', `available (${[data.tankLevel, data.dockTankLevel].filter(value => value != null).join(' / ')}), not used automatically until the model confirms clean/dirty semantics`]);
@@ -15767,11 +15767,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const profiles = (Array.isArray(storedProfiles) ? storedProfiles : storedProfiles ? [storedProfiles] : []).filter(p => p && typeof p === 'object');
     return `<div class="section-block"><div class="section-title">${this._waterText('Local measurement quality')}</div>
       <p>${samples.length} ${this._waterText('confirmed sample(s)')}; ${samples.filter(s => s.purpose === 'training').length} ${this._waterText('Training')}; ${samples.filter(s => s.purpose === 'validation').length} ${this._waterText('Independent validation')}.</p>
-      ${profiles.map(p => `<p>${_esc(p.context?.firmware || '')} / ${_esc(p.context?.settings?.wash_mode || '')}: ${_esc(p.sample_count || p.evidence_ids?.length || 0)} ${this._waterText('sample(s)')}, ${_esc(Number.isFinite(p.coefficient) ? p.coefficient.toFixed(2) : '?')} ml/m²,
+      ${profiles.map(p => `<p>${_esc(p.context?.firmware || '')} / ${_esc(p.context?.settings?.wash_mode || '')}: ${_esc(p.sample_count || p.evidence_ids?.length || 0)} ${this._waterText('sample(s)')}, ${_esc(Number.isFinite(p.coefficient) ? this._formatUi().number(p.coefficient, {minimumFractionDigits:2,maximumFractionDigits:2}) : '?')} ml/m²,
         ${_esc(p.exposure_domain?.min ?? '?')}–${_esc(p.exposure_domain?.max ?? '?')} m²;
         ${this._waterText('Rejected outliers')}: ${_esc(p.rejected_ids?.length || 0)}.
-        ${this._waterText('Resolution and training spread')}: ${_esc(Number.isFinite(p.uncertainty_percent) ? p.uncertainty_percent.toFixed(1) + '%' : '?')}.
-        ${p.validation?.validation_ids?.length ? `${this._waterText('Held-out maximum error')}: ${_esc(Number.isFinite(p.validation.max_error_ml) ? p.validation.max_error_ml.toFixed(1) : '?')} ml / ${_esc(Number.isFinite(p.validation.max_relative_error) ? (p.validation.max_relative_error * 100).toFixed(1) + '%' : '?')}.` : this._waterText('Independent accuracy is unverified.')}</p>`).join('')}
+        ${this._waterText('Resolution and training spread')}: ${_esc(Number.isFinite(p.uncertainty_percent) ? this._formatUi().number(p.uncertainty_percent, {minimumFractionDigits:1,maximumFractionDigits:1}) + '%' : '?')}.
+        ${p.validation?.validation_ids?.length ? `${this._waterText('Held-out maximum error')}: ${_esc(Number.isFinite(p.validation.max_error_ml) ? this._formatUi().number(p.validation.max_error_ml, {minimumFractionDigits:1,maximumFractionDigits:1}) : '?')} ml / ${_esc(Number.isFinite(p.validation.max_relative_error) ? this._formatUi().number(p.validation.max_relative_error * 100, {minimumFractionDigits:1,maximumFractionDigits:1}) + '%' : '?')}.` : this._waterText('Independent accuracy is unverified.')}</p>`).join('')}
       <p>${this._waterText('Whole-cycle ml/m² is an experimental total-dose approximation within the measured area range. It does not identify separate wash or floor rates. Training spread excludes unknown systematic bias; outside the measured range, available automatic estimates continue.')}</p>
     </div>`;
   }
@@ -16215,7 +16215,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const value = settings[key] ?? fallback;
       const override = this._authoredConfigKeys?.has(key);
       return `<label>${this._waterText(label)}<input id="vwm-${key.replace('_','-')}" type="number" min="1" max="99" step="any" value="${_esc(String(value))}" ${admin ? '' : 'disabled'}></label>
-        ${data.totalMl > 0 ? `<small>${this._waterText('At this tank capacity')}: <output data-threshold-liters="${key}" data-capacity="${data.totalMl}">${(data.totalMl * value / 100000).toFixed(2)} L</output></small>` : ''}
+        ${data.totalMl > 0 ? `<small>${this._waterText('At this tank capacity')}: <output data-threshold-liters="${key}" data-capacity="${data.totalMl}">${this._formatUi().number(data.totalMl * value / 100000, {minimumFractionDigits:2,maximumFractionDigits:2})} L</output></small>` : ''}
         ${override ? `<p>${this._waterText('Card YAML overrides this threshold')}: ${_esc(String(this._config[key]))}%</p>` : ''}`;
     };
     return `<div class="threshold-form">${row('warning_threshold','Warning threshold (%)',20)}${row('critical_threshold','Critical threshold (%)',10)}
@@ -16296,7 +16296,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <section id="vwm-settings-thresholds" tabindex="-1"><h3>${this._waterText('Thresholds and reminders')}</h3>${this._buildThresholdSettings ? this._buildThresholdSettings(data) : ''}</section>
         <section id="vwm-settings-signals" tabindex="-1"><h3>${this._waterText('Signals')}</h3>${this._buildSignalSummary(device)}</section>
         <section id="vwm-settings-calibration" tabindex="-1"><h3>${this._waterText('Calibration and measurements')}</h3>
-          <p data-learning-status>${this._waterText('Learning status')}: ${this._waterText('Learned tanks')} <b>${Math.max(0, Number(data.calibrationSamples) || 0)}</b> · ${this._waterText('Correction factor')} <b>×${Number(Number(data.calibrationFactor || 1).toFixed(2))}</b></p>
+          <p data-learning-status>${this._waterText('Learning status')}: ${this._waterText('Learned tanks')} <b>${Math.max(0, Number(data.calibrationSamples) || 0)}</b> · ${this._waterText('Correction factor')} <b>×${this._formatUi().number(Number(data.calibrationFactor || 1), {maximumFractionDigits:2})}</b></p>
           ${this._buildCalibrationInfo(device, data)}${this._buildCustomMeasurements(device, data)}${this._buildPrivateMeasurements(device)}${this._buildCalibrationSharingSection(device, data)}
         </section>
         <section id="vwm-settings-model" tabindex="-1"><h3>${this._waterText('Model and capacity')}</h3>${this._buildSetupPanel(device, this._healthFor(device))}${this._buildDatabaseTab()}</section>
@@ -17176,7 +17176,7 @@ input, select, textarea { max-width:100%; min-width:0; }
     for (const key of ['warning_threshold','critical_threshold']) {
       sr.getElementById('vwm-' + key.replace('_','-'))?.addEventListener('input', event => {
         const output = sr.querySelector(`[data-threshold-liters="${key}"]`);
-        if (output) output.textContent = event.target.value !== '' && Number.isFinite(Number(event.target.value)) ? (Number(output.dataset.capacity) * Number(event.target.value) / 100000).toFixed(2) + ' L' : '—';
+        if (output) output.textContent = event.target.value !== '' && Number.isFinite(Number(event.target.value)) ? this._formatUi().number(Number(output.dataset.capacity) * Number(event.target.value) / 100000, {minimumFractionDigits:2,maximumFractionDigits:2}) + ' L' : '—';
       });
     }
     sr.querySelector('#vwm-save-thresholds')?.addEventListener('click', async event => {
