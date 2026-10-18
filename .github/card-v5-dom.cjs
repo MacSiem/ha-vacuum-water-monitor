@@ -56,9 +56,9 @@ test('compact tile reserves a usable narrow height and keeps details behind expa
  assert.equal(card.getGridOptions().rows,'auto');
  dom.window.close();
 });
-test('help is one closed summary and remembers explicit close over render/recreation',async()=>{
+test('first wide help opens once and remembers explicit close over render/recreation',async()=>{
  const {dom,card,sr}=fixture('en');
- let help=sr.querySelector('details#tip-banner');assert.ok(help);assert.equal(help.open,false);
+ let help=sr.querySelector('details#tip-banner');assert.ok(help);assert.equal(help.open,true);
  assert.equal(help.querySelectorAll(':scope > summary').length,1);
  help.open=true;help.dispatchEvent(new dom.window.Event('toggle'));
  help.open=false;help.dispatchEvent(new dom.window.Event('toggle'));
