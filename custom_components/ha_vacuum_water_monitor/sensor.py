@@ -423,6 +423,7 @@ def _water_state_attributes(
         "mop_evidence_required": estimate.get("mop_evidence_required", False),
         "accounting_evidence": estimate["accounting_evidence"],
         "estimate_basis": estimate.get("estimate_basis"),
+        "nominal_time_resolution": estimate.get("nominal_time_resolution"),
         "estimate_sources": estimate.get("estimate_sources", []),
         "uncertainty_kind": estimate.get("uncertainty_kind"),
         "physical_accuracy_verified": estimate.get("physical_accuracy_verified", False),

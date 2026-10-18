@@ -198,7 +198,10 @@ def estimate_water_state(
     user_rate = (effective_device.get("accounting_evidence") in {"user_calibration", "explicit_user_configuration"}
                  or applied_physical_profile)
     measured_volume = bool(device.get("water_volume_sensor") or tank_state.get("last_accounting_source") == "real_sensor")
-    estimate_basis = None if user_rate or measured_volume else (device.get("estimate_basis") or profile.get("estimate_basis"))
+    nominal = tank_state.get("nominal_time_resolution") or {}
+    nominal_active = (nominal.get("status") == "active"
+                      and tank_state.get("last_accounting_evidence") == "nominal_full_to_empty_time")
+    estimate_basis = None if user_rate or measured_volume or nominal_active else (device.get("estimate_basis") or profile.get("estimate_basis"))
     log_factors = estimation.uncertainty_log_factors(tank_state)
     initialized = bool(tank_state.get("initialized")) or parse_refill_datetime(tank_state) is not None
     total_ml = _water_capacity_ml(device, settings)
@@ -217,6 +220,7 @@ def estimate_water_state(
         "estimate_sources": list(device.get("estimate_sources") or profile.get("estimate_sources") or []) if estimate_basis else [],
         "uncertainty_kind": ("calibration_spread" if len(log_factors) >= 3 else "prior_band") if estimate_basis else None,
         "physical_accuracy_verified": False,
+        "nominal_time_resolution": deepcopy(nominal),
         "mop_system": device.get("mop_system") or profile.get("mop_system"),
         "uncertainty_percent": estimation.uncertainty_percent(
             estimate_basis,
@@ -272,6 +276,9 @@ def estimate_water_state(
         }
 
     # An exact empty alert proves remaining usable water, not historical dose.
+    if nominal_active:
+        metadata.update(capability="automatic_estimate", uncertainty_kind="nominal_tank_repeatability",
+                        uncertainty_percent=None, calibration_basis="nominal_full_to_empty_time")
     # Keep incomplete consumption unknown without hiding this physical fact.
     if (tank_state.get("accounting_incomplete") and tank_state.get("water_empty_active")
             and tank_state.get("water_anchor_kind") == "empty"):

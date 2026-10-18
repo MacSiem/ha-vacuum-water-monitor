@@ -2,6 +2,120 @@
 (function() {
 'use strict';
 
+// Bundled shared/ha-tools-format.js (Energy canonical; no external resource needed).
+// Localized presentation; raw values remain available to callers for details/export.
+function createFormatUi(language = 'en', timeZone = 'UTC', preferences = {}) {
+  const hourCycle = preferences.hourCycle || 'h23';
+  const dateLanguage = preferences.dateLanguage || language;
+  const stamp = value => typeof value === 'number' ? (Number.isFinite(value) ? value : NaN) : typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value) ? Date.parse(value) : NaN;
+  const localized = (value, options, locale = language) => {
+    const time = stamp(value);
+    if (!Number.isFinite(time)) return null;
+    try { return new Intl.DateTimeFormat(locale, {timeZone, ...options}).format(time); } catch (_) { return null; }
+  };
+  const clock = (value, withOffset = false) => localized(value, {hour:'2-digit', minute:'2-digit', hourCycle, ...(withOffset ? {timeZoneName:'shortOffset'} : {})});
+  const date = (value, short = false) => localized(value, {day:'numeric', month:'short', ...(short ? {} : {year:'numeric'})}, dateLanguage);
+  const pointLabel = value => localized(value, {year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hourCycle, timeZoneName:'shortOffset'}, dateLanguage);
+  const chartLabels = (values, resolution = 'hour') => {
+    const showDate = resolution === 'day' || values.length > 1 && stamp(values.at(-1)) - stamp(values[0]) >= 86400000;
+    const labels = values.map(value => resolution === 'day' ? date(value, true) : `${showDate ? date(value, true) + ' ' : ''}${clock(value)}`);
+    const counts = new Map();
+    for (const label of labels) counts.set(label, (counts.get(label) || 0) + 1);
+    return labels.map((label, index) => counts.get(label) < 2 ? label : resolution === 'day' ? pointLabel(values[index])
+      : `${showDate ? date(values[index], true) + ' ' : ''}${clock(values[index], true)}`);
+  };
+  // Compact 24-hour axis notation follows the display zone; full point labels
+  // keep the user's clock/date preferences. Never move or discard measurements.
+  const chartTicks = (values, resolution = 'hour') => {
+    const labels = chartLabels(values, resolution);
+    const shortHourly = resolution === 'hour' && values.length > 1 && stamp(values.at(-1)) - stamp(values[0]) <= 26 * 3600000;
+    if (!shortHourly) return [...new Set([0, Math.floor((values.length-1)/2), values.length-1])]
+      .filter(index => index >= 0 && index < values.length).map(index => ({index, label:labels[index]}));
+    const parts = new Intl.DateTimeFormat('en-GB-u-nu-latn', {timeZone, hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
+    const ticks = [];
+    values.forEach((value, index) => {
+      const time = stamp(value);
+      if (!Number.isFinite(time)) return;
+      const fields = Object.fromEntries(parts.formatToParts(time).map(part => [part.type, part.value]));
+      if (Number(fields.hour) % 3 !== 0) return;
+      const label = localized(value, {hour:'2-digit', ...(fields.minute === '00' ? {} : {minute:'2-digit'}), hourCycle:'h23'});
+      ticks.push({index, label});
+    });
+    if (!ticks.length) return values.length ? [{index:0, label:labels[0]}] : [];
+    const counts = new Map();
+    for (const tick of ticks) counts.set(tick.label, (counts.get(tick.label) || 0) + 1);
+    return ticks.map(tick => counts.get(tick.label) === 1 ? tick : {...tick, label:clock(values[tick.index], true)});
+  };
+  const key = JSON.stringify([language, timeZone, hourCycle, dateLanguage]);
+  const numbers = new Intl.NumberFormat(language);
+  const plurals = new Intl.PluralRules(language);
+  const count = (value, forms) => `${numbers.format(value)} ${forms[plurals.select(value)] || forms.other}`;
+  const dateTime = value => {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(value)) return null;
+    const time = Date.parse(value);
+    if (!Number.isFinite(time)) return null;
+    try { return new Intl.DateTimeFormat(dateLanguage, {timeZone, dateStyle:'medium', timeStyle:'short', hourCycle}).format(new Date(time)); }
+    catch (_) { return null; }
+  };
+  const range = (from, to) => {
+    const first = Date.parse(from), last = Date.parse(to);
+    if (!Number.isFinite(first) || !Number.isFinite(last) || last < first) return null;
+    try {
+      const day = new Intl.DateTimeFormat(dateLanguage, {timeZone, dateStyle:'medium'});
+      const clock = new Intl.DateTimeFormat(language, {timeZone, hour:'2-digit', minute:'2-digit', hourCycle});
+      return day.format(first) === day.format(last)
+        ? `${day.format(first)} (${clock.format(first)}–${clock.format(last)})`
+        : `${dateTime(from)} – ${dateTime(to)}`;
+    } catch (_) { return null; }
+  };
+  const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const periodMarkup = ({start, end, label, source, measured, expected, unit, details = '', sourceTimeZone = ''}) => {
+    const local = range(start, end);
+    if (!local) return '';
+    const coverage = typeof measured === 'number' && Number.isFinite(measured) && typeof expected === 'number' && Number.isFinite(expected)
+      ? `${numbers.format(measured)}/${numbers.format(expected)} ${unit}` : '';
+    const pl = String(language).startsWith('pl');
+    return `<div class="energy-period-v4" style="overflow-wrap:anywhere"><p data-energy-period-summary>${[source, label, local, coverage, timeZone].filter(Boolean).map(escape).join(' · ')}</p><details data-energy-period-details data-energy-period-key="${escape(start + '|' + end)}"><summary style="min-height:44px;box-sizing:border-box;padding:12px 0;display:list-item;list-style-position:inside;cursor:pointer">${pl ? 'Źródło i szczegóły czasu' : 'Source and time details'}</summary><p>${escape(details)}</p>${sourceTimeZone && sourceTimeZone !== timeZone ? `<p>${escape(pl ? 'Strefa pomiarów i granic okresu' : 'Measurement calendar time zone')}: ${escape(sourceTimeZone)}</p>` : ''}<p>UTC: ${escape(start)} — ${escape(end)}</p></details></div>`;
+  };
+  const capturePeriods = (root, previous, current) => {
+    if (!previous || ['epoch','connection','user'].some(key => previous[key] !== current[key])) return [];
+    return [...root.querySelectorAll('[data-energy-period-key]')].map(element => ({
+      key:element.dataset.energyPeriodKey, open:element.open, focused:root.activeElement === element.querySelector('summary')
+    }));
+  };
+  const restorePeriods = (root, records) => {
+    for (const element of root.querySelectorAll('[data-energy-period-key]')) {
+      const record = records.find(row => row.key === element.dataset.energyPeriodKey);
+      if (!record) continue;
+      element.open = record.open;
+      if (record.focused) element.querySelector('summary')?.focus({preventScroll:true});
+    }
+  };
+  return {timeZone, key, clock, date, pointLabel, chartLabels, chartTicks, number:(value, options)=>options ? new Intl.NumberFormat(language, options).format(value) : numbers.format(value), count, dateTime, range, periodMarkup, capturePeriods, restorePeriods};
+}
+// Presentation follows the HA profile; measurement and tariff calendars remain separate.
+createFormatUi.forHass = hass => {
+  const locale = hass?.locale || {};
+  const systemLanguage = typeof navigator !== 'undefined' ? navigator.language : undefined;
+  const language = locale.language || hass?.language || systemLanguage || 'en';
+  const validZone = value => {
+    if (typeof value !== 'string' || !(value === 'UTC' || value.includes('/')) || /^[+-]/.test(value)) return null;
+    try { new Intl.DateTimeFormat('en', {timeZone:value}).format(0); return value; } catch (_) { return null; }
+  };
+  let systemZone;
+  try { systemZone = validZone(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch (_) {}
+  const serverZone = validZone(hass?.config?.time_zone);
+  const timeZone = (locale.time_zone === 'server' ? serverZone : systemZone) || serverZone || 'UTC';
+  const clockLanguage = locale.time_format === 'system' ? systemLanguage || language : language;
+  const hourCycle = locale.time_format === '12' ? 'h12' : locale.time_format === '24' ? 'h23'
+    : new Intl.DateTimeFormat(clockLanguage, {hour:'numeric'}).resolvedOptions().hourCycle;
+  return createFormatUi(language, timeZone, {hourCycle, dateLanguage:locale.date_format === 'system' ? systemLanguage || language : language});
+};
+// Node tests use the canonical factory; vendored cards keep it local.
+if (typeof module !== 'undefined') module.exports = {createFormatUi};
+
+
+
 // XSS protection helper (reuse global from panel, fallback for standalone)
 const _asText = (s) => String(s ?? '');
 const _escBase = (s) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -13126,7 +13240,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       } else if (hass && hass.themes) { _d = !!hass.themes.darkMode; }
       this.classList.toggle('bento-dark', _d);
     } catch (e) {}
-    if (hass?.language) this._lang = hass.language.startsWith('pl') ? 'pl' : 'en';
+    if (hass?.locale?.language || hass?.language) this._lang = (hass.locale?.language || hass.language).startsWith('pl') ? 'pl' : 'en';
     this._hass = hass;
     if (!hass) return;
 
@@ -13274,6 +13388,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     this._config = {
       title: config.title || 'Vacuum Monitor',
+      theme: 'system',
       brand_profile: config.brand_profile || null,
       warning_threshold: config.warning_threshold || 20,
       critical_threshold: config.critical_threshold || 10,
@@ -13317,9 +13432,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return devices.filter(d => !d.vacuum_entity || !!this._hass.states[d.vacuum_entity]);
   }
 
-  getCardSize() { return 4; }
+  getCardSize() { return this._config?.compact && !this._compactExpanded ? 3 : 4; }
 
-  getGridOptions() { return { columns: 12, min_rows: 3, min_columns: 6 }; }
+  getGridOptions() { return { columns: 12, rows: this._config?.compact && !this._compactExpanded ? 3 : 6, min_rows: 3, min_columns: 3 }; }
 
   // Home Assistant calls the hass setter on every state change in the house.
   // Once loaded, the card follows Store changes through events; a full reload
@@ -14731,12 +14846,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const L = this._setupText();
     const cfg = this._config;
     const status = this._getStatus(data, cfg);
-    const gaugeSvg = data.totalMl > 0 ? this._buildGaugeSVG(data.percentRemaining, status.color) : '';
+    const gaugeSvg = data.totalMl > 0 && data.percentRemaining != null && Number.isFinite(Number(data.percentRemaining)) ? this._buildGaugeSVG(data.percentRemaining, status.color) : '';
 
     const presentation = this._supplyPresentation(device, data);
     const waterRange = presentation.known ? presentation.range(data.remainingL, 2, data.totalMl > 0 ? data.totalMl/1000 : Infinity) : null;
-    const remainingText = waterRange ? `${waterRange} L` : data.remainingL != null ? `${Number(data.remainingL).toFixed(2)} L` : '--';
-    const usedText = data.usedMl != null ? `${(Number(data.usedMl) / 1000).toFixed(2)} L` : '--';
+    const remainingText = waterRange ? `${waterRange} L` : data.remainingL != null ? `${this._formatUi().number(Number(data.remainingL), {minimumFractionDigits:2,maximumFractionDigits:2})} L` : '--';
+    const usedText = data.usedMl != null ? `${this._formatUi().number(Number(data.usedMl)/1000, {minimumFractionDigits:2,maximumFractionDigits:2})} L` : '--';
     const partialUsedRow = data.partialUsedMl != null
       ? `<div class="row"><span class="row-label">${this._waterText('Recorded estimate (incomplete)')}</span><span class="row-val">${(data.partialUsedMl / 1000).toFixed(2)} L</span></div>` : '';
 
@@ -14762,7 +14877,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     // Refill button resets the integration's HA Store state.
     const refillBtn = (cfg.show_refill_button !== false)
-      ? `<button class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolane' : 'Refilled'}</button>` : '';
+      ? `<button class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolano' : 'Refilled'}</button>` : '';
 
     const alertBanner = this._buildWaterAlert(device, data);
 
@@ -14783,7 +14898,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // The setup panel asks the question the guidance box would only describe.
     const accountingHtml = setupBlocking && ['awaiting_refill', 'accounting_incomplete', 'mop_signal_unbound'].includes(data.stateReason)
       ? '' : this._buildAccountingGuidance(data);
-    const diagnosticsHtml = this._buildDiagnostics(data);
+    const nominal = this._serverState?.tank_states?.[device.vacuum_entity]?.nominal_time_resolution;
+    const diagnosticsHtml = this._buildDiagnostics({...data, nominalTimeResolution: nominal});
 
     const dockHtml = (cfg.show_dock_status !== false) ? this._buildDockSection(device, data) : '';
     // A mop-capable robot still needs water setup when its tank size is unknown.
@@ -14792,18 +14908,22 @@ class HAVacuumWaterMonitor extends HTMLElement {
       !device.water_sensor &&
       !(healthReport && healthReport.tracks_water === true);
 
+    if (cfg.compact && !this._compactExpanded) return `<div class="tab-content vwm-compact">
+      ${data.remainingL == null ? `<p class="tank-unknown" role="status">${this._lang === 'pl' ? 'Stan zbiornika nieznany' : 'Tank state unknown'}</p>` : `<p class="supply-main">${L.remaining}: ${_esc(remainingText)}</p>`}
+      ${['missing_area_rate','missing_time_rate','missing_wash_rate'].includes(data.stateReason) ? `<p>${_esc(this._humanDiagnosticCode(data.stateReason))}. ${this._lang === 'pl' ? 'Dolanie ustala poziom początkowy; nie uzupełnia współczynnika zużycia.' : 'Refill sets the baseline; it does not provide a consumption rate.'}</p>` : ''}${refillBtn}<button type="button" id="vwm-expand">${this._lang === 'pl' ? 'Otwórz pełną kartę' : 'Open full card'}</button>
+    </div>`;
     return `
       <div class="tab-content">
         ${this._buildSupplyAnswer(device, data)}
         ${alertBanner}
-        ${noWaterTracking ? `<div class="no-water-note">\uD83D\uDCCC ${this._waterText("This device doesn't track water levels")}</div>` : `
+        ${noWaterTracking ? `<p class="tank-unknown" role="status">${this._lang === 'pl' ? 'Stan zbiornika nieznany' : 'Tank state unknown'}</p>${refillBtn}` : `
         <div class="device-body">
           <div class="gauge-wrap">
-            ${gaugeSvg}
+            ${gaugeSvg || `<p class="tank-unknown" role="status">${this._lang === 'pl' ? 'Stan zbiornika nieznany' : 'Tank state unknown'}</p>`}
             ${vacStateChip}
           </div>
           <div class="details">
-            <div class="row"><span class="row-label">\uD83D\uDD30 ${L.remaining}</span><span class="row-val">${remainingText} / ${data.totalMl > 0 ? (data.totalMl / 1000).toFixed(1) : "--"} L</span></div>
+            <div class="row"><span class="row-label">\uD83D\uDD30 ${L.remaining}</span><span class="row-val">${data.remainingL == null ? this._waterText('Unknown') : `${remainingText} / ${this._formatUi().number(data.totalMl/1000, {maximumFractionDigits:1})} L`}</span></div>
             <div class="row"><span class="row-label">\uD83D\uDCA6 ${L.used}</span><span class="row-val">${usedText}</span></div>
             ${partialUsedRow}
             ${extraRows}
@@ -14825,7 +14945,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.stateReason === 'accounting_incomplete') {
       return box(this._waterText('Water balance incomplete.'), this._waterText('Consumption from available signals is still recorded. The recorded estimate may omit earlier usage, so remaining water is unknown. Refill the tracked tank to full and confirm to restore the balance.'), '#f59e0b');
     }
-    if (!data.initialized) {
+    if (!data.initialized && !['missing_area_rate','missing_time_rate','missing_wash_rate'].includes(data.stateReason)) {
       const capability = data.capability === 'manual_only'
         ? ' Manual-only: add calibration and use manual refill to maintain the estimate.'
         : '';
@@ -14990,14 +15110,90 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if ((data.tankLevel != null || data.dockTankLevel != null) && !data.tankSemanticsConfirmed) {
       rows.push(['Tank percentages', `available (${[data.tankLevel, data.dockTankLevel].filter(value => value != null).join(' / ')}), not used automatically until the model confirms clean/dirty semantics`]);
     }
-    if (!rows.length) return '';
-    return `<details class="diagnostics"><summary>${this._setupText().diagnostics}</summary><div class="diagnostics-grid">${rows.map(([label, value]) => `<span class="diagnostics-label">${_esc(this._waterText(label))}</span><span class="diagnostics-value">${_esc(this._waterText(value))}</span>`).join('')}</div></details>`;
+    if (!rows.length && !data.nominalTimeResolution) return '';
+    const reportRows = rows.map(row => [...row]);
+    const pl = this._lang === 'pl';
+    const humanRows = rows.map(([label, value]) => this._humanDiagnosticRow(label, value, data));
+    const nominal = data.nominalTimeResolution;
+    if (nominal && typeof nominal === 'object') {
+      const count = Number.isFinite(Number(nominal.sample_count)) ? Math.max(0, Number(nominal.sample_count)) : 0;
+      const stage = nominal.status === 'active' ? (pl ? 'Szacunek czasowy aktywny' : 'Time estimate active')
+        : nominal.status === 'provisional' ? (pl ? 'Wstępna nauka zużycia' : 'Provisional consumption learning')
+        : (pl ? 'Oczekiwanie na pełny cykl zbiornika' : 'Waiting for a complete tank cycle');
+      humanRows.push([pl ? 'Nauka Tapo' : 'Tapo learning', `${stage} · ${count} ${pl ? 'cykli. Podstawa: nominalny czas od pełnego do pustego zbiornika. Dokładność nie została ustalona.' : 'cycles. Basis: nominal full-to-empty time. Accuracy has not been established.'}`]);
+      const rate = Number(nominal.usage_ml_per_active_minute);
+      if (nominal.usage_ml_per_active_minute != null && Number.isFinite(rate) && rate > 0) humanRows.push([pl ? 'Nominalne zużycie w czasie' : 'Nominal time consumption', `${this._formatUi().number(rate, {maximumFractionDigits:3})} ml/min · ${pl ? 'szacunek, nie pomiar objętości' : 'estimate, not a volume measurement'}`]);
+      const residual = Number(nominal.residual_assumed_percent);
+      if (nominal.residual_assumed_percent != null && Number.isFinite(residual)) humanRows.push([pl ? 'Założona pozostałość przy sygnale pustego zbiornika' : 'Assumed residual at empty-tank signal', `${this._formatUi().number(residual)}% · ${pl ? 'założenie, nie zmierzony poziom' : 'assumption, not a measured level'}`]);
+      reportRows.push(['nominal_time_resolution', JSON.stringify(nominal)]);
+    }
+    return `<details class="diagnostics"><summary>${this._setupText().diagnostics}</summary><div class="diagnostics-grid">${humanRows.map(([label, value]) => `<span class="diagnostics-label">${_esc(label)}</span><span class="diagnostics-value">${_esc(value)}</span>`).join('')}</div>
+      <details class="diagnostics-report"><summary>${pl ? 'Do zgłoszenia' : 'For reporting'}</summary><pre id="vwm-diagnostic-report">${_esc(reportRows.map(([label,value]) => `${label}: ${value}`).join('\n'))}</pre><button type="button" id="vwm-copy-diagnostics">${pl ? 'Kopiuj' : 'Copy'}</button><span id="vwm-copy-status" role="status"></span></details></details>`;
+  }
+
+  _formatUi() { return createFormatUi.forHass(this._hass); }
+
+  _humanDiagnosticCode(value) {
+    const pl = this._lang === 'pl';
+    const labels = {
+      dock_clean:['Zbiornik czystej wody stacji','Station clean-water tank'], dock_dirty:['Zbiornik brudnej wody stacji','Station dirty-water tank'],
+      robot_clean:['Zbiornik czystej wody robota','Robot clean-water tank'], robot_dirty:['Zbiornik brudnej wody robota','Robot dirty-water tank'], detergent:['Zbiornik detergentu','Detergent tank'],
+      volume_sensor_unbound:['Czujnik objętości nieprzypisany','Volume sensor not assigned'], incomplete_context:['Brak pełnego kontekstu pomiaru','Measurement context incomplete'],
+      unknown:['Nieznany','Unknown'], high:['Wysoka pewność dopasowania','High matching confidence'], medium:['Średnia pewność dopasowania','Medium matching confidence'], low:['Niska pewność dopasowania','Low matching confidence'],
+      model_id:['Identyfikator modelu integracji','Integration model identifier'], locked_override:['Zweryfikowane dopasowanie modelu','Reviewed model mapping'],
+      verified_model:['Pomiar dla modelu','Model measurement'], device_calibration:['Kalibracja tego robota','This robot calibration'], real_sensor:['Czujnik objętości','Volume sensor'],
+      manufacturer_data:['Dane producenta','Manufacturer data'], active_time:['Czas aktywnego mopowania','Active mopping time'], area:['Powierzchnia mopowania','Mopped area'],
+      missing_area_rate:['Brak współczynnika zużycia dla powierzchni','Area consumption rate missing'], missing_time_rate:['Brak współczynnika zużycia dla czasu','Time consumption rate missing'],
+      missing_wash_rate:['Brak dawki mycia mopów','Mop wash dose missing'], accounting_incomplete:['Niepełny bilans wody','Water balance incomplete'],
+      stale_event_stream:['Nieaktualne zdarzenia pomiarowe','Measurement events are stale'], awaiting_refill:['Oczekiwanie na potwierdzenie pełnego zbiornika','Waiting for a full tank baseline'],
+      labeled_estimate:['Szacunek opisany jako przybliżony','Labelled estimate'], not_established:['Dokładność nieustalona','Accuracy not established'],
+      floor_only:['Tylko mopowanie podłogi','Floor mopping only'], rotating_pads:['Mopy obrotowe','Rotating mop pads'], pad:['Nakładka mopująca','Mop pad'],
+    };
+    return labels[value]?.[pl ? 0 : 1] || (pl ? 'Szczegóły techniczne w bloku „Do zgłoszenia”' : 'Technical details in “For reporting”');
+  }
+
+  _humanDiagnosticRow(label, value, data) {
+    const pl = this._lang === 'pl';
+    const code = value => this._humanDiagnosticCode(String(value));
+    const text = value => this._waterText(value);
+    if (label.startsWith('Physical ')) {
+      const name = label.slice('Physical '.length), level = data.reservoirLevels?.[name];
+      return [code(name), level?.volume_ml == null ? code(level?.reason || 'unknown') : this._formatMl(level.volume_ml)];
+    }
+    // Original translated prefix must also be recognized in PL.
+    for (const [name, level] of Object.entries(data.reservoirLevels || {})) {
+      if (label === `${text('Physical')} ${name}`) return [code(name), level?.volume_ml == null ? code(level?.reason || 'unknown') : this._formatMl(level.volume_ml)];
+    }
+    if (label.startsWith(text('Balanced') + ' ')) return [code(label.slice((text('Balanced')+' ').length)), value];
+    if (label in (data.reservoirsMl || {})) return [code(label), value];
+    if (label in (data.signals || {})) return [pl ? 'Przypisany sygnał' : 'Assigned signal', pl ? 'Przypisany; identyfikator w szczegółach zgłoszenia' : 'Assigned; identifier in reporting details'];
+    const specific = {
+      'Consumption method': [pl ? 'Metoda zużycia' : 'Consumption method', data.consumptionResolution && !(data.estimateBasis && data.consumptionResolution.source === 'unknown') ? [data.consumptionResolution.source,data.consumptionResolution.method,data.consumptionResolution.reason].filter(Boolean).map(code).join(' · ') : text(value)],
+      'Resolution': [pl ? 'Dopasowanie modelu' : 'Model matching', [data.profileSource,data.profileConfidence].filter(Boolean).map(code).join(' · ')],
+      'Profile': [pl ? 'Model' : 'Model', pl ? 'Profil dopasowany; identyfikator w szczegółach zgłoszenia' : 'Profile matched; identifier in reporting details'],
+      'Consumption profile': [pl ? 'Profil zużycia' : 'Consumption profile', pl ? 'Profil wybrany; identyfikator w szczegółach zgłoszenia' : 'Profile selected; identifier in reporting details'],
+      'Accounting': [pl ? 'Bilans wody' : 'Water accounting', [data.accountingSource,data.stateReason,data.accountingEvidence].filter(Boolean).map(code).join(' · ')],
+      'Tracked reservoir': [pl ? 'Śledzony zbiornik' : 'Tracked reservoir', `${code(data.trackedReservoir || 'unknown')}${data.totalMl ? ' · '+this._formatMl(data.totalMl) : ''}`],
+      'Interruption reason codes': [pl ? 'Przyczyna przerwania' : 'Interruption reason', (data.lastAccountingInterruption?.reasons || []).map(code).join(' · ') || code('unknown')],
+      'Physical transfer balance': [pl ? 'Bilans przepływu wody' : 'Physical transfer balance', data.accountingV2?.status === 'known' ? text('Measured event stream') : code(data.accountingV2?.reason || 'unknown')],
+      'Estimate basis': [text('Estimate basis'), text(VWM_BASIS_LABEL[data.estimateBasis] || 'Unknown')],
+      'Estimate label': [text('Estimate label'), text(value)],
+      'Water anchor': [pl ? 'Punkt odniesienia poziomu' : 'Water level baseline', [data.waterAnchorSource,data.waterAnchorKind,data.waterAnchorConfidence].filter(Boolean).map(code).join(' · ')],
+      'Consumption evidence': [pl ? 'Pewność dowodów zużycia' : 'Consumption evidence confidence', code(value)],
+      'Transfer source': [pl ? 'Źródło przepływu' : 'Transfer source', pl ? 'Źródło przypisane; identyfikator w zgłoszeniu' : 'Source assigned; identifier in report'],
+      'Integration adapter': [pl ? 'Połączenie z integracją' : 'Integration connection', pl ? 'Adapter rozpoznany; nazwa w zgłoszeniu' : 'Adapter recognized; name in report'],
+      'Mop system': [pl ? 'Rodzaj mopa' : 'Mop system', code(data.mopSystem)],
+    };
+    if (specific[label]) return specific[label];
+    // Only code-shaped values are hidden. Numbers and bounded interruption evidence stay readable.
+    const safe = /[a-z]+_[a-z]+/.test(String(value)) ? code(String(value)) : text(value);
+    return [text(label), safe];
   }
 
   _formatMl(value) {
     let numeric = NaN;
     try { numeric = Number(value); } catch (err) {}
-    return Number.isFinite(numeric) ? `${numeric.toLocaleString('en-US')} ml` : `${_asText(value)} ml`;
+    return Number.isFinite(numeric) ? `${this._formatUi().number(numeric)} ml` : `${_asText(value)} ml`;
   }
 
 
@@ -15250,7 +15446,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <p>${this._waterText("Normal water tracking does not require these measurements. Use them only if you want to provide independently measured data.")}</p>
       <p>${this._waterText("Select a recorded cycle. Optionally enter the water measured to refill the same reservoir to its starting level and your measurement resolution. Review the draft before downloading; nothing is uploaded.")}</p>
       <label>${this._waterText("Recorded cycle")} <select id="cal-cycle" class="maint-input" ${recordedCycles.length ? '' : 'disabled'}>
-        ${recordedCycles.slice(0, 50).map((s, i) => `<option value="${rawCycles.indexOf(s)}" data-cycle-ts="${Number(s.ts)}">${this._waterText("Cycle")} ${i + 1} — ${_esc(new Date(s.ts).toLocaleString())}</option>`).join('')}
+        ${recordedCycles.slice(0, 50).map((s, i) => `<option value="${rawCycles.indexOf(s)}" data-cycle-ts="${Number(s.ts)}">${this._waterText("Cycle")} ${i + 1} — ${_esc(this._formatUi().pointLabel(s.ts))}</option>`).join('')}
       </select></label>
       <label>${this._waterText("Measured refill (ml)")} <input id="cal-observed" class="maint-input" type="number" min="0" step="any" /></label>
       <label>${this._waterText("Measurement resolution (ml)")} <input id="cal-resolution" class="maint-input" type="number" min="0" step="any" /></label>
@@ -15290,7 +15486,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const daysAgo = Math.floor((Date.now() - endDate) / 86400000);
       const label = daysAgo === 0 ? this._waterText('Today') : daysAgo === 1 ? this._waterText('Yesterday') : (this._lang === 'pl' ? daysAgo + ' dni temu' : daysAgo + 'd ago');
       lastSessionHtml = `<div class="session-row">
-        <div class="session-date">${label} <span class="session-time">${endDate.getHours()}:${String(endDate.getMinutes()).padStart(2,'0')}</span></div>
+        <div class="session-date">${label} <span class="session-time">${this._formatUi().clock(endDate.getTime())}</span></div>
         <div class="session-stats">
           ${data.areaCleaned ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${data.areaCleaned != null ? parseFloat(data.areaCleaned).toFixed(0) : '--'} m\u00B2</span>` : ''}
           ${data.durationSec ? `<span class="session-stat">\u23F1\uFE0F ${this._formatDuration(data.durationSec)}</span>` : ''}
@@ -15304,7 +15500,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const daysAgo = Math.floor((Date.now() - s.ts) / 86400000);
       const label = daysAgo === 0 ? this._waterText('Today') : daysAgo === 1 ? this._waterText('Yesterday') : (this._lang === 'pl' ? daysAgo + ' dni temu' : daysAgo + 'd ago');
       return `<div class="session-row">
-        <div class="session-date">${label} <span class="session-time">${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</span></div>
+        <div class="session-date">${label} <span class="session-time">${this._formatUi().clock(d.getTime())}</span></div>
         <div class="session-stats">
           ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${s.area} m\u00B2</span>` : ''}
           ${s.water ? `<span class="session-stat" title="${this._waterText(s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded')}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${_esc(this._formatMl(s.water))}</span>` : ''}
@@ -16424,7 +16620,9 @@ target:
       { id: 'history', icon: '\uD83D\uDDD3\uFE0F', label: 'History' },
       { id: 'maintenance', icon: '\uD83D\uDD27', label: 'Maintenance' },
       { id: 'settings', icon: '\u2699\uFE0F', label: 'Settings' },
-    ];
+    ].filter(tab => !Array.isArray(cfg.tabs) || cfg.tabs.includes(tab.id));
+    if (!tabs.length) tabs.push({id:'water', icon:'', label:'Water'});
+    if (!tabs.some(tab => tab.id === this._activeTab)) this._activeTab = tabs[0].id;
 
     const tabNav = `<div class="tab-nav" role="tablist">
       ${tabs.map(t => `<button class="tab-btn ${this._activeTab === t.id ? 'tab-active' : ''}" data-tab="${t.id}" role="tab" id="vwm-tab-${t.id}" aria-controls="vwm-tab-panel" tabindex="${this._activeTab === t.id ? 0 : -1}" aria-selected="${this._activeTab === t.id}" aria-pressed="${this._activeTab === t.id}"><span aria-hidden="true" class="tab-icon">${t.icon}</span> ${_esc(this._waterText(t.label))}</button>`).join('')}
@@ -16437,7 +16635,8 @@ target:
       </div>` : '';
 
     let tabContent = '';
-    if (this._activeTab === 'water') tabContent = devices.length
+    if (cfg.compact && !this._compactExpanded) tabContent = this._buildWaterTab(device, data);
+    else if (this._activeTab === 'water') tabContent = devices.length
       ? this._buildWaterTab(device, data)
       : `<div class="empty-state">${this._t.noDevices}<br>${this._t.addVacuum}</div>`;
     else if (this._activeTab === 'maintenance') tabContent = this._buildMaintenanceTab(device, data);
@@ -16740,19 +16939,41 @@ target:
 [id^="vwm-settings-"] h3 { font-size:16px; margin:12px 0; }
 input, select, textarea { max-width:100%; min-width:0; }
 @container (max-width:520px) { .diagnostics-grid { grid-template-columns:minmax(0,1fr); gap:3px; } .diagnostics-value { margin-bottom:7px; } #vwm-custom-form, #vwm-custom-modes { grid-template-columns:1fr !important; } [id^="vwm-settings-"] [style*="grid-template-columns"] { grid-template-columns:1fr !important; } }
+
+/* v5 family readability and native fields: evaluated against consumed theme in QA. */
+:host { color-scheme:light; font-size:14px; min-width:0; }
+:host(.bento-dark) { color-scheme:dark; }
+.card { max-width:1200px; margin-inline:auto; box-sizing:border-box; min-width:0; }
+.card :where(p,span,label,li,td,th,button,input,select,textarea,summary,small,div,a) { font-size:14px !important; }
+.card :where(.diagnostics-label,.diagnostics-value,.session-time,.session-date,small,.chip,.status-badge) { font-size:12px !important; }
+.card :where(.device-name,.supply-main,h3) { font-size:18px !important; }
+.card :where(p,span,label,td,th,div,a) { min-width:0; overflow-wrap:anywhere; }
+.card :where(button,input,select,textarea,summary) { min-height:44px; box-sizing:border-box; }
+.card :where(input,select,textarea) { color:var(--primary-text-color,#1c1c1c); background:var(--card-background-color,#fff); accent-color:var(--primary-color,#1976d2); }
+.card :where(button):focus-visible, .card summary:focus-visible { outline:2px solid var(--primary-text-color,#1c1c1c); outline-offset:3px; }
+.card .refill-btn, .card #vwm-signal-save, .card #vwm-custom-save, .card .vwm-setup-btn.primary { color:#fff !important; background:#1d4ed8 !important; }
+.card .refill-btn:hover, .card #vwm-signal-save:hover, .card #vwm-custom-save:hover, .card .vwm-setup-btn.primary:hover { background:#1e40af !important; }
+.card .refill-btn:disabled { opacity:1; background:#475569 !important; color:#fff !important; }
+.card :where(.row-label,.row-val,.device-name,.session-stat) { white-space:normal; overflow-wrap:anywhere; }
+.card .device-name { overflow:visible; text-overflow:clip; }
+.card .row { gap:8px; align-items:flex-start; }
+.card .maint-add-btn { color:var(--primary-text-color,#1c1c1c); background:var(--card-background-color,#fff); }
+.tip-banner { padding:0 12px; }
+.tip-banner > summary { cursor:pointer; padding-block:12px; }
+.card svg text { font-size:12px !important; }
+.diagnostics-report pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px !important; }
+.vwm-compact { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.vwm-compact > p { flex-basis:100%; }
 </style>
       <div class="card">
-        <div class="card-title">${_esc(this._config.title)}<button id="vwm-help" aria-label="${this._waterText('How it works')}">?</button></div>
-        <div class="tip-banner" id="tip-banner">
-          <button class="tip-dismiss" id="tip-dismiss" aria-label="${_esc(this._waterText("Dismiss"))}">\u2715</button>
-          ${this._tipHtml()}
-        </div>
-        ${this._activeTab !== 'settings' ? this._buildSharingIntro() : ''}
+        <div class="card-title">${_esc(this._config.title)}${cfg.compact && this._compactExpanded ? `<button type="button" id="vwm-collapse">${this._lang === 'pl' ? 'Zwiń kartę' : 'Collapse card'}</button>` : ''}</div>
+        ${cfg.show_help !== false && !(cfg.compact && !this._compactExpanded) ? `<details class="tip-banner" id="tip-banner"><summary>${this._waterText('How it works')}</summary>${this._tipHtml()}</details>` : ''}
+        ${this._activeTab !== 'settings' && !(cfg.compact && !this._compactExpanded) ? this._buildSharingIntro() : ''}
         ${this._duplicateNoticeHtml()}
         ${deviceTabsHtml}
         ${deviceHeader}
-        ${tabNav}
-        <div id="vwm-tab-panel" role="tabpanel" aria-labelledby="vwm-tab-${this._activeTab}">${tabContent}</div>
+        ${cfg.compact && !this._compactExpanded ? '' : tabNav}
+        <div id="vwm-tab-panel" ${cfg.compact && !this._compactExpanded ? 'role="region" aria-label="'+(this._lang==='pl'?'Woda':'Water')+'"' : 'role="tabpanel" aria-labelledby="vwm-tab-'+this._activeTab+'"'}>${tabContent}</div>
 
         ${this._hass?.user?.is_admin && this._config.show_support !== false && !supportDismissed() ? ownDonateFooter(this._lang) : ''}
 
@@ -16809,22 +17030,32 @@ input, select, textarea { max-width:100%; min-width:0; }
       if (dock) { dock.open = true; dock.scrollIntoView?.({block:'nearest'}); dock.querySelector('summary')?.focus(); }
       else { sr.querySelector('.refill-btn')?.focus(); }
     });
-    // Tip banner dismiss
-    const _tipB = this.shadowRoot.querySelector('#tip-banner');
-    if (_tipB) {
-      const _tipV = 'vacuum-water-monitor-tips-v3.0.0';
-      if (localStorage.getItem(_tipV) === 'dismissed') {
-        _tipB.classList.add('hidden');
-      }
-      const _tipDismiss = this.shadowRoot.querySelector('#tip-dismiss');
-      if (_tipDismiss) {
-        _tipDismiss.addEventListener('click', (e) => {
-          e.stopPropagation();
-          _tipB.classList.add('hidden');
-          localStorage.setItem(_tipV, 'dismissed');
-        });
-      }
+    const help = sr.querySelector('#tip-banner');
+    if (help) {
+      try { help.open = localStorage.getItem('vwm-help-state') === 'open'; } catch (_) {}
+      help.addEventListener('toggle', () => {
+        try { localStorage.setItem('vwm-help-state', help.open ? 'open' : 'closed'); } catch (_) {}
+      });
     }
+    sr.querySelector('#vwm-expand')?.addEventListener('click', () => {
+      this._compactExpanded = true; this._render({preserveDraft:true});
+      sr.querySelector('.tab-btn[aria-selected="true"]')?.focus();
+    });
+    sr.querySelector('#vwm-collapse')?.addEventListener('click', () => {
+      this._compactExpanded = false; this._render({preserveDraft:true}); sr.querySelector('#vwm-expand')?.focus();
+    });
+    sr.querySelector('#vwm-copy-diagnostics')?.addEventListener('click', async () => {
+      const report = sr.querySelector('#vwm-diagnostic-report');
+      const status = sr.querySelector('#vwm-copy-status');
+      try {
+        await navigator.clipboard.writeText(report.textContent);
+        status.textContent = this._lang === 'pl' ? 'Skopiowano' : 'Copied';
+      } catch (_) {
+        const range = document.createRange(); range.selectNodeContents(report);
+        const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+        status.textContent = this._lang === 'pl' ? 'Zaznaczono tekst do ręcznego skopiowania' : 'Text selected for manual copying';
+      }
+    });
 
     sr.querySelectorAll('.dup-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -16902,12 +17133,12 @@ input, select, textarea { max-width:100%; min-width:0; }
         const vacuumId = btn.dataset.vacuum;
         const ok = () => {
           btn.textContent = '\u2705 Done!'; btn.style.color = '#22c55e';
-          setTimeout(() => { btn.textContent = `\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolane' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 2000);
+          setTimeout(() => { btn.textContent = `\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolano' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 2000);
         };
         const fail = (err) => {
           console.error('[ha-vacuum-water-monitor] refill failed:', err);
           btn.textContent = '\u274C Error!'; btn.style.color = '#ef4444';
-          setTimeout(() => { btn.textContent = `\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolane' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 3000);
+          setTimeout(() => { btn.textContent = `\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolano' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 3000);
         };
         if (vacuumId) {
           try {
@@ -16965,10 +17196,6 @@ input, select, textarea { max-width:100%; min-width:0; }
       if (next === null) return;
       event.preventDefault(); const id = tabs[next].dataset.tab; tabs[next].click(); sr.querySelector(`[data-tab="${id}"]`)?.focus();
     }));
-    sr.querySelector('#vwm-help')?.addEventListener('click', () => {
-      try { localStorage.removeItem('vacuum-water-monitor-tips-v3.0.0'); } catch (_) {}
-      sr.querySelector('#tip-banner')?.classList.remove('hidden'); sr.querySelector('#tip-dismiss')?.focus();
-    });
     sr.querySelectorAll('[data-settings-anchor]').forEach(link => link.addEventListener('click', event => {
       event.preventDefault(); const section = sr.getElementById('vwm-settings-' + link.dataset.settingsAnchor);
       section?.scrollIntoView?.({block:'start'}); section?.focus();
@@ -17252,26 +17479,31 @@ class HaVacuumWaterMonitorEditor extends HTMLElement {
   _dispatch() {
     this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true }));
   }
+  set hass(value) { this._hass = value; this._render(); }
   _render() {
-    this.shadowRoot.innerHTML = `
-      <style>
-            :host { display:block; padding:16px; }
-            h3 { margin:0 0 16px; font-size:15px; font-weight:600; color:var(--bento-text, var(--primary-text-color,#1e293b)); }
-            input { outline:none; transition:border-color .2s; }
-            input:focus { border-color:var(--bento-primary, var(--primary-color,#3b82f6)); }
-        </style>
-      <h3>Vacuum Water Monitor</h3>
-            <div style="margin-bottom:12px;">
-              <label style="display:block;font-weight:500;margin-bottom:4px;font-size:13px;">Title</label>
-              <input type="text" id="cf_title" value="${_esc(this._config?.title || 'Vacuum Water Monitor')}"
-                style="width:100%;padding:8px 12px;border:1px solid var(--divider-color,#e2e8f0);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#1e293b);font-size:14px;box-sizing:border-box;">
-            </div>
-    `;
-        const f_title = this.shadowRoot.querySelector('#cf_title');
-        if (f_title) f_title.addEventListener('input', (e) => {
-          this._config = { ...this._config, title: e.target.value };
-          this._dispatch();
-        });
+    const pl = (this._hass?.locale?.language || this._hass?.language || 'en').startsWith('pl');
+    const labels = pl ? {title:'Tytuł', default_tab:'Zakładka początkowa', tabs:'Widoczne zakładki', show_help:'Pokaż pomoc', show_support:'Pokaż wsparcie', compact:'Widok kompaktowy'}
+      : {title:'Title', default_tab:'Default tab', tabs:'Visible tabs', show_help:'Show help', show_support:'Show support', compact:'Compact view'};
+    const tabs = [['water',pl?'Woda':'Water'],['history',pl?'Historia':'History'],['maintenance',pl?'Konserwacja':'Maintenance'],['settings',pl?'Ustawienia':'Settings']];
+    this.shadowRoot.innerHTML = `<style>
+      :host {display:block;padding:16px;color:var(--primary-text-color);color-scheme:light dark;font-size:14px}
+      label {display:block;margin-block:12px} input,select {min-height:44px;max-width:100%;box-sizing:border-box;font-size:14px;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);padding:8px} fieldset{min-width:0} legend{font-size:14px}
+      :focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+      </style><h3>Vacuum Water Monitor</h3>
+      <label for="cf_title">${labels.title}</label><input id="cf_title" value="${_esc(this._config.title ?? 'Vacuum Water Monitor')}">
+      <label for="cf_default_tab">${labels.default_tab}</label><select id="cf_default_tab">${tabs.map(([id,label])=>`<option value="${id}" ${this._config.default_tab===id?'selected':''}>${label}</option>`).join('')}</select>
+      <fieldset><legend>${labels.tabs}</legend>${tabs.map(([id,label])=>`<label><input type="checkbox" data-tab-option="${id}" ${!Array.isArray(this._config.tabs)||this._config.tabs.includes(id)?'checked':''}>${label}</label>`).join('')}</fieldset>
+      ${['show_help','show_support','compact'].map(key=>`<label><input id="cf_${key}" type="checkbox" ${key==='compact' ? this._config[key]===true?'checked':'' : this._config[key]!==false?'checked':''}>${labels[key]}</label>`).join('')}`;
+    this.shadowRoot.querySelector('#cf_title').addEventListener('input', e => { this._config={...this._config,title:e.target.value};this._dispatch(); });
+    this.shadowRoot.querySelector('#cf_default_tab').addEventListener('change', e => { this._config={...this._config,default_tab:e.target.value};this._dispatch(); });
+    for (const key of ['show_help','show_support','compact']) this.shadowRoot.querySelector('#cf_'+key).addEventListener('change',e=>{this._config={...this._config,[key]:e.target.checked};this._dispatch();});
+    this.shadowRoot.querySelectorAll('[data-tab-option]').forEach(input=>input.addEventListener('change',()=>{
+      const selected=[...this.shadowRoot.querySelectorAll('[data-tab-option]:checked')].map(node=>node.dataset.tabOption);
+      if (!selected.length) {input.checked=true;return;}
+      // Keep legacy/extension tab IDs untouched during visual editing.
+      const extra=(this._config.tabs||[]).filter(id=>!tabs.some(([known])=>known===id));
+      this._config={...this._config,tabs:[...selected,...extra],default_tab:selected.includes(this._config.default_tab)?this._config.default_tab:selected[0]};this._dispatch();this._render();
+    }));
   }
   connectedCallback() { this._render(); }
 }

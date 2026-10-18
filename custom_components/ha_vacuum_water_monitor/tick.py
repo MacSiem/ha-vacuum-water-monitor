@@ -808,6 +808,8 @@ def _tick_device_pass(
             state["nominal_time_learning"], "time_method_replaced")
         state.pop("nominal_time_start_pending", None)
         state["nominal_time_resolution"] = {"status": "unavailable", "reason": "time_method_replaced"}
+    if not nominal_eligible:
+        state.pop("nominal_time_start_pending", None)
     state["last_consumption_context"] = deepcopy(consumption_context)
     context_values = {key: device.get(key) for key in (
         "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",
@@ -1305,7 +1307,7 @@ def _tick_device_pass(
             added = (elapsed_seconds / 60) * effective_minute_rate * (
                 intensity_factor if intensity_factor is not None else 1
             )
-            _charge_consumption(state, added, "floor_mopping", "active_time", time_evidence,
+            _charge_consumption(state, added, "whole_cycle" if nominal_time_applied else "floor_mopping", "active_time", time_evidence,
                                 now_ts, {"active_minutes": elapsed_seconds / 60})
             dirty = True
             dirty |= _record_accounting(
@@ -2224,9 +2226,10 @@ def _water_anchor_states(
 
 def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
-    if state.get("nominal_time_learning"):
+    if state.get("nominal_time_learning") or state.get("nominal_time_start_pending"):
+        state["nominal_time_start_pending"] = False
         state["nominal_time_learning"] = nominal_time_learning.invalidate(
-            state["nominal_time_learning"], "time_observation_unavailable")
+            state.get("nominal_time_learning") or {}, "time_observation_unavailable")
     # The sequence latch can outlive a completed session while it deduplicates
     # dock transitions. A settled observation ends exposure, not deduplication.
     # An open session, explicit dock wash or unverified completion still matters.
