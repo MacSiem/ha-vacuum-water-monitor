@@ -633,6 +633,7 @@ def _tick_device_pass(
                      "water_level": mop_intensity}
     for role in ("route_entity", "passes_entity", "wash_mode_entity",
                  "wash_frequency_entity", "wash_temperature_entity",
+                 "wash_area_threshold_entity", "wash_time_threshold_entity",
                  "adaptive_mode_entity", "detergent_mode_entity",
                  "task_scope_entity", "suction_level_entity", "carpet_policy_entity"):
         if device.get(role):
@@ -678,6 +679,17 @@ def _tick_device_pass(
             for setting in CONSUMPTION_SETTINGS:
                 if device.get(setting + "_entity"):
                     settings_context[setting] = _normalized_signal(_state_value(hass, device[setting + "_entity"]))
+        # Dreame exposes frequency type and numeric thresholds separately.
+        # Preserve exact observed controls in the existing frequency axis: a
+        # threshold change must never reuse an earlier setting's calibration.
+        thresholds = {key: _normalized_signal(_state_value(hass, device[role]))
+                      for key, role in (("area_m2", "wash_area_threshold_entity"),
+                                        ("time_min", "wash_time_threshold_entity"))
+                      if device.get(role)}
+        if thresholds and isinstance(settings_context, dict):
+            settings_context["wash_frequency"] = json.dumps(
+                {"type": settings_context.get("wash_frequency"), **thresholds},
+                sort_keys=True, separators=(",", ":"))
         for setting in CONSUMPTION_SETTINGS:
             role = "mop_intensity_entity" if setting == "water_level" else setting + "_entity"
             if device.get(role):

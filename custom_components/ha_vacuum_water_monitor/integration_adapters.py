@@ -19,6 +19,8 @@ ROLE_IDENTIFIERS: dict[str, set[str]] = {
     # Exact station controls affect calibration applicability, never ml by themselves.
     "wash_mode_entity": set(),
     "wash_frequency_entity": set(),
+    "wash_area_threshold_entity": set(),
+    "wash_time_threshold_entity": set(),
     "wash_temperature_entity": set(),
     "status_sensor": {
         "status",
@@ -211,8 +213,10 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
     # an HA Core integration.  The aliases are its documented entity keys.
     "dreame_vacuum": {
         "wash_mode_entity": ("washing_mode", "mop_wash_level"),
-        "wash_frequency_entity": ("self_clean_frequency", "self_clean_value"),
+        "wash_frequency_entity": ("self_clean_frequency", "mop_clean_frequency"),
         "wash_temperature_entity": ("water_temperature",),
+        "wash_area_threshold_entity": ("self_clean_area",),
+        "wash_time_threshold_entity": ("self_clean_time",),
         # ``state`` includes WASHING/RETURNING_WASHING; ``status`` does not.
         # Tuple order is a preference order, not an unordered alias bag.
         "status_sensor": ("state", "status", "task_status"),

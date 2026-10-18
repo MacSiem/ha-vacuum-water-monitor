@@ -1003,6 +1003,8 @@ _DIRECT_SIGNAL_FIELDS = {
     "passes_entity",
     "wash_mode_entity",
     "wash_frequency_entity",
+    "wash_area_threshold_entity",
+    "wash_time_threshold_entity",
     "wash_temperature_entity",
     "status_sensor",
     "cleaning_active_sensor",

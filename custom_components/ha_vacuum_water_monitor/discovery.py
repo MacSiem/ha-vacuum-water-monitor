@@ -350,7 +350,8 @@ def _role_score(
 ) -> int:
     setting_domains = {"route_entity": "select", "passes_entity": "number",
                        "wash_mode_entity": "select", "wash_frequency_entity": "select",
-                       "wash_temperature_entity": "select"}
+                       "wash_temperature_entity": "select",
+                       "wash_area_threshold_entity": "number", "wash_time_threshold_entity": "number"}
     if role in setting_domains and str(_value(record, "entity_id") or "").split(".")[0] != setting_domains[role]:
         return 0
     translation = normalize_identifier(_value(record, "translation_key"))
