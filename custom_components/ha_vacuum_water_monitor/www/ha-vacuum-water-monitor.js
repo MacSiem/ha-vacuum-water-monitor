@@ -14560,6 +14560,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const tankLevel = this._getStateValue(device.tank_level_sensor);
     const dockTankLevel = this._getStateValue(device.dock_tank_level_sensor);
 
+    const nominalActive = tankState.nominal_time_resolution?.status === 'active' && tankState.last_accounting_evidence === 'nominal_full_to_empty_time';
     const physicalWhole = tankState.last_accounting_source === 'whole_cycle' && tankState.consumption_resolution?.source === 'device_calibration' && !tankState.last_accounting_reason;
     return {
       totalMl, remainingL, percentRemaining, usedMl,
@@ -14584,14 +14585,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
       cycleActionTotals: tankState.cycle_action_totals || {},
       reservoirLevels: tankState.reservoir_levels || null,
       accountingV2: tankState.accounting_v2 || null,
-      estimateBasis: userRate || measuredVolume || physicalWhole ? null : (device.estimate_basis || null),
-      estimateSources: userRate || measuredVolume || physicalWhole ? [] : (device.estimate_sources || []),
-      uncertaintyKind: !userRate && !measuredVolume && !physicalWhole && device.estimate_basis
+      nominalTimeResolution: tankState.nominal_time_resolution || null,
+      estimateBasis: userRate || measuredVolume || physicalWhole || nominalActive ? null : (device.estimate_basis || null),
+      estimateSources: userRate || measuredVolume || physicalWhole || nominalActive ? [] : (device.estimate_sources || []),
+      uncertaintyKind: nominalActive ? 'nominal_tank_repeatability' : !userRate && !measuredVolume && !physicalWhole && device.estimate_basis
         ? (calibrationWindow.length >= 3 ? 'calibration_spread' : 'prior_band') : null,
       mopSystem: device.mop_system || null,
       calibrationLogFactors: _vwmStoredWindow(tankState) || [],
       calibrationHistory: Array.isArray(tankState.calibration_history) ? tankState.calibration_history : [],
-      uncertaintyPercent: userRate || measuredVolume || physicalWhole ? null : device.estimate_basis
+      uncertaintyPercent: userRate || measuredVolume || physicalWhole || nominalActive ? null : device.estimate_basis
         ? _vwmUncertainty(device.estimate_basis, _vwmStoredWindow(tankState)
           || (Number(tankState.calibration_samples) > 0 && Number(tankState.calibration_factor) > 0 ? [Math.log(Number(tankState.calibration_factor))] : []))
         : (Number.isFinite(Number(device.uncertainty_percent)) ? Number(device.uncertainty_percent) : null),
@@ -14853,7 +14855,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const remainingText = waterRange ? `${waterRange} L` : data.remainingL != null ? `${this._formatUi().number(Number(data.remainingL), {minimumFractionDigits:2,maximumFractionDigits:2})} L` : '--';
     const usedText = data.usedMl != null ? `${this._formatUi().number(Number(data.usedMl)/1000, {minimumFractionDigits:2,maximumFractionDigits:2})} L` : '--';
     const partialUsedRow = data.partialUsedMl != null
-      ? `<div class="row"><span class="row-label">${this._waterText('Recorded estimate (incomplete)')}</span><span class="row-val">${(data.partialUsedMl / 1000).toFixed(2)} L</span></div>` : '';
+      ? `<div class="row"><span class="row-label">${this._waterText('Recorded estimate (incomplete)')}</span><span class="row-val">${this._formatUi().number(data.partialUsedMl / 1000, {minimumFractionDigits:2,maximumFractionDigits:2})} L</span></div>` : '';
 
     const vacStateChip = data.vacState
       ? `<span class="chip ${data.isCleaning ? 'chip-active' : 'chip-idle'}">${data.isCleaning ? '\uD83E\uDDF9 ' + this._waterText('Cleaning') : '\uD83D\uDECC ' + this._waterText('Idle')}</span>`
@@ -15057,12 +15059,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
       }
     }
     const resolved = data.consumptionResolution;
-    const labelledEstimate = Boolean(data.estimateBasis) && (!resolved || resolved.source === 'unknown');
+    const nominalActive = data.nominalTimeResolution?.status === 'active' && data.accountingEvidence === 'nominal_full_to_empty_time';
+    if (nominalActive) {
+      rows.push(['Consumption method', this._lang === 'pl' ? 'Nominalne zużycie całego zbiornika na aktywną minutę mopowania; obejmuje niewidoczną wodę stacji.' : 'Nominal whole-tank depletion per active mopping minute; includes unobserved dock water.']);
+      rows.push(['Evidence tier', this._lang === 'pl' ? 'Prywatny szacunek nominalny; dokładność fizyczna nieustalona.' : 'Private nominal estimate; physical accuracy not established.']);
+    }
+    const labelledEstimate = !nominalActive && Boolean(data.estimateBasis) && (!resolved || resolved.source === 'unknown');
     if (labelledEstimate) {
       rows.push(['Consumption method', 'Labelled estimate: cleaned area \u00D7 route/water level + dock washes']);
       rows.push(['Evidence tier', Number(data.calibrationSamples) > 0 ? 'Derived estimate, calibrated on this robot' : 'Derived estimate']);
     }
-    if (resolved && typeof resolved === 'object' && !labelledEstimate) {
+    if (resolved && typeof resolved === 'object' && !labelledEstimate && !nominalActive) {
       rows.push(['Consumption method', [resolved.source, resolved.method, resolved.reason].filter(Boolean).join(' / ')]);
       if (resolved.source === 'manufacturer_data') {
         rows.push(['Evidence tier', 'Manufacturer data — limited estimate; not used automatically']);
