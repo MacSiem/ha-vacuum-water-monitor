@@ -43,6 +43,19 @@ test('compact exposes refill and full card, then restores compact with keyboard 
  assert.equal(sr.activeElement?.id,'vwm-expand');assert.ok(sr.querySelector('.vwm-compact'));
  dom.window.close();
 });
+test('compact tile reserves a usable narrow height and keeps details behind expansion',()=>{
+ const {dom,card,sr}=fixture('en',{compact:true});
+ card._duplicateNoticeHtml=()=>'<p data-extra-duplicate>Detailed duplicate controls</p>';
+ card._lastHtml='';card._render();
+ assert.equal(sr.querySelector('[data-extra-duplicate]'),null);
+ assert.equal(sr.querySelector('.device-header'),null);
+ assert.equal(card.getGridOptions().columns,6);
+ assert.equal(card.getGridOptions().rows,6);
+ sr.querySelector('#vwm-expand').click();
+ assert.ok(sr.querySelector('[data-extra-duplicate]'));assert.ok(sr.querySelector('.device-header'));
+ assert.equal(card.getGridOptions().rows,'auto');
+ dom.window.close();
+});
 test('help is one closed summary and remembers explicit close over render/recreation',async()=>{
  const {dom,card,sr}=fixture('en');
  let help=sr.querySelector('details#tip-banner');assert.ok(help);assert.equal(help.open,false);
