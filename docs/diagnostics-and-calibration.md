@@ -171,3 +171,16 @@ assuming all elapsed time was floor mopping.
 
 The 5.9.0 area-only recovery fix covers one reproduced false-incomplete path. It does not
 prove the cause of every intermittent unknown report or the accuracy of a physical tank.
+
+
+## Private nominal time learning (5.12)
+
+For a supported current mop mode with a known tracked capacity but no usable area/duration counter or measured time rate, confirm genuine full refills and the tracked tank’s empty boundary. Three compatible tanks can qualify a private whole-tank estimate per active mopping minute, applied only from the next confirmed full tank. The bank is not a measured floor-flow profile: unobserved dock use is included, capacity is nominal, the 5% residual is assumed and independent physical accuracy remains unestablished.
+
+Diagnostics shows `unavailable`, `provisional` or `active`, accepted sample count, nominal basis, residual assumption and private scope. Unknown modes, unavailable observations, setting/capacity changes, partial refills and active observation gaps over 180 seconds reject the open sample. Completed compatible samples are retained locally. Unexposed settings remain explicit unknowns; repeatability cannot prove that an unexposed setting never changed.
+
+A generic Matter robot empty alarm does not establish that an inferred station clean-water tank is empty. In that case **Tank empty** remains available for the user’s confirmation of the tracked reservoir. Automatic anchors still require the same-reservoir contract.
+
+The full bank stays in the local Store and authenticated household `get_state`; live events and sensor attributes contain the small `nominal_time_resolution` summary without raw sample history. Nothing is uploaded or added to the shared dataset automatically.
+
+The card’s **Details → Diagnostics → For reporting** block contains technical reasons and assigned signal identifiers. It is not an anonymous export. Inspect and sanitize relevant identifiers and event times before sharing. Include the installed integration version separately; a recorded version at an earlier interruption need not equal the currently installed version.

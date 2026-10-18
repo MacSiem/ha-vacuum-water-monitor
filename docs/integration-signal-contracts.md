@@ -11,7 +11,7 @@ The accounting gate is deliberately strict:
 1. Home Assistant must report an active cleaning state.
 2. The adapter must provide affirmative mop evidence: a mop/combined cleaning mode, an
    active mop control, or an attached mop/water tank.
-3. A model or user calibration must provide a rate for the signal axis actually exposed.
+3. A model/user calibration, or a qualified private nominal time estimate, must provide a rate for the signal axis actually exposed.
 4. An explicit same-reservoir mL/L volume sensor is authoritative. Otherwise area is
    preferred and separately calibrated duration/active time is second. An unavailable
    configured duration counter never becomes wall time. Explicit unknown units fail closed.
@@ -21,7 +21,7 @@ The accounting gate is deliberately strict:
 | Adapter | Activity/status contract | Area and duration | Mop gate and rate axis | Water/tank anchors | Behaviour when incomplete |
 |---|---|---|---|---|---|
 | Roborock | `vacuum` activity plus `status`/`a01_status`/`q7_status` and `in_cleaning`. Raw mopping, zoned/segment and mop-wash states are classified separately. | `cleaning_area` in m²; `cleaning_time` in seconds. | `cleaning_mode`, `mop_mode`/`cleaning_route`, `mop_intensity`/`water_box_mode`/`water_flow`, `mop_attached`, `water_box_attached`. | `water_shortage` is a debounced threshold. `clean_box_empty` and `clean_fluid_empty` are diagnostic only because Core may conflate empty and not-installed/transient states. | No automatic dose without mop evidence and an explicit model/user rate. |
-| Matter RVC | `operational_state`: stopped, running, paused, error, seeking charger, charging or docked. | Matter RVC does not expose a standard cleaning-area or duration counter. | `clean_mode`; bounded active time requires an explicit measured ml/min rate and a mode that proves mopping. Tapo's water-flow level is not exposed by Matter. | `operational_error`: exact `water_tank_empty`; missing/lid-open/dirty-tank states never mean consumed clean water. | The current Tapo RV50 Pro Omni profile has no verified time rate. No cross-model dose is invented: water use stays unknown until a measured rate is provided. A full-tank confirmation cannot supply a missing rate. Missing or vacuum-only `clean_mode`, unknown models, and capacity-only records fail closed/manual-only. |
+| Matter RVC | `operational_state`: stopped, running, paused, error, seeking charger, charging or docked. | No standard cleaning-area or duration counter. | `clean_mode`; only a recognized current mop phase proves mopping. Labels are device-supplied; an unknown/localized label or vacuum-then-mop plan does not identify the current phase. | `operational_error` needs a verified same-reservoir contract. A generic robot empty error cannot anchor an inferred station clean-water tank; missing/lid-open/dirty states never mean consumed clean water. | With known capacity and a supported mode, three compatible confirmed full-to-empty tanks can qualify private nominal ml/min. Before then the coefficient stays unknown. A full confirmation alone supplies no rate, and no cross-model coefficient is imported. |
 | Ecovacs | Normalized `vacuum` activity. `station_state` is kept separate from robot activity. | `stats_area` in m²; `stats_time` in seconds. | `work_mode`, `water_amount` (select or model-specific number), `water_mop_attached`. | `station_state` is not a volume reading; only an explicit mop-wash state can trigger one profile-estimated wash cycle. Generic error remains diagnostic. | Numeric water controls are normalized from their own HA min/max, not a global scale. |
 | iRobot Roomba/Braava | Normalized `vacuum` activity derived from the mission phase. | `cleaned_area` vacuum attribute: m² on metric HA and ft² on imperial HA; `cleaning_time` in minutes. | `fan_speed` contains Braava behaviour and spray amount; `tank_present` is an attachment gate. | `tank_level` and `dock_tank_level` are discovered percentages but remain non-authoritative until a model profile confirms clean/dirty semantics. | Unknown tank semantics never overwrite the estimate. |
 | SmartThings | Normalized `vacuum` activity. | No standard same-device area/duration contract used by this adapter. | `robot_cleaner_cleaning_type` and `robot_cleaner_water_spray_level`; low through high spray values are intensity bands, not volume or percent. | None considered authoritative. | Needs a calibrated/model time rate and affirmative mop/combined mode. |
@@ -35,7 +35,7 @@ The accounting gate is deliberately strict:
 Home Assistant also ships vacuum platforms such as LG ThinQ, Miele, Neato, Shark IQ,
 SwitchBot/Cloud, Tuya, generic MQTT and Template. Their normalized vacuum activity is useful
 for a dashboard, but it is not proof that water is being consumed. Unless the user explicitly
-maps a same-device mop mode/attachment signal and supplies a calibrated rate, these platforms
+maps a same-device mop mode/attachment signal and has an applicable rate (including separately qualified private nominal time learning), these platforms
 remain manual-only. A generic `cleaning` state, manufacturer name, leak sensor, coffee-machine
 water warning, or a similarly named entity on another device is never accepted.
 
@@ -43,6 +43,14 @@ Dock status follows the same rule: only explicit mop-wash states count a wash cy
 Generic station `cleaning` is deliberately excluded because it can describe dust emptying or
 station maintenance. Likewise, a dock `water_shortage` error is a debounced low-water threshold,
 not an exact-empty measurement.
+
+## Wash controls and verification supplement — 18 October 2026
+
+A return-to-wash state is transit, including Roborock `going_to_wash_the_mop` and Dreame `back_to_dock_washing_duster`. An aborted return does not consume a wash estimate. Explicit washing, drying and independent wash operations remain distinct.
+
+Dreame wash context binds `washing_mode` / `mop_wash_level`, `self_clean_frequency` / `mop_clean_frequency`, `water_temperature` and separate `self_clean_area` / `self_clean_time` number thresholds. `self_clean_value` is not an entity translation key. Type and thresholds are retained together when checking calibration applicability; none of these controls establishes a physical water volume.
+
+The changed roles were checked against [HA Core 2026.10.2 Matter sensors](https://github.com/home-assistant/core/blob/2026.10.2/homeassistant/components/matter/sensor.py) and Dreame commit [f5b8472 selects](https://github.com/Tasshack/dreame-vacuum/blob/f5b8472b8e2e4bb3dff7bc2a81a5fd594eca9585/custom_components/dreame_vacuum/select.py) / [numbers](https://github.com/Tasshack/dreame-vacuum/blob/f5b8472b8e2e4bb3dff7bc2a81a5fd594eca9585/custom_components/dreame_vacuum/number.py). The older inventory below keeps its dated scope. Registry-shaped fixtures and the isolated eleven-adapter HA run establish these software contracts, not hardware compatibility or water-volume accuracy for every model.
 
 ## Units and reset handling
 
