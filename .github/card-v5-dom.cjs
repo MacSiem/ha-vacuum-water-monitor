@@ -55,6 +55,15 @@ test('help is one closed summary and remembers explicit close over render/recrea
  card._config.show_help=false;card._render();assert.equal(sr.querySelector('#tip-banner'),null);
  dom.window.close();
 });
+test('mobile starts with closed help even after wide-screen opening, preserving explicit mobile reading',()=>{
+ const {dom,card,sr}=fixture('en');
+ let help=sr.querySelector('#tip-banner');help.open=true;help.dispatchEvent(new dom.window.Event('toggle'));
+ Object.defineProperty(dom.window,'innerWidth',{configurable:true,value:390});
+ card._lastHtml='';card._render();help=sr.querySelector('#tip-banner');assert.equal(help.open,false);
+ help.open=true;help.dispatchEvent(new dom.window.Event('toggle'));card._lastHtml='';card._render();
+ assert.equal(sr.querySelector('#tip-banner').open,true);
+ dom.window.close();
+});
 test('diagnostic codes are confined to escaped copyable report; evidence retained',async()=>{
  for(const language of ['pl','en']) {
  const {dom,card,sr}=fixture(language);
