@@ -742,7 +742,7 @@ async function smokeHistoryAccessibleNames(target) {
       el._render();
       const recorded = el.shadowRoot.querySelector(`[title="${language === 'pl' ? 'Zapisane' : 'Recorded'}"]`);
       const estimated = el.shadowRoot.querySelector(`[title="${language === 'pl' ? 'Oznaczony szacunek' : 'Labelled estimate'}"]`);
-      if (!recorded?.textContent.includes('0.4 ml') || !estimated?.textContent.includes('~0.8 ml')) {
+      if (!recorded?.textContent.includes((language==='pl'?'0,4':'0.4')+' ml') || !estimated?.textContent.includes((language==='pl'?'~0,8':'~0.8')+' ml')) {
         throw new Error(`${language}: history provenance or fractional volume lost`);
       }
       const holder = window.document.createElement('div');
@@ -753,10 +753,11 @@ async function smokeHistoryAccessibleNames(target) {
       });
       const values = [...holder.querySelectorAll('.diagnostics-value')].map(row => row.textContent);
       const prefix = language === 'pl' ? 'Nieznane' : 'Unknown';
-      if (!values.includes(`${prefix}: volume_sensor_unbound`) || !values.includes(`${prefix}: source_contract_unbound`)) {
+      const report = holder.querySelector('#vwm-diagnostic-report')?.textContent || '';
+      if (!values.includes(language==='pl'?'Czujnik objętości nieprzypisany':'Volume sensor not assigned') || !report.includes('source_contract_unbound') || !report.includes('volume_sensor_unbound')) {
         throw new Error(`${language}: unknown diagnostics not localized or reason code altered`);
       }
-      if (!values.includes(`${language === 'pl' ? 'nieznany' : 'unknown'} (4,000 ml)`)) {
+      if (!values.includes(`${language === 'pl' ? 'Nieznany' : 'Unknown'} · ${new Intl.NumberFormat(language).format(4000)} ml`)) {
         throw new Error(`${language}: unknown tracked reservoir not localized`);
       }
       holder.innerHTML = el._buildDiagnostics({ accountingV2: { status: 'known' } });

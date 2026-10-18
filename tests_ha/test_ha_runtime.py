@@ -111,6 +111,10 @@ async def test_a_state_change_ticks_without_waiting_for_the_heartbeat(hass: Home
     _robot_states(hass, status="going_to_wash_the_mop", vacuum="returning", area="7")
     await _settle(hass)
     tank = await _tank(storage)
+    assert tank["used_ml"] == pytest.approx(30.0 + 12.0)
+    _robot_states(hass, status="washing_the_mop", vacuum="docked", area="7")
+    await _settle(hass)
+    tank = await _tank(storage)
     assert tank["used_ml"] == pytest.approx(30.0 + 12.0 + 150.0)
 
 

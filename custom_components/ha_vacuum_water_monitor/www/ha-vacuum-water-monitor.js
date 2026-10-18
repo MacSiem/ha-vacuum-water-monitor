@@ -14923,7 +14923,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
             ${vacStateChip}
           </div>
           <div class="details">
-            <div class="row"><span class="row-label">\uD83D\uDD30 ${L.remaining}</span><span class="row-val">${data.remainingL == null ? this._waterText('Unknown') : `${remainingText} / ${this._formatUi().number(data.totalMl/1000, {maximumFractionDigits:1})} L`}</span></div>
+            <div class="row"><span class="row-label">\uD83D\uDD30 ${L.remaining}</span><span class="row-val">${data.remainingL == null ? `${this._waterText('Unknown')}${data.totalMl > 0 ? ' / '+this._formatUi().number(data.totalMl/1000, {minimumFractionDigits:1,maximumFractionDigits:1})+' L' : ''}` : `${remainingText} / ${this._formatUi().number(data.totalMl/1000, {minimumFractionDigits:1,maximumFractionDigits:1})} L`}</span></div>
             <div class="row"><span class="row-label">\uD83D\uDCA6 ${L.used}</span><span class="row-val">${usedText}</span></div>
             ${partialUsedRow}
             ${extraRows}
