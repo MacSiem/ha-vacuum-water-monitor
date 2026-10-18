@@ -80,6 +80,21 @@ class TickerTests(unittest.TestCase):
 
         self.assertEqual(asyncio.run(scenario()), [{"vacuum.robot"}])
 
+    def test_bound_vacuum_exposure_attributes_trigger_without_battery_noise(self):
+        ticker = scheduler.EventTicker(lambda v: None, lambda d,a: (lambda: None), lambda c: None)
+        ticker.update_bindings([{'vacuum_entity':'vacuum.roomba', 'area_attribute':'cleaned_area',
+                                 'duration_attribute':'cleaning_time', 'water_box_attached_attribute':'tank_present'}])
+        for key,first,last in [('cleaned_area',1,2),('cleaning_time',1,2),('tank_present',True,False)]:
+            with self.subTest(key=key):
+                self.assertTrue(ticker.handle_change('vacuum.roomba',_S('cleaning',{key:first}),_S('cleaning',{key:last})))
+        self.assertFalse(ticker.handle_change('vacuum.roomba',_S('cleaning',{'battery_level':80}),_S('cleaning',{'battery_level':79})))
+
+    def test_bound_counter_unit_change_triggers_even_with_same_numeric_state(self):
+        ticker = scheduler.EventTicker(lambda v: None, lambda d,a: (lambda: None), lambda c: None)
+        ticker.update_bindings([DEVICE])
+        self.assertTrue(ticker.handle_change('sensor.robot_area',_S('10',{'unit_of_measurement':'m²'}),_S('10',{'unit_of_measurement':'cm²'})))
+        self.assertFalse(ticker.handle_change('sensor.robot_area',_S('10',{'unrelated':1}),_S('10',{'unrelated':2})))
+
     def test_ticks_never_overlap(self):
         async def scenario():
             order = []
