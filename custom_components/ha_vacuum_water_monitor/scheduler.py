@@ -48,19 +48,22 @@ def bound_entities(device: dict[str, Any]) -> set[str]:
     return entities
 
 
-def is_meaningful_change(entity_id: str, old_state: Any, new_state: Any) -> bool:
-    """A state string change, or a vacuum's activity status attribute change."""
+def is_meaningful_change(
+    entity_id: str, old_state: Any, new_state: Any, attributes: set[str] | None = None,
+) -> bool:
+    """A state change or a bound accounting attribute, ignoring unrelated noise."""
     if new_state is None:
         return False
     if old_state is None:
         return True
     if getattr(old_state, "state", None) != getattr(new_state, "state", None):
         return True
+    keys = set(attributes or ())
     if entity_id.startswith("vacuum."):
-        old_attributes = getattr(old_state, "attributes", {}) or {}
-        new_attributes = getattr(new_state, "attributes", {}) or {}
-        return old_attributes.get("status") != new_attributes.get("status")
-    return False
+        keys.add("status")
+    old_attributes = getattr(old_state, "attributes", {}) or {}
+    new_attributes = getattr(new_state, "attributes", {}) or {}
+    return any(old_attributes.get(key) != new_attributes.get(key) for key in keys)
 
 
 class EventTicker:
@@ -81,6 +84,7 @@ class EventTicker:
         self._pending: set[str] = set()
         self._cancel: Callable[[], None] | None = None
         self._entity_map: dict[str, set[str]] = {}
+        self._attribute_map: dict[str, set[str]] = {}
 
     @property
     def entities(self) -> set[str]:
@@ -89,12 +93,21 @@ class EventTicker:
     def update_bindings(self, devices: Iterable[dict[str, Any]]) -> bool:
         """Rebuild entity -> vacuum bindings; return True when the entity set changed."""
         mapping: dict[str, set[str]] = {}
+        attribute_map: dict[str, set[str]] = {}
         for device in devices:
             vacuum = device.get("vacuum_entity")
             if not isinstance(vacuum, str) or not vacuum:
                 continue
             for entity in bound_entities(device):
                 mapping.setdefault(entity, set()).add(vacuum)
+                # A counter's unit can change while its numeric text is equal.
+                attribute_map.setdefault(entity, set()).add("unit_of_measurement")
+            # Roomba and other adapters expose accounting inputs as vacuum
+            # attributes; do not wake for unrelated battery/maintenance noise.
+            attribute_map.setdefault(vacuum, set()).update(
+                value for key, value in device.items()
+                if key.endswith("_attribute") and isinstance(value, str) and value)
+        self._attribute_map = attribute_map
         changed = set(mapping) != set(self._entity_map)
         self._entity_map = mapping
         return changed
@@ -102,7 +115,7 @@ class EventTicker:
     def handle_change(self, entity_id: str, old_state: Any, new_state: Any) -> bool:
         """Queue a tick for the vacuums bound to this entity; return True if queued."""
         vacuums = self._entity_map.get(entity_id)
-        if not vacuums or not is_meaningful_change(entity_id, old_state, new_state):
+        if not vacuums or not is_meaningful_change(entity_id, old_state, new_state, self._attribute_map.get(entity_id)):
             return False
         self._pending.update(vacuums)
         if self._cancel is None:
