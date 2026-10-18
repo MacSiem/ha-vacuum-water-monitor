@@ -764,9 +764,9 @@ async function smokeHistoryAccessibleNames(target) {
       if (!holder.textContent.includes(language === 'pl' ? 'Zmierzony strumień zdarzeń' : 'Measured event stream')) {
         throw new Error(`${language}: measured event provenance not localized`);
       }
-      const dismiss = el.shadowRoot.querySelector('#tip-dismiss');
-      if (dismiss.getAttribute('aria-label') !== (language === 'pl' ? 'Ukryj podpowiedź' : 'Dismiss')) {
-        throw new Error(`${language}: help dismissal is not localized`);
+      const help = el.shadowRoot.querySelector('details#tip-banner');
+      if (!help || help.open || help.querySelector('summary')?.textContent !== (language === 'pl' ? 'Jak to działa' : 'How it works')) {
+        throw new Error(`${language}: closed help summary is not localized`);
       }
     } finally { dom.window.close(); }
   }
