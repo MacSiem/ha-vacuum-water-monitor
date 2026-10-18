@@ -21,7 +21,7 @@ from . import accounting_v2
 from . import estimation
 from . import nominal_time_learning
 from .const import VERSION
-from .refill import USER_REFILL_DEDUPE_SECONDS, apply_refill, confirm_same_refill, FULL_CONFIRMATION_SOURCES
+from .refill import USER_REFILL_DEDUPE_SECONDS, apply_refill, confirm_same_refill, FULL_CONFIRMATION_SOURCES, anchor_scope_matches
 
 MOP_WASH_STATES = {
     "washing",
@@ -63,7 +63,6 @@ _SESSION_END_STATES = frozenset({"docked", "idle", "charging", "completed", "cha
 # as finished; a new run starts only when the robot really cleans again.
 SESSION_IDLE_CLOSE_SECONDS = 20 * 60
 _IDLE_OFF_DOCK_STATES = frozenset({"idle", "paused", "pause", "stopped", "error"})
-_ANCHOR_SOURCE_SCOPE = {"dock_error": "dock_clean", "dock_clean_water": "dock_clean"}
 # Changing any of these makes a learned device scale meaningless.
 _CALIBRATION_IDENTITY_KEYS = (
     "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",
@@ -1384,14 +1383,8 @@ def _tick_device_pass(
         # The user reported the tracked tank itself empty: no scope to verify.
         pass
     elif active_anchor is not None:
-        reservoir = device.get("tracked_reservoir")
-        declared_reservoir = device.get("water_anchor_reservoir")
-        # An inferred anchor reservoir only covers signals scoped to that
-        # reservoir (a dock error for the dock tank); a robot-side error needs
-        # an explicitly configured contract.
-        inferred_scope_mismatch = bool(device.get("water_anchor_reservoir_inferred")) and (
-            _ANCHOR_SOURCE_SCOPE.get(active_anchor[0]) != reservoir)
-        if not reservoir or declared_reservoir != reservoir or inferred_scope_mismatch:
+        # Robot-side errors need an explicit same-reservoir contract.
+        if not anchor_scope_matches(device, active_anchor[0]):
             _record_accounting(state, "unknown", None, None, "water_anchor_reservoir_unverified")
             active_anchor = None
         elif active_anchor[1] == "shortage" and device.get("low_water_anchor_remaining_percent") is None:

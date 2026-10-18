@@ -18,6 +18,20 @@ USER_REFILL_DEDUPE_SECONDS = 600
 FULL_CONFIRMATION_SOURCES = frozenset({"card", "service", "button", "entity", "repair"})
 REFILL_SOURCES = frozenset({"card", "service", "button", "lid", "dock_cleared", "legacy", "entity", "repair"})
 
+# Only dock-specific signals can inherit a dock reservoir automatically.
+_INFERRED_ANCHOR_SCOPE = {"dock_error": "dock_clean", "dock_clean_water": "dock_clean"}
+
+
+def anchor_scope_matches(device: dict[str, Any], source: str) -> bool:
+    """Use the same reservoir contract for health readiness and accounting."""
+    if source == "user_empty":
+        return True
+    reservoir = device.get("tracked_reservoir")
+    return bool(reservoir and device.get("water_anchor_reservoir") == reservoir
+                and (not device.get("water_anchor_reservoir_inferred")
+                     or _INFERRED_ANCHOR_SCOPE.get(source) == reservoir))
+
+
 # Fields that restart exposure accounting from the next observation.
 _REBASELINE_FIELDS = {
     "last_area": None,

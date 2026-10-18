@@ -37,6 +37,15 @@ REPAIR_CHECKS = frozenset({"awaiting_refill", "accounting_paused", "unknown_capa
 
 _SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
 
+try:
+    from .refill import anchor_scope_matches
+except ImportError:  # direct-file loading in the pure tests
+    _refill_spec = importlib.util.spec_from_file_location("vwm_standalone_refill", Path(__file__).with_name("refill.py"))
+    assert _refill_spec and _refill_spec.loader
+    _refill_module = importlib.util.module_from_spec(_refill_spec)
+    _refill_spec.loader.exec_module(_refill_module)
+    anchor_scope_matches = _refill_module.anchor_scope_matches
+
 _EMPTY_ANCHOR_KEYS = ("dock_error_sensor", "dock_clean_water_sensor", "water_error_sensor",
                       "water_shortage_sensor", "water_volume_sensor")
 # Entities that exist only on mopping robots. Attribute names an adapter maps
@@ -51,8 +60,7 @@ def refill_method(effective: dict[str, Any]) -> str:
     """How a refill is recognised: ``measured``, ``dock_auto``, ``button``, ``lid`` or ``manual``."""
     if effective.get("water_volume_sensor"):
         return "measured"
-    if effective.get("refill_on_dock_clear") is not False and effective.get("refill_on_clear") and any(
-            effective.get(key) for key in ("dock_error_sensor", "dock_clean_water_sensor", "water_error_sensor")):
+    if effective.get("refill_on_dock_clear") is not False and supports_auto_refill(effective):
         return "dock_auto"
     if effective.get("refill_button_entity"):
         return "button"
@@ -63,13 +71,23 @@ def refill_method(effective: dict[str, Any]) -> str:
 
 def has_empty_signal(effective: dict[str, Any]) -> bool:
     """The robot or dock reports an empty tank itself (no Tank empty button needed)."""
-    return any(effective.get(key) for key in _EMPTY_ANCHOR_KEYS)
+    if (effective.get("water_volume_sensor") and effective.get("tracked_reservoir")
+            and effective.get("water_volume_reservoir") == effective["tracked_reservoir"]):
+        return True
+    return any(effective.get(role) and anchor_scope_matches(effective, source)
+               for role, source in (("dock_error_sensor", "dock_error"),
+                                    ("dock_clean_water_sensor", "dock_clean_water"),
+                                    ("water_error_sensor", "water_error"),
+                                    ("water_shortage_sensor", "water_shortage")))
 
 
 def supports_auto_refill(effective: dict[str, Any]) -> bool:
     """The dock can report that its clean tank was refilled."""
     return bool(effective.get("refill_on_clear")) and any(
-        effective.get(key) for key in ("dock_error_sensor", "dock_clean_water_sensor", "water_error_sensor"))
+        effective.get(role) and anchor_scope_matches(effective, source)
+        for role, source in (("dock_error_sensor", "dock_error"),
+                             ("dock_clean_water_sensor", "dock_clean_water"),
+                             ("water_error_sensor", "water_error")))
 
 
 def tracks_water(device: dict[str, Any], effective: dict[str, Any], estimate: dict[str, Any],
