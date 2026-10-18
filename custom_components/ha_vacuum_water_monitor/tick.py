@@ -811,6 +811,11 @@ def _tick_device_pass(
             usage_per_minute = learned_rate
             time_evidence = "nominal_full_to_empty_time"
             calibration_factor = 1
+            # This rate was learned for this exact observed water setting;
+            # applying a prior's level multiplier would scale the tank twice.
+            intensity_factor = 1
+            state["intensity_unmapped"] = None
+            evidence = time_evidence
             wash_volume = None
             wash_covered_by_cycle_rate = True
             nominal_time_applied = True
