@@ -1,5 +1,14 @@
 # Changelog
 
+## 5.12.0 (2026-10-18)
+
+- Learn a private nominal whole-tank time estimate after three compatible confirmed full-to-empty tanks on supported no-counter mop devices, including Tapo over Matter. Show provisional progress and the residual assumption; physical accuracy remains unestablished. Measured rates and volume sensors retain priority.
+- Treat return-to-wash as transit. Actual washing, drying and independent wash cycles remain distinct; an aborted return does not consume a wash dose.
+- Bind exact Dreame wash-mode, frequency, temperature and separate area/time-threshold controls. Preserve setting changes in calibration applicability without inventing ml from those controls.
+- Keep unknown or sequential mop-mode labels from proving current mop activity.
+- Show readable Polish/English diagnostics with escaped copyable reporting details, a closed help section that remembers its state, an explicit unknown-tank view, compact mode and a fuller visual editor. Keep editor drafts focused across unrelated HA updates.
+- Use the shared HA-profile formatter for visible time/number labels and improve field, text, focus and action readability.
+
 ## 5.11.3 (2026-10-17)
 
 - Keep the full area of a new task in session history when its first observation is already above zero, matching the area counted for water use.

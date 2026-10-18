@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.11.3 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.12.0 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -15120,7 +15120,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const stage = nominal.status === 'active' ? (pl ? 'Szacunek czasowy aktywny' : 'Time estimate active')
         : nominal.status === 'provisional' ? (pl ? 'Wstępna nauka zużycia' : 'Provisional consumption learning')
         : (pl ? 'Oczekiwanie na pełny cykl zbiornika' : 'Waiting for a complete tank cycle');
-      humanRows.push([pl ? 'Nauka Tapo' : 'Tapo learning', `${stage} · ${count} ${pl ? 'cykli. Podstawa: nominalny czas od pełnego do pustego zbiornika. Dokładność nie została ustalona.' : 'cycles. Basis: nominal full-to-empty time. Accuracy has not been established.'}`]);
+      humanRows.push([pl ? 'Nauka zużycia' : 'Consumption learning', `${stage} · ${count} ${pl ? 'cykli. Podstawa: nominalny czas od pełnego do pustego zbiornika. Dokładność nie została ustalona.' : 'cycles. Basis: nominal full-to-empty time. Accuracy has not been established.'}`]);
       const rate = Number(nominal.usage_ml_per_active_minute);
       if (nominal.usage_ml_per_active_minute != null && Number.isFinite(rate) && rate > 0) humanRows.push([pl ? 'Nominalne zużycie w czasie' : 'Nominal time consumption', `${this._formatUi().number(rate, {maximumFractionDigits:3})} ml/min · ${pl ? 'szacunek, nie pomiar objętości' : 'estimate, not a volume measurement'}`]);
       const residual = Number(nominal.residual_assumed_percent);
@@ -17479,19 +17479,26 @@ class HaVacuumWaterMonitorEditor extends HTMLElement {
   _dispatch() {
     this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this._config }, bubbles: true, composed: true }));
   }
-  set hass(value) { this._hass = value; this._render(); }
+  set hass(value) {
+    const language = value?.locale?.language || value?.language || 'en';
+    const changed = language !== (this._hass?.locale?.language || this._hass?.language || 'en');
+    this._hass = value;
+    if (changed || !this.shadowRoot.firstChild) this._render();
+  }
   _render() {
     const pl = (this._hass?.locale?.language || this._hass?.language || 'en').startsWith('pl');
     const labels = pl ? {title:'Tytuł', default_tab:'Zakładka początkowa', tabs:'Widoczne zakładki', show_help:'Pokaż pomoc', show_support:'Pokaż wsparcie', compact:'Widok kompaktowy'}
       : {title:'Title', default_tab:'Default tab', tabs:'Visible tabs', show_help:'Show help', show_support:'Show support', compact:'Compact view'};
     const tabs = [['water',pl?'Woda':'Water'],['history',pl?'Historia':'History'],['maintenance',pl?'Konserwacja':'Maintenance'],['settings',pl?'Ustawienia':'Settings']];
+    const visibleTabs = tabs.filter(([id])=>!Array.isArray(this._config.tabs)||this._config.tabs.includes(id));
+    if (!visibleTabs.length) visibleTabs.push(tabs[0]);
     this.shadowRoot.innerHTML = `<style>
       :host {display:block;padding:16px;color:var(--primary-text-color);color-scheme:light dark;font-size:14px}
       label {display:block;margin-block:12px} input,select {min-height:44px;max-width:100%;box-sizing:border-box;font-size:14px;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);padding:8px} fieldset{min-width:0} legend{font-size:14px}
       :focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
       </style><h3>Vacuum Water Monitor</h3>
       <label for="cf_title">${labels.title}</label><input id="cf_title" value="${_esc(this._config.title ?? 'Vacuum Water Monitor')}">
-      <label for="cf_default_tab">${labels.default_tab}</label><select id="cf_default_tab">${tabs.map(([id,label])=>`<option value="${id}" ${this._config.default_tab===id?'selected':''}>${label}</option>`).join('')}</select>
+      <label for="cf_default_tab">${labels.default_tab}</label><select id="cf_default_tab">${visibleTabs.map(([id,label])=>`<option value="${id}" ${this._config.default_tab===id?'selected':''}>${label}</option>`).join('')}</select>
       <fieldset><legend>${labels.tabs}</legend>${tabs.map(([id,label])=>`<label><input type="checkbox" data-tab-option="${id}" ${!Array.isArray(this._config.tabs)||this._config.tabs.includes(id)?'checked':''}>${label}</label>`).join('')}</fieldset>
       ${['show_help','show_support','compact'].map(key=>`<label><input id="cf_${key}" type="checkbox" ${key==='compact' ? this._config[key]===true?'checked':'' : this._config[key]!==false?'checked':''}>${labels[key]}</label>`).join('')}`;
     this.shadowRoot.querySelector('#cf_title').addEventListener('input', e => { this._config={...this._config,title:e.target.value};this._dispatch(); });

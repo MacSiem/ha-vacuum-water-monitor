@@ -202,11 +202,21 @@ not establish a missing consumption rate or physically verified accuracy.
 ### Manual-only models and the refill baseline
 
 Some models expose a trustworthy clean-water capacity but no usable consumption profile.
-They remain **Manual-only** until you add a calibration. When an integration does not
+They remain **Manual-only** until a supported private estimate or your calibration is available. When an integration does not
 expose the exposure required by that calibration, automatic accounting remains unknown;
 the card does not invent an area-to-time conversion. The Diagnostics section shows the
 adapter, resolved profile, signal roles, estimate source, uncertainty and calibration
 anchor.
+
+### Private nominal time learning (5.12)
+
+For a robot such as Tapo over Matter that exposes a recognized mop-cleaning mode but no usable area/duration counter or calibrated time rate, a confirmed full tank starts private observation. An exact empty indication for the tracked reservoir, or the existing Tank empty action, completes the sample. Only observed active floor-mopping minutes contribute exposure; idle, vacuum-only and dock washing do not. Dock water nevertheless belongs to total tank depletion, so the result is a whole-cycle tank-depletion estimate per active mopping minute, not a measured floor flow.
+
+Three consecutive compatible full-to-empty samples are needed before use, with maximum/minimum nominal rate no greater than1.25. This repeatability policy is not a physical error bound. Before qualification the coefficient and remaining estimate stay unknown, while progress is visible in Diagnostics. The nominal rate uses the configured tank capacity and an explicit5% assumed residual at empty; that residual is not a measured level. Independent physical accuracy is not established. A qualified rate is applied only from the next confirmed full tank, avoiding retroactive changes to recorded usage.
+
+An unavailable signal, unsupported mode, active observation gap over180seconds, setting/capacity change or partial refill rejects the open sample. Completed compatible samples stay local and survive supported Home Assistant backups/restarts/upgrades. Data is never automatically uploaded or promoted into a community physical profile. Authored measured profiles and direct volume measurements retain priority. A full refill alone supplies no consumption rate. Matter labels are supplied by the device: unsupported/localized labels and a vacuum-then-mop plan do not prove the current mop phase.
+
+Dreame exact controls use washing_mode/mop_wash_level, self_clean_frequency/mop_clean_frequency, water_temperature and separate self_clean_area/self_clean_time thresholds. Type and thresholds are preserved together for calibration applicability, without inventing water volumes. A return-to-wash state is transit: only observed washing starts a wash estimate. Existing class-prior wash quantities remain labelled estimates; this change does not establish separate physical pre-, mid-, final- or manual-wash doses.
 
 ### Integration signal compatibility
 
