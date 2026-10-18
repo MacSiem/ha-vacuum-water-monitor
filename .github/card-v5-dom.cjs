@@ -170,4 +170,13 @@ test('recorded history formats decimal summaries, areas and numeric minutes with
  assert.match(text,/0,6/);assert.match(text,/4,5 m²/);assert.match(text,/45,5 min/);
  dom.window.close();
 });
+test('threshold volume labels follow HA locale initially and during editing',()=>{
+ const {dom,card,device}=fixture('pl');card._hass.user.is_admin=true;
+ card.shadowRoot.innerHTML=card._buildThresholdSettings({totalMl:4000});
+ assert.match(card.shadowRoot.textContent,/0,80 L/);
+ card._attachListeners([device],{});
+ const field=card.shadowRoot.querySelector('#vwm-warning-threshold');field.value='15';field.dispatchEvent(new dom.window.Event('input'));
+ assert.match(card.shadowRoot.textContent,/0,60 L/);
+ dom.window.close();
+});
 (async()=>{let failed=0;for(const [name,fn] of tests){try{await fn();console.log('PASS '+name);}catch(error){failed++;console.error('FAIL '+name+'\n'+error.stack);}}if(failed)process.exitCode=1;})();
