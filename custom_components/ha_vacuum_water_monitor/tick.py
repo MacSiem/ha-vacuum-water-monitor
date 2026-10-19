@@ -448,6 +448,8 @@ def _tick_device_pass(
         state.update(last_duration_seconds=None, area_gap=True,
                      duration_gap=True, last_tick_ts=0, last_water_volume_ml=None, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
+        if tapovac:
+            state["last_area"] = None  # Never bridge an unknown raw activity code.
         _record_accounting(state, "unknown", None, None, "status_unavailable")
         return state, True
 
@@ -605,8 +607,9 @@ def _tick_device_pass(
         state.update(last_duration_seconds=None, area_gap=True,
                      duration_gap=True, last_water_volume_ml=None, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
-    if curr_area is None and device.get("area_sensor"):
-        _open_observation_gap(state, int(last_tick or now_ts))
+    if curr_area is None and (device.get("area_sensor") or device.get("area_attribute")):
+        if not (tapovac and usage_per_m2 is None and curr_duration_seconds is not None):
+            _open_observation_gap(state, int(last_tick or now_ts))
 
     # A short gap with the same settings and a continuous area counter keeps the
     # tank complete: the cumulative counter still carries the cleaned area.
@@ -614,7 +617,7 @@ def _tick_device_pass(
     previous_rate_settings = state.get("last_rate_settings") or {}
     rate_settings = {"cleaning_mode": cleaning_mode, "mop_mode": mop_mode, "mop_intensity": mop_intensity}
     gap_started = _positive_number(state.get("gap_started_ts"))
-    if gap_started is not None and (curr_area is not None or not device.get("area_sensor")):
+    if gap_started is not None and (curr_area is not None or not (device.get("area_sensor") or device.get("area_attribute"))):
         gap_exposure = bool(state.get("gap_exposure_possible"))
         last_area_seen = _float_or_none(state.get("last_area"))
         ceiling_m2 = _positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2
@@ -637,7 +640,7 @@ def _tick_device_pass(
         state["gap_started_ts"] = None
         state["gap_exposure_possible"] = False
         dirty = True
-    if curr_area is not None or not device.get("area_sensor"):
+    if curr_area is not None or not (device.get("area_sensor") or device.get("area_attribute")):
         state["last_rate_settings"] = rate_settings
 
     # Rates calibrated for one setting must not charge the interval spanning
@@ -690,6 +693,8 @@ def _tick_device_pass(
                                   ("cleaning_mode", "cleaning_mode_entity")):
                 if device.get(role):
                     settings_context[setting] = _normalized_signal(_state_value(hass, device[role]))
+            if device.get("mop_intensity_attribute"):
+                settings_context["water_level"] = mop_intensity
             for setting in CONSUMPTION_SETTINGS:
                 if device.get(setting + "_entity"):
                     settings_context[setting] = _normalized_signal(_state_value(hass, device[setting + "_entity"]))
@@ -706,7 +711,7 @@ def _tick_device_pass(
                 sort_keys=True, separators=(",", ":"))
         for setting in CONSUMPTION_SETTINGS:
             role = "mop_intensity_entity" if setting == "water_level" else setting + "_entity"
-            if device.get(role):
+            if device.get(role) or (setting == "water_level" and device.get("mop_intensity_attribute")):
                 field_sources[setting] = "observed" if settings_context.get(setting) is not None else "unavailable"
         consumption_context["field_sources"] = field_sources
         consumption_context["device_id"] = vacuum_entity
@@ -788,13 +793,16 @@ def _tick_device_pass(
     nominal_capacity = _device_capacity_ml(device)
     nominal_eligible = bool(
         consumption_context and nominal_capacity and device.get("cleaning_mode_entity")
-        and not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute", "water_volume_sensor"))
-        and usage_per_minute is None and whole_cycle_calibration is None)
+        and not device.get("water_volume_sensor")
+        and (tapovac or not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute")))
+        and usage_per_m2 is None and usage_per_minute is None and whole_cycle_calibration is None)
     if nominal_eligible:
         nominal_time_context = deepcopy(consumption_context)
         nominal_time_context.pop("field_sources", None)
         nominal_time_context.pop("action", None)
         nominal_time_context["device_id"] = vacuum_entity
+        if tapovac:
+            nominal_time_context["time_observation"] = "clean_time_min"
         known_mode = bool(cleaning_mode and (_recognized_mop_cleaning_mode(cleaning_mode)
             or cleaning_mode in _MOP_DISABLED_MODES or "vacuum_only" in cleaning_mode))
         learning = state.get("nominal_time_learning") or {}
@@ -811,7 +819,9 @@ def _tick_device_pass(
             capacity_ml=nominal_capacity, now_ts=now_ts,
             active=bool(_is_cleaning(vac_state, curr_status, None) and mop_active
                 and curr_status not in MOP_WASH_STATES and curr_dock_status not in DOCK_WASH_STATES),
-            available=known_mode)
+            available=known_mode,
+            use_counter=tapovac,
+            counter_minutes=curr_duration_seconds / 60 if curr_duration_seconds is not None else None)
         current_cycle = learning.get("cycle")
         nominal_time_elapsed = (max(0, current_cycle["active_minutes"] - previous_minutes) * 60
                                 if current_cycle else 0)
@@ -1151,7 +1161,7 @@ def _tick_device_pass(
     area_baseline: float | None = None
     if curr_area is None:
         state["session_exposure_complete"] = False
-        if device.get("area_sensor"):
+        if device.get("area_sensor") or device.get("area_attribute"):
             if not state.get("area_gap"):
                 state["area_gap"] = True
                 dirty = True
@@ -1324,7 +1334,7 @@ def _tick_device_pass(
                 state, "active_time", None, time_evidence, "missing_intensity_factor"
             )
         elif usage_per_minute is None:
-            pending_area = (curr_area is None and device.get("area_sensor")
+            pending_area = (curr_area is None and (device.get("area_sensor") or device.get("area_attribute"))
                             and usage_per_m2 is not None and last_area is not None
                             and _positive_number(state.get("gap_started_ts")) is not None
                             and 0 <= now_ts - state["gap_started_ts"] <= BRIDGE_GAP_MAX_SECONDS * 1000)
@@ -1349,7 +1359,7 @@ def _tick_device_pass(
                 state, "active_time", effective_minute_rate, time_evidence, None
             )
 
-    if time_interval_counted and curr_area is None and device.get("area_sensor"):
+    if time_interval_counted and curr_area is None and (device.get("area_sensor") or device.get("area_attribute")):
         # This interval was already charged by time. Drop the stale area
         # baseline so a recovered cumulative counter cannot charge it again.
         # Use time once more when area returns, then adopt that area baseline.
