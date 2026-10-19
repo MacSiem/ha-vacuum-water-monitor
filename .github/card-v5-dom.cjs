@@ -188,6 +188,9 @@ test('Tapo minute attributes render as minutes and unverified area units stay hi
    'select.units':{state:'m²',attributes:{}}};
  let data=card._calcDeviceData(device);
  assert.equal(card._formatDuration(data.durationSec),'3m');assert.equal(data.areaCleaned,3);
+ const discovered={entity_id:'vacuum.demo',...device,signals:{area_unit_entity:'select.units'}};delete discovered.area_unit_entity;
+ card._discoveredVacuums=[discovered];delete device.area_unit_entity;
+ data=card._calcDeviceData(device);assert.equal(data.areaCleaned,3);
  card._hass.states['select.units'].state='ft²';data=card._calcDeviceData(device);
  assert.equal(data.areaCleaned,null);
  card._hass.states['vacuum.demo'].attributes.status_code=2;
