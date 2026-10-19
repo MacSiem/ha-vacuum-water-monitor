@@ -68,6 +68,59 @@ def vacuum_slug(vacuum_entity: str) -> str:
     return slug or "unknown"
 
 
+def resolve_linked_programs(
+    discovered: list[dict[str, Any]], settings: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Share only the programme of one verified Matter/native robot pair.
+
+    A selected programme is not a measured wet phase. Native raw status,
+    attachment vetoes, water-off and all counter checks still apply. Never
+    infer physical identity from names, model matches or duplicate suggestions.
+    Bindings are recomputed from live discovery, so unlink/removal revokes them.
+    """
+    result = deepcopy(discovered)
+    links = (settings or {}).get("robot_links")
+    links = links if isinstance(links, dict) else {}
+    for native in result:
+        if native.get("integration_adapter") != "tapo_rv30":
+            continue
+        signals = native.get("signals") or {}
+        if signals.get("cleaning_mode_entity") or signals.get("mop_mode_entity"):
+            continue
+        native_id = native.get("entity_id") or native.get("vacuum_entity")
+        candidates = []
+        for matter in result:
+            if matter.get("integration_adapter") != "matter":
+                continue
+            matter_id = matter.get("entity_id") or matter.get("vacuum_entity")
+            confirmed = (links.get(matter_id) == native_id or links.get(native_id) == matter_id)
+            registry_identity = (native.get("identity_confidence") == "registry"
+                                 and matter.get("identity_confidence") == "registry"
+                                 and native.get("identity_group")
+                                 and native.get("identity_group") == matter.get("identity_group"))
+            if links.get(matter_id) == "distinct" or links.get(native_id) == "distinct":
+                continue
+            if confirmed or registry_identity:
+                candidates.append(matter)
+        if len(candidates) != 1:
+            continue
+        matter = candidates[0]
+        mode = (matter.get("signals") or {}).get("cleaning_mode_entity")
+        if not isinstance(mode, str) or not mode.startswith("select."):
+            continue
+        native["signals"] = {**signals, "cleaning_mode_entity": mode}
+        native["linked_mode_source"] = matter.get("entity_id") or matter.get("vacuum_entity")
+        # The chosen control belongs to the confirmed physical robot. Expose
+        # only that sibling; never import another integration's counters/rates.
+        siblings = list(native.get("sibling_entities") or [])
+        sibling = next((item for item in matter.get("sibling_entities") or []
+                        if item.get("entity_id") == mode), None)
+        if sibling and not any(item.get("entity_id") == mode for item in siblings):
+            siblings.append(deepcopy(sibling))
+        native["sibling_entities"] = siblings
+    return result
+
+
 def build_vacuum_devices(
     settings: dict[str, Any] | None,
     tank_states: dict[str, Any] | None,
@@ -77,6 +130,7 @@ def build_vacuum_devices(
     settings = settings if isinstance(settings, dict) else {}
     tank_states = tank_states if isinstance(tank_states, dict) else {}
     discovered_vacuums = discovered_vacuums if isinstance(discovered_vacuums, list) else []
+    discovered_vacuums = resolve_linked_programs(discovered_vacuums, settings)
 
     devices: dict[str, dict[str, Any]] = {}
 

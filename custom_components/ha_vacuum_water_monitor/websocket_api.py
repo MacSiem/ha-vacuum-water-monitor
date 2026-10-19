@@ -14,6 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import DATA_TICKER, DOMAIN, EVENT_STATE_CHANGED, event_tank_states, signal_vacuum_water_updated
 from .storage import THRESHOLD_KEYS, VacuumWaterStorage
 from .tick import list_vacuums
+from .sensor_calculations import resolve_linked_programs
 from .calibration import build_contribution_draft, select_recorded_cycle
 
 
@@ -70,7 +71,8 @@ async def _ws_list_vacuums(
     msg: dict[str, Any],
 ) -> None:
     """Return enriched HA vacuum descriptors."""
-    connection.send_result(msg["id"], {"vacuums": list_vacuums(hass)})
+    settings = (await _storage(hass).async_get_state()).get("settings") or {}
+    connection.send_result(msg["id"], {"vacuums": resolve_linked_programs(list_vacuums(hass), settings)})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/get_state"})
@@ -168,7 +170,7 @@ async def _ws_reprofile(hass, connection, msg):
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
     _notify_store_updated(hass, {"settings": settings})
-    connection.send_result(msg["id"], {"settings": settings, "vacuums": list_vacuums(hass)})
+    connection.send_result(msg["id"], {"settings": settings, "vacuums": resolve_linked_programs(list_vacuums(hass), settings)})
 
 
 @websocket_api.websocket_command(
