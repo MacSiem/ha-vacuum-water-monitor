@@ -162,6 +162,48 @@ class TapoVacTests(unittest.TestCase):
                     "configured_devices": [{"vacuum_entity": "vacuum.test", "cleaning_mode_entity": "select.authored"}]}
         self.assertEqual(build_vacuum_devices(settings, {}, [descriptor(), matter])[0]["cleaning_mode_entity"], "select.authored")
 
+    def test_authored_mop_role_suppresses_automatic_cleaning_role(self):
+        from test_sensor_calculations import build_vacuum_devices
+        matter = {"entity_id": "vacuum.bridge", "integration_adapter": "matter",
+                  "signals": {"cleaning_mode_entity": "select.bridge_mode"}}
+        for key in ("configured_devices", "user_devices"):
+            for binding in ({"mop_mode_entity": "select.mode"},
+                            {"signals": {"mop_mode_entity": "select.mode"}}):
+                with self.subTest(key=key, binding=binding):
+                    settings = {"robot_links": {"vacuum.bridge": "vacuum.test"}, key: [
+                        {"vacuum_entity": "vacuum.test", "usage_ml_per_m2": {"low": 2},
+                         "accounting_evidence": "user_measured", **binding}]}
+                    dev = build_vacuum_devices(settings, {}, [descriptor(), matter])[0]
+                    self.assertFalse(dev.get("cleaning_mode_entity"))
+                    first = observe(dev, mode="mopping")
+                    self.assertEqual(observe(dev, first, mode="mopping", area=2,
+                        minutes=1, now=1_060_000)["used_ml"], 4)
+
+    def test_native_docking_never_activates_attached_only_floor_accounting(self):
+        dev = device(); dev["calibration_scope"] = "floor_only"
+        state = observe(dev, mode="unknown")
+        state = observe(dev, state, mode="unknown", area=2, minutes=1, now=1_060_000)
+        self.assertEqual(state["used_ml"], 0)
+        result = observe(dev, state, code=5, mode="unknown", area=4, minutes=2, now=1_120_000)
+        self.assertEqual(result["used_ml"], 0)
+
+    def test_unlink_revokes_cached_floor_programme_at_docking(self):
+        from test_sensor_calculations import build_vacuum_devices
+        matter = {"entity_id": "vacuum.bridge", "integration_adapter": "matter",
+                  "signals": {"cleaning_mode_entity": "select.mode"}}
+        settings = {"robot_links": {"vacuum.bridge": "vacuum.test"}, "configured_devices": [
+            {"vacuum_entity": "vacuum.test", "usage_ml_per_m2": {"low": 2},
+             "accounting_evidence": "user_measured", "calibration_scope": "floor_only"}]}
+        dev = build_vacuum_devices(settings, {}, [descriptor(), matter])[0]
+        state = observe(dev)
+        state = observe(dev, state, area=2, minutes=1, now=1_060_000)
+        self.assertEqual(state["used_ml"], 4)
+        settings["robot_links"] = {"vacuum.bridge": "distinct"}
+        dev = next(d for d in build_vacuum_devices(settings, {}, [descriptor(), matter])
+                   if d["vacuum_entity"] == "vacuum.test")
+        result = observe(dev, state, code=5, area=4, minutes=2, now=1_120_000)
+        self.assertEqual(result["used_ml"], 4)
+
     def test_automatic_linked_mode_controls_native_accounting(self):
         from test_sensor_calculations import build_vacuum_devices
         matter = {"entity_id": "vacuum.bridge", "integration_adapter": "matter",
