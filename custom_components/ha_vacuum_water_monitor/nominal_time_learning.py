@@ -124,12 +124,17 @@ def start_full(
 def observe(
     state: dict[str, Any], *, context: dict[str, Any], capacity_ml: float,
     now_ts: int, active: bool, available: bool = True,
+    use_counter: bool = False, counter_minutes: float | None = None,
 ) -> dict[str, Any]:
     """Accumulate observable floor activity independently of ml/min availability.
 
     Invalidate unavailable/unknown observations, context or capacity changes,
     backward clocks, and gaps over 180 seconds after an active observation.
     Observed idle can last arbitrarily long without ending the full tank.
+    ``use_counter`` replaces wall time with a session minute counter. Missing,
+    decreasing active counters and implausible jumps invalidate the sample;
+    idle resets establish a new baseline. Only intervals mopping at both ends
+    add counter exposure. The caller includes the observation method in context.
     """
     updated = _snapshot(state)
     cycle = updated["cycle"]
@@ -156,7 +161,19 @@ def observe(
     if cycle["last_active"]:
         if elapsed_ms > MAX_ACTIVE_INTERVAL_MS:
             return invalidate(updated, "active_observation_gap")
-        cycle["active_minutes"] += elapsed_ms / 60_000
+        if not use_counter:
+            cycle["active_minutes"] += elapsed_ms / 60_000
+    if use_counter:
+        if not _number(counter_minutes, zero=True):
+            return invalidate(updated, "time_counter_unavailable")
+        previous = cycle.get("counter_minutes")
+        if previous is not None and cycle["last_active"]:
+            delta = counter_minutes - previous
+            if delta < 0 or delta > elapsed_ms / 60_000 + 1:
+                return invalidate(updated, "time_counter_discontinuity")
+            if active:
+                cycle["active_minutes"] += delta
+        cycle["counter_minutes"] = counter_minutes
     cycle.update(last_ts=now_ts, last_active=active)
     return updated
 
@@ -198,8 +215,11 @@ def finish_empty(
     now_ts: int, available: bool = True,
 ) -> dict[str, Any]:
     """Finish on a valid empty anchor for the same tracked reservoir, once."""
+    cycle_before = state.get("cycle") or {}
     updated = observe(state, context=context, capacity_ml=capacity_ml,
-                      now_ts=now_ts, active=False, available=available)
+                      now_ts=now_ts, active=False, available=available,
+                      use_counter="counter_minutes" in cycle_before,
+                      counter_minutes=cycle_before.get("counter_minutes"))
     cycle = updated["cycle"]
     if cycle is None:
         return updated

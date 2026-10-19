@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.12.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.13.0-beta.2 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -125,7 +125,7 @@ const supportDismissed = () => { try { return localStorage.getItem(SUPPORT_DISMI
 const ownDonateFooter = (lang = "en") => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">${lang === "pl" ? "Opcjonalne wsparcie HA Tools" : "Optional support for HA Tools"}</a><button type="button" class="support-dismiss" aria-label="${lang === "pl" ? "Ukryj odnośnik wsparcia" : "Dismiss support link"}">×</button></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.12.0';
+const VWM_VERSION = '5.13.0-beta.2';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -13483,8 +13483,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._hass.connection.subscribeMessage((event) => {
       const data = (event && event.data) || {};
       if (data.settings) {
+        const linksChanged = JSON.stringify(this._robotLinks()) !== JSON.stringify(data.settings.robot_links || {});
         this._serverState.settings = data.settings;
         this._applyServerSettings();
+        // Linked programs live in discovery descriptors, not in settings.
+        if (linksChanged) setTimeout(() => this._ensureServerState(true), 0);
       }
       if (data.tank_states && data.partial) {
         // A refill or a run starting/ending changes the history the event leaves
@@ -13724,6 +13727,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._serverState.settings = result.settings;
         this._applyServerSettings();
       }
+      if (Object.hasOwn(patch, 'robot_links')) await this._ensureServerState(true);
       return { ok: true, settings: (result && result.settings) || this._serverState.settings };
     } catch (err) {
       console.error('[ha-vacuum-water-monitor] settings save failed:', err);
@@ -13753,7 +13757,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'last_reset_entity','main_brush_sensor','side_brush_sensor','filter_time_sensor',
       'sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor',
-      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','cleaning_active_sensor',
+      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','area_unit_entity','cleaning_active_sensor',
       'last_clean_start','last_clean_end','charge_sensor','status_sensor',
       'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope',
       'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
@@ -14160,7 +14164,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const bindingFields = new Set([
       'water_volume_sensor','water_volume_reservoir','water_anchor_reservoir','refill_on_clear','water_total_ml','tracked_capacity_ml','tank_ml','tracked_reservoir','low_water_anchor_remaining_percent','signals',
       'status_sensor','cleaning_active_sensor','area_sensor','duration_sensor',
-      'area_attribute','area_attribute_unit','duration_attribute','duration_attribute_unit','mop_intensity_attribute','water_box_attached_attribute','tank_semantics_confirmed','mop_evidence_required','signal_contract_version',
+      'mop_attached_attribute','mop_attachment_is_evidence','status_attribute','area_unit_entity','area_attribute','area_attribute_unit','duration_attribute','duration_attribute_unit','mop_intensity_attribute','water_box_attached_attribute','tank_semantics_confirmed','mop_evidence_required','signal_contract_version',
       'mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','mop_attached_sensor','water_box_attached_sensor','water_box_detached_sensor',
       'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml',
       'accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','evidence','profile_locked','profile_override','locked_profile','brand_profile',
@@ -14178,7 +14182,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!explicit.has('signals')) {
       const effectiveSignals = { ...signals };
       for (const role of [
-        'status_sensor','cleaning_active_sensor','area_sensor','duration_sensor',
+        'status_sensor','cleaning_active_sensor','area_sensor','duration_sensor','area_unit_entity',
         'mop_mode_entity','mop_intensity_entity','cleaning_mode_entity',
         'mop_attached_sensor','water_box_attached_sensor','water_box_detached_sensor','water_shortage_sensor',
         'dock_clean_water_sensor','dock_dirty_water_sensor','dock_error_sensor','dock_status_sensor','water_error_sensor','tank_level_sensor','dock_tank_level_sensor',
@@ -14325,22 +14329,28 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const parts = [];
     for (const v of vacuums) {
       const target = v.possible_duplicate_of;
+      const tapo = vacuums.find(x => x.entity_id === target)?.integration_adapter === 'tapo_rv30';
       if (target && !links[v.entity_id]) {
-        parts.push(`<div class="alert-banner alert-warn dup-banner">${pl
+        parts.push(`<div class="alert-banner alert-warn dup-banner">${tapo ? (pl
+          ? `Czy to ten sam robot? Połącz „${nameOf(v.entity_id)}” (Matter) z „${nameOf(target)}”. Karta wykorzysta dane z Tapo i wybrany program z Matter.`
+          : `Is this the same robot? Link "${nameOf(v.entity_id)}" (Matter) with "${nameOf(target)}". The card will use data from Tapo and the selected program from Matter.`) : pl
           ? `„${nameOf(v.entity_id)}” (Matter) wygląda na tego samego robota co „${nameOf(target)}”. Ukryć duplikat?`
           : `"${nameOf(v.entity_id)}" (Matter) looks like the same robot as "${nameOf(target)}". Hide the duplicate?`}
           <div class="dup-actions">
-            <button class="dup-btn" data-dup="${_esc(v.entity_id)}" data-target="${_esc(target)}">${pl ? 'Ukryj duplikat' : 'Hide duplicate'}</button>
+            <button class="dup-btn" data-dup="${_esc(v.entity_id)}" data-target="${_esc(target)}">${tapo ? (pl ? 'Połącz' : 'Link') : (pl ? 'Ukryj duplikat' : 'Hide duplicate')}</button>
             <button class="dup-btn" data-dup="${_esc(v.entity_id)}" data-target="distinct">${pl ? 'To inny robot' : 'It is another robot'}</button>
           </div></div>`);
       }
     }
     for (const [entity, target] of Object.entries(links)) {
       if (target && target !== 'distinct') {
-        parts.push(`<div class="dup-hidden">${pl
+        const tapo = vacuums.find(x => x.entity_id === target)?.integration_adapter === 'tapo_rv30';
+        parts.push(`<div class="dup-hidden">${tapo ? (pl
+          ? `Połączone: ${nameOf(target)}: dane z Tapo i wybrany program z Matter (${nameOf(entity)}).`
+          : `Linked: ${nameOf(target)}: data from Tapo and the selected program from Matter (${nameOf(entity)}).`) : pl
           ? `Ukryty duplikat: ${nameOf(entity)} (ten sam robot co ${nameOf(target)}).`
           : `Hidden duplicate: ${nameOf(entity)} (same robot as ${nameOf(target)}).`}
-          <button class="dup-btn dup-undo" data-dup="${_esc(entity)}" data-target="distinct">${pl ? 'Pokaż' : 'Show'}</button></div>`);
+          <button class="dup-btn dup-undo" data-dup="${_esc(entity)}" data-target="distinct">${tapo ? (pl ? 'Rozłącz' : 'Unlink') : (pl ? 'Pokaż' : 'Show')}</button></div>`);
       }
     }
     return parts.join('');
@@ -14515,7 +14525,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const waterLow = anchorActive && waterAnchorKind === 'shortage';
     const waterEmpty = anchorActive && !waterLow;
     const vacState = this._getStateValue(device.vacuum_entity);
-    const isCleaning = ['cleaning', 'running', 'sweeping', 'mopping', 'vacuuming'].includes(this._normaliseModelKey(vacState));
+    const isCleaning = device.integration_adapter === 'tapo_rv30'
+      ? this._getAttr(device.vacuum_entity, 'status_code') === 1
+      : ['cleaning', 'running', 'sweeping', 'mopping', 'vacuuming'].includes(this._normaliseModelKey(vacState));
     const charge = this._getStateValue(device.charge_sensor) ||
       this._getAttr(device.vacuum_entity, 'battery_level');
 
@@ -14530,8 +14542,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const lastReset = this._getEffectiveLastReset(device);
 
     // Cleaning stats
-    const areaCleaned = this._getStateValue(device.area_sensor) ?? this._getAttr(device.vacuum_entity, device.area_attribute);
-    const durationSec = this._getStateValue(device.duration_sensor) ?? this._getAttr(device.vacuum_entity, device.duration_attribute);
+    const areaCleaned = device.integration_adapter === 'tapo_rv30' && this._getStateValue(device.area_unit_entity) !== 'm²'
+      ? null : this._getStateValue(device.area_sensor) ?? this._getAttr(device.vacuum_entity, device.area_attribute);
+    const durationSensorValue = this._getStateValue(device.duration_sensor);
+    let durationSec = durationSensorValue ?? this._getAttr(device.vacuum_entity, device.duration_attribute);
+    const durationUnit = durationSensorValue != null
+      ? this._getAttr(device.duration_sensor, 'unit_of_measurement') : device.duration_attribute_unit;
+    if (durationSec != null && ['min', 'minutes'].includes(durationUnit)) durationSec = Number(durationSec) * 60;
+    else if (durationSec != null && ['h', 'hours'].includes(durationUnit)) durationSec = Number(durationSec) * 3600;
     const lastCleanStart = this._getStateValue(device.last_clean_start);
     const lastCleanEnd = this._getStateValue(device.last_clean_end);
 
