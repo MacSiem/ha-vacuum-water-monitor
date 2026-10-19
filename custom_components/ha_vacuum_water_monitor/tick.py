@@ -792,7 +792,8 @@ def _tick_device_pass(
     nominal_time_applied = False
     nominal_capacity = _device_capacity_ml(device)
     nominal_eligible = bool(
-        consumption_context and nominal_capacity and device.get("cleaning_mode_entity")
+        consumption_context and nominal_capacity
+        and (device.get("cleaning_mode_entity") or (tapovac and device.get("mop_mode_entity")))
         and not device.get("water_volume_sensor")
         and (tapovac or not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute")))
         and (not tapovac or usage_per_m2 is None)
@@ -806,6 +807,9 @@ def _tick_device_pass(
             nominal_time_context["time_observation"] = "clean_time_min"
         known_mode = bool(cleaning_mode and (_recognized_mop_cleaning_mode(cleaning_mode)
             or cleaning_mode in _MOP_DISABLED_MODES or "vacuum_only" in cleaning_mode))
+        if tapovac and not device.get("cleaning_mode_entity") and device.get("mop_mode_entity"):
+            known_mode = bool(mop_mode and (mop_mode in _MOP_DISABLED_MODES
+                or _is_mop_active(None, mop_mode, None, require_evidence=True)))
         learning = state.get("nominal_time_learning") or {}
         if state.pop("nominal_time_start_pending", False):
             learning = nominal_time_learning.start_full(learning,
