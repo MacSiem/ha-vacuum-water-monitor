@@ -32,7 +32,7 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass,
             hass.states.async_set("select.confirmed_robot_mode", mode)
         hass.states.async_set("vacuum.tapo", "cleaning", {"status_code": code,
             "clean_area": area, "clean_time_min": area, "water_level": "low", "mop_attached": True})
-    update(0)
+    update(0, code=5)
     entry = MockConfigEntry(domain=DOMAIN, title="VWM", data={}, options={})
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -47,6 +47,7 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass,
     await hass.data[DOMAIN]["ticker"].run(None)
     await settle(hass)
     await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": "vacuum.tapo"}, blocking=True)
+    update(0)
     await settle(hass)
     update(2)
     await settle(hass)
