@@ -43,6 +43,8 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass,
         "cleaning_mode_entity": "select.confirmed_robot_mode", "rate_signal": "mop_intensity",
         "usage_ml_per_m2": {"low": 2}, "accounting_evidence": "user_calibration"}]}})
     assert (await client.receive_json())["success"]
+    # The regular heartbeat adopts changed settings before new exposure.
+    await hass.data[DOMAIN]["ticker"].run(None)
     await settle(hass)
     await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": "vacuum.tapo"}, blocking=True)
     await settle(hass)
