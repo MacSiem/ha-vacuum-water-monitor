@@ -16,7 +16,7 @@ def device():
     return {**desc, **desc["signals"], "vacuum_entity": "vacuum.test",
             "cleaning_mode_entity": "select.mode", "usage_ml_per_m2": {"low": 2, "high": 4},
             "usage_ml_per_active_minute": {"low": 3, "high": 6},
-            "rate_signal": "mop_intensity", "accounting_evidence": "user_measured"}
+            "accounting_evidence": "user_measured"}
 
 
 def observe(dev, previous=None, *, mode="Vacuum and Mop;Deep Clean", code=1, area=0, minutes=0,
