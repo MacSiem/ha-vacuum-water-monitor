@@ -81,6 +81,11 @@ def resolve_linked_programs(
     result = deepcopy(discovered)
     links = (settings or {}).get("robot_links")
     links = links if isinstance(links, dict) else {}
+    configured = {}
+    for key in ("configured_devices", "user_devices"):
+        for item in (settings or {}).get(key) or []:
+            if isinstance(item, dict) and item.get("vacuum_entity"):
+                configured[item["vacuum_entity"]] = item
     for native in result:
         if native.get("integration_adapter") != "tapo_rv30":
             continue
@@ -88,6 +93,14 @@ def resolve_linked_programs(
         if signals.get("cleaning_mode_entity") or signals.get("mop_mode_entity"):
             continue
         native_id = native.get("entity_id") or native.get("vacuum_entity")
+        authored = configured.get(native_id) or {}
+        explicit, _ = _configuration_field_provenance(authored)
+        # An authored mop role is an alternative to the programme role, not
+        # another source to combine with it. Explicit signal maps also retain
+        # their replacement semantics, including an intentionally empty map.
+        if "signals" in explicit or any(key in explicit for key in
+                ("cleaning_mode_entity", "mop_mode_entity")):
+            continue
         candidates = []
         for matter in result:
             if matter.get("integration_adapter") != "matter":

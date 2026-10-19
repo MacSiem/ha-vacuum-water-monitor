@@ -168,7 +168,7 @@ class TapoVacTests(unittest.TestCase):
                   "signals": {"cleaning_mode_entity": "select.bridge_mode"}}
         for key in ("configured_devices", "user_devices"):
             for binding in ({"mop_mode_entity": "select.mode"},
-                            {"signals": {"mop_mode_entity": "select.mode"}}):
+                            {"signals": {"mop_mode_entity": "select.mode", "area_unit_entity": "select.area_unit"}}):
                 with self.subTest(key=key, binding=binding):
                     settings = {"robot_links": {"vacuum.bridge": "vacuum.test"}, key: [
                         {"vacuum_entity": "vacuum.test", "usage_ml_per_m2": {"low": 2},

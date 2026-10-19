@@ -902,6 +902,9 @@ def _tick_device_pass(
         and not _is_cleaning(vac_state, curr_status, None)
         and state.get("last_floor_identity") == floor_identity
         and device.get("calibration_scope") == "floor_only"
+        # Native Tapo cannot reuse a stale programme after unlink/control
+        # loss, nor turn mounted-only telemetry into a valid final interval.
+        and (device.get("integration_adapter") != "tapo_rv30" or mop_active)
         and whole_cycle_calibration is None and not device.get("water_volume_sensor")
         and curr_area is not None and _positive_number(state.get("last_floor_usage_per_m2")) is not None
     )
@@ -916,7 +919,8 @@ def _tick_device_pass(
             mop_attached, water_box_attached,
             mop_intensity=floor_settings.get("mop_intensity"),
             intensity_is_evidence=bool(device.get("mop_intensity_is_evidence")),
-            require_evidence=bool(device.get("mop_evidence_required")))
+            require_evidence=bool(device.get("mop_evidence_required")),
+            attachment_is_evidence=device.get("mop_attachment_is_evidence") is not False)
     calibration_values = {key: device.get(key) for key in _CALIBRATION_IDENTITY_KEYS}
     calibration_values["intensity_factor"] = device.get("intensity_factor")
     if consumption_context:
