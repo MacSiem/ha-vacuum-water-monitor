@@ -327,10 +327,11 @@ def _adapter_estimate_policy(device: dict[str, Any], resolved: dict[str, Any]) -
     """Native Tapo telemetry must not turn a class prior into a water dose."""
     if device.get("integration_adapter") == "tapo_rv30" and resolved.get("estimate_basis"):
         resolved.update(usage_ml_per_m2={}, usage_ml_per_active_minute={}, wash_volume_ml=None,
-                        intensity_factor={}, estimate_basis=None, estimate_sources=[],
+                        estimate_basis=None, estimate_sources=[],
                         accounting_evidence="not_published", evidence="not_published",
                         capability="calibration_required", uncertainty_percent=None,
                         rate_signal="mop_intensity")
+        resolved.pop("intensity_factor", None)
     return resolved
 
 
