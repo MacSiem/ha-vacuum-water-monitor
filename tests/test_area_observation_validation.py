@@ -73,7 +73,8 @@ class AreaObservationValidationTests(unittest.TestCase):
         self.assertEqual(observation["ceiling_m2"], 25)
         self.assertEqual(observation["interval_seconds"], 60)
         self.assertTrue(observation["cleaning"])
-        self.assertRegex(observation["version"], r"^\d+\.\d+\.\d+$")
+        from vwmruntimepkg.const import VERSION
+        self.assertEqual(observation["version"], VERSION)
         self.assertLess(len(json.dumps(observation)), 700)
         self.assertNotIn("sensor.robot_area", json.dumps(incident))
         later = run(self.device, after, [dict(status="charging", vac="docked", area="40")], ts=10_180_000)
