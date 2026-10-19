@@ -155,7 +155,7 @@ class TapoVacTests(unittest.TestCase):
             state = observe(dev, state, code=5, minutes=10, area=10, now=now+720_000)
             state["user_empty_active"] = True
             state = observe(dev, state, code=5, minutes=10, area=10, now=now+780_000)
-        self.assertEqual(state.get("nominal_time_resolution", {}).get("status"), "active")
+        self.assertEqual(state.get("nominal_time_resolution", {}).get("status"), "active", {"resolution": state.get("nominal_time_resolution"), "learning": state.get("nominal_time_learning"), "capacity": dev.get("tracked_capacity_ml"), "adapter": dev.get("integration_adapter")})
         self.assertEqual(state["nominal_time_resolution"]["sample_count"], 3)
         now += 2_000_000
         apply_refill(state, now, 'service', rebaseline=True)
