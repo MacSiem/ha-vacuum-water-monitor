@@ -71,3 +71,52 @@ class TapoVacTests(unittest.TestCase):
         first = observe(dev, area=None, minutes=None)
         result = observe(dev, first, area=None, minutes=None, now=1_060_000)
         self.assertEqual(result["used_ml"], 0)
+
+    def test_entering_mapping_does_not_charge_retained_counters(self):
+        dev = device()
+        first = observe(dev)
+        result = observe(dev, first, code=2, area=10, minutes=1, now=1_060_000)
+        self.assertEqual(result["used_ml"], 0)
+
+    def test_counter_reset_does_not_double_count_or_go_negative(self):
+        dev = device()
+        state = observe(dev)
+        state = observe(dev, state, area=10, minutes=1, now=1_060_000)
+        state = observe(dev, state, area=0, minutes=0, now=1_120_000)
+        state = observe(dev, state, area=3, minutes=1, now=1_180_000)
+        self.assertEqual(state["used_ml"], 26)
+
+    def test_missing_mode_after_a_valid_interval_does_not_charge_new_area(self):
+        dev = device()
+        state = observe(dev)
+        state = observe(dev, state, area=2, minutes=1, now=1_060_000)
+        result = observe(dev, state, mode="unavailable", area=10, minutes=2, now=1_120_000)
+        self.assertEqual(result["used_ml"], 4)
+
+    def test_changed_intensity_rebaselines_before_using_new_coefficient(self):
+        dev = device()
+        state = observe(dev)
+        state = observe(dev, state, area=2, minutes=1, now=1_060_000)
+        state = observe(dev, state, area=3, minutes=2, water="high", now=1_120_000)
+        result = observe(dev, state, area=5, minutes=3, water="high", now=1_180_000)
+        self.assertEqual(result["used_ml"], 12)
+
+    def test_duplicate_unit_contract_fails_closed(self):
+        d = _load_discovery()
+        entities = [dict(entity_id="vacuum.test", platform="tapo_rv30", unique_id="entry_vacuum", device_id="robot")]
+        entities += [dict(entity_id=f"select.unit_{n}", platform="tapo_rv30", unique_id="entry_area_unit", device_id="robot") for n in range(2)]
+        result = d.discover_descriptors(entities, [dict(id="robot")], {})[0]
+        self.assertNotIn("area_unit_entity", result["signals"])
+
+    def test_linking_matter_keeps_one_owner_without_importing_its_mode(self):
+        from test_sensor_calculations import build_vacuum_devices
+        native = descriptor()
+        matter = {"entity_id": "vacuum.bridge", "integration_adapter": "matter", "identity_group": "bridge",
+                  "signals": {"cleaning_mode_entity": "select.bridge_mode"}}
+        separate = build_vacuum_devices({}, {}, [native, matter])
+        self.assertEqual(len(separate), 2)
+        linked = build_vacuum_devices({"robot_links": {"vacuum.bridge": "vacuum.test"}}, {}, [native, matter])
+        self.assertEqual(len(linked), 1)
+        self.assertEqual(linked[0]["vacuum_entity"], "vacuum.test")
+        self.assertNotIn("cleaning_mode_entity", linked[0])
+        self.assertEqual(linked[0]["area_unit_entity"], "select.area_unit")
