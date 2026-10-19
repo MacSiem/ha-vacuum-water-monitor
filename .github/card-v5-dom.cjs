@@ -197,4 +197,82 @@ test('Tapo minute attributes render as minutes and unverified area units stay hi
  assert.equal(card._calcDeviceData(device).isCleaning,false);
  dom.window.close();
 });
+// Boundary fake: HA stores the decision and returns the newly resolved descriptor.
+// Removing the descriptor refresh must leave the card's effective program stale.
+async function linkedFixture(language='en',authored={}) {
+ const f=fixture(language,{devices:[{vacuum_entity:'vacuum.tapo',...authored}]});
+ const {card}=f;delete card._ensureServerState;delete card._getDevices;
+ let settings={robot_links:{},configured_devices:JSON.parse(JSON.stringify(card._configuredDevicesFromConfig()))};
+ let subscriber;let lists=0;
+ const descriptors=()=>[
+  {entity_id:'vacuum.tapo',name:'TapoVac',integration_adapter:'tapo_rv30',signals:settings.robot_links['vacuum.matter']==='vacuum.tapo'?{cleaning_mode_entity:'select.matter_program'}:{}},
+  {entity_id:'vacuum.matter',name:'Matter robot',integration_adapter:'matter',possible_duplicate_of:'vacuum.tapo',signals:{cleaning_mode_entity:'select.matter_program'}}
+ ];
+ card._hass.states={'vacuum.tapo':{state:'docked',attributes:{}},'vacuum.matter':{state:'docked',attributes:{}},'select.matter_program':{state:'vacuum_and_mop',attributes:{}}};
+ card._hass.callWS=async request=>{
+  if(request.type.endsWith('/set_settings')) {settings={...settings,...request.patch};return {settings};}
+  if(request.type.endsWith('/get_state')) return {settings,tank_states:{}};
+  if(request.type.endsWith('/list_vacuums')) {lists++;return {vacuums:descriptors()};}
+  if(request.type.endsWith('/health')) return {robots:[]};
+  throw Error('Unexpected WS '+request.type);
+ };
+ card._hass.connection={subscribeMessage:async callback=>{subscriber=callback;return ()=>{};}};
+ await card._ensureServerState(true);
+ return {...f,lists:()=>lists,event:async links=>{
+  settings={...settings,robot_links:links};subscriber({data:{settings}});
+  await new Promise(resolve=>setTimeout(resolve,10));
+  if(card._serverLoadPromise) await card._serverLoadPromise;
+ }};
+}
+const settleLink=async card=>{
+ await new Promise(resolve=>setTimeout(resolve,10));
+ if(card._serverLoadPromise) await card._serverLoadPromise;
+};
+test('Tapo confirmation explains Tapo data plus Matter program in PL and EN',async()=>{
+ for(const lang of ['pl','en']) {
+  const {dom,sr}=await linkedFixture(lang);
+  const notice=sr.querySelector('.dup-banner');
+  assert.match(notice.textContent,lang==='pl'?/Czy to ten sam robot\?/:/Is this the same robot\?/);
+  assert.match(notice.textContent,lang==='pl'?/dane.*Tapo.*program.*Matter/i:/data.*Tapo.*program.*Matter/i);
+  assert.equal(notice.querySelector('[data-target="vacuum.tapo"]').textContent,lang==='pl'?'Połącz':'Link');
+  dom.window.close();
+ }
+});
+test('real link and unlink clicks refresh the effective program without recreating the card',async()=>{
+ for(const lang of ['pl','en']) {
+  const {dom,card,sr}=await linkedFixture(lang);
+  assert.equal(card._getDevices()[0].cleaning_mode_entity,undefined);
+  sr.querySelector('[data-dup="vacuum.matter"][data-target="vacuum.tapo"]').click();await settleLink(card);
+  assert.equal(card._getDevices()[0].cleaning_mode_entity,'select.matter_program');
+  assert.match(sr.querySelector('.dup-hidden').textContent,lang==='pl'?/Połączone/:/Linked/);
+  const unlink=sr.querySelector('.dup-undo');assert.equal(unlink.textContent,lang==='pl'?'Rozłącz':'Unlink');
+  unlink.click();await settleLink(card);
+  assert.equal(card._getDevices().find(d=>d.vacuum_entity==='vacuum.tapo').cleaning_mode_entity,undefined);
+  assert.equal(card.isConnected,true);
+  dom.window.close();
+ }
+});
+test('link refresh preserves authored roles and authored empty signals',async()=>{
+ for(const authored of [{cleaning_mode_entity:'select.hand_picked'},{signals:{}}]) {
+  const {dom,card,sr}=await linkedFixture('en',authored);
+  const before=JSON.stringify(card._config.devices);
+  sr.querySelector('[data-target="vacuum.tapo"]').click();await settleLink(card);
+  const device=card._getDevices()[0];
+  if(authored.cleaning_mode_entity) assert.equal(device.cleaning_mode_entity,'select.hand_picked');
+  else {assert.equal(device.cleaning_mode_entity,undefined);assert.deepEqual(JSON.parse(JSON.stringify(device.signals)),{});}
+  assert.equal(JSON.stringify(card._config.devices),before);
+  assert.equal(card._backendDescriptor(device).signals.cleaning_mode_entity,'select.matter_program');
+  dom.window.close();
+ }
+});
+test('settings event refreshes linked descriptors once and ignores unchanged links',async()=>{
+ const {dom,card,event,lists}=await linkedFixture();const initial=lists();
+ await event({'vacuum.matter':'vacuum.tapo'});
+ assert.equal(card._getDevices()[0].cleaning_mode_entity,'select.matter_program');
+ assert.equal(lists(),initial+1);
+ await event({'vacuum.matter':'vacuum.tapo'});assert.equal(lists(),initial+1);
+ await event({'vacuum.matter':'distinct'});
+ assert.equal(card._getDevices().find(d=>d.vacuum_entity==='vacuum.tapo').cleaning_mode_entity,undefined);
+ assert.equal(lists(),initial+2);dom.window.close();
+});
 (async()=>{let failed=0;for(const [name,fn] of tests){try{await fn();console.log('PASS '+name);}catch(error){failed++;console.error('FAIL '+name+'\n'+error.stack);}}if(failed)process.exitCode=1;})();
