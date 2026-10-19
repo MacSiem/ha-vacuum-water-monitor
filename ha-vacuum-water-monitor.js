@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.13.0-beta.1 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.13.0-beta.2 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -14332,8 +14332,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const tapo = vacuums.find(x => x.entity_id === target)?.integration_adapter === 'tapo_rv30';
       if (target && !links[v.entity_id]) {
         parts.push(`<div class="alert-banner alert-warn dup-banner">${tapo ? (pl
-          ? `Czy to ten sam robot? Połącz „${nameOf(v.entity_id)}” (Matter) z „${nameOf(target)}”. Karta wykorzysta dane z Tapo i wybrany program z Matter. Program nie potwierdza przepływu wody.`
-          : `Is this the same robot? Link "${nameOf(v.entity_id)}" (Matter) with "${nameOf(target)}". The card will use data from Tapo and the selected program from Matter. The program does not confirm water flow.`) : pl
+          ? `Czy to ten sam robot? Połącz „${nameOf(v.entity_id)}” (Matter) z „${nameOf(target)}”. Karta wykorzysta dane z Tapo i wybrany program z Matter.`
+          : `Is this the same robot? Link "${nameOf(v.entity_id)}" (Matter) with "${nameOf(target)}". The card will use data from Tapo and the selected program from Matter.`) : pl
           ? `„${nameOf(v.entity_id)}” (Matter) wygląda na tego samego robota co „${nameOf(target)}”. Ukryć duplikat?`
           : `"${nameOf(v.entity_id)}" (Matter) looks like the same robot as "${nameOf(target)}". Hide the duplicate?`}
           <div class="dup-actions">
@@ -14346,8 +14346,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (target && target !== 'distinct') {
         const tapo = vacuums.find(x => x.entity_id === target)?.integration_adapter === 'tapo_rv30';
         parts.push(`<div class="dup-hidden">${tapo ? (pl
-          ? `Połączone: ${nameOf(target)} — dane z Tapo i wybrany program z Matter (${nameOf(entity)}). Program nie potwierdza przepływu wody.`
-          : `Linked: ${nameOf(target)} — data from Tapo and the selected program from Matter (${nameOf(entity)}). The program does not confirm water flow.`) : pl
+          ? `Połączone: ${nameOf(target)}: dane z Tapo i wybrany program z Matter (${nameOf(entity)}).`
+          : `Linked: ${nameOf(target)}: data from Tapo and the selected program from Matter (${nameOf(entity)}).`) : pl
           ? `Ukryty duplikat: ${nameOf(entity)} (ten sam robot co ${nameOf(target)}).`
           : `Hidden duplicate: ${nameOf(entity)} (same robot as ${nameOf(target)}).`}
           <button class="dup-btn dup-undo" data-dup="${_esc(entity)}" data-target="distinct">${tapo ? (pl ? 'Rozłącz' : 'Unlink') : (pl ? 'Pokaż' : 'Show')}</button></div>`);
