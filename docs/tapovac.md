@@ -14,7 +14,7 @@ The upstream authors report testing the RV50 Pro Omni (EU). VWM's automated test
 | `mop_attached` | False vetoes mopping; true alone never proves active mopping |
 | `status_code` | 1 permits cleaning; 2 means mapping and cannot consume water; missing/unknown raw codes open a telemetry gap |
 
-Area and time counters are used as alternatives, never added together for one floor interval. No inferred ft² conversion is enabled: upstream's imperial mapping has not been independently verified, and its area sensor always labels values m². With missing/imperial units, VWM can use the observed minute counter only if you have separately calibrated a time rate. Missing counters do not authorize a wall-clock guess.
+Area and time counters are used as alternatives, never added together for one floor interval. No inferred ft² conversion is enabled: upstream's imperial mapping has not been independently verified, and its area sensor always labels values m². With missing or imperial area units, area accounting is disabled. The observed `clean_time_min` counter and an explicitly confirmed current mop mode can still support automatic nominal learning after three compatible full tanks, without a manually entered rate. An independently established time calibration remains an optional alternative. Missing counters do not authorize a wall-clock guess.
 
 ## Confirm the current mopping mode
 
