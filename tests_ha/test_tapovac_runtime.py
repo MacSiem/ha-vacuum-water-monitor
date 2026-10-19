@@ -24,7 +24,16 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass,
         device_id=dev.id, config_entry=upstream, suggested_object_id="tapo")
     registry.async_get_or_create("select", "tapo_rv30", upstream.entry_id + "_area_unit",
         device_id=dev.id, config_entry=upstream, suggested_object_id="tapo_unit")
-    # Authored mode binding is explicit. It is not inferred from a Matter name.
+    matter = MockConfigEntry(domain="matter", title="Same robot over Matter")
+    matter.add_to_hass(hass)
+    bridged = dr.async_get(hass).async_get_or_create(config_entry_id=matter.entry_id,
+        identifiers={("matter", "node-tapo")}, manufacturer="TP-Link", model="Robotic Vacuum Cleaner")
+    registry.async_get_or_create("vacuum", "matter", "node-tapo", device_id=bridged.id,
+        config_entry=matter, suggested_object_id="matter_tapo")
+    registry.async_get_or_create("select", "matter", "node-tapo-mode", device_id=bridged.id,
+        config_entry=matter, suggested_object_id="confirmed_robot_mode", translation_key="clean_mode")
+    hass.states.async_set("vacuum.matter_tapo", "docked")
+    # No authored mode: the ordinary card action confirms physical identity.
     hass.states.async_set("select.confirmed_robot_mode", "Vacuum and Mop;Deep Clean")
     hass.states.async_set("select.tapo_unit", "m²")
     def update(area, code=1, mode=None):
@@ -40,9 +49,20 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass,
     storage = hass.data[DOMAIN]["storage"]
     client = await hass_ws_client(hass)
     await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"configured_devices": [{"vacuum_entity": "vacuum.tapo",
-        "cleaning_mode_entity": "select.confirmed_robot_mode", "rate_signal": "mop_intensity",
+        "rate_signal": "mop_intensity",
         "usage_ml_per_m2": {"low": 2}, "accounting_evidence": "user_calibration"}]}})
     assert (await client.receive_json())["success"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/list_vacuums"})
+    listed = (await client.receive_json())["result"]["vacuums"]
+    assert "cleaning_mode_entity" not in next(v for v in listed if v["entity_id"] == "vacuum.tapo")["signals"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
+        "robot_links": {"vacuum.matter_tapo": "vacuum.tapo"}}})
+    assert (await client.receive_json())["success"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/list_vacuums"})
+    listed = (await client.receive_json())["result"]["vacuums"]
+    native = next(v for v in listed if v["entity_id"] == "vacuum.tapo")
+    assert native["signals"]["cleaning_mode_entity"] == "select.confirmed_robot_mode"
+    assert native["linked_mode_source"] == "vacuum.matter_tapo"
     # The regular heartbeat adopts changed settings before new exposure.
     await hass.data[DOMAIN]["ticker"].run(None)
     await settle(hass)
@@ -65,3 +85,17 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass,
     await hass.async_block_till_done()
     persisted = await storage._store.async_load()
     assert persisted["tank_states"]["vacuum.tapo"]["used_ml"] == 4
+
+    assert "select.confirmed_robot_mode" in hass.data[DOMAIN]["ticker"].entities
+    saved = (await storage.async_get_state())["settings"]
+    assert not saved["configured_devices"][0].get("cleaning_mode_entity")
+    # A mode-only update wakes accounting without a native vacuum update.
+    hass.states.async_set("select.confirmed_robot_mode", "unavailable")
+    await settle(hass)
+    assert (await storage.async_get_state())["tank_states"]["vacuum.tapo"]["used_ml"] == 4
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
+        "robot_links": {"vacuum.matter_tapo": "distinct"}}})
+    assert (await client.receive_json())["success"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/list_vacuums"})
+    native = next(v for v in (await client.receive_json())["result"]["vacuums"] if v["entity_id"] == "vacuum.tapo")
+    assert "cleaning_mode_entity" not in native["signals"]
