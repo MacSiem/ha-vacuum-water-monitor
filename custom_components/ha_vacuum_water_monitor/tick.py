@@ -433,9 +433,17 @@ def _tick_device_pass(
         curr_status_raw = status_state.state if status_state is not None else None
     else:
         curr_status_raw = vac.attributes.get("status") or vac.state
+    tapovac = device.get("integration_adapter") == "tapo_rv30"
+    if tapovac:
+        # Upstream labels mapping as cleaning and unknown codes as idle.
+        # Neither is a safe accounting state; preserve gaps for unknown codes.
+        raw_code = vac.attributes.get("status_code")
+        curr_status_raw = ({0: "idle", 1: "cleaning", 2: "mapping", 4: "returning",
+                            5: "docked", 6: "docked", 7: "paused", 8: "idle", 100: "error"}
+                           .get(raw_code) if type(raw_code) is int else None)
     curr_status = _normalized_signal(curr_status_raw)
 
-    if status_sensor and _is_transient_status(curr_status):
+    if (status_sensor or tapovac) and _is_transient_status(curr_status):
         _open_observation_gap(state, int(_positive_number(state.get("last_tick_ts")) or now_ts))
         state.update(last_duration_seconds=None, area_gap=True,
                      duration_gap=True, last_tick_ts=0, last_water_volume_ml=None, session_exposure_complete=False,
@@ -450,6 +458,10 @@ def _tick_device_pass(
             device.get("area_attribute_unit"),
             hass,
         )
+    if tapovac and _state_value(hass, device.get("area_unit_entity")) != "m²":
+        # Imperial raw-area semantics are not yet independently verified.
+        # Even the upstream area sensor declares m² unconditionally.
+        curr_area = None
     # A per-task area counter (Roborock cleaning_area) restarts at zero when the
     # robot starts a new task inside one session, for example after it resumes
     # from an error. Carry the area already covered so the session history
@@ -470,7 +482,7 @@ def _tick_device_pass(
         _state_value(hass, device.get("dock_status_sensor"))
     )
 
-    vac_state = _normalized_signal(vac.state)
+    vac_state = curr_status if tapovac else _normalized_signal(vac.state)
     mop_mode_raw = (
         _state_value(hass, device.get("mop_mode_entity"))
         if device.get("mop_mode_entity")
@@ -487,9 +499,8 @@ def _tick_device_pass(
     cleaning_mode = _normalized_signal(
         _state_value(hass, device.get("cleaning_mode_entity"))
     )
-    mop_attached = _binary_active(
-        _state_value(hass, device.get("mop_attached_sensor"))
-    )
+    mop_attached = _binary_active(_entity_or_vacuum_attribute(
+        hass, device.get("mop_attached_sensor"), vac, device.get("mop_attached_attribute")))
     water_box_attached = _attachment_present(
         _entity_or_vacuum_attribute(
             hass,
@@ -511,6 +522,7 @@ def _tick_device_pass(
         mop_intensity=mop_intensity,
         intensity_is_evidence=bool(device.get("mop_intensity_is_evidence")),
         require_evidence=bool(device.get("mop_evidence_required")),
+        attachment_is_evidence=device.get("mop_attachment_is_evidence") is not False,
     )
     cleaning_active = _binary_active(
         _state_value(hass, device.get("cleaning_active_sensor"))
@@ -1950,6 +1962,7 @@ def _is_mop_active(
     mop_intensity: str | None = None,
     intensity_is_evidence: bool = False,
     require_evidence: bool = False,
+    attachment_is_evidence: bool = True,
 ) -> bool:
     if mop_attached is False or water_box_attached is False:
         return False
@@ -1985,7 +1998,7 @@ def _is_mop_active(
             "mop", "mopping", "standard", "deep", "deep_plus", "intensive",
             "intensive_plus", "normal", "daily", "wet_mopping"}):
         return mop_mode not in _MOP_DISABLED_MODES
-    if mop_attached is True or water_box_attached is True:
+    if attachment_is_evidence and (mop_attached is True or water_box_attached is True):
         return True
     # Several MIoT integrations (Xiaomi H50/H50 Pro via xiaomi_home) expose a
     # water-output level but no mop-mode or attachment entity.  A recognized

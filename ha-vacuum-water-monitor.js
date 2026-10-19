@@ -14160,7 +14160,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const bindingFields = new Set([
       'water_volume_sensor','water_volume_reservoir','water_anchor_reservoir','refill_on_clear','water_total_ml','tracked_capacity_ml','tank_ml','tracked_reservoir','low_water_anchor_remaining_percent','signals',
       'status_sensor','cleaning_active_sensor','area_sensor','duration_sensor',
-      'area_attribute','area_attribute_unit','duration_attribute','duration_attribute_unit','mop_intensity_attribute','water_box_attached_attribute','tank_semantics_confirmed','mop_evidence_required','signal_contract_version',
+      'mop_attached_attribute','mop_attachment_is_evidence','status_attribute','area_unit_entity','area_attribute','area_attribute_unit','duration_attribute','duration_attribute_unit','mop_intensity_attribute','water_box_attached_attribute','tank_semantics_confirmed','mop_evidence_required','signal_contract_version',
       'mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','mop_attached_sensor','water_box_attached_sensor','water_box_detached_sensor',
       'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml',
       'accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','evidence','profile_locked','profile_override','locked_profile','brand_profile',

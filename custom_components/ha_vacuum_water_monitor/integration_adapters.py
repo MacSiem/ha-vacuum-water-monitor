@@ -135,6 +135,9 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
         "mop_intensity_entity": ("robot_cleaner_water_spray_level",),
         "cleaning_mode_entity": ("robot_cleaner_cleaning_type",),
     },
+    # TapoVac-ADV publishes counters/settings as vacuum attributes. Its
+    # attachment and water-level settings do not prove active mopping.
+    "tapo_rv30": {},
     "tplink": {
         # Current HA Core exposes run statistics, but not python-kasa's Mop
         # module (mop_attached/mop_waterlevel) as HA entities yet.  Area/time
@@ -274,6 +277,18 @@ ADAPTER_DESCRIPTOR_METADATA: dict[str, dict[str, Any]] = {
 # vacuum entity instead of separate registry entities.  These bindings remain
 # canonical machine keys; no localized friendly-name matching is involved.
 ADAPTER_ATTRIBUTE_BINDINGS: dict[str, dict[str, Any]] = {
+    "tapo_rv30": {
+        "area_attribute": "clean_area",
+        "area_attribute_unit": "m²",
+        "duration_attribute": "clean_time_min",
+        "duration_attribute_unit": "min",
+        "mop_intensity_attribute": "water_level",
+        "mop_attached_attribute": "mop_attached",
+        "status_attribute": "status_code",
+        "mop_attachment_is_evidence": False,
+        "rate_signal": "mop_intensity",
+        "tank_semantics_confirmed": False,
+    },
     "roomba": {
         "area_attribute": "cleaned_area",
         # Core returns m² for metric HA installations and ft² otherwise.

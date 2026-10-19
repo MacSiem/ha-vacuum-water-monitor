@@ -159,6 +159,21 @@ def _descriptor(
     descriptor["signals"], descriptor["ambiguous_roles"] = _signals_for_device(
         signal_device_ids, integration_adapter, entities, states
     )
+    if integration_adapter == "tapo_rv30":
+        # Upstream has no translation keys. Match its entry-id contract, never
+        # user-editable entity names or a suffix shared by another robot.
+        unique = str(_value(vacuum, "unique_id") or "")
+        prefix = unique.removesuffix("_vacuum") if unique.endswith("_vacuum") else ""
+        units = [str(_value(entry, "entity_id")) for entry in entities
+                 if prefix and device_id and _value(entry, "device_id") == device_id
+                 and _value(entry, "platform") == "tapo_rv30"
+                 and not _value(entry, "disabled_by")
+                 and str(_value(entry, "entity_id") or "").startswith("select.")
+                 and _value(entry, "unique_id") == prefix + "_area_unit"]
+        if len(units) == 1:
+            descriptor["signals"]["area_unit_entity"] = units[0]
+        elif len(units) > 1:
+            descriptor["ambiguous_roles"].append("area_unit_entity")
     descriptor["sibling_entities"] = _sibling_entities(
         signal_device_ids, entities, states
     )
