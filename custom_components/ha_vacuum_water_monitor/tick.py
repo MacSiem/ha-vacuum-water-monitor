@@ -524,6 +524,9 @@ def _tick_device_pass(
         require_evidence=bool(device.get("mop_evidence_required")),
         attachment_is_evidence=device.get("mop_attachment_is_evidence") is not False,
     )
+    if tapovac and curr_status != "cleaning":
+        # A retained mode/counter cannot turn mapping or docking into mopping.
+        mop_active = False
     cleaning_active = _binary_active(
         _state_value(hass, device.get("cleaning_active_sensor"))
     )
