@@ -795,7 +795,8 @@ def _tick_device_pass(
         consumption_context and nominal_capacity and device.get("cleaning_mode_entity")
         and not device.get("water_volume_sensor")
         and (tapovac or not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute")))
-        and usage_per_m2 is None and usage_per_minute is None and whole_cycle_calibration is None)
+        and (not tapovac or usage_per_m2 is None)
+        and usage_per_minute is None and whole_cycle_calibration is None)
     if nominal_eligible:
         nominal_time_context = deepcopy(consumption_context)
         nominal_time_context.pop("field_sources", None)
