@@ -155,6 +155,8 @@ def _descriptor(
         "high" if related_dock_ids else "none"
     )
     descriptor.update(resolve_profile(metadata))
+    if integration_adapter == "tapo_rv30":
+        descriptor["rate_signal"] = "mop_intensity"
     signal_device_ids = {device_id, *related_dock_ids} if device_id else set()
     descriptor["signals"], descriptor["ambiguous_roles"] = _signals_for_device(
         signal_device_ids, integration_adapter, entities, states

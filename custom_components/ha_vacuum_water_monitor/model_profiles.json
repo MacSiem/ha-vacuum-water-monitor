@@ -7866,7 +7866,8 @@
       "identifiers": [
         "1797",
         "Tapo RV50 Pro Omni",
-        "tapo_rv50_pro"
+        "tapo_rv50_pro",
+        "RV50 Pro Omni"
       ],
       "manufacturer": "Tapo",
       "model": "RV50 Pro Omni",
@@ -7898,7 +7899,8 @@
       ],
       "integration_adapters": [
         "tplink",
-        "matter"
+        "matter",
+        "tapo_rv30"
       ],
       "available_signals": [],
       "reservoirs_ml": {
