@@ -108,7 +108,7 @@ class TapoVacTests(unittest.TestCase):
         result = d.discover_descriptors(entities, [dict(id="robot")], {})[0]
         self.assertNotIn("area_unit_entity", result["signals"])
 
-    def test_linking_matter_keeps_one_owner_without_importing_its_mode(self):
+    def test_confirmed_matter_link_binds_mode_without_yaml_or_importing_bank(self):
         from test_sensor_calculations import build_vacuum_devices
         native = descriptor()
         matter = {"entity_id": "vacuum.bridge", "integration_adapter": "matter", "identity_group": "bridge",
@@ -118,8 +118,65 @@ class TapoVacTests(unittest.TestCase):
         linked = build_vacuum_devices({"robot_links": {"vacuum.bridge": "vacuum.test"}}, {}, [native, matter])
         self.assertEqual(len(linked), 1)
         self.assertEqual(linked[0]["vacuum_entity"], "vacuum.test")
-        self.assertNotIn("cleaning_mode_entity", linked[0])
+        self.assertEqual(linked[0].get("cleaning_mode_entity"), "select.bridge_mode")
+        self.assertEqual(linked[0]["signals"]["cleaning_mode_entity"], "select.bridge_mode")
+        self.assertEqual(linked[0].get("linked_mode_source"), "vacuum.bridge")
         self.assertEqual(linked[0]["area_unit_entity"], "select.area_unit")
+
+    def test_mode_binding_is_recomputed_after_unlink_without_mutating_discovery(self):
+        from test_sensor_calculations import build_vacuum_devices
+        native = descriptor()
+        matter = {"entity_id": "vacuum.bridge", "integration_adapter": "matter", "identity_group": "bridge",
+                  "signals": {"cleaning_mode_entity": "select.bridge_mode"}}
+        discovered = [native, matter]
+        linked = build_vacuum_devices({"robot_links": {"vacuum.bridge": "vacuum.test"}}, {}, discovered)
+        self.assertEqual(linked[0].get("cleaning_mode_entity"), "select.bridge_mode")
+        self.assertNotIn("cleaning_mode_entity", native["signals"])
+        for settings in ({}, {"robot_links": {"vacuum.bridge": "distinct"}}):
+            result = build_vacuum_devices(settings, {}, discovered)
+            self.assertEqual(len(result), 2)
+            self.assertNotIn("cleaning_mode_entity", next(d for d in result if d["vacuum_entity"] == "vacuum.test"))
+
+    def test_suggested_duplicate_never_authorizes_mode_import(self):
+        from test_sensor_calculations import build_vacuum_devices
+        native = descriptor()
+        matter = {"entity_id": "vacuum.bridge", "integration_adapter": "matter", "possible_duplicate_of": "vacuum.test",
+                  "signals": {"cleaning_mode_entity": "select.bridge_mode"}}
+        result = build_vacuum_devices({}, {}, [native, matter])
+        self.assertNotIn("cleaning_mode_entity", next(d for d in result if d["vacuum_entity"] == "vacuum.test"))
+
+    def test_ambiguous_linked_matter_sources_do_not_pick_a_mode(self):
+        from test_sensor_calculations import build_vacuum_devices
+        sources = [{"entity_id": "vacuum.bridge"+str(n), "integration_adapter": "matter",
+                    "signals": {"cleaning_mode_entity": "select.mode"+str(n)}} for n in (1, 2)]
+        settings = {"robot_links": {d["entity_id"]: "vacuum.test" for d in sources}}
+        result = build_vacuum_devices(settings, {}, [descriptor(), *sources])
+        self.assertEqual(len(result), 1)
+        self.assertNotIn("cleaning_mode_entity", result[0])
+
+    def test_explicit_native_mode_wins_over_linked_mode(self):
+        from test_sensor_calculations import build_vacuum_devices
+        matter = {"entity_id": "vacuum.bridge", "integration_adapter": "matter",
+                  "signals": {"cleaning_mode_entity": "select.bridge_mode"}}
+        settings = {"robot_links": {"vacuum.bridge": "vacuum.test"},
+                    "configured_devices": [{"vacuum_entity": "vacuum.test", "cleaning_mode_entity": "select.authored"}]}
+        self.assertEqual(build_vacuum_devices(settings, {}, [descriptor(), matter])[0]["cleaning_mode_entity"], "select.authored")
+
+    def test_automatic_linked_mode_controls_native_accounting(self):
+        from test_sensor_calculations import build_vacuum_devices
+        matter = {"entity_id": "vacuum.bridge", "integration_adapter": "matter",
+                  "signals": {"cleaning_mode_entity": "select.mode", "area_sensor": "sensor.foreign_area"}}
+        settings = {"robot_links": {"vacuum.bridge": "vacuum.test"},
+                    "configured_devices": [{"vacuum_entity": "vacuum.test", "usage_ml_per_m2": {"high": 4}, "accounting_evidence": "user_measured"}]}
+        dev = build_vacuum_devices(settings, {}, [descriptor(), matter])[0]
+        self.assertEqual(dev.get("cleaning_mode_entity"), "select.mode")
+        self.assertNotIn("area_sensor", dev)
+        state = observe(dev, mode="Vacuum", water="high")
+        state = observe(dev, state, mode="Vacuum", water="high", area=2, minutes=1, now=1_060_000)
+        self.assertEqual(state["used_ml"], 0)
+        state = observe(dev, state, water="high", area=2, minutes=1, now=1_120_000)
+        state = observe(dev, state, water="high", area=4, minutes=2, now=1_180_000)
+        self.assertEqual(state["used_ml"], 8)
 
     def test_time_fallback_and_recovered_area_do_not_charge_twice(self):
         dev = device()
