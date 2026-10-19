@@ -46,7 +46,7 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass)
     update(2)
     await settle(hass)
     tank = (await storage.async_get_state())["tank_states"]["vacuum.tapo"]
-    assert tank["used_ml"] == 4, tank
+    assert tank["used_ml"] == 4, {k: tank.get(k) for k in ("last_accounting_reason", "last_accounting_source", "last_status", "last_area", "intensity_unmapped", "consumption_resolution")}
     # Same vacuum state, attribute-only mode/status change must wake the ticker.
     update(4, code=2)
     await settle(hass)
