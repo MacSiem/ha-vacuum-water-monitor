@@ -55,6 +55,7 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass)
     await settle(hass)
     assert (await storage.async_get_state())["tank_states"]["vacuum.tapo"]["used_ml"] == 4
     assert "select.tapo_unit" in hass.data[DOMAIN]["ticker"].entities
-    await storage.async_save()
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=40))
+    await hass.async_block_till_done()
     persisted = await storage._store.async_load()
     assert persisted["tank_states"]["vacuum.tapo"]["used_ml"] == 4
