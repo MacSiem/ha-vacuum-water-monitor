@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.13.0-beta.2 (2026-10-19)
+
+- After confirming that the TapoVac and Matter entries are the same robot in the card, automatically use its Matter cleaning programme without YAML. Refresh the linked control immediately and revoke it on unlink. Keep one accounting owner and preserve existing calibration banks.
+- Explain the native counters, selected programme and unconfirmed physical wet phase separately. TapoVac alone still lacks a verified programme/phase contract; keep Matter connected. No new water coefficients or physical measurement claims.
+
 ## 5.13.0-beta.1 (2026-10-19)
 
 - Read TapoVac-ADV (`tapo_rv30`) cleaning-area and minute counters and water settings directly from vacuum attributes, without implementing another TPAP client.
