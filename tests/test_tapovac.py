@@ -31,16 +31,16 @@ class TapoVacTests(unittest.TestCase):
     def test_attribute_counters_feed_area_accounting_with_explicit_mop_mode(self):
         dev = device()
         first = observe(dev)
-        result = observe(dev, first, area=10, minutes=5, now=1_300_000)
+        result = observe(dev, first, area=10, minutes=1, now=1_060_000)
         self.assertEqual(result["used_ml"], 20)
-        self.assertEqual(result["last_duration_seconds"], 300)
+        self.assertEqual(result["last_duration_seconds"], 60)
 
     def test_attached_and_high_never_prove_mopping(self):
         for mode in ("unavailable", "unknown", "Vacuum", "Vacuum then Mop"):
             with self.subTest(mode=mode):
                 dev = device()
                 first = observe(dev, mode=mode, water="high")
-                result = observe(dev, first, mode=mode, water="high", area=10, minutes=5, now=1_300_000)
+                result = observe(dev, first, mode=mode, water="high", area=10, minutes=1, now=1_060_000)
                 self.assertEqual(result["used_ml"], 0)
 
     def test_mapping_off_detached_and_unknown_status_never_consume(self):
@@ -48,7 +48,7 @@ class TapoVacTests(unittest.TestCase):
             with self.subTest(patch=patch):
                 dev = device()
                 first = observe(dev, **patch)
-                result = observe(dev, first, area=10, minutes=5, now=1_300_000, **patch)
+                result = observe(dev, first, area=10, minutes=1, now=1_060_000, **patch)
                 self.assertEqual(result["used_ml"], 0)
 
     def test_unverified_area_units_use_observed_minutes_instead(self):
@@ -56,8 +56,8 @@ class TapoVacTests(unittest.TestCase):
             with self.subTest(unit=unit):
                 dev = device()
                 first = observe(dev, unit=unit)
-                result = observe(dev, first, area=100, minutes=5, unit=unit, now=1_300_000)
-                self.assertEqual(result["used_ml"], 15)
+                result = observe(dev, first, area=100, minutes=1, unit=unit, now=1_060_000)
+                self.assertEqual(result["used_ml"], 3)
 
     def test_units_binding_uses_exact_same_device_machine_id(self):
         self.assertEqual(descriptor()["signals"].get("area_unit_entity"), "select.area_unit")
@@ -69,5 +69,5 @@ class TapoVacTests(unittest.TestCase):
     def test_missing_counters_do_not_fall_back_to_unobserved_wall_time(self):
         dev = device()
         first = observe(dev, area=None, minutes=None)
-        result = observe(dev, first, area=None, minutes=None, now=1_300_000)
+        result = observe(dev, first, area=None, minutes=None, now=1_060_000)
         self.assertEqual(result["used_ml"], 0)
