@@ -179,4 +179,19 @@ test('threshold volume labels follow HA locale initially and during editing',()=
  assert.match(card.shadowRoot.textContent,/0,60 L/);
  dom.window.close();
 });
+test('Tapo minute attributes render as minutes and unverified area units stay hidden',()=>{
+ const {dom,card}=fixture('en');delete card._calcDeviceData;
+ const device={vacuum_entity:'vacuum.demo',integration_adapter:'tapo_rv30',water_total_ml:5000,
+   area_attribute:'clean_area',area_attribute_unit:'m²',area_unit_entity:'select.units',
+   duration_attribute:'clean_time_min',duration_attribute_unit:'min'};
+ card._hass.states={'vacuum.demo':{state:'cleaning',attributes:{clean_area:3,clean_time_min:3,status_code:1}},
+   'select.units':{state:'m²',attributes:{}}};
+ let data=card._calcDeviceData(device);
+ assert.equal(card._formatDuration(data.durationSec),'3m');assert.equal(data.areaCleaned,3);
+ card._hass.states['select.units'].state='ft²';data=card._calcDeviceData(device);
+ assert.equal(data.areaCleaned,null);
+ card._hass.states['vacuum.demo'].attributes.status_code=2;
+ assert.equal(card._calcDeviceData(device).isCleaning,false);
+ dom.window.close();
+});
 (async()=>{let failed=0;for(const [name,fn] of tests){try{await fn();console.log('PASS '+name);}catch(error){failed++;console.error('FAIL '+name+'\n'+error.stack);}}if(failed)process.exitCode=1;})();
