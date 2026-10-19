@@ -5,6 +5,7 @@
 - Read TapoVac-ADV (`tapo_rv30`) cleaning-area and minute counters and water settings directly from vacuum attributes, without implementing another TPAP client.
 - Require an explicit mopping-mode signal; a mounted mop or non-off water level alone cannot start water accounting. Raw mapping and unknown statuses do not consume water.
 - Bind the upstream area-unit select by exact same-device registry identity. Use metric area only; unverified imperial or missing units require an independently calibrated time rate.
+- Preserve automatic full-tank learning using the native minute counter, with three compatible samples and no manual rate entry.
 - Document explicit Matter/native linking, separate floor and station measurements, and the RV50 hardware validation checklist. No new water-use coefficients or measured-volume claims are added.
 
 ## 5.12.0 (2026-10-18)

@@ -172,3 +172,11 @@ class TapoVacTests(unittest.TestCase):
         self.assertFalse(dev.get("usage_ml_per_active_minute"))
         self.assertFalse(dev.get("wash_volume_ml"))
         self.assertFalse(dev.get("intensity_factor"))
+
+    def test_unknown_status_gap_is_not_billed_after_recovery(self):
+        dev = device()
+        state = observe(dev)
+        state = observe(dev, state, code=999, area=4, minutes=1, now=1_060_000)
+        state = observe(dev, state, area=6, minutes=2, now=1_120_000)
+        result = observe(dev, state, area=8, minutes=3, now=1_180_000)
+        self.assertEqual(result["used_ml"], 4)

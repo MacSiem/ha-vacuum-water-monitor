@@ -131,6 +131,10 @@ def observe(
     Invalidate unavailable/unknown observations, context or capacity changes,
     backward clocks, and gaps over 180 seconds after an active observation.
     Observed idle can last arbitrarily long without ending the full tank.
+    ``use_counter`` replaces wall time with a session minute counter. Missing,
+    decreasing active counters and implausible jumps invalidate the sample;
+    idle resets establish a new baseline. Only intervals mopping at both ends
+    add counter exposure. The caller includes the observation method in context.
     """
     updated = _snapshot(state)
     cycle = updated["cycle"]

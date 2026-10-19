@@ -29,9 +29,11 @@ devices:
     rate_signal: mop_intensity
 ```
 
-This example supplies no coefficients. Add `usage_ml_per_m2` or `usage_ml_per_active_minute` only from your own appropriate measurements, keyed by the observed water level (`low`, `medium`, `high`). VWM does not import another robot model's rates. Leave results unknown until an applicable rate exists.
+This example needs no manually entered water rates. Confirm a full tank with Refilled, use the robot normally, and report Tank empty when the tracked tank runs dry. VWM observes the `clean_time_min` counter only while the confirmed mode and raw status identify mopping. After three compatible full-to-empty tanks, it can use a private nominal whole-tank rate starting with the next confirmed full tank. Before then the rate stays unknown. Missing counters, active counter resets, telemetry gaps, changed settings or a refill during a partial cycle invalidate that sample. The 5% residual remains an explicit assumption, not a measurement.
 
-The two vacuum entities may appear as separate robots in VWM. Confirm their duplicate relationship in the card and choose one tracking owner before using both connections. Matching model names are insufficient. Linking prevents a second balance; it does not automatically copy signals, add old counters together or transfer calibration banks. Keep the existing Matter owner if you want to preserve the 5.12 nominal-time workflow. Switching to native counter-based tracking requires its own appropriate calibration and an honest full-tank baseline; an old time calibration is not a measured area rate.
+Native Tapo does not inherit class-prior coefficients or intensity multipliers. Advanced existing `usage_ml_per_m2`/`usage_ml_per_active_minute` configuration can still use independently established per-level coefficients (`low`, `medium`, `high`); ordinary use does not require users to perform or enter manual measurements.
+
+The two vacuum entities may appear as separate robots in VWM. Confirm their duplicate relationship in the card and choose one tracking owner before using both connections. Matching model names are insufficient. Linking prevents a second balance; it does not automatically copy signals, add old counters together or transfer calibration banks. Keep the existing Matter owner if you want to preserve the 5.12 nominal-time workflow. Switching to native counter-based tracking starts its own full-tank learning context after an honest full-tank baseline; an old time calibration is not a measured area rate.
 
 ## Floor water and station water
 
@@ -45,7 +47,7 @@ Use floor-only rates only with measurements that exclude station washes. A whole
 2. Compare `clean_area` and `clean_time_min` with the Tapo app. Verify resets between sessions and behavior after pauses/reconnection. Confirm metric units; do not change robot settings just to pass a test.
 3. Verify the confirmed mode reports vacuum-only and current mopping correctly. Vacuum-only with the mop mounted, mapping, water off and missing/unknown mode must leave water use unchanged.
 4. Record water-level changes and ensure new settings start a new calibration context. Do not reuse coefficients across settings without measurements.
-5. Measure floor and dock consumption separately where possible. Record what cannot be separated. Three consistent whole-tank observations can support a nominal model, but do not prove independent physical accuracy.
+5. During normal use, confirm full and empty tanks and check provisional progress across three compatible tanks. No manual water measurement is required. Independent physical-volume validation and separation of station/floor consumption remain separate engineering acceptance criteria; nominal repeatability does not establish those results.
 6. With Matter and TapoVac enabled, confirm the duplicate link and one accounting owner. Check that history/settings survive restart and that no second tank is accumulating usage.
 
 Source inspection pinned on 19 October 2026: TapoVac-ADV `887050da97aa63db1ca0fd39b7d61aa97a9bf796`, cavefire `265a24f9f17536a646d18efaa57bdcbd428d9009`. Latest stable HA was 2026.10.2; the latest published beta 2026.10.0b7 predates it. Source/CI inspection is not a robot test or proof that TapoVac works on every HA beta.
