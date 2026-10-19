@@ -180,3 +180,20 @@ class TapoVacTests(unittest.TestCase):
         state = observe(dev, state, area=6, minutes=2, now=1_120_000)
         result = observe(dev, state, area=8, minutes=3, now=1_180_000)
         self.assertEqual(result["used_ml"], 4)
+
+    def test_explicit_mop_mode_alone_observes_counter_and_unknown_invalidates(self):
+        from importlib import import_module
+        apply_refill = import_module(tick.__package__ + '.refill').apply_refill
+        dev = device()
+        dev.pop("cleaning_mode_entity")
+        dev.pop("usage_ml_per_m2")
+        dev.pop("usage_ml_per_active_minute")
+        dev["mop_mode_entity"] = "select.mode"
+        state = {}
+        apply_refill(state, 1_000_000, 'service', rebaseline=True)
+        state = observe(dev, state, code=5, mode="mopping")
+        state = observe(dev, state, now=1_060_000, mode="mopping")
+        state = observe(dev, state, minutes=1, area=1, now=1_120_000, mode="mopping")
+        self.assertEqual(state.get("nominal_time_learning", {}).get("cycle", {}).get("active_minutes"), 1)
+        state = observe(dev, state, minutes=2, area=2, now=1_180_000, mode="unknown")
+        self.assertIsNone(state["nominal_time_learning"]["cycle"])
