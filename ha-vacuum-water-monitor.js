@@ -14515,7 +14515,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const waterLow = anchorActive && waterAnchorKind === 'shortage';
     const waterEmpty = anchorActive && !waterLow;
     const vacState = this._getStateValue(device.vacuum_entity);
-    const isCleaning = ['cleaning', 'running', 'sweeping', 'mopping', 'vacuuming'].includes(this._normaliseModelKey(vacState));
+    const isCleaning = device.integration_adapter === 'tapo_rv30'
+      ? this._getAttr(device.vacuum_entity, 'status_code') === 1
+      : ['cleaning', 'running', 'sweeping', 'mopping', 'vacuuming'].includes(this._normaliseModelKey(vacState));
     const charge = this._getStateValue(device.charge_sensor) ||
       this._getAttr(device.vacuum_entity, 'battery_level');
 
@@ -14530,8 +14532,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const lastReset = this._getEffectiveLastReset(device);
 
     // Cleaning stats
-    const areaCleaned = this._getStateValue(device.area_sensor) ?? this._getAttr(device.vacuum_entity, device.area_attribute);
-    const durationSec = this._getStateValue(device.duration_sensor) ?? this._getAttr(device.vacuum_entity, device.duration_attribute);
+    const areaCleaned = device.integration_adapter === 'tapo_rv30' && this._getStateValue(device.area_unit_entity) !== 'm²'
+      ? null : this._getStateValue(device.area_sensor) ?? this._getAttr(device.vacuum_entity, device.area_attribute);
+    const durationSensorValue = this._getStateValue(device.duration_sensor);
+    let durationSec = durationSensorValue ?? this._getAttr(device.vacuum_entity, device.duration_attribute);
+    const durationUnit = durationSensorValue != null
+      ? this._getAttr(device.duration_sensor, 'unit_of_measurement') : device.duration_attribute_unit;
+    if (durationSec != null && ['min', 'minutes'].includes(durationUnit)) durationSec = Number(durationSec) * 60;
+    else if (durationSec != null && ['h', 'hours'].includes(durationUnit)) durationSec = Number(durationSec) * 3600;
     const lastCleanStart = this._getStateValue(device.last_clean_start);
     const lastCleanEnd = this._getStateValue(device.last_clean_end);
 
