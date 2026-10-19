@@ -252,3 +252,27 @@ class NominalTimeLearningTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class CounterTimeLearningTests(unittest.TestCase):
+    def test_counter_minutes_replace_wall_time_and_missing_counter_invalidates(self):
+        state = learning.start_full({}, context=CONTEXT, capacity_ml=100, now_ts=1_000)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=1_000,
+                                 active=True, use_counter=True, counter_minutes=0)
+        # Polls can be 30 seconds apart while the minute counter stays at zero.
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=31_000,
+                                 active=True, use_counter=True, counter_minutes=0)
+        self.assertEqual(state["cycle"]["active_minutes"], 0)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=61_000,
+                                 active=True, use_counter=True, counter_minutes=1)
+        self.assertEqual(state["cycle"]["active_minutes"], 1)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=91_000,
+                                 active=True, use_counter=True, counter_minutes=None)
+        self.assertIsNone(state["cycle"])
+
+    def test_counter_reset_during_active_run_invalidates_sample(self):
+        state = learning.start_full({}, context=CONTEXT, capacity_ml=100, now_ts=1_000)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=1_000,
+                                 active=True, use_counter=True, counter_minutes=10)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=61_000,
+                                 active=True, use_counter=True, counter_minutes=0)
+        self.assertIsNone(state["cycle"])

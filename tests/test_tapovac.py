@@ -120,3 +120,46 @@ class TapoVacTests(unittest.TestCase):
         self.assertEqual(linked[0]["vacuum_entity"], "vacuum.test")
         self.assertNotIn("cleaning_mode_entity", linked[0])
         self.assertEqual(linked[0]["area_unit_entity"], "select.area_unit")
+
+    def test_time_fallback_and_recovered_area_do_not_charge_twice(self):
+        dev = device()
+        state = observe(dev)
+        state = observe(dev, state, area=2, minutes=1, now=1_060_000)
+        state = observe(dev, state, area=4, minutes=2, unit="unavailable", now=1_120_000)
+        state = observe(dev, state, area=6, minutes=3, now=1_180_000)
+        self.assertEqual(state["used_ml"], 10)  # 4 ml area + 2 observed minutes * 3
+
+    def test_attribute_water_level_overrides_declared_calibration_context(self):
+        dev = device()
+        dev["consumption_context"] = {"model_id": "test", "reservoir": "dock_clean",
+                                      "settings": {"water_level": "low"}}
+        state = observe(dev, water="high")
+        context = state["last_consumption_context"]
+        self.assertEqual(context["settings"]["water_level"], "high")
+        self.assertEqual(context["field_sources"]["water_level"], "observed")
+
+    def test_native_counter_can_learn_from_full_tanks_without_manual_rates(self):
+        from importlib import import_module
+        apply_refill = import_module(tick.__package__ + '.refill').apply_refill
+        dev = device()
+        dev.pop("usage_ml_per_m2")
+        dev.pop("usage_ml_per_active_minute")
+        state = {}
+        for cycle in range(3):
+            now = 10_000_000 + cycle * 10_000_000
+            apply_refill(state, now, 'service', rebaseline=True)
+            state = observe(dev, state, code=5, now=now)
+            state = observe(dev, state, now=now+60_000)
+            for minute in range(1, 11):
+                state = observe(dev, state, minutes=minute, area=minute, now=now+60_000+minute*60_000)
+            state = observe(dev, state, code=5, minutes=10, area=10, now=now+720_000)
+            state["user_empty_active"] = True
+            state = observe(dev, state, code=5, minutes=10, area=10, now=now+780_000)
+        self.assertEqual(state.get("nominal_time_resolution", {}).get("status"), "active")
+        self.assertEqual(state["nominal_time_resolution"]["sample_count"], 3)
+        now += 2_000_000
+        apply_refill(state, now, 'service', rebaseline=True)
+        state = observe(dev, state, code=5, now=now)
+        state = observe(dev, state, now=now+60_000)
+        state = observe(dev, state, minutes=1, area=1, now=now+120_000)
+        self.assertAlmostEqual(state["used_ml"], 475)
