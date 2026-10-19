@@ -154,6 +154,7 @@ def _descriptor(
     descriptor["related_dock_confidence"] = (
         "high" if related_dock_ids else "none"
     )
+    metadata["integration_adapter"] = integration_adapter
     descriptor.update(resolve_profile(metadata))
     if integration_adapter == "tapo_rv30":
         descriptor["rate_signal"] = "mop_intensity"

@@ -163,3 +163,12 @@ class TapoVacTests(unittest.TestCase):
         state = observe(dev, state, now=now+60_000)
         state = observe(dev, state, minutes=1, area=1, now=now+120_000)
         self.assertAlmostEqual(state["used_ml"], 475)
+
+    def test_unconfigured_native_profile_never_imports_class_prior_doses(self):
+        from test_sensor_calculations import build_vacuum_devices, apply_custom_calibration
+        dev = apply_custom_calibration(build_vacuum_devices({}, {}, [descriptor()])[0], {})
+        self.assertEqual(dev["tracked_capacity_ml"], 5000)
+        self.assertFalse(dev.get("usage_ml_per_m2"))
+        self.assertFalse(dev.get("usage_ml_per_active_minute"))
+        self.assertFalse(dev.get("wash_volume_ml"))
+        self.assertFalse(dev.get("intensity_factor"))

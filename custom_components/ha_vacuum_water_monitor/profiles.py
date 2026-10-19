@@ -275,7 +275,7 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
         device.get("brand_profile") if device.get("profile_locked") else None,
     ) if device.get("profile_locked") else None
     if locked:
-        return _resolved(catalog[locked], locked, "locked_override", "high")
+        return _adapter_estimate_policy(device, _resolved(catalog[locked], locked, "locked_override", "high"))
 
     stated = normalize_identifier(device.get("manufacturer"))
     if stated:
@@ -303,7 +303,7 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
     ):
         profile_key = _first_profile(indexes, *values)
         if profile_key:
-            return _resolved(catalog[profile_key], profile_key, source, confidence)
+            return _adapter_estimate_policy(device, _resolved(catalog[profile_key], profile_key, source, confidence))
     return {
         "profile_key": None,
         "profile_source": "unknown",
@@ -321,6 +321,17 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
         "accounting_evidence": None,
         "uncertainty_percent": None,
     }
+
+
+def _adapter_estimate_policy(device: dict[str, Any], resolved: dict[str, Any]) -> dict[str, Any]:
+    """Native Tapo telemetry must not turn a class prior into a water dose."""
+    if device.get("integration_adapter") == "tapo_rv30" and resolved.get("estimate_basis"):
+        resolved.update(usage_ml_per_m2={}, usage_ml_per_active_minute={}, wash_volume_ml=None,
+                        intensity_factor={}, estimate_basis=None, estimate_sources=[],
+                        accounting_evidence="not_published", evidence="not_published",
+                        capability="calibration_required", uncertainty_percent=None,
+                        rate_signal="mop_intensity")
+    return resolved
 
 
 def _identifier_values(device: dict[str, Any]) -> tuple[Any, ...]:
