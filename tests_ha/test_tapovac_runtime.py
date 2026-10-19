@@ -14,7 +14,7 @@ async def settle(hass):
     await hass.async_block_till_done()
 
 
-async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass):
+async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass, hass_ws_client):
     upstream = MockConfigEntry(domain="tapo_rv30", title="Synthetic TapoVac")
     upstream.add_to_hass(hass)
     dev = dr.async_get(hass).async_get_or_create(config_entry_id=upstream.entry_id,
@@ -38,9 +38,12 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await settle(hass)
     storage = hass.data[DOMAIN]["storage"]
-    await storage.async_set_settings({"configured_devices": [{"vacuum_entity": "vacuum.tapo",
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"configured_devices": [{"vacuum_entity": "vacuum.tapo",
         "cleaning_mode_entity": "select.confirmed_robot_mode", "rate_signal": "mop_intensity",
-        "usage_ml_per_m2": {"low": 2}, "accounting_evidence": "user_calibration"}]})
+        "usage_ml_per_m2": {"low": 2}, "accounting_evidence": "user_calibration"}]}})
+    assert (await client.receive_json())["success"]
+    await settle(hass)
     await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": "vacuum.tapo"}, blocking=True)
     await settle(hass)
     update(2)
