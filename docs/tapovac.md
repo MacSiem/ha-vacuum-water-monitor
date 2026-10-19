@@ -4,6 +4,17 @@ VWM 5.13 consumes the existing [TapoVac-ADV integration](https://github.com/jan-
 
 The upstream authors report testing the RV50 Pro Omni (EU). VWM's automated tests use synthetic producer-shaped telemetry. Actual values and firmware behavior on the issue #10 tester's robot still require verification. This is an estimate, not a direct measurement of water in ml.
 
+## Install the beta
+
+This version is **5.13.0-beta.1**, a GitHub prerelease. The stable release remains 5.12.0.
+
+1. In HACS, open Vacuum Water Monitor, choose the three-dot menu and **Redownload**, enable **Show beta versions** if shown, and select **v5.13.0-beta.1** explicitly. If the beta is not listed, use **Update information** first. Newer HACS versions also provide a prerelease switch on the repository device; see the [HACS beta switch documentation](https://www.hacs.dev/docs/use/entities/switch/).
+2. Download the selected beta, restart Home Assistant, then refresh the VWM dashboard. Check that VWM reports **5.13.0-beta.1**.
+3. If TapoVac-ADV is not installed, follow its [installation guide](https://github.com/jan-tdy/TapoVac-ADV#installation-via-hacs): add its repository to HACS as an Integration, download, restart, then add and configure **Tapo Robot Vacuum** in Settings → Devices & services. Keep credentials in that integration, not in an issue comment.
+4. Configure the native vacuum and the confirmed current-mode entity as described below. Keep one tracking owner for the robot before starting a full-tank learning cycle.
+
+To return to stable, use HACS Redownload, explicitly select **v5.12.0**, restart Home Assistant and refresh the dashboard. Returning to stable does not add native TapoVac support; choose the existing Matter owner for that workflow. Do not mark a partially used tank as full just to restart learning.
+
 ## Inputs and safe defaults
 
 | Input | Use |

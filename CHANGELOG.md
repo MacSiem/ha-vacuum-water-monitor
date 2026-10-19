@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.13.0 (2026-10-19)
+## 5.13.0-beta.1 (2026-10-19)
 
 - Read TapoVac-ADV (`tapo_rv30`) cleaning-area and minute counters and water settings directly from vacuum attributes, without implementing another TPAP client.
 - Require an explicit mopping-mode signal; a mounted mop or non-off water level alone cannot start water accounting. Raw mapping and unknown statuses do not consume water.
