@@ -13753,7 +13753,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'last_reset_entity','main_brush_sensor','side_brush_sensor','filter_time_sensor',
       'sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor',
-      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','cleaning_active_sensor',
+      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','area_unit_entity','cleaning_active_sensor',
       'last_clean_start','last_clean_end','charge_sensor','status_sensor',
       'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope',
       'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
@@ -14178,7 +14178,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!explicit.has('signals')) {
       const effectiveSignals = { ...signals };
       for (const role of [
-        'status_sensor','cleaning_active_sensor','area_sensor','duration_sensor',
+        'status_sensor','cleaning_active_sensor','area_sensor','duration_sensor','area_unit_entity',
         'mop_mode_entity','mop_intensity_entity','cleaning_mode_entity',
         'mop_attached_sensor','water_box_attached_sensor','water_box_detached_sensor','water_shortage_sensor',
         'dock_clean_water_sensor','dock_dirty_water_sensor','dock_error_sensor','dock_status_sensor','water_error_sensor','tank_level_sensor','dock_tank_level_sensor',
