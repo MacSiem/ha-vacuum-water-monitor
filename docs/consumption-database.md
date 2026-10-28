@@ -1,17 +1,16 @@
 # Check your robot's consumption data
 
-Vacuum Consumption Data is being prepared as a separate open GitHub data source, intended
-name `MacSiem/vacuum-consumption-data`. It exists locally but is not public yet. Until
-publication, inspect [model-by-model public-data coverage](consumption-model-coverage.md),
+The public [Vacuum Consumption Data repository](https://github.com/MacSiem/vacuum-consumption-data)
+contains the separate versioned research dataset. For the bundled source snapshot, inspect [model-by-model public-data coverage](consumption-model-coverage.md),
 [published action evidence](consumption-evidence.json), and the
 [implementation plan](superpowers/plans/2026-09-05-universal-vacuum-consumption.md).
 
-The separate dataset currently has 134 researched models, 23 integration inventory records,
+The documented initial research collection has 134 researched models, 23 integration inventory records,
 four manufacturer declarations and five partial settings catalogues. None of these declarations
 is an approved runtime profile. A positive local test result does not establish real-world
 accuracy or worldwide model completeness.
 
-When the public repository is available, look up your exact public model ID, regional SKU,
+In that repository, look up your exact public model ID, regional SKU,
 dock, firmware and integration version in its coverage report. Inspect the per-setting
 sources, missing signals and empirical validation. Unknown means the evidence is incomplete.
 
