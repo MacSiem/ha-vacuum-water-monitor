@@ -596,8 +596,9 @@ async def test_vwm_response_does_not_reveal_source_sensor_without_native_read(ha
     assert VACUUM in repr(response["result"])
 
 
+@pytest.mark.parametrize("test_phase", ["replacement", "route"])
 @pytest.mark.parametrize("pause_point", ["before_resolve", "before_store"])
-async def test_scoped_replacement_and_owner_change_cannot_modify_other_robot(hass, hass_ws_client, local_auth, monkeypatch, pause_point):
+async def test_scoped_replacement_and_owner_change_cannot_modify_other_robot(hass, hass_ws_client, local_auth, monkeypatch, pause_point, test_phase):
     """Check actual Store targets even when routing changes after the precheck."""
     import asyncio
     from homeassistant.auth.const import GROUP_ID_USER
@@ -625,9 +626,11 @@ async def test_scoped_replacement_and_owner_change_cannot_modify_other_robot(has
     policy = {"schema": 1, "features": {"water": {"read": rule, "execute": rule}, "settings": {"execute": rule}}}
     await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
     assert (await admin.receive_json())["success"]
-    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"user_devices": [{"vacuum_entity": VACUUM}]}})
-    assert not (await client.receive_json())["success"]
-    assert any(item["vacuum_entity"] == b for item in (await storage.async_get_state())["settings"]["user_devices"])
+    if test_phase == "replacement":
+        await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"user_devices": [{"vacuum_entity": VACUUM}]}})
+        assert not (await client.receive_json())["success"]
+        assert any(item["vacuum_entity"] == b for item in (await storage.async_get_state())["settings"]["user_devices"])
+        return
 
     entered, proceed = asyncio.Event(), asyncio.Event()
     target = robots if pause_point == "before_resolve" else storage
