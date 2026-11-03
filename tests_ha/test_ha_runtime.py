@@ -790,6 +790,66 @@ async def test_registry_vacuum_rename_keeps_its_water_history(hass, hass_ws_clie
     assert state["tank_states"]["vacuum.r1_renamed"]["used_ml"] == 432
 
 
+@pytest.mark.parametrize("operation", ["preview", "holdout"])
+async def test_measurements_follow_registry_identity_after_rename_and_reuse(hass, hass_ws_client, operation):
+    """Old provenance remains historical, but the same robot can still use its measurements."""
+    from custom_components.ha_vacuum_water_monitor.contribution import SETTINGS
+
+    storage = await _setup(hass)
+    context = {"model_id": "roborock_s8_maxv_ultra", "sku": "EU", "dock_variant": "tank",
+        "firmware": "1.0", "integration_id": "roborock", "integration_version": "1.0",
+        "reservoir": "dock_clean", "action": "floor_mopping",
+        "settings": dict.fromkeys(SETTINGS, "not_applicable")}
+    sessions = [{"ts": n, "area": 10, "context": context, "accounting_valid": True,
+                 "exposure_complete": True, "segments": 1} for n in (101, 102, 103, 104)]
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 50,
+                                                 "automatic_sessions": sessions})
+    client = await hass_ws_client(hass)
+    measurement = {"observed_ml": 100, "resolution_ml": 5, "instrument": "graduated_jug",
+                   "boundaries_confirmed": True, "uninterrupted": True, "purpose": "training"}
+    for index in range(3):
+        await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": VACUUM,
+            "session_index": index, "session_ts": sessions[index]["ts"], "measurement": measurement})
+        result = await client.receive_json()
+        assert result["success"]
+    before = (await storage.async_get_state())["settings"]
+    assert before["consumption_calibrations"][VACUUM][0]["coefficient"] == 10
+    registry = er.async_get(hass)
+    renamed = "vacuum.r3_renamed"
+    registry.async_update_entity(VACUUM, new_entity_id=renamed)
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set(renamed, "docked")
+    await _settle(hass)
+    matter = MockConfigEntry(domain="matter", title="Independent robot")
+    matter.add_to_hass(hass)
+    replacement = registry.async_get_or_create("vacuum", "matter", "r3-independent", config_entry=matter,
+                                                suggested_object_id="robot")
+    assert replacement.entity_id == VACUUM
+    hass.states.async_set(VACUUM, "docked")
+    await _settle(hass)
+    saved = (await storage.async_get_state())["settings"]
+    assert [s["device_id"] for s in saved["local_measurements"][renamed]] == [VACUUM] * 3
+    assert not saved["local_measurements"].get(VACUUM)
+    if operation == "preview":
+        await client.send_json_auto_id({"type": f"{DOMAIN}/contribution_preview", "vacuum_entity": VACUUM,
+                                       "sample_ids": ["local.101"]})
+        assert not (await client.receive_json())["success"]
+        await client.send_json_auto_id({"type": f"{DOMAIN}/contribution_preview", "vacuum_entity": renamed,
+                                       "sample_ids": ["local.101"]})
+        result = await client.receive_json()
+        assert result["success"]
+        assert result["result"]["samples"][0]["measured_ml"] == 100
+        assert result["result"]["publication_consent"] is False
+    else:
+        await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": renamed,
+            "session_index": 3, "session_ts": 104,
+            "measurement": {**measurement, "purpose": "validation", "observed_ml": 120}})
+        result = await client.receive_json()
+        assert result["success"]
+        assert result["result"]["calibration"]["coefficient"] == 10
+        assert result["result"]["calibration"]["validation"]["validation_ids"] == ["local.104"]
+
+
 async def test_vacuum_rename_while_unloaded_reconciles_registry_identity(hass):
     storage = await _setup(hass)
     await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True})
