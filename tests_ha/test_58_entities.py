@@ -975,3 +975,38 @@ async def test_scoped_settings_refresh_accounts_for_independent_active_robot(has
     assert (await client.receive_json())["success"]
     await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": b})
     assert not (await client.receive_json())["success"]
+
+
+@pytest.mark.parametrize("disabled", [False, True])
+async def test_inactive_existing_switch_migrates_before_capability_returns(hass, disabled):
+    """A retained legacy switch moves to its source while inactive or disabled."""
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers.entity_registry import RegistryEntryDisabler
+
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 432,
+        "refill_history": [{"used_before_ml": 876}]})
+    entities, devices = er.async_get(hass), dr.async_get(hass)
+    switch = _entity(hass, "switch", "auto_refill")
+    old = entities.async_get(switch)
+    upstream = entities.async_get(VACUUM).device_id
+    entities.async_update_entity(switch, name="Keep my switch",
+        disabled_by=RegistryEntryDisabler.USER if disabled else None)
+    entities.async_remove("sensor.robot_dock_error")
+    hass.states.async_remove("sensor.robot_dock_error")
+    await _settle(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    legacy = devices.async_get_or_create(config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{entry.entry_id}_vacuum_robot")}, name="Legacy")
+    entities.async_update_entity(switch, device_id=legacy.id)
+    assert entities.async_get(switch).device_id == legacy.id
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await _settle(hass)
+    moved = entities.async_get(switch)
+    assert moved is not None and moved.entity_id == switch and moved.unique_id == old.unique_id
+    assert moved.device_id == upstream
+    assert moved.name == "Keep my switch"
+    assert (moved.disabled_by == RegistryEntryDisabler.USER) is disabled
+    assert hass.states.get(switch) is None or hass.states.get(switch).state == "unavailable"
+    assert (await _tank(hass.data[DOMAIN]["storage"]))["used_ml"] == 432
+    assert (await _tank(hass.data[DOMAIN]["storage"]))["refill_history"] == [{"used_before_ml": 876}]
