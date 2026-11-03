@@ -13305,6 +13305,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._serverLoadPromise = null;
     this._serverRefreshPending = false;
     this._serverUnsub = null;
+    this._subscriptionGeneration = 0;
+    this._subscriptionPending = null;
     this._health = {};
     this._healthAt = 0;
     this._healthPromise = null;
@@ -13326,7 +13328,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (hass?.locale?.language || hass?.language) this._lang = (hass.locale?.language || hass.language).startsWith('pl') ? 'pl' : 'en';
     const previous = this._hass?.user, next = hass?.user;
     if (previous && (previous.id !== next?.id || previous.is_admin !== next?.is_admin || next?.is_active === false)) {
-      this._serverUnsub?.(); this._serverUnsub = null; this._serverReady = false;
+      this._closeServerSubscription(); this._serverReady = false;
       this._clearPrivateAccess();
     }
     this._hass = hass;
@@ -13603,14 +13605,23 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return this._serverLoadPromise;
   }
 
+  _closeServerSubscription(serverClosed = false) {
+    this._subscriptionGeneration++;
+    if (!serverClosed) this._serverUnsub?.();
+    this._serverUnsub = null;
+  }
+
   _subscribeServerEvents() {
-    if (this._serverUnsub || !this._hass?.connection?.subscribeMessage) return;
-    const accessEpoch = this._accessEpoch;
+    if (this._serverUnsub || this._subscriptionPending || !this._hass?.connection?.subscribeMessage) return;
+    const generation = this._subscriptionGeneration;
+    const pending = {};
+    this._subscriptionPending = pending;
     this._hass.connection.subscribeMessage((event) => {
-      if (accessEpoch !== this._accessEpoch) return;
+      if (generation !== this._subscriptionGeneration) return;
       if (event?.access_revoked) {
-        this._clearPrivateAccess(false); this._accessDenied = true;
-        this._serverUnsub = null; this._lastHtml = ''; this._render(); return;
+        this._closeServerSubscription(true);
+        this._clearPrivateAccess(false); this._accessDenied = true; this._serverReady = false;
+        this._lastHtml = ''; this._render(); return;
       }
       const data = (event && event.data) || {};
       if (data.feature_access_changed) {
@@ -13659,7 +13670,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       this._refreshHealth(Boolean(data.settings || data.settings_changed) || setupMoved);
       this._lastHtml = '';
       this._render({ preserveDraft: true });
-    }, { type: `${VWM_DOMAIN}/subscribe` }).then((unsub) => { if (accessEpoch !== this._accessEpoch) unsub(); else this._serverUnsub = unsub; }).catch((err) => {
+    }, { type: `${VWM_DOMAIN}/subscribe` }).then((unsub) => {
+      if (this._subscriptionPending === pending) this._subscriptionPending = null;
+      if (generation !== this._subscriptionGeneration) {
+        unsub();
+        if (this._serverReady && !this._accessDenied) this._subscribeServerEvents();
+      } else this._serverUnsub = unsub;
+    }).catch((err) => {
+      if (this._subscriptionPending === pending) this._subscriptionPending = null;
       console.debug('[ha-vacuum-water-monitor] event subscription failed:', err);
     });
   }
@@ -16945,6 +16963,9 @@ target:
     else if (this._activeTab === 'settings') tabContent = this._buildSettingsTab(device, data);
     const configured = Array.isArray(cfg.devices) ? cfg.devices : [cfg];
     const blockedConfiguredRobot = configured.some(d => this._isAmbiguousConfiguredVacuum(d));
+    const restrictedCandidates = this._featureAccess && this._getDeviceCandidates().some(candidate =>
+      !this._featureAllowed('water', 'visible', candidate) || !this._featureAllowed('water', 'read', candidate));
+    if (!devices.length && restrictedCandidates) tabContent = `<div class="empty-state" role="status">${this._lang === 'pl' ? 'Brak dostępnych robotów.' : 'No available robots.'}</div>`;
     if (!devices.length && blockedConfiguredRobot) tabContent = `<div class="empty-state">${this._lang === 'pl' ? 'Wybór robota wymaga aktualizacji.' : 'The robot selection needs updating.'}</div>`;
 
     if (this._accessDenied) tabContent = `<div role="alert">${this._lang === 'pl' ? 'Brak dostępu. Skontaktuj się z administratorem.' : 'Access denied. Contact an administrator.'}</div>`;
@@ -17771,8 +17792,10 @@ input, select, textarea { max-width:100%; min-width:0; }
   }
 
   disconnectedCallback() {
-    // Clear render scheduling flag to prevent orphaned setTimeout calls
+    // Clear render scheduling and release the live subscription.
     this._renderScheduled = false;
+    this._closeServerSubscription();
+    this._serverReady = false;
   }
 
   _canonicalTab(tabId) {

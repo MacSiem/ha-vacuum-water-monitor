@@ -207,7 +207,23 @@ class RobotEntityManager:
         self._instances = {uid: entity for uid, entity in self._instances.items() if uid in self._known}
         new: list[Entity] = []
         desired: set[str] = set()
+        # Registry rows can outlive a capability and can be user-disabled, so
+        # the platform factory may not return an instance for them on reload.
+        # Migrate only the known, exact robot unique IDs; never infer ownership
+        # from a device name or move an unrelated registry row.
+        from types import SimpleNamespace
+        from homeassistant.helpers import entity_registry as er
+        registry = er.async_get(self.hass)
+        rows = {row.unique_id: row for row in er.async_entries_for_config_entry(registry, self.entry.entry_id)
+                if row.platform == DOMAIN}
         for device in devices:
+            origin = device.get("_entity_origin") or device["vacuum_entity"]
+            prefix = f"{self.entry.entry_id}_{vacuum_slug(origin)}_"
+            for key, domain in (("tank_capacity", "number"), ("auto_refill", "switch"),
+                                ("refilled", "button"), ("tank_empty", "button")):
+                uid = prefix + key
+                if uid in rows and rows[uid].domain == domain:
+                    sync_entity_device(self.hass, self.entry, SimpleNamespace(unique_id=uid), device)
             for entity in self.factory(device, settings):
                 desired.add(str(entity.unique_id))
                 if entity.unique_id in self._known:
