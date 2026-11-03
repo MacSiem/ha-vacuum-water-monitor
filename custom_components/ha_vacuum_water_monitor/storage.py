@@ -48,6 +48,16 @@ def _move_vacuum_references(data: dict[str, Any], old: str, new: str) -> None:
         raise ValueError("rename conflict: destination already has data")
     if old in origins and new in origins:
         raise ValueError("rename conflict: destination has an entity identity")
+    identities = data.get("registry_identities") or {}
+    aliases = data.get("vacuum_aliases") or {}
+    previous_target = aliases.get(new) if isinstance(aliases, dict) else None
+    if previous_target:
+        original = identities.get(previous_target) if isinstance(identities, dict) else None
+        incoming = identities.get(old) if isinstance(identities, dict) else None
+        # The move consumes the destination alias. Capture its former owner
+        # first in the same transaction, including reconciliation after unload.
+        if original is None or incoming is None or original != incoming:
+            data.setdefault("ambiguous_vacuum_identities", {}).setdefault(new, original)
     data["entity_origins"] = origins
     for mapping in maps:
         if old in mapping:
@@ -243,7 +253,7 @@ class VacuumWaterStorage:
                 retired.append(old)
             candidate["registry_identities"] = {**unresolved, **current}
             for entity, identity in list(ambiguous.items()):
-                if current.get(entity) == identity:
+                if identity is not None and entity in current and current[entity] == identity:
                     ambiguous.pop(entity)
             origins = candidate.setdefault("entity_origins", {})
             candidate["identity_unavailable_origins"] = sorted(

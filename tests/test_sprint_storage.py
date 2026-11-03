@@ -3,6 +3,50 @@ import unittest
 from test_user_device_removal import storage
 
 class SprintStorageTests(unittest.TestCase):
+    def test_existing_robot_rename_into_retired_id_keeps_ambiguity_and_banks(self):
+        async def run():
+            st = storage.VacuumWaterStorage(None)
+            a, b = ['roborock', 'a-unique', 'entry'], ['roborock', 'b-unique', 'entry']
+            await st.async_reconcile_registry({'vacuum.a': a, 'vacuum.b': b})
+            await st.async_set_tank_state('vacuum.a', {'used_ml': 432, 'history': ['a']})
+            await st.async_set_tank_state('vacuum.b', {'used_ml': 999, 'history': ['b']})
+            self.assertTrue(await st.async_rename_vacuum('vacuum.a', 'vacuum.a_new'))
+            await st.async_reconcile_registry({'vacuum.a_new': a, 'vacuum.b': b})
+            self.assertTrue(await st.async_rename_vacuum('vacuum.b', 'vacuum.a'))
+            await st.async_reconcile_registry({'vacuum.a_new': a, 'vacuum.a': b})
+            state = await st.async_get_state()
+            self.assertIn('vacuum.a', state['ambiguous_vacuum_ids'])
+            self.assertEqual(state['tank_states']['vacuum.a_new']['used_ml'], 432)
+            self.assertEqual(state['tank_states']['vacuum.a']['used_ml'], 999)
+            with self.assertRaises(ValueError):
+                await st.async_set_settings({'configured_devices': [{'vacuum_entity': 'vacuum.a'}]})
+            self.assertTrue(await st.async_rename_vacuum('vacuum.a', 'vacuum.b'))
+            await st.async_reconcile_registry({'vacuum.a_new': a, 'vacuum.b': b})
+            self.assertIn('vacuum.a', (await st.async_get_state())['ambiguous_vacuum_ids'])
+            self.assertTrue(await st.async_rename_vacuum('vacuum.a_new', 'vacuum.a'))
+            await st.async_reconcile_registry({'vacuum.a': a, 'vacuum.b': b})
+            return await st.async_get_state()
+        state = asyncio.run(run())
+        self.assertNotIn('vacuum.a', state['ambiguous_vacuum_ids'])
+        self.assertEqual(state['tank_states']['vacuum.a']['history'], ['a'])
+        self.assertEqual(state['tank_states']['vacuum.b']['history'], ['b'])
+
+    def test_offline_existing_robot_rename_into_retired_id_is_ambiguous(self):
+        async def run():
+            st = storage.VacuumWaterStorage(None)
+            a, b = ['roborock', 'a-unique', 'entry'], ['roborock', 'b-unique', 'entry']
+            await st.async_reconcile_registry({'vacuum.a': a, 'vacuum.b': b})
+            await st.async_set_tank_state('vacuum.a', {'used_ml': 432})
+            await st.async_set_tank_state('vacuum.b', {'used_ml': 999})
+            self.assertTrue(await st.async_rename_vacuum('vacuum.a', 'vacuum.a_new'))
+            await st.async_reconcile_registry({'vacuum.a_new': a, 'vacuum.b': b})
+            await st.async_reconcile_registry({'vacuum.a_new': a, 'vacuum.a': b})
+            return await st.async_get_state()
+        state = asyncio.run(run())
+        self.assertIn('vacuum.a', state['ambiguous_vacuum_ids'])
+        self.assertEqual(state['tank_states']['vacuum.a_new']['used_ml'], 432)
+        self.assertEqual(state['tank_states']['vacuum.a']['used_ml'], 999)
+
     def test_registry_rename_moves_typed_keys_preserving_history_and_stale_tick(self):
         async def run():
             st = storage.VacuumWaterStorage(None)

@@ -193,8 +193,9 @@ vm.runInThisContext(fs.readFileSync('custom_components/ha_vacuum_water_monitor/w
 const {JSDOM}=require('jsdom'), fs=require('fs'), assert=require('assert/strict');
 const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'});
 dom.window.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+for (const compact of [false,true]) {
 const card=dom.window.document.createElement('ha-vacuum-water-monitor');
-card.setConfig({vacuum_entity:'vacuum.old',water_total_ml:1234,compact:true});
+card.setConfig({vacuum_entity:'vacuum.old',water_total_ml:1234,compact});
 let writes=[]; card._hass={language:'en',locale:{language:'en'},states:{'vacuum.old':{state:'docked',attributes:{}}},
  user:{is_admin:true},callWS:async msg=>{writes.push(msg);return {}},connection:{subscribeMessage:async()=>()=>{}}};
 card._serverState={settings:{},tank_states:{'vacuum.old':{used_ml:99}},ambiguous_vacuum_ids:['vacuum.old']};
@@ -202,7 +203,9 @@ card._discoveredVacuums=[{entity_id:'vacuum.old',identity_group:'independent-b'}
 card._ensureServerState=()=>null;card._refreshHealth=()=>null;dom.window.document.body.append(card);card._render();
 assert.match(card.shadowRoot.textContent,/Card paused/);
 assert.equal(card.shadowRoot.querySelector('.refill-btn'),null);
-assert.equal(card._getDevices().length,0);assert.equal(writes.length,0);dom.window.close();
+assert.equal(card._getDevices().length,0);assert.equal(writes.length,0);card.remove();
+}
+dom.window.close();
 """
         subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
 

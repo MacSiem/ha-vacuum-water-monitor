@@ -787,3 +787,43 @@ async def test_online_reuse_holds_original_entities_and_recovers_same_id(hass):
     assert recovered['tank_states'][VACUUM]['used_ml'] == 432
     after_reload = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)}
     assert all(after_reload.get(uid) == entity for uid, entity in original_ids.items())
+
+
+async def test_existing_robot_rename_into_retired_id_blocks_stale_card(hass, hass_ws_client):
+    storage = await _setup(hass)
+    registry = er.async_get(hass)
+    upstream = MockConfigEntry(domain="matter", title="Existing B")
+    upstream.add_to_hass(hass)
+    b = registry.async_get_or_create("vacuum", "matter", "existing-b", config_entry=upstream,
+        suggested_object_id="existing_b")
+    assert b.entity_id == "vacuum.existing_b"
+    hass.states.async_set(b.entity_id, "docked")
+    await _settle(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True, "history": ["a"]})
+    await storage.async_set_tank_state(b.entity_id, {"used_ml": 999, "initialized": True, "history": ["b"]})
+    registry.async_update_entity(VACUUM, new_entity_id="vacuum.a_new")
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set("vacuum.a_new", "docked")
+    await _settle(hass)
+    registry.async_update_entity("vacuum.existing_b", new_entity_id=VACUUM)
+    hass.states.async_remove("vacuum.existing_b")
+    hass.states.async_set(VACUUM, "docked")
+    await _settle(hass)
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    state = (await client.receive_json())["result"]
+    assert VACUUM in state["ambiguous_vacuum_ids"]
+    assert state["tank_states"]["vacuum.a_new"]["used_ml"] == 432
+    assert state["tank_states"][VACUUM]["used_ml"] == 999
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
+        "configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234}]}})
+    assert not (await client.receive_json())["success"]
+    registry.async_update_entity(VACUUM, new_entity_id="vacuum.existing_b")
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set("vacuum.existing_b", "docked")
+    await _settle(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    assert VACUUM in (await client.receive_json())["result"]["ambiguous_vacuum_ids"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
+        "configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234}]}})
+    assert not (await client.receive_json())["success"]
