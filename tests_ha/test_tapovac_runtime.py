@@ -1,6 +1,9 @@
 """Native HA registries and ordinary state-change accounting for TapoVac."""
 from datetime import timedelta
 from copy import deepcopy
+import hashlib
+import json
+import time
 
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.util import dt as dt_util
@@ -243,3 +246,23 @@ async def test_nominal_bank_follows_registry_identity_after_rename_and_reuse(has
     assert tanks[renamed]["nominal_time_resolution"]["accuracy"] == "not_established"
     assert tanks[renamed]["nominal_time_learning"]["contexts"][0]["context"]["device_id"] == original
     assert not (tanks.get(original, {}).get("nominal_time_learning") or {}).get("contexts")
+    # Simulate a pre-upgrade bank and open cycle collected after the earlier
+    # rename, when the recorded device_id was still the current entity ID.
+    legacy_context = {**context, "device_id": renamed}
+    legacy_bank = deepcopy(bank)
+    for item in legacy_bank["contexts"]:
+        item["context"] = deepcopy(legacy_context)
+    now = int(time.time() * 1000)
+    legacy_bank = learning.start_full(legacy_bank, context=legacy_context, capacity_ml=capacity, now_ts=now)
+    rate = learning.resolve(legacy_bank, context=legacy_context, capacity_ml=capacity)["usage_ml_per_active_minute"]
+    legacy_tank = tanks[renamed]
+    legacy_tank.update(nominal_time_learning=legacy_bank, nominal_time_cycle_rate=rate,
+        nominal_time_rate_context=hashlib.sha256(json.dumps(legacy_context, sort_keys=True, default=str).encode()).hexdigest())
+    await storage.async_set_tank_state(renamed, legacy_tank)
+    hass.states.async_set(renamed, "docked", {"r3_fixture_update": 1})
+    await settle(hass)
+    updated = (await storage.async_get_state())["tank_states"][renamed]
+    assert updated["nominal_time_resolution"]["status"] == "active"
+    assert updated["nominal_time_resolution"]["sample_count"] == 3
+    assert updated["nominal_time_learning"]["cycle"]["context"]["device_id"] == renamed
+    assert updated["nominal_time_learning"]["contexts"][0]["context"]["device_id"] == renamed

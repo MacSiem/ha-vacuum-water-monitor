@@ -294,15 +294,17 @@ async def _ws_contribution_preview(hass, connection, msg):
         return
     current = await _storage(hass).async_get_state()
     stored = current.get("settings", {}).get("local_measurements", {}).get(vacuum, [])
+    from .storage import measurement_belongs, measurement_identity
+    origin, proven = measurement_identity(current, vacuum)
     try:
         if len(set(msg["sample_ids"])) != len(msg["sample_ids"]):
             raise ValueError("Select distinct saved measurements")
         selected = []
         for identity in msg["sample_ids"]:
             matches = [s for s in stored if isinstance(s, dict) and s.get("id") == identity]
-            if len(matches) != 1 or matches[0].get("device_id") != vacuum:
+            if len(matches) != 1 or not measurement_belongs(matches[0], origin, proven):
                 raise ValueError("Saved measurement changed; select it again")
-            selected.append(matches[0])
+            selected.append({**matches[0], "device_id": origin})
         preview = build_confirmed_contribution(selected, public_catalog=CATALOG)
     except (ValueError, TypeError, OverflowError) as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))

@@ -445,6 +445,7 @@ const VWM_WATER_TEXT_PL = {
   "Could not save. Check complete historical context, measurement boundaries, duplicate cycle and connection.": "Nie udało się zapisać. Sprawdź zapisane dane i warunki pomiaru, powtórzenie tego samego sprzątania oraz połączenie.",
   "Enter both measured refill and a positive resolution in ml.": "Wpisz zmierzoną ilość dolanej wody oraz dodatnią dokładność pomiaru w ml.",
   "Preparing preview…": "Przygotowywanie podglądu…",
+  "Could not download the reviewed draft. Please try again.": "Nie udało się pobrać sprawdzonego szkicu. Spróbuj ponownie.",
   "Review every field. Missing context must be completed before submission. Nothing has been uploaded.": "Sprawdź każde pole. Uzupełnij brakujące dane przed wysłaniem. Nic nie zostało przesłane.",
   "Could not prepare the draft. Check the connection and recorded cycle, then retry.": "Nie udało się przygotować szkicu. Sprawdź połączenie i zapisane sprzątanie, a następnie spróbuj ponownie.",
   "Model identifier": "Identyfikator modelu",
@@ -15866,9 +15867,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       download.disabled = !consented;
       download.onclick = consented ? () => {
         if (!sr.getElementById('cal-share-consent')?.checked || this._confirmedContribution !== packet || preview.value !== content || !this._contributionStillCurrent()) return;
-        const url = URL.createObjectURL(new Blob([content], {type:'application/json'}));
-        const link = document.createElement('a'); link.href = url; link.download = 'vacuum-confirmed-measurement.json'; link.click();
-        setTimeout(() => URL.revokeObjectURL(url),1000);
+        try {
+          const url = URL.createObjectURL(new Blob([content], {type:'application/json'}));
+          const link = document.createElement('a'); link.href = url; link.download = 'vacuum-confirmed-measurement.json'; link.click();
+          setTimeout(() => URL.revokeObjectURL(url),1000);
+        } catch (_) {
+          const status = sr.getElementById('cal-export-status');
+          if (status) status.textContent = this._waterText('Could not download the reviewed draft. Please try again.');
+        }
       } : null;
     }
     if (submit) {

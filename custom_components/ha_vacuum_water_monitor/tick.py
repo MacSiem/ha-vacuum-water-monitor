@@ -191,7 +191,7 @@ async def async_tick_water_state(
 ) -> dict[str, dict[str, Any]]:
     """Tick known vacuums (all, or the given ones) and persist changed states."""
     stored = await storage.async_get_state()
-    devices = _devices_to_tick(hass, stored["settings"], stored["tank_states"])
+    devices = _devices_to_tick(hass, stored["settings"], stored["tank_states"], stored)
     if callable(on_devices):
         on_devices(devices)
     previous = stored["tank_states"]
@@ -714,7 +714,7 @@ def _tick_device_pass(
             if device.get(role) or (setting == "water_level" and device.get("mop_intensity_attribute")):
                 field_sources[setting] = "observed" if settings_context.get(setting) is not None else "unavailable"
         consumption_context["field_sources"] = field_sources
-        consumption_context["device_id"] = vacuum_entity
+        consumption_context["device_id"] = device.get("measurement_identity") or vacuum_entity
         previous_area = _float_or_none(state.get("last_area"))
         previous_duration = _float_or_none(state.get("last_duration_seconds"))
         reservoir_matches = not device.get("tracked_reservoir") or device["tracked_reservoir"] == consumption_context.get("reservoir")
@@ -723,7 +723,7 @@ def _tick_device_pass(
         matches = []
         for record in records:
             if (not _valid_consumption_record(record, personal=True)
-                    or record.get("device_id") != vacuum_entity
+                    or record.get("device_id") != consumption_context["device_id"]
                     or record.get("scope") != "whole_cycle"):
                 continue
             # Physical whole-cycle measurements have their own action. Older
@@ -790,6 +790,7 @@ def _tick_device_pass(
     nominal_time_context = None
     nominal_time_elapsed = None
     nominal_time_applied = False
+    nominal_identity_aliases = set(device.get("measurement_identity_aliases") or [])
     nominal_capacity = _device_capacity_ml(device)
     nominal_eligible = bool(
         consumption_context and nominal_capacity
@@ -802,7 +803,7 @@ def _tick_device_pass(
         nominal_time_context = deepcopy(consumption_context)
         nominal_time_context.pop("field_sources", None)
         nominal_time_context.pop("action", None)
-        nominal_time_context["device_id"] = vacuum_entity
+        nominal_time_context["device_id"] = device.get("measurement_identity") or vacuum_entity
         if tapovac:
             nominal_time_context["time_observation"] = "clean_time_min"
         known_mode = bool(cleaning_mode and (_recognized_mop_cleaning_mode(cleaning_mode)
@@ -816,7 +817,8 @@ def _tick_device_pass(
                 context=nominal_time_context, capacity_ml=nominal_capacity, now_ts=now_ts,
                 residual_percent=_nominal_residual_percent(device))
             initial = nominal_time_learning.resolve(learning, context=nominal_time_context,
-                capacity_ml=nominal_capacity, residual_percent=_nominal_residual_percent(device))
+                capacity_ml=nominal_capacity, residual_percent=_nominal_residual_percent(device),
+                identity_aliases=nominal_identity_aliases)
             state["nominal_time_cycle_rate"] = initial["usage_ml_per_active_minute"]
             state["nominal_time_rate_context"] = _digest(nominal_time_context)
         previous_minutes = _number((learning.get("cycle") or {}).get("active_minutes"), 0)
@@ -826,16 +828,22 @@ def _tick_device_pass(
                 and curr_status not in MOP_WASH_STATES and curr_dock_status not in DOCK_WASH_STATES),
             available=known_mode,
             use_counter=tapovac,
-            counter_minutes=curr_duration_seconds / 60 if curr_duration_seconds is not None else None)
+            counter_minutes=curr_duration_seconds / 60 if curr_duration_seconds is not None else None,
+            identity_aliases=nominal_identity_aliases)
         current_cycle = learning.get("cycle")
         nominal_time_elapsed = (max(0, current_cycle["active_minutes"] - previous_minutes) * 60
                                 if current_cycle else 0)
         state["nominal_time_learning"] = learning
         state["nominal_time_resolution"] = nominal_time_learning.resolve(learning,
             context=nominal_time_context, capacity_ml=nominal_capacity,
-            residual_percent=_nominal_residual_percent(device))
+            residual_percent=_nominal_residual_percent(device), identity_aliases=nominal_identity_aliases)
         learned_rate = _positive_number(state.get("nominal_time_cycle_rate"))
-        if (learned_rate and known_mode and state.get("nominal_time_rate_context") == _digest(nominal_time_context)
+        previous_context = (learning.get("cycle") or {}).get("context")
+        rate_context = state.get("nominal_time_rate_context")
+        context_matches = (rate_context == _digest(nominal_time_context) or (
+            nominal_time_learning.same_context(previous_context, nominal_time_context, nominal_identity_aliases)
+            and rate_context == _digest(previous_context)))
+        if (learned_rate and known_mode and context_matches
                 and state["nominal_time_resolution"]["status"] == "active"):
             usage_per_minute = learned_rate
             time_evidence = "nominal_full_to_empty_time"
@@ -1518,11 +1526,12 @@ def _tick_device_pass(
         refilled_since_last_anchor = int(state.get("last_empty_anchor_ts") or 0) <= reset_ts
         if nominal_time_context is not None and anchor_kind == "empty" and refilled_since_last_anchor:
             learned = nominal_time_learning.finish_empty(state.get("nominal_time_learning") or {},
-                context=nominal_time_context, capacity_ml=nominal_capacity, now_ts=now_ts)
+                context=nominal_time_context, capacity_ml=nominal_capacity, now_ts=now_ts,
+                identity_aliases=nominal_identity_aliases)
             state["nominal_time_learning"] = learned
             state["nominal_time_resolution"] = nominal_time_learning.resolve(learned,
                 context=nominal_time_context, capacity_ml=nominal_capacity,
-                residual_percent=_nominal_residual_percent(device))
+                residual_percent=_nominal_residual_percent(device), identity_aliases=nominal_identity_aliases)
         state["last_empty_anchor_ts"] = now_ts
         state["water_empty_active"] = True
         state["water_anchor_source"] = anchor_source
@@ -1872,12 +1881,27 @@ def list_vacuums(hass: HomeAssistant) -> list[dict[str, Any]]:
 
 
 def _devices_to_tick(
-    hass: HomeAssistant, settings: dict[str, Any], tank_states: dict[str, Any] | None = None
+    hass: HomeAssistant, settings: dict[str, Any], tank_states: dict[str, Any] | None = None,
+    stored: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     from .sensor_calculations import build_vacuum_devices
+    from .storage import measurement_identity
 
     devices = build_vacuum_devices(settings, tank_states or {}, list_vacuums(hass))
-    return [apply_custom_calibration(device, settings) for device in devices]
+    result = []
+    for device in devices:
+        effective = apply_custom_calibration(device, settings)
+        origin, proven = measurement_identity(stored or {}, effective["vacuum_entity"])
+        effective["measurement_identity"] = origin
+        effective["measurement_identity_aliases"] = sorted(proven)
+        profiles = effective.get("consumption_calibration")
+        if isinstance(profiles, (dict, list)):
+            def scoped(profile):
+                return ({**profile, "device_id": origin} if isinstance(profile, dict)
+                        and profile.get("device_id") in proven else profile)
+            effective["consumption_calibration"] = [scoped(p) for p in profiles] if isinstance(profiles, list) else scoped(profiles)
+        result.append(effective)
+    return result
 
 
 def _has_user_priv_helpers(

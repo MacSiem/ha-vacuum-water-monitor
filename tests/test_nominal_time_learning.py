@@ -50,6 +50,28 @@ def tank(state=None, *, context=CONTEXT, now=1_000, minutes=10, capacity=100):
 
 
 class NominalTimeLearningTests(unittest.TestCase):
+    def test_proven_rename_preserves_bank_and_open_cycle_without_rewriting_context(self):
+        old = {**CONTEXT, "device_id": "vacuum.renamed"}
+        stable = {**CONTEXT, "device_id": "vacuum.one"}
+        bank = tank(context=old)
+        bank = tank(bank, context=old, now=2_000_000)
+        bank = tank(bank, context=old, now=4_000_000)
+        bank = full(bank, context=old, now=6_000_000)
+        before = deepcopy(bank)
+        aliases = {"vacuum.one", "vacuum.renamed"}
+        result = learning.resolve(bank, context=stable, capacity_ml=100, identity_aliases=aliases)
+        self.assertEqual(result["status"], "active")
+        continued = learning.observe(bank, context=stable, capacity_ml=100, now_ts=6_060_000,
+                                     active=True, identity_aliases=aliases)
+        self.assertEqual(continued["cycle"]["context"], old)
+        self.assertEqual(continued["contexts"], before["contexts"])
+        self.assertEqual(bank, before)
+        foreign = {**CONTEXT, "device_id": "vacuum.other"}
+        self.assertEqual(learning.resolve(bank, context=foreign, capacity_ml=100,
+                                         identity_aliases=aliases)["status"], "unavailable")
+        self.assertIsNone(learning.observe(bank, context=foreign, capacity_ml=100, now_ts=6_060_000,
+                                           active=True, identity_aliases=aliases)["cycle"])
+
     def test_two_cycles_are_provisional_and_three_activate_median(self):
         state = tank(minutes=10)
         self.assertEqual(result(state)["status"], "provisional")

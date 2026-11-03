@@ -27,6 +27,36 @@ _VACUUM_KEYED_SETTINGS = ("refill_config", "refill_settings", "device_options", 
                           "consumption_calibrations", "measurement_plans", "sessions", "intro_dismissed")
 
 
+def measurement_identity(data: dict[str, Any], vacuum_entity: str) -> tuple[str, set[str]]:
+    """Stable owner and proven historical IDs; a reused ID cannot prove ownership."""
+    origins = data.get("entity_origins") or {}
+    origin = origins.get(vacuum_entity) or vacuum_entity
+    other_origins = {value for key, value in origins.items() if key != vacuum_entity}
+    aliases = data.get("vacuum_aliases") or {}
+    proven = {origin}
+    if vacuum_entity not in other_origins:
+        proven.add(vacuum_entity)
+    proven.update(old for old, target in aliases.items()
+                  if target == vacuum_entity and old not in other_origins)
+    return origin, proven
+
+
+def measurement_belongs(sample: dict[str, Any], origin: str, proven: set[str]) -> bool:
+    """Scope new samples explicitly; accept legacy IDs only with registry evidence."""
+    scope = sample.get("identity_scope")
+    return scope == origin if scope is not None else sample.get("device_id") in proven
+
+
+def measurement_projection(sample: dict[str, Any], origin: str, proven: set[str]) -> dict[str, Any]:
+    """Normalize proven identity for comparison only; leave recorded evidence intact."""
+    projected = deepcopy(sample)
+    projected["device_id"] = origin
+    context = projected.get("context")
+    if isinstance(context, dict) and context.get("device_id") in proven:
+        context["device_id"] = origin
+    return projected
+
+
 def _move_vacuum_references(data: dict[str, Any], old: str, new: str) -> None:
     """Move typed live references only; refuse any overlapping destination."""
     settings = data["settings"]
@@ -591,6 +621,8 @@ class VacuumWaterStorage:
             sessions = data["tank_states"].get(vacuum_entity, {}).get("automatic_sessions", [])
             session = select_recorded_cycle(sessions, index, expected_ts)
             sample = build_local_measurement(session, values, vacuum_entity)
+            origin, proven = measurement_identity(data, vacuum_entity)
+            sample["identity_scope"] = origin
             all_samples = deepcopy(data["settings"].get("local_measurements") or {})
             samples = list(all_samples.get(vacuum_entity) or [])
             if any(s.get("id") == sample["id"] for s in samples):
@@ -600,7 +632,10 @@ class VacuumWaterStorage:
             samples.append(sample)
             all_samples[vacuum_entity] = samples
             # Other settings remain intact, and old context samples stay available.
-            matching = [s for s in samples if s.get("context") == sample["context"]]
+            projected = [measurement_projection(s, origin, proven) for s in samples
+                         if measurement_belongs(s, origin, proven)]
+            target_context = measurement_projection(sample, origin, proven)["context"]
+            matching = [s for s in projected if s.get("context") == target_context]
             fitted = fit_local_measurements(matching)
             profiles = deepcopy(data["settings"].get("consumption_calibrations") or {})
             if fitted:
