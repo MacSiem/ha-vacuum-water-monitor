@@ -13963,33 +13963,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
   async _upsertUserDevicePatch(device, patch) {
     const entityId = device && device.vacuum_entity;
     if (!entityId) return;
-    const idx = this._userDevices.findIndex(d => d.vacuum_entity === entityId);
-    if (idx >= 0) {
-      const current = this._userDevices[idx];
-      const authored = new Set([
-        ...this._legacyFieldProvenance(current).explicit,
-        'vacuum_entity',
-        ...Object.keys(patch || {}),
-      ]);
-      this._userDevices[idx] = this._withAuthoredProvenance(
-        { ...current, ...patch },
-        [...authored]
-      );
-    } else {
-      const created = {
-        vacuum_entity: entityId,
-        name: device.name || entityId,
-        icon: device.icon || '\uD83E\uDD16',
-        brand_profile: device.brand_profile || null,
-        ...patch,
-      };
-      this._userDevices.push(this._withAuthoredProvenance(
-        created,
-        ['vacuum_entity', 'name', 'icon', 'brand_profile', ...Object.keys(patch || {})]
-      ));
-    }
-    const result = await this._saveUserDevices(this._userDevices.find(d => d.vacuum_entity === entityId));
-    if (!result.ok) { this._applyServerSettings(); throw result.error; }
+    // A stale card must send only the fields this action actually edits.
+    // Store merges provenance and other fields with the latest device.
+    const changed = this._withAuthoredProvenance(
+      {vacuum_entity: entityId, ...patch}, ['vacuum_entity', ...Object.keys(patch || {})]);
+    const result = await this._saveUserDevices(changed);
+    if (!result.ok) throw result.error;
   }
 
   // ── SERVER WATER STATE (replaces helper automations + browser app state) ───

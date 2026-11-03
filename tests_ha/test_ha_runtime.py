@@ -1295,3 +1295,88 @@ async def test_stale_ws_compare_and_set_refuses_maintenance_overwrite(hass, hass
                        "patch": {"maintenance_items": [{"name": "B"}]}})
     assert not (await b.receive_json())["success"]
     assert (await storage.async_get_state())["settings"]["maintenance_items"] == [{"name": "A"}]
+
+
+@pytest.mark.parametrize("action", ["ws", "options"])
+async def test_real_store_write_error_preserves_pending_tick_and_rejects_save(hass, hass_ws_client, hass_storage, monkeypatch, action):
+    """HA's actual async_save catches WriteError; no caller may report success."""
+    from copy import deepcopy
+    from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE
+    from homeassistant.helpers.storage import Store
+    from homeassistant.util.file import WriteError
+    from custom_components.ha_vacuum_water_monitor.storage import VacuumWaterStorage
+
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 100,
+        "calibration_history": [{"sample": "keep"}], "automatic_sessions": [{"ts": 123, "area": 10}]})
+    tank = deepcopy((await storage.async_get_state())["tank_states"][VACUUM])
+    tank["used_ml"] = 135
+    await storage.async_set_tank_states({VACUUM: tank}, delay_seconds=300)
+    before = await storage.async_get_state()
+    before_disk = deepcopy(hass_storage[DOMAIN]["data"])
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    before_options = dict(entry.options)
+    events = []
+    unsub = hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event.data))
+    original_write = Store._async_write_data
+    async def failed_write(*_args, **_kwargs):
+        raise WriteError("synthetic low-level disk error")
+    monkeypatch.setattr(Store, "_async_write_data", failed_write)
+    if action == "ws":
+        client = await hass_ws_client(hass)
+        await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"warning_threshold": 40}})
+        assert not (await client.receive_json())["success"]
+    else:
+        flow = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+            "warning_threshold": 40, "critical_threshold": 15})
+        assert result["type"] == "form" and result["errors"]
+    assert await storage.async_get_state() == before
+    assert hass_storage[DOMAIN]["data"] == before_disk
+    assert dict(entry.options) == before_options
+    assert not events
+    monkeypatch.setattr(Store, "_async_write_data", original_write)
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+    await hass.async_block_till_done()
+    assert hass_storage[DOMAIN]["data"]["tank_states"][VACUUM] == tank
+    assert hass_storage[DOMAIN]["data"]["settings"] == before_disk["settings"]
+    restored = await VacuumWaterStorage(hass).async_get_state()
+    assert restored["tank_states"][VACUUM] == tank
+    unsub()
+
+
+async def test_fresh_session_cas_ignores_hidden_orphan_without_changing_its_history(hass, hass_ws_client):
+    from copy import deepcopy
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True,
+                                               "refill_history": [{"used_before_ml": 876}]})
+    await storage.async_set_settings({"sessions": {VACUUM: [{"ts": 111, "water": 42}]}})
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    registry = er.async_get(hass)
+    registry.async_remove(VACUUM)
+    hass.states.async_remove(VACUUM)
+    independent = MockConfigEntry(domain="matter", title="Independent")
+    independent.add_to_hass(hass)
+    replacement = registry.async_get_or_create("vacuum", "matter", "session-b", config_entry=independent,
+                                                suggested_object_id="robot")
+    assert replacement.entity_id == VACUUM
+    hass.states.async_set(VACUUM, "docked")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    storage = hass.data[DOMAIN]["storage"]
+    raw_before = deepcopy(storage._data)
+    assert raw_before["identity_orphan_sources"]
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    public = (await client.receive_json())["result"]["settings"]["sessions"]
+    assert all(key not in public for key in raw_before["identity_orphan_sources"])
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "partial": True,
+        "expected": {"sessions": public}, "patch": {"sessions": {VACUUM: [{"ts": 222, "water": 13}]}}})
+    result = await client.receive_json()
+    assert result["success"], result
+    raw_after = storage._data
+    for marker in raw_before["identity_orphan_sources"]:
+        assert raw_after["settings"]["sessions"].get(marker) == raw_before["settings"]["sessions"].get(marker)
+        assert raw_after["tank_states"].get(marker) == raw_before["tank_states"].get(marker)
+    assert raw_after["settings"]["sessions"][VACUUM] == [{"ts": 222, "water": 13}]

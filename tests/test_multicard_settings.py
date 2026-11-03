@@ -85,3 +85,48 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
 """
         result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_refill_cleanup_does_not_restore_another_cards_stale_device_field(self):
+        script = r"""
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
+(async()=>{
+ const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'});
+ dom.window.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+ const id='vacuum.robot',calls=[];
+ let settings={configured_devices:[],user_devices:[{vacuum_entity:id,name:'Old name',reset_door_sensor:'binary_sensor.old_lid',config_provenance:{authored_fields:['vacuum_entity','name','reset_door_sensor']}}],refill_settings:{},refill_config:{},sharing_intro_choice:'not_now'};
+ const hass={language:'en',locale:{language:'en'},user:{is_admin:true},states:{
+  [id]:{entity_id:id,state:'docked',attributes:{friendly_name:'Robot'}},
+  'binary_sensor.old_lid':{entity_id:'binary_sensor.old_lid',state:'off',attributes:{friendly_name:'Lid'}}},
+  connection:{subscribeMessage:async()=>()=>{}},callWS:async m=>{
+   calls.push(structuredClone(m));
+   if(m.type.endsWith('/set_refill_settings')){
+    const stale=structuredClone(settings);
+    settings.user_devices[0].name='New name from another card';
+    return {settings:stale,bindings_refreshed:true};
+   }
+   if(m.type.endsWith('/set_settings')){
+    for(const item of m.patch.user_devices||[]){const i=settings.user_devices.findIndex(d=>d.vacuum_entity===item.vacuum_entity);settings.user_devices[i]={...settings.user_devices[i],...item};}
+    return {settings:structuredClone(settings),bindings_refreshed:true};
+   }
+   if(m.type.endsWith('/health'))return {robots:[]};
+   if(m.type.endsWith('/get_state'))return {settings:structuredClone(settings),tank_states:{}};
+   if(m.type.endsWith('/list_vacuums'))return {vacuums:[]};
+   throw Error(m.type);
+  }};
+ const card=dom.window.document.createElement('ha-vacuum-water-monitor');
+ card.setConfig({vacuum_entity:id});card._serverReady=true;card._serverLoadedAt=Date.now();
+ card._serverState={settings:structuredClone(settings),tank_states:{}};card._discoveredVacuums=[];
+ card._refreshHealth=()=>null;card._activeTab='settings';card.hass=hass;dom.window.document.body.append(card);card._render();
+ const button=card.shadowRoot.getElementById('vwm-refill-save');assert(button);
+ const lid=card.shadowRoot.getElementById('vwm-refill-lid');assert(lid);lid.value='';
+ button.click();await new Promise(r=>setTimeout(r,40));
+ const update=calls.find(x=>x.type.endsWith('/set_settings')&&x.patch.user_devices);
+ assert(update&&update.partial);assert.equal(update.patch.user_devices[0].reset_door_sensor,null);
+ assert(!Object.hasOwn(update.patch.user_devices[0],'name'));
+ assert.equal(settings.user_devices[0].name,'New name from another card');
+ assert.equal(settings.user_devices[0].reset_door_sensor,null);
+ dom.window.close();
+})().catch(e=>{console.error(e);process.exit(1)});
+"""
+        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)

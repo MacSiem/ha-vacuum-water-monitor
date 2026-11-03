@@ -22,6 +22,60 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+class _ReportingStore(Store):
+    """Expose HA Store's swallowed write errors to an immediate saving caller.
+
+    Keep HA's locking, serialization, atomic writer and delayed flush. Track
+    the candidate by identity, including when a queued delayed callback consumes
+    the immediate candidate on a different task. HA 2025.1 and current pass
+    different arguments to _async_write_data; the envelope is always last.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._vwm_writes = {}
+
+    async def _async_write_data(self, *args, **kwargs):
+        envelope = args[-1] if args else kwargs.get("data")
+        candidate = envelope.get("data") if isinstance(envelope, dict) else None
+        outcome = self._vwm_writes.get(id(candidate))
+        if outcome is not None and outcome["candidate"] is candidate:
+            outcome["attempted"] = True
+        try:
+            return await super()._async_write_data(*args, **kwargs)
+        except Exception as err:
+            if outcome is not None and outcome["candidate"] is candidate:
+                outcome["error"] = err
+            raise
+
+    async def async_save(self, data):
+        hass = getattr(self, "hass", None)
+        if hass is not None:
+            from homeassistant.core import CoreState
+            if hass.state is CoreState.stopping:
+                raise OSError("Home Assistant storage cannot confirm the write")
+        if getattr(self, "_read_only", False):
+            raise OSError("Home Assistant storage cannot confirm the write")
+        pending = getattr(self, "_data", None)
+        delayed = pending.get("data_func") if isinstance(pending, dict) else None
+        outcome = {"candidate": data, "attempted": False, "error": None}
+        self._vwm_writes[id(data)] = outcome
+        try:
+            try:
+                await super().async_save(data)
+                if outcome["error"] is not None:
+                    raise OSError("Home Assistant storage write failed") from outcome["error"]
+                # Lightweight test doubles do not implement HA's writer.
+                if hass is not None and not outcome["attempted"]:
+                    raise OSError("Home Assistant storage did not confirm the write")
+            except Exception:
+                if delayed is not None:
+                    self.async_delay_save(delayed, 60)
+                raise
+        finally:
+            self._vwm_writes.pop(id(data), None)
+
+
 THRESHOLD_KEYS = ("warning_threshold", "critical_threshold")
 _VACUUM_KEYED_SETTINGS = ("refill_config", "refill_settings", "device_options", "local_measurements",
                           "consumption_calibrations", "measurement_plans", "sessions", "intro_dismissed")
@@ -180,7 +234,7 @@ class VacuumWaterStorage:
     def __init__(self, hass: HomeAssistant) -> None:
         """Bind storage to a Home Assistant instance."""
         self.hass = hass
-        self._store: Store[dict[str, Any]] = Store(
+        self._store: Store[dict[str, Any]] = _ReportingStore(
             hass, STORAGE_VERSION, STORAGE_KEY
         )
         self._lock = asyncio.Lock()
@@ -338,7 +392,8 @@ class VacuumWaterStorage:
         async with self._lock:
             data = await self._ensure_loaded_locked()
             settings = data["settings"]
-            if expected is not None and any(settings.get(key) != value for key, value in expected.items()):
+            visible_settings = _public_state(data)["settings"] if expected is not None else settings
+            if expected is not None and any(visible_settings.get(key) != value for key, value in expected.items()):
                 raise ValueError("Settings changed in another card; refresh and retry")
             clean: dict[str, Any] = {}
             for key, value in patch.items():
