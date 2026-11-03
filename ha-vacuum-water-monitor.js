@@ -15617,7 +15617,6 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <label><span><input type="checkbox" id="cal-uninterrupted" /> ${this._waterText("Complete cycle observed from zero area, with unchanged settings and no interruption")}</span></label>
       <button type="button" id="cal-save" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>${this._waterText("Save private measurement")}</button>
       <div id="cal-local-status" role="status" aria-live="polite"></div>
-      ${this._buildConfirmedSharing(device)}
     </details>`;
 
     return contributionForm;

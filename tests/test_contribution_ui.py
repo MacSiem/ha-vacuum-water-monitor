@@ -26,9 +26,14 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
     throw Error(m.type)}};
   card._serverReady=true;card._serverLoadedAt=Date.now();card._serverState={settings,tank_states:{}};
   card._refreshHealth=()=>null;card._activeTab='settings';card.hass=hass;dom.window.document.body.append(card);card._render();
+  for(const id of ['cal-sharing','cal-share-enabled','cal-share-sample','cal-preview','cal-share-consent','cal-download','cal-export-preview'])
+    assert.equal(card.shadowRoot.querySelectorAll(`[id="${id}"]`).length,1,`duplicate or missing ${id} (${lang})`);
+  assert(card.shadowRoot.querySelector('.contribution-form #cal-save'));
+  const sharing=card.shadowRoot.getElementById('cal-sharing');
+  assert.equal(sharing.closest('.contribution-form'),null);sharing.querySelector('summary').click();assert.equal(sharing.open,true);
   const sr=card.shadowRoot, enable=sr.getElementById('cal-share-enabled'),preview=sr.getElementById('cal-preview');
   assert(enable && preview);assert.equal(enable.checked,false);assert.equal(preview.disabled,true);
-  enable.checked=true;enable.dispatchEvent(new dom.window.Event('change'));assert.equal(preview.disabled,false);
+  enable.click();assert.equal(enable.checked,true);assert.equal(preview.disabled,false);
   preview.click();await new Promise(r=>setTimeout(r,10));
   const consent=sr.getElementById('cal-share-consent'),download=sr.getElementById('cal-download'),box=sr.getElementById('cal-export-preview');
   assert.equal(download.disabled,true);assert.equal(consent.disabled,false);assert.match(box.value,/110/);
