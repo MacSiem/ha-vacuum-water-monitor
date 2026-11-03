@@ -80,6 +80,13 @@ def sync_entity_device(hass: HomeAssistant, entry: ConfigEntry, entity: Entity, 
     current = matches[0]
     target = source_device(hass, device)
     if target is None:
+        # During registry rename an already tracked entity can briefly be
+        # reconciled using the old vacuum id after HA removed that registry
+        # entry. Keep its existing association until identity reconciliation;
+        # a present registry entry with device_id=None still uses fallback.
+        vacuum = entities.async_get(str(device.get("vacuum_entity") or ""))
+        if vacuum is None and current.device_id is not None:
+            return
         info = robot_device_info(hass, entry, device)
         target = dr.async_get(hass).async_get_or_create(config_entry_id=entry.entry_id, **info)
     elif not hasattr(target, "config_entry_id") and entry.entry_id not in target.config_entries:
