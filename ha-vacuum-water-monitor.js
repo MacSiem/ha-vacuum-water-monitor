@@ -13820,7 +13820,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._userDevices = Array.isArray(settings.user_devices) ? [...settings.user_devices] : [];
     this._refillConfig = settings.refill_config && typeof settings.refill_config === 'object' ? { ...settings.refill_config } : {};
     const custom = settings.custom_calibration || {};
-    const activeDevice = this._getDevices?.()[this._activeDeviceIdx] || null;
+    const activeDevice = this._selectedDevice();
     this._customCalib = this._customCalibrationFor(activeDevice, custom);
     if (settings.warning_threshold != null && !this._authoredConfigKeys?.has('warning_threshold')) this._config.warning_threshold = settings.warning_threshold;
     if (settings.critical_threshold != null && !this._authoredConfigKeys?.has('critical_threshold')) this._config.critical_threshold = settings.critical_threshold;
@@ -14320,11 +14320,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return merged;
   }
 
-  _customCalibrationKey(device = null) {
-    const active = device || this._getDevices()[this._activeDeviceIdx] || null;
-    const entity = String(active?.vacuum_entity || '').trim().toLowerCase();
-    if (entity) return `entity:${entity}`;
-    return this._resolveProfileKey(active) || active?.brand_profile || this._config?.brand_profile || 'default';
+  _selectedDevice(devices = this._getDevices()) {
+    return devices[this._activeDeviceIdx] || devices[0] || null;
+  }
+
+  _customCalibrationKey(device) {
+    const entity = String(device?.vacuum_entity || '').trim().toLowerCase();
+    return entity ? `entity:${entity}` : null;
   }
 
   _customCalibrationFor(device, customMap = null) {
@@ -16019,7 +16021,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
 
   async _reprofileDevice() {
-    const device = this._getDevices()[this._activeDeviceIdx] || {};
+    const device = this._selectedDevice() || {};
     const status = this.shadowRoot?.getElementById('vwm-reprofile-status');
     if (!device.vacuum_entity || !this._hass?.callWS) return false;
     try {
@@ -16105,12 +16107,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (status) { status.textContent = this._waterText("Enter at least one calibration value."); status.style.color = '#ef4444'; }
       return false;
     }
-    const activeDevice = this._getDevices()[this._activeDeviceIdx] || null;
+    const activeDevice = this._selectedDevice();
     // The scope describes a measured rate; a capacity or wash dose alone must not change it.
     if (custom.usage_ml_per_m2 || custom.usage_ml_per_active_minute) custom.calibration_scope = measurementScope;
     // The capacity field is labelled with the tracked reservoir; keep that pairing.
     if (custom.tracked_capacity_ml && activeDevice && activeDevice.tracked_reservoir) custom.tracked_reservoir = activeDevice.tracked_reservoir;
     const key = this._customCalibrationKey(activeDevice);
+    if (!key) {
+      if (status) status.textContent = this._lang === 'pl' ? 'Wybierz dostępnego robota.' : 'Select an available robot.';
+      return false;
+    }
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
     const existing = this._normaliseCalibrationLayer(all[key]);
     // Preserve fields the current form does not edit (and every other device)
@@ -16142,8 +16148,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   async _clearCustomCalibration() {
     const status = this.shadowRoot.getElementById('vwm-custom-status');
-    const activeDevice = this._getDevices()[this._activeDeviceIdx] || null;
+    const activeDevice = this._selectedDevice();
     const key = this._customCalibrationKey(activeDevice);
+    if (!key) {
+      if (status) status.textContent = this._lang === 'pl' ? 'Wybierz dostępnego robota.' : 'Select an available robot.';
+      return false;
+    }
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
     delete all[key];
     const result = await this._saveServerSettings({ custom_calibration: {[key]:null} }, {partial:true});
@@ -16176,7 +16186,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
   _buildDatabaseTab() {
     const models = Object.entries(CALIBRATION_DATA);
-    const activeDevice = this._getDevices()[this._activeDeviceIdx] || null;
+    const activeDevice = this._selectedDevice();
     const configuredProfile = this._normaliseModelKey(this._config.brand_profile);
     const configuredCanonical = MODEL_ALIASES[configuredProfile] || configuredProfile;
     const activeProfileKey = this._resolveProfileKey(activeDevice)
@@ -16797,7 +16807,8 @@ target:
     if (!this._hass) return;
    try {
     const devices = this._getDevices();
-    const device = devices[this._activeDeviceIdx] || devices[0] || {};
+    const device = this._selectedDevice(devices) || {};
+    if (devices.length && !devices[this._activeDeviceIdx]) this._activeDeviceIdx = 0;
     const data = Object.keys(device).length ? this._calcDeviceData(device) : {};
 
     const cfg = this._config;
