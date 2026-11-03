@@ -910,6 +910,43 @@ async def test_preupgrade_measurements_after_rename_keep_historical_context(hass
     assert not saved["local_measurements"].get(VACUUM)
 
 
+async def test_measurement_save_reports_refresh_failure_without_losing_saved_data(hass, hass_ws_client, monkeypatch):
+    import custom_components.ha_vacuum_water_monitor as integration
+    from custom_components.ha_vacuum_water_monitor.contribution import SETTINGS
+
+    storage = await _setup(hass)
+    context = {"model_id": "roborock_s8_maxv_ultra", "sku": "EU", "dock_variant": "tank",
+        "firmware": "1.0", "integration_id": "roborock", "integration_version": "1.0",
+        "reservoir": "dock_clean", "action": "floor_mopping",
+        "settings": dict.fromkeys(SETTINGS, "not_applicable")}
+    sessions = [{"ts": n, "area": 10, "context": context, "accounting_valid": True,
+                 "exposure_complete": True, "segments": 1} for n in (401, 402, 403)]
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 50,
+                                                 "automatic_sessions": sessions})
+    client = await hass_ws_client(hass)
+    measurement = {"observed_ml": 100, "resolution_ml": 5, "instrument": "graduated_jug",
+                   "boundaries_confirmed": True, "uninterrupted": True, "purpose": "training"}
+    original_tick = integration.async_tick_water_state
+    async def broken(*args, **kwargs):
+        raise RuntimeError("synthetic refresh failure")
+    for index in range(3):
+        if index == 2:
+            monkeypatch.setattr(integration, "async_tick_water_state", broken)
+        await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": VACUUM,
+            "session_index": index, "session_ts": sessions[index]["ts"], "measurement": measurement})
+        result = await client.receive_json()
+        assert result["success"]
+    assert result["result"]["saved"] is True
+    assert result["result"]["bindings_refreshed"] is False
+    settings = (await storage.async_get_state())["settings"]
+    assert len(settings["local_measurements"][VACUUM]) == 3
+    assert settings["consumption_calibrations"][VACUUM][0]["coefficient"] == 10
+    monkeypatch.setattr(integration, "async_tick_water_state", original_tick)
+    hass.states.async_set("sensor.robot_cleaning_area", "7", {"unit_of_measurement": "m²"})
+    await _settle(hass)
+    assert (await _tank(storage))["last_area"] == 7
+
+
 async def test_measured_calibration_remains_applicable_after_registry_rename(hass, hass_ws_client):
     """A producer event uses the same physical calibration after a registry rename."""
     from custom_components.ha_vacuum_water_monitor.profiles import CONSUMPTION_SETTINGS

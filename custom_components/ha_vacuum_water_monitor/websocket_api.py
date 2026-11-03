@@ -352,6 +352,7 @@ async def _ws_save_measurement(hass, connection, msg):
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
+    result["bindings_refreshed"] = await _refresh_bindings(hass) if result.get("calibration") else None
     _notify_store_updated(hass, {"settings": await _storage(hass).async_get_settings()})
     connection.send_result(msg["id"], result)
 
