@@ -9,6 +9,7 @@ install.
 from __future__ import annotations
 
 from datetime import timedelta
+import time
 
 import pytest
 from homeassistant.core import HomeAssistant
@@ -274,6 +275,62 @@ async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(
     assert (await client.receive_json())["success"]
     await hass.async_block_till_done()
     assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" in ours()
+
+
+@pytest.mark.parametrize("target,incomplete", [("linked", False), ("linked", True), ("primary", True), ("distinct", False)])
+async def test_card_refill_uses_confirmed_balance_owner(hass: HomeAssistant, hass_ws_client, target, incomplete):
+    """Card WS must refill the same owner as mark_refilled without merging banks."""
+    matter = MockConfigEntry(domain="matter", title="Synthetic duplicate")
+    matter.add_to_hass(hass)
+    bridge = dr.async_get(hass).async_get_or_create(config_entry_id=matter.entry_id,
+        identifiers={("matter", "r2-copy")}, manufacturer="Roborock", model="Robot")
+    copy = er.async_get(hass).async_get_or_create("vacuum", "matter", "r2-copy",
+        device_id=bridge.id, config_entry=matter, suggested_object_id="r2_copy").entity_id
+    assert copy == "vacuum.r2_copy"
+    hass.states.async_set(copy, "docked")
+    storage = await _setup(hass)
+    client = await hass_ws_client(hass)
+    link = "distinct" if target == "distinct" else VACUUM
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"robot_links": {copy: link}}})
+    assert (await client.receive_json())["success"]
+    await _settle(hass)
+    now = int(time.time() * 1000)
+    original = {"used_ml": 432, "initialized": True, "last_reset_ts": now if incomplete else 0,
+        "accounting_incomplete": incomplete, "calibration_history": [{"sample": "owner"}],
+        "refill_history": [{"source": "earlier", "used_before_ml": 123}],
+        "last_accounting_interruption": {"reason": "gap"} if incomplete else None}
+    other = {"used_ml": 999, "initialized": True, "last_reset_ts": 0,
+        "calibration_history": [{"sample": "copy"}], "refill_history": [{"source": "copy"}]}
+    await storage.async_set_tank_state(VACUUM, original)
+    await storage.async_set_tank_state(copy, other)
+    target_id = VACUUM if target == "primary" else copy
+    owner = copy if target == "distinct" else VACUUM
+    expected_other = VACUUM if owner == copy else copy
+    before_other = (await storage.async_get_state())["tank_states"][expected_other]
+    events = []
+    unsub = hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event.data))
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": target_id})
+    result = await client.receive_json()
+    assert result["success"]
+    await _settle(hass)
+    tanks = (await storage.async_get_state())["tank_states"]
+    assert result["result"]["state"]["used_ml"] == 0
+    assert tanks[owner]["used_ml"] == 0
+    assert tanks[owner]["last_reset_source"] == "card"
+    assert tanks[owner]["calibration_history"] == (other if owner == copy else original)["calibration_history"]
+    assert tanks[owner]["refill_history"][0]["source"] == "card"
+    assert tanks[expected_other]["used_ml"] == before_other["used_ml"]
+    assert tanks[expected_other]["refill_history"] == before_other["refill_history"]
+    assert any(owner in event.get("tank_states", {}) for event in events)
+    if incomplete:
+        assert not tanks[owner]["accounting_incomplete"]
+        assert tanks[owner]["last_accounting_interruption"]["reason"] == "gap"
+    if owner == VACUUM:
+        entry = hass.config_entries.async_entries(DOMAIN)[0]
+        sensor = next(item.entity_id for item in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+                      if item.unique_id.endswith("_vacuum_robot_water_used_since_refill"))
+        assert float(hass.states.get(sensor).state) == 0
+    unsub()
 
 
 async def test_a_device_with_the_old_placeholder_name_gets_the_robots_name(hass: HomeAssistant) -> None:
