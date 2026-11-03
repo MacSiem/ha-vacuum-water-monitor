@@ -614,6 +614,7 @@ class VacuumWaterStorage:
     async def async_save_measurement(self, vacuum_entity, index, expected_ts, values):
         """Select and save a measured cycle under one lock; never retarget a stale UI."""
         from .calibration import select_recorded_cycle, build_local_measurement, fit_local_measurements
+        from .profiles import _compatible_context
         if not isinstance(vacuum_entity, str) or not vacuum_entity.startswith("vacuum."):
             raise ValueError("Select a vacuum entity")
         async with self._lock:
@@ -643,7 +644,9 @@ class VacuumWaterStorage:
                 if isinstance(previous_profiles, dict):
                     previous_profiles = [previous_profiles]
                 profiles[vacuum_entity] = [p for p in previous_profiles
-                    if isinstance(p, dict) and p.get("context") != fitted["context"]] + [fitted]
+                    if isinstance(p, dict) and not (p.get("device_id") in proven
+                        and all(p.get(key) == fitted.get(key) for key in ("kind", "scope", "method"))
+                        and _compatible_context(p.get("context"), fitted["context"]))] + [fitted]
             data["settings"].update(local_measurements=all_samples, consumption_calibrations=profiles)
             await self._store.async_save(data)
             return {"saved": True, "sample_count": len(matching), "calibration": deepcopy(fitted)}

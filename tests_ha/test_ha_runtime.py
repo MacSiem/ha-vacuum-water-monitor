@@ -855,10 +855,11 @@ async def test_measurements_follow_registry_identity_after_rename_and_reuse(hass
         assert result["result"]["calibration"]["validation"]["validation_ids"] == ["local.104"]
 
 
-async def test_preupgrade_measurements_after_rename_keep_historical_context(hass, hass_ws_client):
+@pytest.mark.parametrize("keep_other", [False, True])
+async def test_preupgrade_measurements_after_rename_keep_historical_context(hass, hass_ws_client, keep_other):
     """Only the same owner's proven legacy identifiers are compared as one identity."""
     from copy import deepcopy
-    from custom_components.ha_vacuum_water_monitor.calibration import build_local_measurement
+    from custom_components.ha_vacuum_water_monitor.calibration import build_local_measurement, fit_local_measurements
     from custom_components.ha_vacuum_water_monitor.contribution import SETTINGS
 
     storage = await _setup(hass)
@@ -877,11 +878,15 @@ async def test_preupgrade_measurements_after_rename_keep_historical_context(hass
     def session(ts, ctx):
         return {"ts": ts, "area": 10, "context": ctx, "accounting_valid": True,
                 "exposure_complete": True, "segments": 1}
-    legacy = [build_local_measurement(session(n, context), measurement, renamed) for n in (301, 302)]
-    await storage.async_set_settings({"local_measurements": {renamed: deepcopy(legacy)}})
+    legacy = [build_local_measurement(session(n, context), measurement, renamed) for n in (301, 302, 303)]
+    legacy_fit = fit_local_measurements(legacy)
+    assert legacy_fit["coefficient"] == 10
+    other_method = {**deepcopy(legacy_fit), "id": "local.time", "method": "time", "unit": "ml/min"}
+    await storage.async_set_settings({"local_measurements": {renamed: deepcopy(legacy)},
+        "consumption_calibrations": {renamed: [legacy_fit, *([other_method] if keep_other else [])]}})
     current_context = {**context, "device_id": VACUUM}
     await storage.async_set_tank_state(renamed, {"initialized": True, "used_ml": 0,
-        "automatic_sessions": [session(303, current_context), session(304, current_context)]})
+        "automatic_sessions": [session(304, current_context)]})
     independent = MockConfigEntry(domain="matter", title="Independent robot")
     independent.add_to_hass(hass)
     replacement = registry.async_get_or_create("vacuum", "matter", "r3-upgrade-independent", config_entry=independent,
@@ -890,16 +895,18 @@ async def test_preupgrade_measurements_after_rename_keep_historical_context(hass
     hass.states.async_set(VACUUM, "docked")
     await _settle(hass)
     client = await hass_ws_client(hass)
-    for index in range(2):
-        values = measurement if index == 0 else {**measurement, "purpose": "validation", "observed_ml": 120}
-        await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": renamed,
-            "session_index": index, "session_ts": 303 + index, "measurement": values})
-        result = await client.receive_json()
-        assert result["success"]
-        assert result["result"]["calibration"]["coefficient"] == 10
+    values = {**measurement, "purpose": "validation", "observed_ml": 120}
+    await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": renamed,
+        "session_index": 0, "session_ts": 304, "measurement": values})
+    result = await client.receive_json()
+    assert result["success"]
+    assert result["result"]["calibration"]["coefficient"] == 10
     assert result["result"]["calibration"]["validation"]["validation_ids"] == ["local.304"]
     saved = (await storage.async_get_state())["settings"]
-    assert saved["local_measurements"][renamed][:2] == legacy
+    assert saved["local_measurements"][renamed][:3] == legacy
+    saved_profiles = saved["consumption_calibrations"][renamed]
+    assert len([p for p in saved_profiles if p["method"] == "area" and p["scope"] == "whole_cycle"]) == 1
+    assert (other_method in saved_profiles) is keep_other
     assert not saved["local_measurements"].get(VACUUM)
 
 
@@ -944,9 +951,9 @@ async def test_measured_calibration_remains_applicable_after_registry_rename(has
         return (await storage.async_get_state())["tank_states"][entity]
 
     baseline = await ordinary_session(VACUUM)
-    assert baseline["used_ml"] == 100, {key: baseline.get(key) for key in (
-        "consumption_resolution", "last_consumption_context", "last_accounting_reason", "last_accounting_evidence",
-        "session_exposure_complete", "session_accounting_valid", "whole_cycle_fallback_reason", "automatic_sessions")}
+    assert baseline["used_ml"] == 100, (baseline.get("whole_cycle_fallback_reason"),
+        baseline.get("consumption_resolution"), baseline["automatic_sessions"][0].get("exposure_complete"),
+        baseline["automatic_sessions"][0].get("accounting_valid"), baseline["automatic_sessions"][0].get("area"))
     assert baseline["last_accounting_evidence"] == "device_calibration"
     baseline["used_ml"] = 0
     await storage.async_set_tank_state(VACUUM, baseline)

@@ -20,12 +20,12 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
   let calls=[];
   const sample2={...sample,id:'local.2',observed_ml:110};
   const settings={sharing_intro_choice:'not_now',local_measurements:{[id]:[sample,sample2]}};
-  card._hass={language:lang,locale:{language:lang},states:{[id]:{entity_id:id,state:'docked',attributes:{}}},user:{is_admin:true},
+  const hass={language:lang,locale:{language:lang},states:{[id]:{entity_id:id,state:'docked',attributes:{}}},user:{is_admin:true},
    connection:{subscribeMessage:async()=>()=>{}},callWS:async m=>{calls.push(m);if(m.type.endsWith('/contribution_preview'))
     return {kind:'confirmed_measurement_contribution',publication_consent:false,runtime_eligible:false,samples:[{measured_ml:m.sample_ids[0]==='local.2'?110:100}]};
     throw Error(m.type)}};
   card._serverReady=true;card._serverLoadedAt=Date.now();card._serverState={settings,tank_states:{}};
-  card._refreshHealth=()=>null;card._activeTab='settings';dom.window.document.body.append(card);card._render();
+  card._refreshHealth=()=>null;card._activeTab='settings';card.hass=hass;dom.window.document.body.append(card);card._render();
   const sr=card.shadowRoot, enable=sr.getElementById('cal-share-enabled'),preview=sr.getElementById('cal-preview');
   assert(enable && preview);assert.equal(enable.checked,false);assert.equal(preview.disabled,true);
   enable.checked=true;enable.dispatchEvent(new dom.window.Event('change'));assert.equal(preview.disabled,false);

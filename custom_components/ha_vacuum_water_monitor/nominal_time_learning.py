@@ -241,7 +241,7 @@ def finish_empty(
     if not _number(rate):
         return invalidate(updated, "invalid_time_sample")
     entries = updated["contexts"]
-    entry = next((item for item in entries if _entry_matches(
+    entry = next((item for item in reversed(entries) if _entry_matches(
         item, context, capacity_ml, cycle["residual_percent"], identity_aliases)), None)
     if entry is None:
         entry = {"context": deepcopy(context), "capacity_ml": float(capacity_ml),
