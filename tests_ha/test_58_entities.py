@@ -220,3 +220,108 @@ async def test_cleanings_left_sensor_and_health_track_record(hass: HomeAssistant
     sensor = next(state for state in hass.states.async_all("sensor") if state.attributes.get("basis_runs") is not None)
     assert sensor.attributes["water_per_cleaning_ml"] == 400
     assert int(sensor.state) >= 1
+
+
+async def test_water_entities_attach_to_unique_source_device_without_taking_its_metadata(hass: HomeAssistant) -> None:
+    """The supported robot registry owns its original metadata and receives VWM entities."""
+    from homeassistant.helpers import device_registry as dr
+    from copy import deepcopy
+
+    await _setup(hass)
+    registry = er.async_get(hass)
+    devices = dr.async_get(hass)
+    source_entity = registry.async_get(VACUUM)
+    assert source_entity and source_entity.device_id
+    source = devices.async_get(source_entity.device_id)
+    before = deepcopy((source.identifiers, source.name, source.name_by_user, source.area_id))
+    owned = [entry for entry in registry.entities.values()
+             if entry.platform == DOMAIN and f"_vacuum_robot_" in entry.unique_id]
+    assert owned
+    assert {entry.device_id for entry in owned} == {source_entity.device_id}
+    current = devices.async_get(source_entity.device_id)
+    assert (current.identifiers, current.name, current.name_by_user, current.area_id) == before
+
+
+async def test_settings_broadcast_never_exposes_private_measurement_bank(hass, hass_ws_client):
+    """An ordinary settings update must not put private samples on HA's event bus."""
+    storage = await _setup(hass)
+    private_sample = {"id": "private-marker", "device_id": VACUUM, "observed_ml": 123}
+    await storage.async_set_settings({"local_measurements": {VACUUM: [private_sample]},
+                                      "consumption_calibrations": {VACUUM: [{"private_fit": "marker"}]}})
+    events = []
+    unsub = hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event.data))
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"sharing_intro_choice": "not_now"}})
+    assert (await client.receive_json())["success"]
+    await hass.async_block_till_done()
+    assert events
+    assert all("private-marker" not in repr(event) and "private_fit" not in repr(event) for event in events)
+    assert (await storage.async_get_state())["settings"]["local_measurements"][VACUUM] == [private_sample]
+    unsub()
+
+
+async def test_capability_entities_follow_dock_signal_removal_and_return(hass: HomeAssistant, hass_ws_client) -> None:
+    """A previously available action must not survive loss or return of its capability."""
+    await _setup(hass)
+    client = await hass_ws_client(hass)
+    registry = er.async_get(hass)
+    source = registry.async_get("sensor.robot_dock_error")
+    assert source is not None and source.device_id
+    source_device, source_unique = source.device_id, source.unique_id
+    roborock = hass.config_entries.async_entries("roborock")[0]
+
+    async def report():
+        await client.send_json_auto_id({"type": f"{DOMAIN}/health"})
+        response = await client.receive_json()
+        assert response["success"]
+        return next(r for r in response["result"]["robots"] if r["vacuum_entity"] == VACUUM)
+
+    initial = await report()
+    assert initial["auto_refill_supported"] is True
+    await client.send_json_auto_id({"type": f"{DOMAIN}/mark_empty", "vacuum_entity": VACUUM})
+    assert not (await client.receive_json())["success"]
+    switch = _entity(hass, "switch", "auto_refill")
+    assert hass.states.get(switch).state != "unavailable"
+    registry.async_remove("sensor.robot_dock_error")
+    hass.states.async_remove("sensor.robot_dock_error")
+    await _settle(hass)
+    without_source = await report()
+    assert without_source["auto_refill_supported"] is False
+    await client.send_json_auto_id({"type": f"{DOMAIN}/mark_empty", "vacuum_entity": VACUUM})
+    assert (await client.receive_json())["success"]
+    empty = _entity(hass, "button", "tank_empty")
+    assert hass.states.get(empty).state != "unavailable"
+    assert hass.states.get(switch).state == "unavailable"
+    restored = registry.async_get_or_create("sensor", "roborock", source_unique, device_id=source_device,
+        suggested_object_id="robot_dock_error", translation_key="dock_error", config_entry=roborock)
+    assert restored.entity_id == "sensor.robot_dock_error"
+    hass.states.async_set(restored.entity_id, "ok")
+    await _settle(hass)
+    returned = await report()
+    assert returned["auto_refill_supported"] is True
+    await client.send_json_auto_id({"type": f"{DOMAIN}/mark_empty", "vacuum_entity": VACUUM})
+    assert not (await client.receive_json())["success"]
+    assert hass.states.get(switch).state != "unavailable"
+    assert hass.states.get(empty).state == "unavailable"
+
+
+async def test_policy_is_admin_only_and_controls_household_actions(hass, hass_ws_client, hass_admin_user):
+    """Administrator saves policy; a household client can read but cannot administer or execute."""
+    await _setup(hass)
+    client = await hass_ws_client(hass)
+    policy = {"schema": 1, "features": {"water": {
+        "visible": {"mode": "household"}, "read": {"mode": "household"},
+        "execute": {"mode": "admin"}}}}
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
+    saved = await client.receive_json()
+    assert saved["success"], saved
+    hass_admin_user.groups = []
+    assert not hass_admin_user.is_admin
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    assert (await client.receive_json())["success"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
+    denied = await client.receive_json()
+    assert not denied["success"] and denied["error"]["code"] == "unauthorized"
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM})
+    denied = await client.receive_json()
+    assert not denied["success"] and denied["error"]["code"] == "unauthorized"
