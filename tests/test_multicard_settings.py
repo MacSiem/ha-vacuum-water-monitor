@@ -33,7 +33,16 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
     }
     if(m.type.endsWith('/set_settings')){
       writes.push(structuredClone(m.patch));if(writes.length>10)throw Error('settings write loop');
-      state.settings={...state.settings,...structuredClone(m.patch)};
+      const patch=structuredClone(m.patch);
+      if(m.partial){
+       for(const key of ['configured_devices','user_devices'])if(patch[key]){
+        const merged=structuredClone(state.settings[key]||[]);
+        for(const item of patch[key]){const i=merged.findIndex(d=>d.vacuum_entity===item.vacuum_entity);if(i<0)merged.push(item);else merged[i]={...merged[i],...item};}
+        patch[key]=merged;
+       }
+       if(patch.robot_links)patch.robot_links={...state.settings.robot_links,...patch.robot_links};
+      }
+      state.settings={...state.settings,...patch};
       const data={settings:structuredClone(state.settings)};
       if(deliver)for(const cb of listeners)queueMicrotask(()=>cb({data}));
       return {settings:structuredClone(state.settings),bindings_refreshed:true};
@@ -52,6 +61,17 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
  assert.equal(state.settings.robot_links['vacuum.keep'],'distinct');
  assert.equal(state.tank_states['vacuum.a'].used_ml,123);assert.equal(state.tank_states['vacuum.b'].used_ml,456);
  assert(writes.length<=4,'automatic writes must converge');
+ // A real incoming state event must preserve an open draft while the card rerenders.
+ cards[0]._activeTab='settings';cards[0]._lastHtml='';cards[0]._render();
+ let draft=cards[0].shadowRoot.querySelector('details.contribution-form');
+ assert(draft);draft.open=true;
+ cards[0].shadowRoot.getElementById('cal-observed').value='123';
+ cards[0].shadowRoot.getElementById('cal-boundaries').checked=true;
+ for(const cb of listeners)cb({data:{partial:true,tank_states:{'vacuum.a':{used_ml:124}}}});
+ await new Promise(r=>setTimeout(r,30));
+ draft=cards[0].shadowRoot.querySelector('details.contribution-form');
+ assert(draft.open);assert.equal(cards[0].shadowRoot.getElementById('cal-observed').value,'123');
+ assert.equal(cards[0].shadowRoot.getElementById('cal-boundaries').checked,true);
  deliver=false; // A and B are deliberately editing from the same earlier snapshot.
  const choice=(card,id)=>card.shadowRoot.querySelector(`[data-dup="${id}"][data-target="distinct"]`);
  assert(choice(cards[0],'vacuum.copy_a'));assert(choice(cards[1],'vacuum.copy_b'));

@@ -24,6 +24,9 @@
           "critical_threshold": "Próg krytyczny poziomu wody (%)"
         }
       }
+    },
+    "error": {
+      "cannot_save": "Nie udało się zapisać ustawień. Spróbuj ponownie."
     }
   },
   "services": {

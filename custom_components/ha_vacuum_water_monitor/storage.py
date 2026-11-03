@@ -326,7 +326,7 @@ class VacuumWaterStorage:
         """Return persisted settings."""
         return (await self.async_get_state())["settings"]
 
-    async def async_set_settings(self, patch: dict[str, Any]) -> dict[str, Any]:
+    async def async_set_settings(self, patch: dict[str, Any], *, partial: bool = False, expected: dict[str, Any] | None = None) -> dict[str, Any]:
         """Apply a shallow settings patch.
 
         Empty-list patches are refused to protect user data from accidental
@@ -338,6 +338,8 @@ class VacuumWaterStorage:
         async with self._lock:
             data = await self._ensure_loaded_locked()
             settings = data["settings"]
+            if expected is not None and any(settings.get(key) != value for key, value in expected.items()):
+                raise ValueError("Settings changed in another card; refresh and retry")
             clean: dict[str, Any] = {}
             for key, value in patch.items():
                 if (
@@ -350,7 +352,7 @@ class VacuumWaterStorage:
                     continue
                 clean[str(key)] = deepcopy(value)
             hidden = set((data.get("identity_orphan_sources") or {}).keys())
-            if hidden:
+            if hidden and not partial:
                 for key in _VACUUM_KEYED_SETTINGS:
                     if isinstance(clean.get(key), dict) and isinstance(settings.get(key), dict):
                         clean[key].update({k: deepcopy(v) for k, v in settings[key].items() if k in hidden})
@@ -390,6 +392,76 @@ class VacuumWaterStorage:
                             if registry.async_get(target) is None:
                                 raise ValueError("Renamed vacuum is not present in the entity registry")
                             item["vacuum_entity"] = target
+            if partial:
+                for key in ("configured_devices", "user_devices"):
+                    if key not in clean:
+                        continue
+                    if not isinstance(clean[key], list):
+                        raise ValueError("Device updates must be a list")
+                    current = deepcopy(settings.get(key) or [])
+                    for item in clean[key]:
+                        if not isinstance(item, dict) or not isinstance(item.get("vacuum_entity"), str):
+                            raise ValueError("Each device update needs a vacuum entity")
+                        entity = item["vacuum_entity"]
+                        index = next((i for i, old in enumerate(current)
+                                      if isinstance(old, dict) and old.get("vacuum_entity") == entity), None)
+                        if index is None:
+                            current.append(item)
+                        else:
+                            previous = current[index]
+                            merged = {**previous, **item}
+                            old_provenance = previous.get("config_provenance")
+                            new_provenance = item.get("config_provenance")
+                            old_fields = old_provenance.get("authored_fields", []) if isinstance(old_provenance, dict) else []
+                            new_fields = new_provenance.get("authored_fields", []) if isinstance(new_provenance, dict) else []
+                            old_fields = old_fields if isinstance(old_fields, list) else []
+                            new_fields = new_fields if isinstance(new_fields, list) else []
+                            if old_fields or new_fields:
+                                merged["config_provenance"] = {**(old_provenance if isinstance(old_provenance, dict) else {}), **(new_provenance if isinstance(new_provenance, dict) else {}), "authored_fields": list(dict.fromkeys(
+                                    field for field in [*old_fields, *new_fields] if isinstance(field, str)))}
+                            current[index] = merged
+                    clean[key] = current
+                for key in ("robot_links", "custom_calibration", "signal_overrides", "refill_config", "sessions", "device_options"):
+                    if key not in clean:
+                        continue
+                    if not isinstance(clean[key], dict):
+                        raise ValueError("Per-device updates must be an object")
+                    merged = deepcopy(settings.get(key) or {})
+                    for entity, value in clean[key].items():
+                        if key == "robot_links":
+                            if not isinstance(entity, str) or not entity.startswith("vacuum.") or len(entity) <= 7:
+                                raise ValueError("Select a vacuum entity")
+                            if value not in (None, "distinct") and (not isinstance(value, str) or not value.startswith("vacuum.") or len(value) <= 7):
+                                raise ValueError("Select a vacuum entity")
+                            if value == entity:
+                                raise ValueError("A robot cannot duplicate itself")
+                        if value is None:
+                            merged.pop(entity, None)
+                        elif key == "device_options" and isinstance(value, dict):
+                            from .device_options import merge_options
+                            entry = merge_options(dict(merged.get(entity) or {}), value)
+                            if entry:
+                                merged[entity] = entry
+                            else:
+                                merged.pop(entity, None)
+                        elif key in ("custom_calibration", "signal_overrides", "refill_config") and isinstance(value, dict):
+                            entry = deepcopy(merged.get(entity) or {})
+                            if not isinstance(entry, dict):
+                                entry = {}
+                            for field, update in value.items():
+                                if update is None:
+                                    entry.pop(field, None)
+                                elif key == "custom_calibration" and field == "usage_ml_per_m2" and isinstance(update, dict):
+                                    entry[field] = {**(entry.get(field) or {}), **update}
+                                else:
+                                    entry[field] = update
+                            if entry:
+                                merged[entity] = entry
+                            else:
+                                merged.pop(entity, None)
+                        else:
+                            merged[entity] = value
+                    clean[key] = merged
             updated_settings = {**settings, **clean}
             if any(key in clean for key in THRESHOLD_KEYS):
                 validate_threshold_settings(updated_settings)
@@ -406,13 +478,26 @@ class VacuumWaterStorage:
         regular writes must go through async_set_settings.
         """
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             hidden = set((data.get("identity_orphan_sources") or {}).keys())
             if key in ("configured_devices", "user_devices") and isinstance(value, list) and hidden:
                 value = [*value, *(deepcopy(item) for item in data["settings"].get(key, [])
                                   if isinstance(item, dict) and item.get("vacuum_entity") in hidden)]
             data["settings"][str(key)] = deepcopy(value)
             await self._store.async_save(data)
+            self._data = data
+
+    async def async_remove_user_device(self, vacuum_entity: str) -> dict[str, Any]:
+        """Remove just one device from the latest settings under the Store lock."""
+        async with self._lock:
+            data = deepcopy(await self._ensure_loaded_locked())
+            hidden = set((data.get("identity_orphan_sources") or {}).keys())
+            data["settings"]["user_devices"] = [item for item in data["settings"].get("user_devices") or []
+                if not (isinstance(item, dict) and item.get("vacuum_entity") == vacuum_entity
+                        and vacuum_entity not in hidden)]
+            await self._store.async_save(data)
+            self._data = data
+            return _public_state(data)["settings"]
 
     async def async_get_tank_state(self, vacuum_entity: str) -> dict[str, Any]:
         """Return one vacuum tank state."""
@@ -428,9 +513,10 @@ class VacuumWaterStorage:
         if not vacuum_entity:
             raise ValueError("vacuum_entity is required")
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             data["tank_states"][vacuum_entity] = deepcopy(tank_state)
             await self._store.async_save(data)
+            self._data = data
 
     async def async_set_tank_states(
         self,
@@ -451,7 +537,7 @@ class VacuumWaterStorage:
         pass starts from the refilled state. Returns the states actually written.
         """
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             written: dict[str, dict[str, Any]] = {}
             for vacuum_entity, tank_state in tank_states.items():
                 if vacuum_entity in self._retired_vacuum_ids or vacuum_entity in self._identity_unavailable_ids:
@@ -464,13 +550,15 @@ class VacuumWaterStorage:
                 written[vacuum_entity] = deepcopy(tank_state)
             if written and persist:
                 await self._save_locked(data, delay_seconds)
+            if written:
+                self._data = data
             return written
 
     async def _save_locked(self, data: dict[str, Any], delay_seconds: float | None = None) -> None:
         """Write now, or coalesce frequent event-driven writes (flushed on shutdown)."""
         delay_save = getattr(self._store, "async_delay_save", None)
         if delay_seconds and callable(delay_save):
-            delay_save(lambda: data, delay_seconds)
+            delay_save(lambda: self._data, delay_seconds)
             return
         await self._store.async_save(data)
 
@@ -483,7 +571,7 @@ class VacuumWaterStorage:
         if source not in REFILL_SOURCES:
             raise ValueError("Unknown refill source")
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             state = self.default_tank_state()
             state.update(data["tank_states"].get(vacuum_entity) or {})
             # A second report of the same physical refill (a double press, the
@@ -497,6 +585,7 @@ class VacuumWaterStorage:
                 if confirm_same_refill(state, source):
                     data["tank_states"][vacuum_entity] = state
                     await self._store.async_save(data)
+                    self._data = data
                 return deepcopy(state)
             # A refill starts a new baseline; it is not a signal gap.
             practice = data["settings"].get("refill_settings", {}).get(vacuum_entity, {}).get("full_refill_practice_confirmed") is True
@@ -504,6 +593,7 @@ class VacuumWaterStorage:
             state["last_reset_iso"] = when_iso
             data["tank_states"][vacuum_entity] = state
             await self._store.async_save(data)
+            self._data = data
             return deepcopy(state)
 
     async def async_mark_empty(self, vacuum_entity: str) -> dict[str, Any]:
@@ -511,7 +601,7 @@ class VacuumWaterStorage:
         if not isinstance(vacuum_entity, str) or not vacuum_entity.startswith("vacuum.") or len(vacuum_entity) <= 7:
             raise ValueError("Select a vacuum entity")
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             state = self.default_tank_state()
             state.update(data["tank_states"].get(vacuum_entity) or {})
             if state.get("water_empty_active") or state.get("user_empty_active"):
@@ -519,6 +609,7 @@ class VacuumWaterStorage:
             state["user_empty_active"] = True
             data["tank_states"][vacuum_entity] = state
             await self._store.async_save(data)
+            self._data = data
             return deepcopy(state)
 
     async def async_set_refill_settings(
@@ -551,7 +642,7 @@ class VacuumWaterStorage:
             if value is not None
         }
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             settings = data["settings"]
             all_settings = dict(settings.get("refill_settings") or {})
             previous = all_settings.get(vacuum_entity) or {}
@@ -565,6 +656,7 @@ class VacuumWaterStorage:
                 all_settings.pop(vacuum_entity, None)
             settings["refill_settings"] = all_settings
             await self._store.async_save(data)
+            self._data = data
             return _public_state(data)["settings"]
 
     async def async_set_device_options(self, vacuum_entity: str, patch: dict[str, Any]) -> dict[str, Any]:
@@ -576,7 +668,7 @@ class VacuumWaterStorage:
         if not isinstance(patch, dict):
             raise ValueError("Options must be an object")
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             settings = data["settings"]
             all_options = dict(settings.get("device_options") or {})
             merged = merge_options(dict(all_options.get(vacuum_entity) or {}), patch)
@@ -586,6 +678,7 @@ class VacuumWaterStorage:
                 all_options.pop(vacuum_entity, None)
             settings["device_options"] = all_options
             await self._store.async_save(data)
+            self._data = data
             return _public_state(data)["settings"]
 
     async def async_set_robot_link(self, vacuum_entity: str, target: str | None) -> dict[str, Any]:
@@ -600,7 +693,7 @@ class VacuumWaterStorage:
         if target == vacuum_entity:
             raise ValueError("A robot cannot duplicate itself")
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             settings = data["settings"]
             links = dict(settings.get("robot_links") or {})
             if target is None:
@@ -609,6 +702,7 @@ class VacuumWaterStorage:
                 links[vacuum_entity] = target
             settings["robot_links"] = links
             await self._store.async_save(data)
+            self._data = data
             return _public_state(data)["settings"]
 
     async def async_save_measurement(self, vacuum_entity, index, expected_ts, values):
@@ -618,7 +712,7 @@ class VacuumWaterStorage:
         if not isinstance(vacuum_entity, str) or not vacuum_entity.startswith("vacuum."):
             raise ValueError("Select a vacuum entity")
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             sessions = data["tank_states"].get(vacuum_entity, {}).get("automatic_sessions", [])
             session = select_recorded_cycle(sessions, index, expected_ts)
             sample = build_local_measurement(session, values, vacuum_entity)
@@ -649,6 +743,7 @@ class VacuumWaterStorage:
                         and _compatible_context(p.get("context"), fitted["context"]))] + [fitted]
             data["settings"].update(local_measurements=all_samples, consumption_calibrations=profiles)
             await self._store.async_save(data)
+            self._data = data
             return {"saved": True, "sample_count": len(matching), "calibration": deepcopy(fitted)}
 
     async def async_set_measurement_plan(self, vacuum_entity, plan):
@@ -658,11 +753,12 @@ class VacuumWaterStorage:
             raise ValueError("Select a vacuum entity")
         clean = validate_measurement_plan(plan)
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             plans = deepcopy(data["settings"].get("measurement_plans") or {})
             plans[vacuum_entity] = clean
             data["settings"]["measurement_plans"] = plans
             await self._store.async_save(data)
+            self._data = data
             return _public_state(data)["settings"]
 
     async def async_reprofile(self, vacuum_entity: str) -> dict[str, Any]:
@@ -671,7 +767,7 @@ class VacuumWaterStorage:
             raise ValueError("vacuum_entity must name a vacuum")
         from .sensor_calculations import _configuration_field_provenance
         async with self._lock:
-            data = await self._ensure_loaded_locked()
+            data = deepcopy(await self._ensure_loaded_locked())
             for key in ("configured_devices", "user_devices"):
                 for index, device in enumerate(data["settings"].get(key) or []):
                     if not isinstance(device, dict) or device.get("vacuum_entity") != vacuum_entity:
@@ -686,6 +782,7 @@ class VacuumWaterStorage:
                 state.update(last_area=None, last_duration_seconds=None, last_tick_ts=0,
                              last_water_volume_ml=None, area_gap=True, duration_gap=True)
             await self._store.async_save(data)
+            self._data = data
             return _public_state(data)["settings"]
 
     async def _ensure_loaded_locked(self) -> dict[str, Any]:

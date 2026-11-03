@@ -117,6 +117,8 @@ async def _ws_get_state(
     {
         vol.Required("type"): f"{DOMAIN}/set_settings",
         vol.Required("patch"): dict,
+        vol.Optional("partial", default=False): bool,
+        vol.Optional("expected"): dict,
     }
 )
 @websocket_api.async_response
@@ -138,7 +140,12 @@ async def _ws_set_settings(
             return
         entry = entries[0]
     try:
-        settings = await _storage(hass).async_set_settings(msg["patch"])
+        if "expected" in msg:
+            settings = await _storage(hass).async_set_settings(msg["patch"], partial=msg.get("partial", False), expected=msg["expected"])
+        elif msg.get("partial"):
+            settings = await _storage(hass).async_set_settings(msg["patch"], partial=True)
+        else:
+            settings = await _storage(hass).async_set_settings(msg["patch"])
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
@@ -147,10 +154,21 @@ async def _ws_set_settings(
         if options != entry.options:
             hass.config_entries.async_update_entry(entry, options=options)
     bindings_refreshed = None
-    if any(key in msg["patch"] for key in ("configured_devices", "user_devices", "robot_links")):
+    if any(key in msg["patch"] for key in ("configured_devices", "user_devices", "robot_links",
+                                           "signal_overrides", "custom_calibration", "refill_config", "device_options")):
         bindings_refreshed = await _refresh_bindings(hass)
     _notify_store_updated(hass, {"settings": settings})
     connection.send_result(msg["id"], {"settings": settings, "bindings_refreshed": bindings_refreshed})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/refresh_bindings"})
+@websocket_api.async_response
+async def _ws_refresh_bindings(hass, connection, msg):
+    """Retry refresh only; never repeat a previously saved action."""
+    refreshed = await _refresh_bindings(hass)
+    stored = await _storage(hass).async_get_state()
+    connection.send_result(msg["id"], {"bindings_refreshed": refreshed, "settings": stored.get("settings") or {},
+                                       **_vacuum_list(hass, stored)})
 
 
 @websocket_api.websocket_command(
@@ -173,17 +191,7 @@ async def _ws_remove_user_device(
     explicit user delete is intentional.
     """
     storage = _storage(hass)
-    current = await storage.async_get_settings()
-    remaining = [
-        d
-        for d in (current.get("user_devices") or [])
-        if not (
-            isinstance(d, dict)
-            and d.get("vacuum_entity") == msg["vacuum_entity"]
-        )
-    ]
-    await storage.async_replace_settings_key("user_devices", remaining)
-    settings = await storage.async_get_settings()
+    settings = await storage.async_remove_user_device(msg["vacuum_entity"])
     bindings_refreshed = await _refresh_bindings(hass)
     _notify_store_updated(hass, {"settings": settings})
     connection.send_result(
@@ -328,8 +336,9 @@ async def _ws_set_measurement_plan(hass, connection, msg):
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
+    refreshed = await _refresh_bindings(hass)
     _notify_store_updated(hass, {"settings":settings})
-    connection.send_result(msg["id"], {"saved":True, "settings":settings})
+    connection.send_result(msg["id"], {"saved":True, "settings":settings, "bindings_refreshed": refreshed})
 
 
 @websocket_api.websocket_command({
@@ -385,12 +394,9 @@ async def _ws_set_refill_settings(
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
-    ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
-    if ticker is not None:
-        # Rebinding subscribes to the new button/lid entities right away.
-        hass.async_create_task(ticker.run(None))
+    refreshed = await _refresh_bindings(hass)
     _notify_store_updated(hass, {"settings": settings})
-    connection.send_result(msg["id"], {"settings": settings})
+    connection.send_result(msg["id"], {"settings": settings, "bindings_refreshed": refreshed})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/health"})
@@ -410,14 +416,14 @@ async def _ws_health(hass, connection, msg):
 @websocket_api.async_response
 async def _ws_set_device_options(hass, connection, msg):
     """Store a robot's options (tank size); ``null`` restores the default."""
-    from .robots import async_set_options
-
     try:
-        settings = await async_set_options(hass, msg["vacuum_entity"], msg["options"])
+        settings = await _storage(hass).async_set_device_options(msg["vacuum_entity"], msg["options"])
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
-    connection.send_result(msg["id"], {"settings": settings})
+    refreshed = await _refresh_bindings(hass)
+    _notify_store_updated(hass, {"settings": settings})
+    connection.send_result(msg["id"], {"settings": settings, "bindings_refreshed": refreshed})
 
 
 @websocket_api.websocket_command({
@@ -448,14 +454,14 @@ async def _ws_mark_empty(hass, connection, msg):
 @websocket_api.async_response
 async def _ws_set_robot_link(hass, connection, msg):
     """Hide a duplicate robot (target = the real robot), keep it (\"distinct\") or forget (null)."""
-    from .robots import async_set_link
-
     try:
-        settings = await async_set_link(hass, msg["vacuum_entity"], msg["target"])
+        settings = await _storage(hass).async_set_robot_link(msg["vacuum_entity"], msg["target"])
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
-    connection.send_result(msg["id"], {"settings": settings})
+    refreshed = await _refresh_bindings(hass)
+    _notify_store_updated(hass, {"settings": settings})
+    connection.send_result(msg["id"], {"settings": settings, "bindings_refreshed": refreshed})
 
 
 def async_register_commands(hass: HomeAssistant) -> None:
@@ -465,6 +471,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_list_vacuums,
         _ws_get_state,
         _ws_set_settings,
+        _ws_refresh_bindings,
         _ws_remove_user_device,
         _ws_reprofile,
         _ws_reset_tank,

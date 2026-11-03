@@ -1013,6 +1013,11 @@ async def test_measurement_save_reports_refresh_failure_without_losing_saved_dat
     assert len(settings["local_measurements"][VACUUM]) == 3
     assert settings["consumption_calibrations"][VACUUM][0]["coefficient"] == 10
     monkeypatch.setattr(integration, "async_tick_water_state", original_tick)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/refresh_bindings"})
+    retry = await client.receive_json()
+    assert retry["success"] and retry["result"]["bindings_refreshed"] is True
+    assert len(retry["result"]["settings"]["local_measurements"][VACUUM]) == 3
+    assert len((await storage.async_get_state())["settings"]["local_measurements"][VACUUM]) == 3
     hass.states.async_set("sensor.robot_cleaning_area", "7", {"unit_of_measurement": "m²"})
     await _settle(hass)
     assert (await _tank(storage))["last_area"] == 7
@@ -1243,3 +1248,50 @@ async def test_existing_robot_rename_into_retired_id_blocks_stale_card(hass, has
     await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
         "configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234}]}})
     assert not (await client.receive_json())["success"]
+
+
+async def test_partial_settings_from_two_stale_ws_clients_preserve_other_devices(hass, hass_ws_client, hass_storage):
+    """Each public partial update merges against Store, not the client's stale snapshot."""
+    storage = await _setup(hass)
+    a, b = await hass_ws_client(hass), await hass_ws_client(hass)
+    for client in (a, b):
+        await client.send_json({"id": 1, "type": f"{DOMAIN}/get_state"})
+        assert (await client.receive_json())["success"]
+    updates = [
+        (a, {"configured_devices": [{"vacuum_entity": VACUUM, "name": "A", "future_field": {"value": 7}}],
+             "robot_links": {"vacuum.copy_a": "distinct"}, "custom_calibration": {f"entity:{VACUUM}": {"tracked_capacity_ml": 4000}}}),
+        (b, {"configured_devices": [{"vacuum_entity": "vacuum.other", "name": "B"}],
+             "robot_links": {"vacuum.copy_b": "distinct"}, "custom_calibration": {"entity:vacuum.other": {"tracked_capacity_ml": 5000}}}),
+    ]
+    for client, patch in updates:
+        await client.send_json({"id": 2, "type": f"{DOMAIN}/set_settings", "partial": True, "patch": patch})
+        reply = await client.receive_json()
+        assert reply["success"], reply
+    await a.send_json({"id": 3, "type": f"{DOMAIN}/set_settings", "partial": True,
+                       "patch": {"configured_devices": [{"vacuum_entity": VACUUM, "name": "A2"}]}})
+    assert (await a.receive_json())["success"]
+    state = await storage.async_get_state()
+    settings = state["settings"]
+    devices = {d["vacuum_entity"]: d for d in settings["configured_devices"]}
+    assert devices[VACUUM]["name"] == "A2" and devices[VACUUM]["future_field"] == {"value": 7}
+    assert devices["vacuum.other"]["name"] == "B"
+    assert settings["robot_links"]["vacuum.copy_a"] == settings["robot_links"]["vacuum.copy_b"] == "distinct"
+    assert settings["custom_calibration"][f"entity:{VACUUM}"]["tracked_capacity_ml"] == 4000
+    assert settings["custom_calibration"]["entity:vacuum.other"]["tracked_capacity_ml"] == 5000
+    assert hass_storage[DOMAIN]["data"]["settings"] == settings
+
+
+async def test_stale_ws_compare_and_set_refuses_maintenance_overwrite(hass, hass_ws_client):
+    """A stale card cannot silently replace another card's maintenance edit."""
+    storage = await _setup(hass)
+    a, b = await hass_ws_client(hass), await hass_ws_client(hass)
+    for client in (a, b):
+        await client.send_json({"id": 1, "type": f"{DOMAIN}/get_state"})
+        assert (await client.receive_json())["result"]["settings"]["maintenance_items"] == []
+    await a.send_json({"id": 2, "type": f"{DOMAIN}/set_settings", "expected": {"maintenance_items": []},
+                       "patch": {"maintenance_items": [{"name": "A"}]}})
+    assert (await a.receive_json())["success"]
+    await b.send_json({"id": 2, "type": f"{DOMAIN}/set_settings", "expected": {"maintenance_items": []},
+                       "patch": {"maintenance_items": [{"name": "B"}]}})
+    assert not (await b.receive_json())["success"]
+    assert (await storage.async_get_state())["settings"]["maintenance_items"] == [{"name": "A"}]

@@ -13500,7 +13500,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     try { localStorage.setItem('ha-tools-vacuum-water-monitor-settings', JSON.stringify({ _activeTab: this._activeTab, _activeDeviceIdx: this._activeDeviceIdx })); } catch(e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
     this._applyServerSettings();
     const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
-    if (configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices });
+    if (configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices }, {partial:true});
     this._ensureServerState(true);
   }
 
@@ -13547,10 +13547,18 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._balanceLinks = listed && listed.balance_links;
         this._applyServerSettings();
         const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
-        const unchanged = JSON.stringify(configuredDevices) === JSON.stringify(this._serverState.settings.configured_devices || []);
+        const existing = this._serverState.settings.configured_devices || [];
+        const unchanged = configuredDevices.every(item => {
+          const prior = existing.find(d => d.vacuum_entity === item.vacuum_entity);
+          return prior && Object.entries(item).every(([key, value]) => {
+            if (key === 'config_provenance') return (value.authored_fields || []).every(field => (prior.config_provenance?.authored_fields || []).includes(field));
+            return JSON.stringify(prior[key]) === JSON.stringify(value);
+          });
+        });
         if (configuredDevices.length && !unchanged) {
-          const saved = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch: { configured_devices: configuredDevices } });
+          const saved = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch: { configured_devices: configuredDevices }, partial: true });
           if (this._serverRefreshPending) return;
+          if (saved?.bindings_refreshed === false) this._bindingRefreshState = 'failed';
           if (saved && saved.settings) {
             this._serverState.settings = saved.settings;
             this._applyServerSettings();
@@ -13818,15 +13826,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (settings.critical_threshold != null && !this._authoredConfigKeys?.has('critical_threshold')) this._config.critical_threshold = settings.critical_threshold;
   }
 
-  async _saveServerSettings(patch) {
+  async _saveServerSettings(patch, {partial = false, expected = null} = {}) {
     if (!this._hass) return { ok: false, error: new Error('Home Assistant is unavailable') };
     try {
-      const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch });
+      const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch, ...(partial ? {partial:true} : {}), ...(expected ? {expected} : {}) });
       if (result && result.settings) {
         this._serverState.settings = result.settings;
         this._applyServerSettings();
       }
-      if (Object.hasOwn(patch, 'robot_links')) await this._ensureServerState(true);
+      if (result?.bindings_refreshed === false) { this._bindingRefreshState = 'failed'; this._lastHtml = ''; this._render({preserveDraft:true}); }
+      if (Object.hasOwn(patch, 'robot_links') && result?.bindings_refreshed !== false) await this._ensureServerState(true);
       return { ok: true, settings: (result && result.settings) || this._serverState.settings };
     } catch (err) {
       console.error('[ha-vacuum-water-monitor] settings save failed:', err);
@@ -13887,30 +13896,37 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._applyServerSettings();
   }
 
-  _saveMaintenanceItems() {
-    this._saveServerSettings({ maintenance_items: this._maintenanceItems });
+  async _saveMaintenanceItems(next) {
+    const expected = {maintenance_items: this._serverState.settings.maintenance_items || []};
+    const result = await this._saveServerSettings({maintenance_items: next}, {expected});
+    if (!result.ok) {
+      this._toast(this._lang === 'pl' ? 'Nie zapisano. Odśwież kartę i spróbuj ponownie.' : 'Not saved. Refresh the card and retry.', true);
+      await this._ensureServerState(true);
+    }
+    this._render({preserveDraft:true});
   }
 
   _loadUserDevices() {
     this._applyServerSettings();
   }
 
-  _saveUserDevices() {
-    this._saveServerSettings({ user_devices: this._userDevices });
+  _saveUserDevices(device) {
+    return this._saveServerSettings({ user_devices: [device] }, {partial:true});
   }
 
-  _addUserDevice(entityId) {
+  async _addUserDevice(entityId) {
     if (!entityId || !entityId.startsWith('vacuum.')) return false;
     if (this._userDevices.find(d => d.vacuum_entity === entityId)) return false;
     const state = this._hass && this._hass.states[entityId];
     const name = (state && state.attributes && state.attributes.friendly_name) || entityId;
     const descriptor = this._backendDescriptor({ vacuum_entity: entityId });
-    this._userDevices.push(this._withAuthoredProvenance({
+    const added = this._withAuthoredProvenance({
       vacuum_entity: entityId,
       name: descriptor?.name || name,
       icon: '\uD83E\uDD16',
-    }, ['vacuum_entity']));
-    this._saveUserDevices();
+    }, ['vacuum_entity']);
+    const result = await this._saveUserDevices(added);
+    if (!result.ok) { this._toast(this._lang === 'pl' ? 'Nie zapisano urządzenia.' : 'Device was not saved.', true); return false; }
     return true;
   }
 
@@ -13944,7 +13960,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     } catch (e) {}
   }
 
-  _upsertUserDevicePatch(device, patch) {
+  async _upsertUserDevicePatch(device, patch) {
     const entityId = device && device.vacuum_entity;
     if (!entityId) return;
     const idx = this._userDevices.findIndex(d => d.vacuum_entity === entityId);
@@ -13972,7 +13988,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ['vacuum_entity', 'name', 'icon', 'brand_profile', ...Object.keys(patch || {})]
       ));
     }
-    this._saveUserDevices();
+    const result = await this._saveUserDevices(this._userDevices.find(d => d.vacuum_entity === entityId));
+    if (!result.ok) { this._applyServerSettings(); throw result.error; }
   }
 
   // ── SERVER WATER STATE (replaces helper automations + browser app state) ───
@@ -14069,8 +14086,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._applyServerSettings();
   }
 
-  _saveRefillConfig() {
-    this._saveServerSettings({ refill_config: this._refillConfig || {} });
+  _saveRefillConfig(shortId, changes) {
+    return this._saveServerSettings({ refill_config: {[shortId]: changes} }, {partial:true});
   }
 
   // Get all input_button entities from HA
@@ -15741,6 +15758,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     try {
       const result = await this._hass.callWS(request);
       if (result?.saved !== true || !Number.isInteger(result.sample_count) || result.sample_count < 1) throw new Error('Invalid measurement acknowledgement');
+      if (result.bindings_refreshed === false) {
+        this._bindingRefreshState = 'failed';
+        this._render({preserveDraft:true});
+        const current = sr.getElementById('cal-local-status');
+        if (current) current.textContent = this._bindingRefreshMessage();
+        return true;
+      }
       if (sr.getElementById('cal-local-status') !== status || generation !== (this._localMeasurementGeneration || 0)) return true;
       if (status) status.textContent = result.calibration
         ? `${this._waterText("Saved privately.")} ${result.sample_count} ${this._waterText("sample(s)")}; ${this._waterText("device calibration available within its measured area range. Independent accuracy remains separate.")}`
@@ -15802,6 +15826,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     try {
       const result = await this._hass.callWS({type:'ha_vacuum_water_monitor/set_measurement_plan',vacuum_entity:device.vacuum_entity,plan});
       if (result?.saved !== true) throw new Error('Unacknowledged plan');
+      if (result.bindings_refreshed === false) { this._bindingRefreshState = 'failed'; this._render({preserveDraft:true}); const current = sr.getElementById('cal-plan-status'); if (current) current.textContent = this._bindingRefreshMessage(); return true; }
       if (sr.getElementById('cal-plan-status') === status && status) status.textContent = this._waterText('Saved for future collection. Old cycles stay unchanged.');
       return true;
     } catch (_) {
@@ -15951,14 +15976,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._renderContributionConsent();
   }
 
-  _saveSession(device, session) {
+  async _saveSession(device, session) {
     const key = (device && (device.vacuum_entity || device.name)) || 'default';
     const all = { ...(((this._serverState.settings || {}).sessions) || {}) };
     const sessions = this._getSessionsFromStorage(device).filter(item => item.type !== 'automatic');
     sessions.unshift({ ...session, ts: Date.now() });
     all[key] = sessions.slice(0, 50);
-    this._serverState.settings = { ...(this._serverState.settings || {}), sessions: all };
-    this._saveServerSettings({ sessions: all });
+    const result = await this._saveServerSettings({sessions: all}, {expected: {sessions: this._serverState.settings.sessions || {}}});
+    if (!result.ok) { this._toast(this._lang === 'pl' ? 'Nie zapisano. Odśwież kartę i spróbuj ponownie.' : 'Not saved. Refresh the card and retry.', true); await this._ensureServerState(true); }
+    return result.ok;
   }
 
   // ── TAB: STATS ─────────────────────────────────────────────────────────────
@@ -16022,9 +16048,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
       this._serverState = {...this._serverState, settings: result.settings};
       this._discoveredVacuums = result.vacuums || [];
       this._balanceLinks = result.balance_links;
-      this._render();
+      if (result.bindings_refreshed === false) this._bindingRefreshState = 'failed';
+      this._render({preserveDraft:true});
       const current = this.shadowRoot?.getElementById('vwm-reprofile-status');
-      if (current) current.textContent = this._waterText("Profile refreshed. Your calibration and history are preserved.");
+      if (current) current.textContent = result.bindings_refreshed === false ? this._bindingRefreshMessage() : this._waterText("Profile refreshed. Your calibration and history are preserved.");
       return true;
     } catch (error) {
       if (status) status.textContent = this._waterText("Could not refresh the profile. Please try again.");
@@ -16118,7 +16145,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     };
     if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Saving…'; }
     if (status) { status.textContent = this._waterText("Saving to Home Assistant…"); status.style.color = 'var(--bento-text-secondary)'; }
-    const result = await this._saveServerSettings({ custom_calibration: all });
+    const optionEntity = activeDevice && activeDevice.vacuum_entity;
+    const patch = {custom_calibration: {[key]: custom}};
+    if (custom.tracked_capacity_ml && optionEntity && this._serverState?.settings?.device_options?.[optionEntity]?.capacity_ml) patch.device_options = {[optionEntity]: {capacity_ml:null}};
+    const result = await this._saveServerSettings(patch, {partial:true});
     const currentSaveButton = shadow.getElementById('vwm-custom-save');
     const currentStatus = shadow.getElementById('vwm-custom-status');
     if (currentSaveButton) { currentSaveButton.disabled = false; currentSaveButton.textContent = '\uD83D\uDCBE Save'; }
@@ -16127,14 +16157,6 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return false;
     }
     this._customCalib = custom;
-    // The newest tank size wins: a size typed here replaces one set in Home Assistant.
-    const optionEntity = activeDevice && activeDevice.vacuum_entity;
-    if (custom.tracked_capacity_ml && optionEntity && this._serverState?.settings?.device_options?.[optionEntity]?.capacity_ml) {
-      try {
-        const cleared = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_device_options`, vacuum_entity: optionEntity, options: { capacity_ml: null } });
-        if (cleared && cleared.settings) { this._serverState.settings = cleared.settings; this._applyServerSettings(); }
-      } catch (err) { console.debug('[ha-vacuum-water-monitor] tank size option not cleared:', err); }
-    }
     if (currentStatus) { currentStatus.textContent = '\u2705 Saved in Home Assistant for this device.'; currentStatus.style.color = '#22c55e'; }
     return true;
   }
@@ -16145,7 +16167,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const key = this._customCalibrationKey(activeDevice);
     const all = { ...(((this._serverState.settings || {}).custom_calibration) || {}) };
     delete all[key];
-    const result = await this._saveServerSettings({ custom_calibration: all });
+    const result = await this._saveServerSettings({ custom_calibration: {[key]:null} }, {partial:true});
     const currentStatus = this.shadowRoot.getElementById('vwm-custom-status') || status;
     if (!result.ok) {
       if (currentStatus) { currentStatus.textContent = 'Could not clear calibration. Please try again.'; currentStatus.style.color = '#ef4444'; }
@@ -16572,6 +16594,7 @@ target:
     const shortId = device.vacuum_entity.replace('vacuum.', '');
     const legacyBefore = { ...(this._refillConfig[shortId] || {}) };
     const lidBefore = ((this._userDevices || []).find(d => d && d.vacuum_entity === device.vacuum_entity) || {}).reset_door_sensor;
+    let saved = false;
     try {
       const result = await this._hass.callWS({
         type: `${VWM_DOMAIN}/set_refill_settings`,
@@ -16581,10 +16604,12 @@ target:
         lid_entity: lid,
         ...(sr.getElementById("vwm-refill-full-practice") ? {full_refill_practice_confirmed: sr.getElementById("vwm-refill-full-practice").checked} : {}),
       });
+      saved = true;
       if (result && result.settings) {
         this._serverState.settings = result.settings;
         this._applyServerSettings();
       }
+      if (result?.bindings_refreshed === false) this._bindingRefreshState = 'failed';
       // Bindings made by the pre-5.7 card: the legacy button/lid config and a lid in
       // the user device must not keep a removed choice active.
       if (legacyBefore.buttonEntity || legacyBefore.sensorEntity) {
@@ -16592,16 +16617,19 @@ target:
         delete next.buttonEntity;
         delete next.sensorEntity;
         this._refillConfig[shortId] = next;
-        this._saveRefillConfig();
+        const cleared = await this._saveRefillConfig(shortId, {buttonEntity:null, sensorEntity:null});
+        if (!cleared.ok) throw cleared.error;
       }
       const userDevice = (this._userDevices || []).find(d => d && d.vacuum_entity === device.vacuum_entity);
       if (userDevice && lidBefore && lidBefore !== lid) {
-        this._upsertUserDevicePatch(device, { reset_door_sensor: null });
+        await this._upsertUserDevicePatch(device, { reset_door_sensor: null });
       }
-      if (status) { status.textContent = this._waterText("✅ Saved. Refill options apply right away."); status.style.color = '#22c55e'; }
+      if (result?.bindings_refreshed === false) { this._lastHtml = ''; this._render({preserveDraft:true}); }
+      const currentStatus = sr.getElementById('vwm-refill-status') || status;
+      if (currentStatus) { currentStatus.textContent = result?.bindings_refreshed === false ? this._bindingRefreshMessage() : this._waterText("✅ Saved. Refill options apply right away."); currentStatus.style.color = '#22c55e'; }
       return true;
     } catch (err) {
-      if (status) { status.textContent = `Could not save: ${(err && err.message) || err}`; status.style.color = '#ef4444'; }
+      if (status) { status.textContent = saved ? (this._lang === 'pl' ? 'Opcje zapisano, ale usunięcie starych powiązań nie powiodło się. Spróbuj ponownie.' : 'Options saved, but old bindings could not be removed. Please retry.') : `Could not save: ${(err && err.message) || err}`; status.style.color = '#ef4444'; }
       return false;
     }
   }
@@ -16621,7 +16649,8 @@ target:
       delete legacy[key];
     }
     this._refillConfig[shortId] = legacy;
-    this._saveRefillConfig();
+    const cleared = await this._saveRefillConfig(shortId, {buttonAutoId:null, sensorAutoId:null});
+    if (!cleared.ok) this._toast(this._lang === 'pl' ? 'Nie zapisano zmian starych automatyzacji.' : 'Could not save old automation changes.', true);
     this._render();
   }
 
@@ -16765,6 +16794,24 @@ target:
   }
 
   // ── MAIN RENDER ───────────────────────────────────────────────────────────
+
+  _bindingRefreshMessage() {
+    return this._lang === 'pl' ? 'Zapisano, ale nie udało się odświeżyć powiązań. Spróbuj odświeżyć ponownie.' : 'Saved, but bindings could not be refreshed. Retry the refresh.';
+  }
+
+  async _retryBindingRefresh() {
+    try {
+      const result = await this._hass.callWS({type:`${VWM_DOMAIN}/refresh_bindings`});
+      if (result?.bindings_refreshed !== true) throw new Error('Refresh failed');
+      if (result.settings) this._serverState.settings = result.settings;
+      if (result.vacuums) this._discoveredVacuums = result.vacuums;
+      if (result.balance_links) this._balanceLinks = result.balance_links;
+      this._bindingRefreshState = 'recovered';
+      this._applyServerSettings();
+    } catch (_) { this._bindingRefreshState = 'failed'; }
+    this._lastHtml = '';
+    this._render({preserveDraft:true});
+  }
 
   _render({ preserveDraft = false } = {}) {
     const draft = preserveDraft ? this._captureDraftState() : null;
@@ -17145,6 +17192,7 @@ input, select, textarea { max-width:100%; min-width:0; }
 </style>
       <div class="card">
         <div class="card-title">${_esc(this._config.title)}${cfg.compact && this._compactExpanded ? `<button type="button" id="vwm-collapse">${this._lang === 'pl' ? 'Zwiń kartę' : 'Collapse card'}</button>` : ''}</div>
+        ${this._bindingRefreshState ? `<div data-vwm-refresh-status role="status">${this._bindingRefreshState === 'failed' ? this._bindingRefreshMessage() : (this._lang === 'pl' ? 'Powiązania odświeżono.' : 'Bindings refreshed.')} ${this._bindingRefreshState === 'failed' ? `<button type="button" data-vwm-refresh-retry>${this._lang === 'pl' ? 'Odśwież ponownie' : 'Retry refresh'}</button>` : ''}</div>` : ''}
         ${cfg.show_help !== false && !(cfg.compact && !this._compactExpanded) ? `<details class="tip-banner" id="tip-banner"><summary>${this._waterText('How it works')}</summary>${this._tipHtml()}</details>` : ''}
         ${this._activeTab !== 'settings' && !(cfg.compact && !this._compactExpanded) ? this._buildSharingIntro() : ''}
         ${cfg.compact && !this._compactExpanded && !blockedConfiguredRobot && !(this._serverState?.registry_identity_conflicts || []).length ? '' : this._duplicateNoticeHtml()}
@@ -17241,6 +17289,7 @@ input, select, textarea { max-width:100%; min-width:0; }
       }
     });
 
+    sr.querySelector('[data-vwm-refresh-retry]')?.addEventListener('click', () => this._retryBindingRefresh());
     sr.querySelectorAll('.dup-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -17248,7 +17297,7 @@ input, select, textarea { max-width:100%; min-width:0; }
         const target = btn.dataset.target;
         if (!entity || !target) return;
         btn.disabled = true;
-        const result = await this._saveServerSettings({ robot_links: { ...this._robotLinks(), [entity]: target } });
+        const result = await this._saveServerSettings({ robot_links: { [entity]: target } }, {partial:true});
         if (!result.ok) btn.disabled = false;
         this._lastHtml = '';
         this._render({ preserveDraft: true });
@@ -17298,6 +17347,7 @@ input, select, textarea { max-width:100%; min-width:0; }
           } else if (action === 'save-capacity' || action === 'reset-capacity') {
             const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_device_options`, vacuum_entity: vacuum, options: { capacity_ml: value } });
             if (result && result.settings) { this._serverState.settings = result.settings; this._applyServerSettings(); }
+            if (result?.bindings_refreshed === false) this._bindingRefreshState = 'failed';
             this._capacityEdit = null;
           }
           await this._refreshHealth(true);
@@ -17397,49 +17447,41 @@ input, select, textarea { max-width:100%; min-width:0; }
     // Maintenance: add item
     const maintAddBtn = sr.querySelector('.maint-add-btn');
     if (maintAddBtn) {
-      maintAddBtn.addEventListener('click', () => {
+      maintAddBtn.addEventListener('click', async () => {
         const name = (sr.querySelector('#maint-name') || {}).value || '';
         const days = parseInt((sr.querySelector('#maint-days') || {}).value) || null;
         const icon = (sr.querySelector('#maint-icon') || {}).value || '\uD83D\uDD27';
         if (!name.trim()) return;
-        this._maintenanceItems.push({ name: name.trim(), intervalDays: days, icon, lastDone: null });
-        this._saveMaintenanceItems();
-        this._render();
+        await this._saveMaintenanceItems([...this._maintenanceItems, { name: name.trim(), intervalDays: days, icon, lastDone: null }]);
       });
     }
 
     // Maintenance: mark done
     sr.querySelectorAll('.maint-done-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const idx = parseInt(btn.dataset.idx);
-        if (this._maintenanceItems[idx]) {
-          this._maintenanceItems[idx].lastDone = Date.now();
-          this._saveMaintenanceItems();
-          this._render();
-        }
+        if (this._maintenanceItems[idx]) await this._saveMaintenanceItems(this._maintenanceItems.map((item, i) => i === idx ? {...item, lastDone: Date.now()} : item));
       });
     });
 
     // Maintenance: delete
     sr.querySelectorAll('.maint-del-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const idx = parseInt(btn.dataset.idx);
-        this._maintenanceItems.splice(idx, 1);
-        this._saveMaintenanceItems();
-        this._render();
+        await this._saveMaintenanceItems(this._maintenanceItems.filter((_, i) => i !== idx));
       });
     });
 
     // History: log manual session
     const histLogBtn = sr.querySelector('#hist-log-btn');
     if (histLogBtn) {
-      histLogBtn.addEventListener('click', () => {
+      histLogBtn.addEventListener('click', async () => {
         const area = (sr.querySelector('#hist-area') || {}).value || '';
         const water = (sr.querySelector('#hist-water') || {}).value || '';
         const duration = (sr.querySelector('#hist-duration') || {}).value || '';
         if (!area && !water && !duration) return;
-        this._saveSession(device, { area, water, duration });
-        this._render();
+        await this._saveSession(device, { area, water, duration });
+        this._render({preserveDraft:true});
       });
     }
 
@@ -17551,7 +17593,11 @@ input, select, textarea { max-width:100%; min-width:0; }
         signalSave.disabled = true;
         signalSave.textContent = '\u23F3 Saving...';
         if (status) { status.textContent = 'Saving to Home Assistant\u2026'; status.style.color = 'var(--bento-text-secondary)'; }
-        const result = await this._saveServerSettings({ signal_overrides: all });
+        const changes = {};
+        for (const key of new Set([...Object.keys(previous), ...Object.keys(entry)])) {
+          if (previous[key] !== entry[key]) changes[key] = Object.hasOwn(entry, key) ? entry[key] : null;
+        }
+        const result = await this._saveServerSettings({ signal_overrides: {[vacuumId]: changes} }, {partial:true});
         const currentSave = sr.querySelector('#vwm-signal-save');
         const currentStatus = sr.querySelector('#vwm-signal-status');
         if (currentSave) { currentSave.disabled = false; currentSave.textContent = '\uD83D\uDCBE Save signal mapping'; }
@@ -17567,7 +17613,7 @@ input, select, textarea { max-width:100%; min-width:0; }
     // Add manual vacuum
     const addManualBtn = sr.querySelector('#btn-add-manual-vacuum');
     if (addManualBtn) {
-      addManualBtn.addEventListener('click', () => {
+      addManualBtn.addEventListener('click', async () => {
         const input = sr.querySelector('#manual-vacuum-entity');
         const entityId = (input && input.value || '').trim();
         if (!entityId) return;
@@ -17577,7 +17623,7 @@ input, select, textarea { max-width:100%; min-width:0; }
           setTimeout(() => { addManualBtn.textContent = '+ Dodaj'; addManualBtn.style.color = ''; }, 2000);
           return;
         }
-        if (this._addUserDevice(entityId)) {
+        if (await this._addUserDevice(entityId)) {
           addManualBtn.textContent = '\u2705 Dodano!';
           addManualBtn.style.color = '#22c55e';
           setTimeout(() => { addManualBtn.textContent = '+ Dodaj'; addManualBtn.style.color = ''; this._render(); }, 800);
@@ -17590,10 +17636,10 @@ input, select, textarea { max-width:100%; min-width:0; }
 
     // Click discovered vacuum to add
     sr.querySelectorAll('.disc-add-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const entityId = btn.dataset.entity;
-        if (this._addUserDevice(entityId)) {
+        if (await this._addUserDevice(entityId)) {
           btn.textContent = '\u2705 Dodano!';
           btn.style.color = '#22c55e';
           setTimeout(() => this._render(), 800);

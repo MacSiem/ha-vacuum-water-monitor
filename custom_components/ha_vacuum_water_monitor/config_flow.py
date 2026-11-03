@@ -79,7 +79,21 @@ class HAVacuumWaterMonitorOptionsFlow(config_entries.OptionsFlow):
             except (ValueError, KeyError):
                 errors["base"] = "invalid_input"
             else:
-                return self.async_create_entry(title="", data={**self._config_entry.options, **user_input})
+                # Save before HA publishes new options; a failed Store write must
+                # leave both sources at their last acknowledged values.
+                from .const import DATA_STORAGE
+                from .websocket_api import _notify_store_updated
+                storage = self.hass.data.get(DOMAIN, {}).get(DATA_STORAGE)
+                if storage is None:
+                    errors["base"] = "cannot_save"
+                else:
+                    try:
+                        settings = await storage.async_set_settings(user_input)
+                    except OSError:
+                        errors["base"] = "cannot_save"
+                    else:
+                        _notify_store_updated(self.hass, {"settings": settings})
+                        return self.async_create_entry(title="", data={**self._config_entry.options, **user_input})
 
         options = self._config_entry.options
         return self.async_show_form(
