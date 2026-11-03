@@ -855,6 +855,62 @@ async def test_measurements_follow_registry_identity_after_rename_and_reuse(hass
         assert result["result"]["calibration"]["validation"]["validation_ids"] == ["local.104"]
 
 
+async def test_measured_calibration_remains_applicable_after_registry_rename(hass, hass_ws_client):
+    """A producer event uses the same physical calibration after a registry rename."""
+    from custom_components.ha_vacuum_water_monitor.profiles import CONSUMPTION_SETTINGS
+
+    storage = await _setup(hass)
+    registry = er.async_get(hass)
+    client = await hass_ws_client(hass)
+    plan = {"confirmed": True, "sku": "EU", "dock_variant": "tank", "firmware": "1.0",
+            "integration_version": "1.0", "settings": dict.fromkeys(CONSUMPTION_SETTINGS, "not_applicable")}
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_measurement_plan", "vacuum_entity": VACUUM, "plan": plan})
+    assert (await client.receive_json())["success"]
+    hass.states.async_set("select.robot_mop_mode", "deep")
+    await _settle(hass)
+    hass.states.async_set("select.robot_mop_mode", "standard")
+    await _settle(hass)
+    state = (await storage.async_get_state())["tank_states"][VACUUM]
+    context = state["last_consumption_context"]
+    assert context["firmware"] == "1.0"
+    sessions = [{"ts": n, "area": 10, "context": context, "accounting_valid": True,
+                 "exposure_complete": True, "segments": 1} for n in (201, 202, 203)]
+    state.update(initialized=True, used_ml=0, automatic_sessions=sessions)
+    await storage.async_set_tank_state(VACUUM, state)
+    measurement = {"observed_ml": 100, "resolution_ml": 5, "instrument": "graduated_jug",
+                   "boundaries_confirmed": True, "uninterrupted": True, "purpose": "training"}
+    for index in range(3):
+        await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": VACUUM,
+            "session_index": index, "session_ts": sessions[index]["ts"], "measurement": measurement})
+        assert (await client.receive_json())["success"]
+    async def ordinary_session(entity):
+        hass.states.async_set(entity, "cleaning", {"status": "cleaning"})
+        hass.states.async_set("sensor.robot_status", "cleaning")
+        hass.states.async_set("sensor.robot_cleaning_area", "0", {"unit_of_measurement": "m²"})
+        await _settle(hass)
+        hass.states.async_set("sensor.robot_cleaning_area", "10", {"unit_of_measurement": "m²"})
+        await _settle(hass)
+        hass.states.async_set(entity, "docked", {"status": "charging"})
+        hass.states.async_set("sensor.robot_status", "charging")
+        await _settle(hass)
+        return (await storage.async_get_state())["tank_states"][entity]
+
+    baseline = await ordinary_session(VACUUM)
+    assert baseline["used_ml"] == 100
+    assert baseline["last_accounting_evidence"] == "device_calibration"
+    baseline["used_ml"] = 0
+    await storage.async_set_tank_state(VACUUM, baseline)
+    renamed = "vacuum.r3_calibrated"
+    registry.async_update_entity(VACUUM, new_entity_id=renamed)
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set(renamed, "docked", {"status": "charging"})
+    await _settle(hass)
+    tank = await ordinary_session(renamed)
+    assert tank["used_ml"] == 100
+    assert tank["last_accounting_evidence"] == "device_calibration"
+    assert tank["automatic_sessions"][0]["water"] == 100
+
+
 async def test_vacuum_rename_while_unloaded_reconciles_registry_identity(hass):
     storage = await _setup(hass)
     await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True})
