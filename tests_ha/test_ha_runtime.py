@@ -314,6 +314,7 @@ async def test_card_refill_uses_confirmed_balance_owner(hass: HomeAssistant, has
     assert result["success"]
     await _settle(hass)
     tanks = (await storage.async_get_state())["tank_states"]
+    assert result["result"]["vacuum_entity"] == owner
     assert result["result"]["state"]["used_ml"] == 0
     assert tanks[owner]["used_ml"] == 0
     assert tanks[owner]["last_reset_source"] == "card"
@@ -330,7 +331,55 @@ async def test_card_refill_uses_confirmed_balance_owner(hass: HomeAssistant, has
         sensor = next(item.entity_id for item in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
                       if item.unique_id.endswith("_vacuum_robot_water_used_since_refill"))
         assert float(hass.states.get(sensor).state) == 0
+    history = list(tanks[owner]["refill_history"])
+    reset_ts = tanks[owner]["last_reset_ts"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": target_id})
+    assert (await client.receive_json())["success"]
+    await _settle(hass)
+    repeated = (await storage.async_get_state())["tank_states"]
+    assert repeated[owner]["refill_history"] == history
+    assert repeated[owner]["last_reset_ts"] == reset_ts
+    assert repeated[expected_other]["refill_history"] == before_other["refill_history"]
     unsub()
+
+
+@pytest.mark.parametrize("route", ["card", "service", "empty"])
+async def test_registry_duplicate_action_uses_balance_owner(hass: HomeAssistant, hass_ws_client, route):
+    """A registry-proven duplicate shares the displayed owner's tank."""
+    storage = await _setup(hass)
+    registry = er.async_get(hass)
+    primary = registry.async_get(VACUUM)
+    roborock = next(e for e in hass.config_entries.async_entries("roborock"))
+    copy = registry.async_get_or_create("vacuum", "roborock", "r2-registry-copy",
+        device_id=primary.device_id, config_entry=roborock, suggested_object_id="r2_registry_copy").entity_id
+    assert copy == "vacuum.r2_registry_copy"
+    hass.states.async_set(copy, "docked")
+    await _settle(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True,
+        "calibration_history": [{"sample": "owner"}], "refill_history": [{"source": "earlier"}]})
+    await storage.async_set_tank_state(copy, {"used_ml": 999, "initialized": True,
+        "calibration_history": [{"sample": "copy"}], "refill_history": [{"source": "copy"}]})
+    from custom_components.ha_vacuum_water_monitor.robots import async_reports
+    reports = await async_reports(hass)
+    assert any(r["vacuum_entity"] == VACUUM for r in reports)
+    assert not any(r["vacuum_entity"] == copy for r in reports)
+    client = await hass_ws_client(hass)
+    if route == "service":
+        await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": copy}, blocking=True)
+    else:
+        await client.send_json_auto_id({"type": f"{DOMAIN}/" + ("reset_tank" if route == "card" else "mark_empty"),
+                                        "vacuum_entity": copy})
+        assert (await client.receive_json())["success"]
+    await _settle(hass)
+    tanks = (await storage.async_get_state())["tank_states"]
+    assert tanks[copy]["used_ml"] == 999
+    assert tanks[copy]["refill_history"] == [{"source": "copy"}]
+    assert tanks[VACUUM]["calibration_history"] == [{"sample": "owner"}]
+    if route == "empty":
+        assert tanks[VACUUM]["water_empty_active"]
+    else:
+        assert tanks[VACUUM]["used_ml"] == 0
+        assert tanks[VACUUM]["last_reset_source"] == route
 
 
 async def test_a_device_with_the_old_placeholder_name_gets_the_robots_name(hass: HomeAssistant) -> None:
