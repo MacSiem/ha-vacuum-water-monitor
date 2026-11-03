@@ -1,5 +1,6 @@
 """Native HA registries and ordinary state-change accounting for TapoVac."""
 from datetime import timedelta
+from copy import deepcopy
 
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.util import dt as dt_util
@@ -173,3 +174,65 @@ async def test_settings_rebinds_a_to_b_and_unlinks_without_a_heartbeat(hass, has
     assert state["tank_states"]["vacuum.r1_native"].get("used_ml", 0) == 0
     assert state["tank_states"]["vacuum.r1_b"]["used_ml"] == 123
     assert state["tank_states"]["vacuum.r1_b"]["refill_history"] == [{"used_before_ml": 456}]
+
+
+async def test_nominal_bank_follows_registry_identity_after_rename_and_reuse(hass):
+    """Registry rename preserves the private nominal context, never another robot's bank."""
+    from custom_components.ha_vacuum_water_monitor import nominal_time_learning as learning
+
+    upstream = MockConfigEntry(domain="matter", title="Nominal synthetic")
+    upstream.add_to_hass(hass)
+    registry, devices = er.async_get(hass), dr.async_get(hass)
+    device = devices.async_get_or_create(config_entry_id=upstream.entry_id,
+        identifiers={("matter", "r3-nominal")}, manufacturer="Tapo", model="RV50 Pro Omni", model_id="1797")
+    original = registry.async_get_or_create("vacuum", "matter", "r3-nominal-vac", device_id=device.id,
+        config_entry=upstream, suggested_object_id="r3_nominal").entity_id
+    assert original == "vacuum.r3_nominal"
+    registry.async_get_or_create("select", "matter", "r3-nominal-mode", device_id=device.id,
+        config_entry=upstream, suggested_object_id="r3_nominal_mode", translation_key="clean_mode")
+    hass.states.async_set(original, "docked")
+    hass.states.async_set("select.r3_nominal_mode", "Vacuum and Mop;Deep Clean")
+    entry = MockConfigEntry(domain=DOMAIN, title="VWM", data={}, options={})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await settle(hass)
+    storage = hass.data[DOMAIN]["storage"]
+    tank = (await storage.async_get_state())["tank_states"][original]
+    context = deepcopy(tank["last_consumption_context"])
+    context.pop("action", None)
+    context.pop("field_sources", None)
+    assert context["device_id"] == original
+    capacity = 5000
+    bank = {}
+    for n in range(3):
+        now = 1_000_000 + n * 1_000_000
+        bank = learning.start_full(bank, context=context, capacity_ml=capacity, now_ts=now)
+        bank = learning.observe(bank, context=context, capacity_ml=capacity, now_ts=now, active=True)
+        for step in range(1, 11):
+            bank = learning.observe(bank, context=context, capacity_ml=capacity,
+                                    now_ts=now + step * 60_000, active=True)
+        bank = learning.finish_empty(bank, context=context, capacity_ml=capacity, now_ts=now + 600_000)
+    assert learning.resolve(bank, context=context, capacity_ml=capacity)["status"] == "active"
+    tank.update(nominal_time_learning=bank, initialized=True, used_ml=123)
+    await storage.async_set_tank_state(original, tank)
+    renamed = "vacuum.r3_nominal_renamed"
+    registry.async_update_entity(original, new_entity_id=renamed)
+    hass.states.async_remove(original)
+    hass.states.async_set(renamed, "docked")
+    await settle(hass)
+    independent = MockConfigEntry(domain="matter", title="Another robot")
+    independent.add_to_hass(hass)
+    replacement = registry.async_get_or_create("vacuum", "matter", "r3-other", config_entry=independent,
+                                                 suggested_object_id="r3_nominal")
+    assert replacement.entity_id == original
+    hass.states.async_set(original, "docked")
+    hass.states.async_set("select.r3_nominal_mode", "Vacuum")
+    await settle(hass)
+    hass.states.async_set("select.r3_nominal_mode", "Vacuum and Mop;Deep Clean")
+    await settle(hass)
+    tanks = (await storage.async_get_state())["tank_states"]
+    assert tanks[renamed]["nominal_time_resolution"]["status"] == "active"
+    assert tanks[renamed]["nominal_time_resolution"]["sample_count"] == 3
+    assert tanks[renamed]["nominal_time_resolution"]["accuracy"] == "not_established"
+    assert tanks[renamed]["nominal_time_learning"]["contexts"][0]["context"]["device_id"] == original
+    assert not (tanks.get(original, {}).get("nominal_time_learning") or {}).get("contexts")
