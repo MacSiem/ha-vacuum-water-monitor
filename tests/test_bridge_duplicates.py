@@ -256,6 +256,55 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
 """
         subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
 
+    def test_registry_and_settings_events_during_pending_load_render_latest(self):
+        script = r"""
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
+(async()=>{
+ for(const compact of [false,true]) {
+  const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'});
+  dom.window.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+  const id='vacuum.robot', card=dom.window.document.createElement('ha-vacuum-water-monitor');
+  card.setConfig({vacuum_entity:id,water_total_ml:4000,compact});
+  let subscriber,release,reads=0,lists=0;const calls=[];
+  const settings={robot_links:{[id]:'distinct'}};
+  const stale={settings:{},tank_states:{},ambiguous_vacuum_ids:[id]};
+  const latest={settings,tank_states:{[id]:{initialized:true,used_ml:12,last_reset_ts:7}},ambiguous_vacuum_ids:[]};
+  const descriptors={balance_links:settings.robot_links,vacuums:[{entity_id:id,name:'Robot',identity_group:id,balance_owner:id}]};
+  card._hass={language:'en',locale:{language:'en'},states:{[id]:{state:'docked',attributes:{}}},user:{is_admin:true},
+   connection:{subscribeMessage:async cb=>{subscriber=cb;return ()=>{}}},callWS:async msg=>{
+    calls.push(msg.type);
+    if(msg.type.endsWith('/get_state')) {reads++;if(reads===1)return new Promise(resolve=>{release=()=>resolve(stale)});return latest}
+    if(msg.type.endsWith('/list_vacuums')) {lists++;return descriptors}
+    if(msg.type.endsWith('/set_settings')) {
+      latest.settings={...latest.settings,...msg.patch};
+      subscriber({data:{settings:latest.settings}});
+      return {settings:latest.settings};
+    }
+    throw Error(msg.type);
+   }};
+  card._refreshHealth=()=>null;card._serverReady=true;card._serverLoadedAt=Date.now();
+  card._serverState={settings:{},tank_states:{},ambiguous_vacuum_ids:[id]};
+  card._discoveredVacuums=descriptors.vacuums;card._balanceLinks={};
+  dom.window.document.body.append(card);card._subscribeServerEvents();await new Promise(r=>setTimeout(r,0));
+  card._render();assert.match(card.shadowRoot.textContent,/Card paused/);
+  subscriber({data:{registry_changed:{}}});await new Promise(r=>setTimeout(r,10));
+  assert.equal(reads,1);assert.equal(lists,1);
+  subscriber({data:{registry_rename:{old:'vacuum.old',new:id}}});
+  subscriber({data:{settings}});await new Promise(r=>setTimeout(r,10));
+  release();await new Promise(r=>setTimeout(r,60));
+  assert.equal(reads,3);assert.equal(lists,3);
+  assert.deepEqual([...card._serverState.ambiguous_vacuum_ids],[]);
+  assert.doesNotMatch(card.shadowRoot.textContent,/Card paused/);
+  assert.match(card.shadowRoot.textContent,/3[.,]99\s*L/);
+  assert(card.shadowRoot.querySelector('.refill-btn'));
+  await new Promise(r=>setTimeout(r,40));assert.equal(reads,3);assert.equal(lists,3);
+  assert.equal(calls.filter(x=>x.endsWith('/set_settings')).length,1);
+  assert.equal(calls.filter(x=>x.endsWith('/reset_tank')).length,0);dom.window.close();
+ }
+})().catch(e=>{console.error(e);process.exit(1)});
+"""
+        subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
+
 
 if __name__ == "__main__":
     unittest.main()

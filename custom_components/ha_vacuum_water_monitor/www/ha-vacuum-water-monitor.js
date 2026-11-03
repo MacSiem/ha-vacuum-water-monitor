@@ -13299,6 +13299,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._discoveredVacuums = [];
     this._serverReady = false;
     this._serverLoadPromise = null;
+    this._serverRefreshPending = false;
     this._serverUnsub = null;
     this._health = {};
     this._healthAt = 0;
@@ -13518,7 +13519,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // Once loaded, the card follows Store changes through events; a full reload
   // (get_state, list_vacuums) happens at most every 5 minutes or on setConfig.
   async _ensureServerState(force = false) {
-    if (!this._hass || this._serverLoadPromise) return this._serverLoadPromise;
+    if (!this._hass) return null;
+    if (this._serverLoadPromise) {
+      if (force) this._serverRefreshPending = true;
+      return this._serverLoadPromise;
+    }
     if (!force && this._serverReady && Date.now() - (this._serverLoadedAt || 0) < 300000) return null;
     this._serverLoadedAt = Date.now();
     this._serverLoadPromise = (async () => {
@@ -13527,6 +13532,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
           this._hass.callWS({ type: `${VWM_DOMAIN}/get_state` }),
           this._hass.callWS({ type: `${VWM_DOMAIN}/list_vacuums` }),
         ]);
+        // Registry or settings changed while these snapshots were in flight.
+        // Do not render them; the pending refresh will fetch both again.
+        if (this._serverRefreshPending) return;
         this._serverState = {
           settings: (state && state.settings) || {},
           tank_states: (state && state.tank_states) || {},
@@ -13541,6 +13549,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         const unchanged = JSON.stringify(configuredDevices) === JSON.stringify(this._serverState.settings.configured_devices || []);
         if (configuredDevices.length && !unchanged) {
           const saved = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch: { configured_devices: configuredDevices } });
+          if (this._serverRefreshPending) return;
           if (saved && saved.settings) {
             this._serverState.settings = saved.settings;
             this._applyServerSettings();
@@ -13555,6 +13564,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
         console.error('[ha-vacuum-water-monitor] server state load failed:', err);
       } finally {
         this._serverLoadPromise = null;
+        if (this._serverRefreshPending) {
+          this._serverRefreshPending = false;
+          await this._ensureServerState(true);
+        }
       }
     })();
     return this._serverLoadPromise;
