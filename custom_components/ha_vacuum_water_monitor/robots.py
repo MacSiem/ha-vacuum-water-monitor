@@ -81,21 +81,45 @@ def resolve_link(settings: dict[str, Any], vacuum_entity: str) -> str:
     return target if target and target != "distinct" else vacuum_entity
 
 
+def resolve_balance_owner(hass: HomeAssistant, stored: dict[str, Any], vacuum_entity: str) -> str:
+    """Use the same confirmed identity grouping as the displayed balance."""
+    from .tick import list_vacuums
+
+    settings = stored.get("settings") or {}
+    devices = build_vacuum_devices(settings, stored.get("tank_states"), list_vacuums(hass))
+    for device in devices:
+        if vacuum_entity == device.get("vacuum_entity") or vacuum_entity in device.get("duplicate_entities", []):
+            return str(device["vacuum_entity"])
+    return resolve_link(settings, vacuum_entity)
+
+
 async def async_mark_refilled(hass: HomeAssistant, vacuum_entity: str, source: str) -> dict[str, Any]:
     """Mark one robot's tracked tank full (deduplicated like every refill report)."""
-    settings = (await storage(hass).async_get_state()).get("settings") or {}
-    vacuum_entity = resolve_link(settings, vacuum_entity)
+    _, state = await async_mark_refilled_with_owner(hass, vacuum_entity, source)
+    return state
+
+
+async def async_mark_refilled_with_owner(hass: HomeAssistant, vacuum_entity: str, source: str) -> tuple[str, dict[str, Any]]:
+    """Return the actual owner and its state for consumers caching the result."""
+    stored = await storage(hass).async_get_state()
+    vacuum_entity = resolve_balance_owner(hass, stored, vacuum_entity)
     now = datetime.now(timezone.utc)
     state = await storage(hass).async_reset_tank(
         vacuum_entity, now.isoformat(), int(now.timestamp() * 1000), source=source)
     async_notify(hass, {"tank_states": {vacuum_entity: state}})
-    return state
+    return vacuum_entity, state
 
 
 async def async_mark_empty(hass: HomeAssistant, vacuum_entity: str) -> dict[str, Any]:
     """The user says the tank ran dry: anchor and learn from it right away."""
-    settings = (await storage(hass).async_get_state()).get("settings") or {}
-    vacuum_entity = resolve_link(settings, vacuum_entity)
+    _, state = await async_mark_empty_with_owner(hass, vacuum_entity)
+    return state
+
+
+async def async_mark_empty_with_owner(hass: HomeAssistant, vacuum_entity: str) -> tuple[str, dict[str, Any]]:
+    """Return the owner as well as the state after marking its tank empty."""
+    stored = await storage(hass).async_get_state()
+    vacuum_entity = resolve_balance_owner(hass, stored, vacuum_entity)
     report = next((r for r in await async_reports(hass) if r.get("vacuum_entity") == vacuum_entity), None)
     if report is not None and report.get("can_calibrate"):
         raise ValueError("This robot reports an empty tank itself; Tank empty is for robots that cannot")
@@ -105,7 +129,7 @@ async def async_mark_empty(hass: HomeAssistant, vacuum_entity: str) -> dict[str,
         await ticker.run({vacuum_entity})
         state = await storage(hass).async_get_tank_state(vacuum_entity)
     async_notify(hass, {"tank_states": {vacuum_entity: state}})
-    return state
+    return vacuum_entity, state
 
 
 async def async_set_options(hass: HomeAssistant, vacuum_entity: str, patch: dict[str, Any]) -> dict[str, Any]:

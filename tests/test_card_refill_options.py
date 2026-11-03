@@ -76,6 +76,36 @@ const Card = classes['ha-vacuum-water-monitor'];
 
 
 class CardRefillOptionTests(unittest.TestCase):
+    def test_refill_click_stores_response_only_for_backend_owner(self):
+        script = r"""
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
+(async()=>{
+ for(const compact of [false,true]) {
+  const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'});
+  dom.window.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+  const card=dom.window.document.createElement('ha-vacuum-water-monitor');
+  card.setConfig({type:'custom:ha-vacuum-water-monitor',compact});
+  const calls=[];
+  card._hass={language:'en',locale:{language:'en'},states:{},user:{is_admin:true},
+    callWS:async msg=>{calls.push(msg);return {vacuum_entity:'vacuum.owner',state:{used_ml:0,initialized:true}}},
+    connection:{subscribeMessage:async()=>()=>{}}};
+  card._serverState={settings:{},tank_states:{'vacuum.owner':{used_ml:432},'vacuum.copy':{used_ml:999}}};
+  const device={vacuum_entity:'vacuum.copy',name:'Copy',water_total_ml:4000};
+  card._getDevices=()=>[device];card._calcDeviceData=()=>({totalMl:4000,percentRemaining:70,remainingL:3,usedMl:999,initialized:true,vacState:'docked',calibrationHistory:[],refillHistory:[]});
+  card._healthFor=()=>null;card._ensureServerState=()=>null;card._refreshHealth=()=>null;
+  dom.window.document.body.append(card);card._render();
+  const button=card.shadowRoot.querySelector('.refill-btn');assert(button);button.click();
+  await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal(calls.filter(c=>c.type.endsWith('/reset_tank')).length,1);
+  assert.equal(card._serverState.tank_states['vacuum.owner'].used_ml,0);
+  assert.equal(card._serverState.tank_states['vacuum.copy'].used_ml,999);
+  dom.window.close();
+ }
+})().catch(e=>{console.error(e);process.exit(1)});
+"""
+        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     @classmethod
     def setUpClass(cls):
         result = subprocess.run(["node", "-e", SCRIPT, json.dumps(WINDOW_CASES)], cwd=ROOT, check=True,

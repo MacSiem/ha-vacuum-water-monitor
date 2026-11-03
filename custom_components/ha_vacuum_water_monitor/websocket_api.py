@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import logging
 from typing import Any
 
@@ -209,14 +208,10 @@ async def _ws_reset_tank(
     if not msg["vacuum_entity"].startswith("vacuum.") or hass.states.get(msg["vacuum_entity"]) is None:
         connection.send_error(msg["id"], "invalid_payload", "Select an existing vacuum entity")
         return
-    now = datetime.now(timezone.utc)
-    state = await _storage(hass).async_reset_tank(
-        msg["vacuum_entity"], now.isoformat(), int(now.timestamp() * 1000), source="card"
-    )
-    _notify_store_updated(
-        hass, {"tank_states": {msg["vacuum_entity"]: state}}
-    )
-    connection.send_result(msg["id"], {"state": state})
+    from .robots import async_mark_refilled_with_owner
+
+    owner, state = await async_mark_refilled_with_owner(hass, msg["vacuum_entity"], "card")
+    connection.send_result(msg["id"], {"state": state, "vacuum_entity": owner})
 
 
 @websocket_api.websocket_command(
@@ -415,17 +410,17 @@ async def _ws_set_device_options(hass, connection, msg):
 @websocket_api.async_response
 async def _ws_mark_empty(hass, connection, msg):
     """The robot ran out of water (robots whose dock cannot say so)."""
-    from .robots import async_mark_empty
+    from .robots import async_mark_empty_with_owner
 
     if not msg["vacuum_entity"].startswith("vacuum.") or hass.states.get(msg["vacuum_entity"]) is None:
         connection.send_error(msg["id"], "invalid_payload", "Select an existing vacuum entity")
         return
     try:
-        state = await async_mark_empty(hass, msg["vacuum_entity"])
+        owner, state = await async_mark_empty_with_owner(hass, msg["vacuum_entity"])
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
-    connection.send_result(msg["id"], {"state": state})
+    connection.send_result(msg["id"], {"state": state, "vacuum_entity": owner})
 
 
 @websocket_api.websocket_command({

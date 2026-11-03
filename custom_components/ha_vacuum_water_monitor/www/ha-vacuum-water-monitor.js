@@ -14017,7 +14017,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!this._hass || !device?.vacuum_entity) return Promise.reject(new Error('Missing vacuum entity'));
     return this._hass.callWS({ type: `${VWM_DOMAIN}/reset_tank`, vacuum_entity: device.vacuum_entity })
       .then((result) => {
-        if (result && result.state) this._saveWaterState(device, result.state);
+        if (result && result.state) this._saveWaterState(
+          { ...device, vacuum_entity: result.vacuum_entity || device.vacuum_entity }, result.state);
         this._lastHtml = '';
         this._render();
         return result;
@@ -17264,7 +17265,7 @@ input, select, textarea { max-width:100%; min-width:0; }
             await this._resetWaterState({ vacuum_entity: vacuum });
           } else if (action === 'mark-empty') {
             const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/mark_empty`, vacuum_entity: vacuum });
-            if (result && result.state) this._saveWaterState({ vacuum_entity: vacuum }, result.state);
+            if (result && result.state) this._saveWaterState({ vacuum_entity: result.vacuum_entity || vacuum }, result.state);
             this._toast(L.markedEmpty);
           } else if (action === 'save-capacity' || action === 'reset-capacity') {
             const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_device_options`, vacuum_entity: vacuum, options: { capacity_ml: value } });

@@ -376,7 +376,8 @@ async def test_registry_duplicate_action_uses_balance_owner(hass: HomeAssistant,
     assert tanks[copy]["refill_history"] == [{"source": "copy"}]
     assert tanks[VACUUM]["calibration_history"] == [{"sample": "owner"}]
     if route == "empty":
-        assert tanks[VACUUM]["water_empty_active"]
+        assert tanks[VACUUM]["user_empty_active"]
+        assert not tanks[copy].get("user_empty_active")
     else:
         assert tanks[VACUUM]["used_ml"] == 0
         assert tanks[VACUUM]["last_reset_source"] == route
