@@ -877,6 +877,10 @@ async def test_registry_vacuum_rename_keeps_its_water_history(hass, hass_ws_clie
     assert state["tank_states"]["vacuum.r1_renamed"]["refill_history"] == [{"used_before_ml": 876}]
     after_entities = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, vwm_entry.entry_id)}
     assert after_entities == before_entities, removals
+    source_id = registry.async_get("vacuum.r1_renamed").device_id
+    assert source_id and registry.async_get(sensor.entity_id).device_id == source_id
+    assert not any((DOMAIN, f"{vwm_entry.entry_id}_vacuum_robot") in device.identifiers
+                   for device in dr.async_entries_for_config_entry(dr.async_get(hass), vwm_entry.entry_id))
     assert registry.async_get(sensor.entity_id).name == "Custom water name"
     await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 3000}, blocking=True)
     await hass.async_block_till_done()

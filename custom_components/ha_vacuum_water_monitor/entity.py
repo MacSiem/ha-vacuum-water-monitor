@@ -91,19 +91,29 @@ def sync_entity_device(hass: HomeAssistant, entry: ConfigEntry, entity: Entity, 
         registry = dr.async_get(hass)
         previous = registry.async_get(current.device_id) if current.device_id else None
         entities.async_update_entity(current.entity_id, device_id=target.id)
-        # Remove only an empty, uncustomized VWM fallback. Never delete a
-        # source device, another integration's entry or user area/name/labels.
-        if previous is not None and previous.identifiers and all(domain == DOMAIN for domain, _ in previous.identifiers):
-            owner = getattr(previous, "config_entry_id", None)
-            if owner is None and not hasattr(previous, "config_entry_id"):
-                owners = getattr(previous, "config_entries", set())  # HA 2025.1
-                owned = owners == {entry.entry_id}
-            else:
-                owned = owner == entry.entry_id
-            if (owned and not previous.connections and not previous.name_by_user and not previous.area_id
-                    and not getattr(previous, "labels", None) and not previous.disabled_by
-                    and not er.async_entries_for_device(entities, previous.id, include_disabled_entities=True)):
-                registry.async_remove_device(previous.id)
+        # A device removal fired within HA's registry dispatch is queued. If
+        # the fallback is resurrected before that queued event is handled, HA
+        # removes the newly attached entities. Defer cleanup to the next loop
+        # turn and recheck the *current* device and membership before removal.
+        if previous is not None:
+            previous_id = previous.id
+            @callback
+            def remove_empty_fallback() -> None:
+                current_device = registry.async_get(previous_id)
+                if current_device is None or not current_device.identifiers or any(
+                        domain != DOMAIN for domain, _ in current_device.identifiers):
+                    return
+                owner = getattr(current_device, "config_entry_id", None)
+                if owner is None and not hasattr(current_device, "config_entry_id"):
+                    owned = getattr(current_device, "config_entries", set()) == {entry.entry_id}
+                else:
+                    owned = owner == entry.entry_id
+                if (owned and not current_device.connections and not current_device.name_by_user
+                        and not current_device.area_id and not getattr(current_device, "labels", None)
+                        and not current_device.disabled_by
+                        and not er.async_entries_for_device(entities, previous_id, include_disabled_entities=True)):
+                    registry.async_remove_device(previous_id)
+            hass.loop.call_soon(remove_empty_fallback)
 
 
 async def async_tracked_devices(hass: HomeAssistant) -> tuple[dict[str, Any], list[dict[str, Any]]]:
