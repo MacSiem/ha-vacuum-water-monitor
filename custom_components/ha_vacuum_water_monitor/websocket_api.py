@@ -1053,6 +1053,56 @@ async def _ws_set_robot_link(hass, connection, msg):
     connection.send_result(msg["id"], {"settings": settings, "bindings_refreshed": refreshed})
 
 
+def _dashboard_backups(hass):
+    from .dashboard_backup import DashboardBackups
+    bucket = hass.data.setdefault(DOMAIN, {})
+    if "_dashboard_backups" not in bucket:
+        bucket["_dashboard_backups"] = DashboardBackups(hass)
+    return bucket["_dashboard_backups"]
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/dashboard_backup_prepare",
+                                  vol.Required("before"): dict, vol.Required("after"): dict,
+                                  vol.Required("target"): vol.Any(None, str)})
+@websocket_api.async_response
+async def _ws_dashboard_backup_prepare(hass, connection, msg):
+    try:
+        user_id = getattr(getattr(connection, "user", None), "id", None)
+        key = await _dashboard_backups(hass).prepare(user_id, msg["target"], msg["before"], msg["after"])
+    except PermissionError:
+        connection.send_error(msg["id"], "unauthorized", "Administrator access required")
+    except (ValueError, TypeError, OSError):
+        connection.send_error(msg["id"], "backup_failed", "Dashboard backup could not be saved")
+    else:
+        connection.send_result(msg["id"], {"id": key})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/dashboard_backup_list"})
+@websocket_api.async_response
+async def _ws_dashboard_backup_list(hass, connection, msg):
+    try:
+        user_id = getattr(getattr(connection, "user", None), "id", None)
+        result = await _dashboard_backups(hass).list(user_id)
+    except PermissionError:
+        connection.send_error(msg["id"], "unauthorized", "Administrator access required")
+    else:
+        connection.send_result(msg["id"], {"backups": result})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/dashboard_backup_get", vol.Required("backup_id"): str})
+@websocket_api.async_response
+async def _ws_dashboard_backup_get(hass, connection, msg):
+    try:
+        user_id = getattr(getattr(connection, "user", None), "id", None)
+        result = await _dashboard_backups(hass).get(user_id, msg["backup_id"])
+    except PermissionError:
+        connection.send_error(msg["id"], "unauthorized", "Administrator access required")
+    except ValueError:
+        connection.send_error(msg["id"], "not_found", "Dashboard backup unavailable")
+    else:
+        connection.send_result(msg["id"], result)
+
+
 def async_register_commands(hass: HomeAssistant) -> None:
     """Register all websocket commands."""
     for handler in (
@@ -1076,5 +1126,8 @@ def async_register_commands(hass: HomeAssistant) -> None:
         _ws_set_device_options,
         _ws_set_robot_link,
         _ws_mark_empty,
+        _ws_dashboard_backup_prepare,
+        _ws_dashboard_backup_list,
+        _ws_dashboard_backup_get,
     ):
         websocket_api.async_register_command(hass, handler)

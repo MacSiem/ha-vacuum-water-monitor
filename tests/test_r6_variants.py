@@ -20,17 +20,19 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
  connection:{subscribeMessage:async()=>()=>{}},callWS:async m=>{calls.push(m);if(m.type.endsWith('/get_state'))return {settings,tank_states:tanks};
  if(m.type.endsWith('/list_vacuums'))return {vacuums:[{entity_id:id,name:'Robot',identity_group:id}],balance_links:{}};
  if(m.type.endsWith('/get_feature_access'))return {capabilities:{water:yes,settings:yes,measurements:yes},resources:{[id]:{water:yes,settings:yes,measurements:yes}}};
- if(m.type.endsWith('/health'))return {robots:[]};if(m.type.endsWith('/set_settings'))return {settings};throw Error(m.type)}};
+ if(m.type.endsWith('/health'))return {robots:[]};if(m.type.endsWith('/set_settings'))return {settings};if(m.type.endsWith('/reset_tank'))return {vacuum_entity:id,state:{initialized:true,used_ml:0}};throw Error(m.type)}};
  async function card(config){const c=w.document.createElement('ha-vacuum-water-monitor');c.setConfig({vacuum_entity:id,water_total_ml:4000,show_support:false,...config});
  c._refreshHealth=()=>null;c.hass=hass;w.document.body.append(c);await c._ensureServerState(true);await new Promise(r=>setTimeout(r,20));c._render();return c;}
  let c=await card({});assert(c.shadowRoot.querySelector('[role=tablist]'),'existing missing variant remains full');c.remove();
  c=await card({compact:true});assert(!c.shadowRoot.querySelector('[role=tablist]'),'legacy compact stays compact');c.remove();
  c=await card({variant:'tile'});assert.equal(c.getGridOptions().columns,6);assert.equal(c.getGridOptions().rows,1);
- assert(c.shadowRoot.querySelector('ha-card'));assert(!c.shadowRoot.querySelector('[role=tablist]'));assert(c.shadowRoot.querySelector('[data-r6-open]'));c.remove();
+ assert(c.shadowRoot.querySelector('ha-card'));assert(!c.shadowRoot.querySelector('[role=tablist]'));assert(c.shadowRoot.querySelector('[data-r6-open]'));
+ const action=c.shadowRoot.querySelector('.vwm-tile-action .refill-btn');assert(action);action.click();await new Promise(r=>setTimeout(r,15));assert(!c.shadowRoot.querySelector('[role=tablist]'),'refill does not open full');assert.equal(calls.filter(m=>m.type.endsWith('/reset_tank')).length,1);
+ c.shadowRoot.querySelector('[data-r6-open]').click();assert(c.shadowRoot.querySelector('[role=tablist]'),'tile tap opens full');assert.equal(calls.filter(m=>m.type.endsWith('/reset_tank')).length,1);c.remove();
  c=await card({variant:'compact'});assert.equal(c.getGridOptions().columns,12);assert(c.shadowRoot.querySelector('ha-card'));
  assert(!c.shadowRoot.querySelector('[role=tablist]'));assert(c.shadowRoot.querySelector('[role=progressbar]'));assert(c.shadowRoot.querySelector('.refill-btn'));
  const open=c.shadowRoot.querySelector('[data-r6-open]');assert(open);open.click();assert(c.shadowRoot.querySelector('[role=tablist]'),'full tool opens without YAML');
- assert(!calls.some(m=>m.type.endsWith('/reset_tank')));c.remove();dom.window.close();
+ assert.equal(calls.filter(m=>m.type.endsWith('/reset_tank')).length,1,'opening compact must not refill');c.remove();dom.window.close();
 }})().catch(e=>{console.error(e);process.exit(1)});
 """
         result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, timeout=15)

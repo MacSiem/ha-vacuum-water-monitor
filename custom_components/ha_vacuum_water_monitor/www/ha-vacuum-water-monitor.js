@@ -13333,6 +13333,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     this._hass = hass;
     if (!hass) return;
+    if (this.preview) { this._render(); return; }
 
     this._ensureServerState();
 
@@ -13511,8 +13512,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._applyServerSettings();
     const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig())
       .filter(device => this._featureAllowed('settings', 'execute', device));
-    if (configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices }, {partial:true});
-    this._ensureServerState(true);
+    if (!this.preview && configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices }, {partial:true});
+    if (!this.preview) this._ensureServerState(true);
   }
 
   // Drop config devices whose vacuum_entity does not exist in HA: persisting
@@ -13523,9 +13524,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return devices.filter(d => !d.vacuum_entity || !!this._hass.states[d.vacuum_entity]);
   }
 
-  getCardSize() { return this._config?.compact && !this._compactExpanded ? 3 : 4; }
-
-  getGridOptions() { return { columns: this._config?.compact && !this._compactExpanded ? 6 : 12, rows:'auto', min_rows:3, min_columns:3 }; }
+  _variant() { return ['tile','compact','full'].includes(this._config?.variant) ? this._config.variant : (this._config?.compact ? 'compact' : 'full'); }
+  getCardSize() { return !this._compactExpanded && this._variant() === 'tile' ? 1 : 4; }
+  getGridOptions() {
+    if (!this._compactExpanded && this._variant() === 'tile') return {columns:6, rows:1, min_columns:6, min_rows:1};
+    if (!this._compactExpanded && !this._config?.variant && this._config?.compact) return {columns:6, rows:'auto', min_rows:3, min_columns:3};
+    return {columns:12, rows:'auto', min_rows:2, min_columns:3};
+  }
 
   // Home Assistant calls the hass setter on every state change in the house.
   // Once loaded, the card follows Store changes through events; a full reload
@@ -13583,6 +13588,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._subscribeServerEvents();
         this._refreshHealth(true);
         this._serverReady = true;
+        this._serverLoadError = false;
         this._lastHtml = '';
         this._render({ preserveDraft: true });
       } catch (err) {
@@ -13592,6 +13598,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
           this._clearPrivateAccess(false);
           this._lastHtml = '';
           this._render();
+        }
+        if (err?.code !== 'unauthorized' && !this._serverReady) {
+          this._serverLoadError = true; this._lastHtml = ''; this._render({preserveDraft:true});
         }
         console.error('[ha-vacuum-water-monitor] server state load failed:', err);
       } finally {
@@ -13636,6 +13645,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           setTimeout(() => this._ensureServerState(true), 0); return;
         }
       }
+      if (data.state_changed || data.registry_rename || data.registry_changed) this._waterHistory=null;
       if (data.registry_rename || data.registry_changed || data.settings_changed || data.state_changed || (data.settings && this._featureAccess)) setTimeout(() => this._ensureServerState(true), 0);
       if (data.settings && !this._featureAccess) {
         const linksChanged = JSON.stringify(this._robotLinks()) !== JSON.stringify(data.settings.robot_links || {});
@@ -13879,7 +13889,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!refreshPending) this._serverRefreshPending = false;
     this._serverState = {settings:{}, tank_states:{}};
     this._featureAccess = null; this._discoveredVacuums = []; this._balanceLinks = null;
-    this._health = {}; this._userDevices = []; this._refillConfig = {}; this._customCalib = null;
+    this._health = {}; this._userDevices = []; this._refillConfig = {}; this._customCalib = null; this._waterHistory = null;
     this._invalidateContribution?.();
     this._localMeasurementGeneration = (this._localMeasurementGeneration || 0) + 1;
   }
@@ -13983,8 +13993,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // every user who added the card from the UI picker (issue #1, v5.1.7).
     return {
       title: 'Vacuum Water Monitor',
-      warning_threshold: 20,
-      critical_threshold: 10,
+      variant: 'compact',
     };
   }
 
@@ -14847,7 +14856,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       uncertaintyPercent: userRate || measuredVolume || physicalWhole || nominalActive ? null : device.estimate_basis
         ? _vwmUncertainty(device.estimate_basis, _vwmStoredWindow(tankState)
           || (Number(tankState.calibration_samples) > 0 && Number(tankState.calibration_factor) > 0 ? [Math.log(Number(tankState.calibration_factor))] : []))
-        : (Number.isFinite(Number(device.uncertainty_percent)) ? Number(device.uncertainty_percent) : null),
+        : (typeof device.uncertainty_percent === 'number' && Number.isFinite(device.uncertainty_percent) ? device.uncertainty_percent : null),
       lastResetSource: tankState.last_reset_source || null,
       refillHistory: Array.isArray(tankState.refill_history) ? tankState.refill_history : [],
       calibrationPending: tankState.calibration_pending_log_factor != null,
@@ -15097,7 +15106,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _buildWaterTab(device, data) {
     const L = this._setupText();
-    const cfg = this._config;
+    const cfg = {...this._config, compact:this._variant() !== 'full'};
     const status = this._getStatus(data, cfg);
     const gaugeSvg = data.totalMl > 0 && data.percentRemaining != null && Number.isFinite(Number(data.percentRemaining)) ? this._buildGaugeSVG(data.percentRemaining, status.color) : '';
 
@@ -15161,11 +15170,39 @@ class HAVacuumWaterMonitor extends HTMLElement {
       !device.water_sensor &&
       !(healthReport && healthReport.tracks_water === true);
 
-    if (cfg.compact && !this._compactExpanded) return `<div class="tab-content vwm-compact">
-      <small class="compact-device">${_esc(device.name || device.device_name || device.vacuum_entity || '')}</small>
-      ${data.remainingL == null ? `<p class="tank-unknown" role="status">${this._lang === 'pl' ? 'Stan zbiornika nieznany' : 'Tank state unknown'}</p>` : `<p class="supply-main">${L.remaining}: ${_esc(remainingText)}</p>`}
-      ${['missing_area_rate','missing_time_rate','missing_wash_rate'].includes(data.stateReason) ? `<p>${_esc(this._humanDiagnosticCode(data.stateReason))}. ${this._lang === 'pl' ? 'Dolanie ustala poziom początkowy; nie uzupełnia współczynnika zużycia.' : 'Refill sets the baseline; it does not provide a consumption rate.'}</p>` : ''}${refillBtn}<button type="button" id="vwm-expand">${this._lang === 'pl' ? 'Otwórz pełną kartę' : 'Open full card'}</button>
-    </div>`;
+    if (cfg.compact && !this._compactExpanded) {
+      const tile = this._variant() === 'tile';
+      const runEstimate=presentation.report?.supply?.cleanings_left;
+      const forecast = presentation.known && Number(presentation.report?.supply?.basis_runs || 0) >= 3 && typeof runEstimate==='number' && Number.isFinite(runEstimate) && runEstimate>=0
+        ? (presentation.range(runEstimate) || this._formatUi().number(runEstimate,{maximumFractionDigits:1})) : null;
+      const percent = data.percentRemaining != null && Number.isFinite(Number(data.percentRemaining))
+        ? Math.max(0, Math.min(100, Number(data.percentRemaining))) : null;
+      const unknown = this._lang === 'pl' ? 'Stan zbiornika nieznany' : 'Tank state unknown';
+      const forecastText = forecast ? `${this._waterText('About')} ${forecast} ${this._waterText('cleanings')}`
+        : (this._lang === 'pl' ? 'Prognoza niedostępna' : 'Forecast unavailable');
+      const runs = Number(presentation.report?.supply?.cleanings_left);
+      const settings=this._serverState?.settings||{};
+      const authoredPercent=this._authoredConfigKeys?.has('warning_threshold')||this._authoredConfigKeys?.has('critical_threshold') ||
+        (settings.warning_threshold != null && Number(settings.warning_threshold)!==20) || (settings.critical_threshold != null && Number(settings.critical_threshold)!==10);
+      const warning = data.waterEmpty || data.waterLow || data.waterShortage ? status.label
+        : authoredPercent && percent!==null && percent<=Number(cfg.critical_threshold||10) ? this._waterText('Critical')
+        : authoredPercent && percent!==null && percent<=Number(cfg.warning_threshold||20) ? this._waterText('Low')
+        : !authoredPercent && forecast && Number.isFinite(runs) && runs < 1 ? (this._lang==='pl'?'Krytycznie mało wody':'Water critically low')
+        : !authoredPercent && forecast && Number.isFinite(runs) && runs <= 2 ? (this._lang==='pl'?'Mało wody':'Water low') : '';
+      const meter = percent == null ? '' : `<div class="vwm-meter" role="progressbar" aria-label="${_esc(L.remaining)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div>`;
+      if (tile) return `<div class="tab-content vwm-compact vwm-tile"><button type="button" class="vwm-tile-surface" id="vwm-expand" data-r6-open>
+        <span aria-hidden="true" class="vwm-tile-icon">💧</span><span class="vwm-tile-copy"><strong>${this._lang==='pl'?'Woda robota':'Robot water'}</strong>
+        <span class="vwm-tile-long">${_esc(data.remainingL == null ? unknown : remainingText+(forecast?' · '+forecastText:''))}</span>
+        <span class="vwm-tile-short">${_esc(data.remainingL == null ? unknown : remainingText)}</span></span></button>
+        <div class="vwm-tile-action">${refillBtn}</div></div>`;
+      return `<div class="tab-content vwm-compact ${tile?'vwm-tile':''}">
+        <button type="button" class="vwm-compact-heading vwm-compact-open" id="vwm-expand" data-r6-open><span aria-hidden="true">💧</span><strong>${this._lang==='pl'?'Woda w robocie':'Robot water'}</strong></button>
+        ${tile ? '' : `<small title="${_esc(device.name || device.device_name || device.vacuum_entity || '')}">${_esc(device.name || device.device_name || device.vacuum_entity || '')}${data.lastReset ? ' · '+_esc(this._formatReset(data.lastReset)) : ''}</small>`}
+        <p class="supply-main" role="status">${data.remainingL == null ? unknown : _esc(remainingText)}${data.remainingL != null && data.totalMl > 0 ? ' / '+_esc(this._formatUi().number(data.totalMl/1000,{maximumFractionDigits:2}))+' L' : ''}</p>
+        ${tile ? '' : `<small>${_esc(warning ? warning+' · '+forecastText : forecastText)}${presentation.band != null ? ' · ±'+_esc(this._formatUi().number(presentation.band*100,{maximumFractionDigits:1}))+'%' : ''}</small>${meter}`}
+        <div class="vwm-compact-actions">${refillBtn}<button type="button" data-r6-details>${this._lang==='pl'?'Szczegóły':'Details'}</button></div>
+      </div>`;
+    }
     return `
       <div class="tab-content">
         ${this._buildSupplyAnswer(device, data)}
@@ -15719,6 +15756,86 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return contributionForm;
   }
 
+  _requestWaterHistory(device) {
+    const vacuum = device?.vacuum_entity;
+    if (this.preview || !this._serverReady || !vacuum || !this._featureAllowed('water','read',device) || !this._hass) return;
+    const sensor = Object.values(this._hass.states || {}).find(s => s.entity_id?.startsWith('sensor.') && s.attributes?.vacuum_entity === vacuum && s.attributes?.unit_of_measurement === '%' && Object.hasOwn(s.attributes,'remaining_ml'));
+    const key = sensor?.entity_id;
+    if (!key) { this._waterHistory = {vacuum,status:'unavailable'}; return; }
+    const cached = this._waterHistory;
+    if (cached?.vacuum === vacuum && cached?.sensor === key && Date.now()-cached.at < 300000) return;
+    const now=Date.now(), epoch=this._accessEpoch;
+    const pending=this._waterHistory={vacuum,sensor:key,status:'loading',at:now};
+    this._hass.callWS({type:'history/history_during_period',entity_ids:[key],start_time:new Date(now-30*86400000).toISOString(),end_time:new Date(now).toISOString(),significant_changes_only:false,minimal_response:false}).then(result=>{
+      if (epoch !== this._accessEpoch || this._waterHistory !== pending) return;
+      const raw=Array.isArray(result?.[key]) ? result[key] : [];
+      const points=raw.map(s=>({ts:Date.parse(s.last_changed || s.last_updated),value: typeof s.state === 'string' && s.state.trim()!=='' && !['unknown','unavailable'].includes(s.state) ? Number(s.state) : null}))
+        .filter(p=>Number.isFinite(p.ts)).map(p=>({...p,value:Number.isFinite(p.value)&&p.value>=0&&p.value<=100?p.value:null})).sort((a,b)=>a.ts-b.ts);
+      this._waterHistory={vacuum,sensor:key,status:'ready',at:now,points};
+      this._lastHtml=''; this._render({preserveDraft:true});
+    }).catch(()=>{if(epoch!==this._accessEpoch || this._waterHistory!==pending)return;this._waterHistory={vacuum,sensor:key,status:'error',at:now};this._lastHtml='';this._render({preserveDraft:true});});
+  }
+
+  _buildWaterHistory(device, data, sessions) {
+    this._requestWaterHistory(device);
+    const pl=this._lang==='pl', h=this._waterHistory?.vacuum===device?.vacuum_entity?this._waterHistory:null;
+    const label=(en,pol)=>pl?pol:en;
+    const time=ts=>new Intl.DateTimeFormat(pl?'pl-PL':'en-GB',{timeZone:this._hass?.config?.time_zone || undefined,dateStyle:'short',timeStyle:'short'}).format(new Date(ts));
+    const points=h?.points || [], now=Date.now(), first=now-30*86400000;
+    const forecast=this._supplyPresentation(device,data), days=forecast.report?.supply?.days_left;
+    const showBand=forecast.known && forecast.band!==null && Number(forecast.report?.supply?.basis_runs||0)>=3 && typeof days==='number' && Number.isFinite(days) && days>=0;
+    const forecastStart=showBand ? now+Math.max(0,days*(1-forecast.band))*86400000 : null;
+    const forecastEnd=showBand ? now+days*(1+forecast.band)*86400000 : null;
+    const last=showBand?Math.max(now+1,forecastEnd):now;
+    const x=ts=>Math.max(0,Math.min(100,(ts-first)/(last-first)*100)), y=v=>100-v;
+    const bandLabel=showBand ? label('Estimated empty interval','Szacowany przedział opróżnienia')+': '+time(forecastStart)+' – '+time(forecastEnd) : '';
+    const band=showBand?`<rect x="${x(forecastStart)}" y="0" width="${Math.max(0.25,x(forecastEnd)-x(forecastStart))}" height="100" fill="var(--primary-color,#0284c7)" opacity=".12" tabindex="0"><title>${_esc(bandLabel)}</title></rect>`:'';
+    let path='', previous=null;
+    for(const p of points){if(p.value===null){previous=null;continue;} const px=x(p.ts),py=y(p.value); path+=previous?` H ${px} V ${py}`:` M ${px} ${py}`;previous=p;}
+    const refills=(data.refillHistory||[]).filter(r=>Number.isFinite(r.ts)&&r.ts>=first&&r.ts<=last);
+    const rows=points.map(p=>`<tr><td>${_esc(time(p.ts))}</td><td>${p.value===null?label('Unknown','Nieznany'):_esc(String(p.value))+'%'}</td></tr>`).join('');
+    const dots=points.filter(p=>p.value!==null).map(p=>`<circle cx="${x(p.ts)}" cy="${y(p.value)}" r="1" fill="var(--primary-color,#0284c7)" tabindex="0"><title>${_esc(time(p.ts)+' · '+p.value+'%')}</title></circle>`).join('');
+    const refillRows=refills.map(r=>`<tr><td>${_esc(time(r.ts))}</td><td>${label('Refilled','Dolano')}</td></tr>`).join('');
+    const marks=refills.map(r=>`<line x1="${x(r.ts)}" x2="${x(r.ts)}" y1="0" y2="100" stroke="var(--warning-color,#b45309)" stroke-dasharray="2 2"><title>${_esc(label('Refilled','Dolano')+' · '+time(r.ts))}</title></line>`).join('');
+    const valid=sessions.filter(s=>typeof s.water==='number'&&Number.isFinite(s.water)&&s.water>=0);
+    const max=Math.max(1,...valid.map(s=>s.water));
+    const bars=valid.map(s=>`<div class="r6-session-bar"><span>${_esc(time(s.ts))}</span><div tabindex="0" aria-label="${_esc(time(s.ts)+' · '+s.water+' ml')}"><i style="width:${s.water/max*100}%" title="${_esc(time(s.ts)+' · '+s.water+' ml')}"></i></div><span>${_esc(this._formatUi().number(s.water))} ml</span></div>`).join('');
+    const sessionRows=valid.map(s=>`<tr><td>${_esc(time(s.ts))}</td><td>${_esc(this._formatUi().number(s.water))} ml</td></tr>`).join('');
+    // Compare complete single-context automatic sessions of the same method,
+    // context and area. Coverage here is complete session exposure, not hours
+    // or a claim that every calendar-period run was recorded.
+    const complete=valid.filter(s=>s.type==='automatic'&&s.accounting_valid===true&&s.exposure_complete===true&&s.context&&s.segments===1&&typeof s.area==='number'&&s.area>0&&s.method);
+    const latest=complete[0], comparable=latest?complete.slice(1).filter(s=>JSON.stringify(s.context)===JSON.stringify(latest.context)&&s.method===latest.method&&Math.abs(s.area-latest.area)/latest.area<=0.1):[];
+    const average=comparable.length ? comparable.reduce((a,s)=>a+s.water,0)/comparable.length : null;
+    const percent=average!==null && comparable.length>=3 && valid.length===sessions.length && complete.length===sessions.length && comparable.length===complete.length-1 && average>0 ? (latest.water-average)/average*100 : null;
+    const compare=average!==null ? `${label('Latest comparable session','Ostatnia porównywalna sesja')}: ${_esc(this._formatUi().number(latest.water))} ml · ${label('mean of','średnia z')} ${comparable.length} (${label('complete exposure, same context and method, area within 10%','pełne pokrycie sesji, ten sam kontekst i metoda, powierzchnia ±10%')}): ${_esc(this._formatUi().number(average,{maximumFractionDigits:1}))} ml · ${latest.water-average>=0?'+':''}${_esc(this._formatUi().number(latest.water-average,{maximumFractionDigits:1}))} ml ${percent===null ? label('No percentage: insufficient complete sessions.','Bez procentu: za mało pełnych sesji.') : `(${percent>=0?'+':''}${_esc(this._formatUi().number(percent,{maximumFractionDigits:1}))}%)`}` : label('No comparison — incomplete comparable data.','Brak porównania — niepełne porównywalne dane.');
+    // Calendar-local days, including only the same elapsed part of the last
+    // day in the previous period. DST changes do not assume 24-hour days.
+    const local=new Intl.DateTimeFormat('en-CA',{timeZone:this._hass?.config?.time_zone||undefined,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+    const localPart=ts=>{const p=Object.fromEntries(local.formatToParts(new Date(ts)).map(v=>[v.type,v.value]));return {day:Date.UTC(+p.year,+p.month-1,+p.day)/86400000,second:+p.hour*3600 + +p.minute*60 + +p.second};};
+    const today=localPart(now), currentPeriod=[], previousPeriod=[];
+    for(const session of sessions){const p=localPart(session.ts),delta=today.day-p.day;if(delta>=0&&delta<7)currentPeriod.push(session);else if(delta>=7&&delta<14&&(delta!==7||p.second<=today.second))previousPeriod.push(session);}
+    const reference=currentPeriod.find(s=>complete.includes(s));
+    const comparablePeriod=arr=>reference?arr.filter(s=>complete.includes(s)&&JSON.stringify(s.context)===JSON.stringify(reference.context)&&s.method===reference.method&&Math.abs(s.area-reference.area)/reference.area<=0.1):[];
+    const cur=comparablePeriod(currentPeriod), prev=comparablePeriod(previousPeriod);
+    const coverage=arr=>arr.length?comparablePeriod(arr).length/arr.length:0;
+    const prevMean=prev.length?prev.reduce((sum,s)=>sum+s.water,0)/prev.length:null;
+    const curMean=cur.length?cur.reduce((sum,s)=>sum+s.water,0)/cur.length:null;
+    const periodReady=curMean!==null&&prevMean!==null&&coverage(currentPeriod)>=0.9&&coverage(previousPeriod)>=0.9;
+    const periodDelta=periodReady?curMean-prevMean:null, periodPercent=periodReady&&prevMean>0?periodDelta/prevMean*100:null;
+    const periodText=periodReady?`${label('Comparable recorded sessions, current 7 local days vs previous 7 at the same local time','Porównywalne zapisane sesje, bieżące 7 dni lokalnych vs poprzednie 7 do tej samej godziny')}: ${_esc(this._formatUi().number(curMean,{maximumFractionDigits:1}))} / ${_esc(this._formatUi().number(prevMean,{maximumFractionDigits:1}))} ml · ${periodDelta>=0?'+':''}${_esc(this._formatUi().number(periodDelta,{maximumFractionDigits:1}))} ml${periodPercent===null?'':` (${periodPercent>=0?'+':''}${_esc(this._formatUi().number(periodPercent,{maximumFractionDigits:1}))}%)`} · ${Math.round(coverage(currentPeriod)*100)}% / ${Math.round(coverage(previousPeriod)*100)}% ${label('of recorded sessions complete','zapisanych sesji pełnych')}`:label('No period comparison — incomplete or incomparable recorded sessions.','Brak porównania okresów — niepełne lub nieporównywalne zapisane sesje.');
+    const status=h?.status==='loading'?label('Loading history…','Ładowanie historii…'):h?.status==='error'?label('Could not load history.','Nie udało się wczytać historii.'):label('No recorded water-level history.','Brak zapisanej historii poziomu wody.');
+    return `<section class="section-block r6-history"><h3>${label('Water history','Historia wody')}</h3><p>${label('Source: HA Recorder, last 30 days, local time. Gaps are unknown.','Źródło: HA Recorder, ostatnie 30 dni, czas lokalny. Luki są nieznane.')}</p>
+      ${path?`<div data-r6-chart><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${label('Water level (%)','Poziom wody (%)')}">${band}<path d="${path}" fill="none" stroke="var(--primary-color,#0284c7)" vector-effect="non-scaling-stroke"/>${marks}${dots}</svg><p>${label('Level (%)','Poziom (%)')}${refills.length?' · '+label('Refill','Dolanie'):''}${showBand?' · '+_esc(bandLabel):''}</p></div><details><summary>${label('Data','Dane')}</summary><table><thead><tr><th>${label('Time','Czas')}</th><th>%</th></tr></thead><tbody>${rows}${refillRows}${showBand?`<tr><td>${_esc(time(forecastStart))} – ${_esc(time(forecastEnd))}</td><td>${_esc(bandLabel)}</td></tr>`:''}</tbody></table></details>`:`<p role="status">${status}</p>${h?.status==='error'?`<button type="button" data-history-retry>${label('Retry','Spróbuj ponownie')}</button>`:''}`}
+      <h3>${label('Water per session','Woda na sesję')}</h3>${bars||`<p>${label('No measured session water.','Brak zapisanej ilości wody na sesję.')}</p>`}<details><summary>${label('Data','Dane')}</summary><table><tbody>${sessionRows}</tbody></table></details><p>${compare}</p><p>${periodText}</p><p>${label('Room-level water is unavailable unless the producer records measured room boundaries.','Woda na pokój jest niedostępna, dopóki producent nie zapisuje zmierzonych granic pokoi.')}</p></section>`;
+  }
+
+  _calendarDaysAgo(ts) {
+    const format = new Intl.DateTimeFormat('en-CA', {timeZone:this._hass?.config?.time_zone || undefined,year:'numeric',month:'2-digit',day:'2-digit'});
+    const day = value => { const parts=Object.fromEntries(format.formatToParts(new Date(value)).map(p=>[p.type,p.value])); return Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day)); };
+    return Math.floor((day(Date.now())-day(ts))/86400000);
+  }
+
   _buildHistoryTab(device, data) {
     const sessions = this._getSessionsFromStorage(device);
 
@@ -15728,7 +15845,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       currentSession = `<div class="current-session-card">
         <div class="cs-title">\uD83D\uDD04 ${this._waterText("Current session")}</div>
         <div class="cs-row"><span>\uD83D\uDDFA\uFE0F ${this._waterText("Area cleaned")}</span><span>${data.areaCleaned != null ? this._formatUi().number(Number(data.areaCleaned), {minimumFractionDigits:1,maximumFractionDigits:1}) : '--'} m\u00B2</span></div>
-        ${data.sessionMl ? `<div class="cs-row"><span>\uD83D\uDCA7 ${this._waterText("Water used")}</span><span>${_esc(this._formatMl(data.sessionMl))}</span></div>` : ''}
+        ${typeof data.sessionMl === 'number' && Number.isFinite(data.sessionMl) && data.sessionMl >= 0 ? `<div class="cs-row"><span>\uD83D\uDCA7 ${this._waterText("Water used")}</span><span>${_esc(this._formatMl(data.sessionMl))}</span></div>` : ''}
         ${data.durationSec ? `<div class="cs-row"><span>\u23F1\uFE0F ${this._waterText("Duration")}</span><span>${this._formatDuration(data.durationSec)}</span></div>` : ''}
       </div>`;
     }
@@ -15737,7 +15854,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     let lastSessionHtml = '';
     if (data.lastCleanEnd && data.lastCleanEnd !== 'unknown') {
       const endDate = new Date(data.lastCleanEnd);
-      const daysAgo = Math.floor((Date.now() - endDate) / 86400000);
+      const daysAgo = this._calendarDaysAgo(endDate.getTime());
       const label = daysAgo === 0 ? this._waterText('Today') : daysAgo === 1 ? this._waterText('Yesterday') : (this._lang === 'pl' ? daysAgo + ' dni temu' : daysAgo + 'd ago');
       lastSessionHtml = `<div class="session-row">
         <div class="session-date">${label} <span class="session-time">${this._formatUi().clock(endDate.getTime())}</span></div>
@@ -15751,13 +15868,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // Manual sessions from HA Store
     const manualRows = sessions.slice(0, 10).map(s => {
       const d = new Date(s.ts);
-      const daysAgo = Math.floor((Date.now() - s.ts) / 86400000);
+      const daysAgo = this._calendarDaysAgo(s.ts);
       const label = daysAgo === 0 ? this._waterText('Today') : daysAgo === 1 ? this._waterText('Yesterday') : (this._lang === 'pl' ? daysAgo + ' dni temu' : daysAgo + 'd ago');
       return `<div class="session-row">
         <div class="session-date">${label} <span class="session-time">${this._formatUi().clock(d.getTime())}</span></div>
         <div class="session-stats">
           ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${this._formatUi().number(Number(s.area))} m\u00B2</span>` : ''}
-          ${s.water ? `<span class="session-stat" title="${this._waterText(s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded')}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${_esc(this._formatMl(s.water))}</span>` : ''}
+          ${typeof s.water === 'number' && Number.isFinite(s.water) && s.water >= 0 ? `<span class="session-stat" title="${this._waterText(s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded')}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${_esc(this._formatMl(s.water))}</span>` : ''}
           ${s.duration ? `<span class="session-stat">\u23F1\uFE0F ${_esc(Number.isFinite(Number(s.duration)) ? this._formatUi().number(Number(s.duration))+' min' : s.duration)}</span>` : ''}
         </div>
       </div>`;
@@ -15768,6 +15885,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return `
       <div class="tab-content">
         ${this._buildStatsTab(this._getDevices())}
+        ${this._buildWaterHistory(device, data, sessions)}
         ${currentSession}
         ${lastSessionHtml ? `<div class="section-block"><div class="section-title">\uD83D\uDDD3\uFE0F ${this._waterText("Last Session (HA)")}</div>${lastSessionHtml}</div>` : ''}
         ${manualRows ? `<div class="section-block"><div class="section-title">\uD83D\uDCCA ${this._waterText("Logged Sessions")}</div>${manualRows}</div>` : ''}
@@ -16927,7 +17045,7 @@ target:
     if (devices.length && !devices[this._activeDeviceIdx]) this._activeDeviceIdx = 0;
     const data = Object.keys(device).length ? this._calcDeviceData(device) : {};
 
-    const cfg = this._config;
+    const cfg = {...this._config, compact:this._variant() !== 'full'};
     const status = data.vacState !== undefined ? this._getStatus(data, cfg) : { label: '--', color: '#6b7280', icon: '' };
 
     // Tabs definition
@@ -16952,7 +17070,7 @@ target:
       </div>` : '';
 
     let tabContent = '';
-    if (cfg.compact && !this._compactExpanded) tabContent = devices.length ? this._buildWaterTab(device, data) : `<div class="empty-state">${this._t.noDevices}<br>${this._t.addVacuum}<button type="button" id="vwm-expand">${this._lang==='pl'?'Otwórz pełną kartę':'Open full card'}</button></div>`;
+    if (cfg.compact && !this._compactExpanded) tabContent = devices.length ? this._buildWaterTab(device, data) : `<div class="empty-state">${this._t.noDevices}<br>${this._t.addVacuum}<button type="button" id="vwm-expand" data-r6-open>${this._lang==='pl'?'Otwórz pełną kartę':'Open full card'}</button></div>`;
     else if (this._activeTab === 'water') tabContent = devices.length
       ? this._buildWaterTab(device, data)
       : `<div class="empty-state">${this._t.noDevices}<br>${this._t.addVacuum}</div>`;
@@ -16968,6 +17086,9 @@ target:
     if (!devices.length && restrictedCandidates) tabContent = `<div class="empty-state" role="status">${this._lang === 'pl' ? 'Brak dostępnych robotów.' : 'No available robots.'}</div>`;
     if (!devices.length && blockedConfiguredRobot) tabContent = `<div class="empty-state">${this._lang === 'pl' ? 'Wybór robota wymaga aktualizacji.' : 'The robot selection needs updating.'}</div>`;
 
+    if (!this.preview && !this._serverReady && !this._accessDenied) tabContent = this._serverLoadError
+      ? `<div role="alert">${this._lang==='pl'?'Nie udało się wczytać danych.':'Could not load data.'} <button type="button" data-server-retry>${this._lang==='pl'?'Spróbuj ponownie':'Retry'}</button></div>`
+      : `<div role="status">${this._lang==='pl'?'Ładowanie danych…':'Loading data…'}</div>`;
     if (this._accessDenied) tabContent = `<div role="alert">${this._lang === 'pl' ? 'Brak dostępu. Skontaktuj się z administratorem.' : 'Access denied. Contact an administrator.'}</div>`;
     const deviceTabsHtml = this._buildDeviceTabs(devices);
 
@@ -17299,9 +17420,28 @@ input, select, textarea { max-width:100%; min-width:0; }
 .diagnostics-report pre { white-space:pre; overflow:auto; overflow-wrap:normal; word-break:normal; max-width:100%; font-size:12px !important; }
 .vwm-compact { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .vwm-compact > p, .vwm-compact > small { flex-basis:100%; margin:0; }
-.card .vwm-compact .supply-main { font-size:14px !important; }
+.card .vwm-compact .supply-main { font-size:18px !important; font-weight:700; }
+.card:has(.vwm-compact) {padding:12px; container-type:inline-size}
+.card:has(.vwm-compact) .card-title {display:none}
+.vwm-compact {display:grid; gap:4px; min-width:0}
+.vwm-compact p,.vwm-compact small{margin:0; min-width:0; overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vwm-compact small{font-size:12px; color:var(--secondary-text-color,#666)}
+.vwm-compact-heading,.vwm-compact-actions {display:flex; align-items:center; gap:8px}
+.vwm-compact-actions button{min-height:44px}
+.r6-history svg{display:block;width:100%;height:160px;border-bottom:1px solid var(--divider-color);overflow:visible}
+.r6-history table{width:100%;border-collapse:collapse;text-align:left}.r6-history th,.r6-history td{padding:6px}
+.r6-session-bar{display:grid;grid-template-columns:minmax(80px,auto) 1fr auto;gap:8px;align-items:center;font-size:14px}.r6-session-bar div{background:var(--divider-color,#ddd);height:12px}.r6-session-bar i{display:block;height:100%;background:var(--primary-color,#0284c7)}
+.vwm-meter{height:8px;border-radius:8px;background:var(--divider-color,#ddd);overflow:hidden}
+.vwm-meter span{display:block;height:100%;background:var(--primary-color,#03a9f4)}
+.vwm-compact-open,.vwm-tile-surface{border:0;background:transparent;color:var(--primary-text-color);text-align:left;cursor:pointer}
+.vwm-tile{display:flex;justify-content:space-between;flex-wrap:nowrap;height:44px;gap:4px}
+.vwm-tile-surface{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:0}
+.vwm-tile-icon{font-size:24px !important}.vwm-tile-copy{display:grid;min-width:0}.vwm-tile-copy strong,.vwm-tile-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vwm-tile-copy span{font-size:12px !important}.vwm-tile-short{display:none}
+@container (max-width:279px){.vwm-tile-long{display:none}.vwm-tile-short{display:block}}
+@container (max-width:219px){.vwm-tile-action{display:none}}
+@media (prefers-reduced-motion:reduce){.card *{animation-duration:.001ms !important;transition-duration:.001ms !important}}
 </style>
-      <div class="card">
+      <ha-card><div class="card">
         <div class="card-title">${_esc(this._config.title)}${cfg.compact && this._compactExpanded ? `<button type="button" id="vwm-collapse">${this._lang === 'pl' ? 'Zwiń kartę' : 'Collapse card'}</button>` : ''}</div>
         ${this._bindingRefreshState ? `<div data-vwm-refresh-status role="status">${this._bindingRefreshState === 'failed' ? this._bindingRefreshMessage() : (this._lang === 'pl' ? 'Powiązania odświeżono.' : 'Bindings refreshed.')} ${this._bindingRefreshState === 'failed' ? `<button type="button" data-vwm-refresh-retry>${this._lang === 'pl' ? 'Odśwież ponownie' : 'Retry refresh'}</button>` : ''}</div>` : ''}
         ${cfg.show_help !== false && !(cfg.compact && !this._compactExpanded) ? `<details class="tip-banner" id="tip-banner"><summary>${this._waterText('How it works')}</summary>${this._tipHtml()}</details>` : ''}
@@ -17312,10 +17452,10 @@ input, select, textarea { max-width:100%; min-width:0; }
         ${cfg.compact && !this._compactExpanded ? '' : tabNav}
         <div id="vwm-tab-panel" ${cfg.compact && !this._compactExpanded ? 'role="region" aria-label="'+(this._lang==='pl'?'Woda':'Water')+'"' : 'role="tabpanel" aria-labelledby="vwm-tab-'+this._activeTab+'"'}>${tabContent}</div>
 
-        ${this._hass?.user?.is_admin && this._config.show_support !== false && !supportDismissed() ? ownDonateFooter(this._lang) : ''}
+        ${this._hass?.user?.is_admin && this._config.show_support !== false && !supportDismissed() && !(cfg.compact && !this._compactExpanded) ? ownDonateFooter(this._lang) : ''}
 
       
-        </div>`;
+        </div></ha-card>`;
 
     // Only update DOM if content actually changed
     if (_newHtml !== this._lastHtml) {
@@ -17339,16 +17479,17 @@ input, select, textarea { max-width:100%; min-width:0; }
         .tip-banner ul { margin: 6px 0 0 16px; padding: 0; }
         .tip-banner li { margin-bottom: 3px; }
         </style>
-      <div class="err-container">
+      <ha-card><div class="err-container" role="alert">
         <div class="err-card">
           <div class="err-icon">\u26A0\uFE0F</div>
-          <div><strong>Error:</strong> ${_esc(this._sanitize(err.message || 'Unknown error'))}</div>
-          <div class="err-msg">Required entities or sensors are unavailable.</div>
+          <div><strong>${this._lang==='pl'?'Nie udało się wyświetlić karty.':'Could not display the card.'}</strong></div>
+          <details><summary>${this._lang==='pl'?'Szczegóły':'Details'}</summary><code>${_esc(this._sanitize(err.message || 'Unknown error'))}</code></details>
         </div>
         <div class="tip-banner">
           ${this._tipHtml()}
         </div>
-      </div>`;
+      </div></ha-card>`;
+    this.shadowRoot.innerHTML = _newHtml; this._lastHtml = _newHtml;
     console.warn('[VacuumWaterMonitor] Render error:', err);
    }
   }
@@ -17380,9 +17521,20 @@ input, select, textarea { max-width:100%; min-width:0; }
         try { localStorage.setItem(key, help.open ? 'open' : 'closed'); } catch (_) {}
       });
     }
-    sr.querySelector('#vwm-expand')?.addEventListener('click', () => {
+    const openTarget = () => {
+      if (this._config.tap_target === 'more-info' && device.vacuum_entity) {
+        this.dispatchEvent(new CustomEvent('hass-more-info',{detail:{entityId:device.vacuum_entity},bubbles:true,composed:true})); return;
+      }
+      if (this._config.tap_target === 'panel') {
+        const query=device.vacuum_entity ? '?vacuum='+encodeURIComponent(device.vacuum_entity) : '';
+        history.pushState(null,'','/ha_vacuum_water_monitor'+query); window.dispatchEvent(new Event('location-changed')); return;
+      }
       this._compactExpanded = true; this._render({preserveDraft:true});
       sr.querySelector('.tab-btn[aria-selected="true"]')?.focus();
+    };
+    sr.querySelector('#vwm-expand')?.addEventListener('click', openTarget);
+    sr.querySelector('[data-r6-details]')?.addEventListener('click', () => {
+      this._compactExpanded=true; this._render({preserveDraft:true}); sr.querySelector('.tab-btn[aria-selected="true"]')?.focus();
     });
     sr.querySelector('#vwm-collapse')?.addEventListener('click', () => {
       this._compactExpanded = false; this._render({preserveDraft:true}); sr.querySelector('#vwm-expand')?.focus();
@@ -17422,6 +17574,8 @@ input, select, textarea { max-width:100%; min-width:0; }
     if (!this._featureAllowed('water', 'execute', device)) sr.querySelectorAll('.refill-btn, [data-setup="confirm-full"], [data-setup="mark-empty"]').forEach(button => { button.disabled = true; });
     if (!this._featureAllowed('settings', 'execute', device)) sr.querySelectorAll('.dup-btn, #hist-log-btn, .maint-done-btn, .maint-del-btn, #vwm-tab-panel .maint-add-btn:not(#cal-save), #vwm-settings-robots input, #vwm-settings-robots button, #vwm-settings-refill input, #vwm-settings-refill select, #vwm-settings-refill button, #vwm-settings-signals input, #vwm-settings-signals select, #vwm-settings-signals button, #vwm-settings-model button').forEach(control => { control.disabled = true; });
     if (!this._featureAllowed('measurements', 'execute', device)) sr.querySelectorAll('#vwm-settings-calibration input, #vwm-settings-calibration select, #vwm-settings-calibration button').forEach(control => { control.disabled = true; });
+    sr.querySelector('[data-server-retry]')?.addEventListener('click', () => {this._serverLoadError=false;this._ensureServerState(true);this._lastHtml='';this._render({preserveDraft:true});});
+    sr.querySelector('[data-history-retry]')?.addEventListener('click', () => {this._waterHistory=null;this._lastHtml='';this._render({preserveDraft:true});});
     sr.querySelector('[data-vwm-refresh-retry]')?.addEventListener('click', () => this._retryBindingRefresh());
     sr.querySelectorAll('.dup-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -17853,8 +18007,8 @@ class HaVacuumWaterMonitorEditor extends HTMLElement {
   }
   _render() {
     const pl = (this._hass?.locale?.language || this._hass?.language || 'en').startsWith('pl');
-    const labels = pl ? {title:'Tytuł', default_tab:'Zakładka początkowa', tabs:'Widoczne zakładki', show_help:'Pokaż pomoc', show_support:'Pokaż wsparcie', compact:'Widok kompaktowy'}
-      : {title:'Title', default_tab:'Default tab', tabs:'Visible tabs', show_help:'Show help', show_support:'Show support', compact:'Compact view'};
+    const labels = pl ? {title:'Tytuł', default_tab:'Zakładka początkowa', tabs:'Widoczne zakładki', show_help:'Pokaż pomoc', show_support:'Pokaż wsparcie', compact:'Dawny widok kompaktowy', variant:'Wariant karty', tap:'Dotknięcie karty'}
+      : {title:'Title', default_tab:'Default tab', tabs:'Visible tabs', show_help:'Show help', show_support:'Show support', compact:'Legacy compact view', variant:'Card variant', tap:'Card tap'};
     const tabs = [['water',pl?'Woda':'Water'],['history',pl?'Historia':'History'],['maintenance',pl?'Konserwacja':'Maintenance'],['settings',pl?'Ustawienia':'Settings']];
     const visibleTabs = tabs.filter(([id])=>!Array.isArray(this._config.tabs)||this._config.tabs.includes(id));
     if (!visibleTabs.length) visibleTabs.push(tabs[0]);
@@ -17866,17 +18020,21 @@ class HaVacuumWaterMonitorEditor extends HTMLElement {
       </style><h3>Vacuum Water Monitor</h3>
       <label for="cf_title">${labels.title}</label><input id="cf_title" value="${_esc(this._config.title ?? 'Vacuum Water Monitor')}">
       <label for="cf_default_tab">${labels.default_tab}</label><select id="cf_default_tab">${visibleTabs.map(([id,label])=>`<option value="${id}" ${this._config.default_tab===id?'selected':''}>${label}</option>`).join('')}</select>
+      <label for="cf_variant">${labels.variant}</label><select id="cf_variant"><option value="" ${!this._config.variant?'selected':''}>${pl?'Zgodny ze starą konfiguracją':'Legacy configuration'}</option>${['tile','compact','full'].map(v=>`<option value="${v}" ${this._config.variant===v?'selected':''}>${v}</option>`).join('')}</select>
+      <label for="cf_tap_target">${labels.tap}</label><select id="cf_tap_target">${[['full',pl?'Pełna karta':'Full card'],['more-info',pl?'Więcej informacji HA':'HA more info'],['panel',pl?'Panel VWM':'VWM panel']].map(([id,label])=>`<option value="${id}" ${(this._config.tap_target||'full')===id?'selected':''}>${label}</option>`).join('')}</select>
       <fieldset><legend>${labels.tabs}</legend>${tabs.map(([id,label])=>`<label><input type="checkbox" data-tab-option="${id}" ${!Array.isArray(this._config.tabs)||this._config.tabs.includes(id)?'checked':''}>${label}</label>`).join('')}</fieldset>
-      ${['show_help','show_support','compact'].map(key=>`<label><input id="cf_${key}" type="checkbox" ${key==='compact' ? this._config[key]===true?'checked':'' : this._config[key]!==false?'checked':''}>${labels[key]}</label>`).join('')}`;
+      ${['show_help','show_support',...(!this._config.variant?['compact']:[])].map(key=>`<label><input id="cf_${key}" type="checkbox" ${key==='compact' ? this._config[key]===true?'checked':'' : this._config[key]!==false?'checked':''}>${labels[key]}</label>`).join('')}`;
     this.shadowRoot.querySelector('#cf_title').addEventListener('input', e => { this._config={...this._config,title:e.target.value};this._dispatch(); });
+    this.shadowRoot.querySelector('#cf_tap_target').addEventListener('change', e => {this._config={...this._config,tap_target:e.target.value};this._dispatch();});
+    this.shadowRoot.querySelector('#cf_variant').addEventListener('change', e => { const next={...this._config}; if(e.target.value) next.variant=e.target.value; else delete next.variant; this._config=next; this._dispatch(); this._render(); this.shadowRoot.querySelector('#cf_variant')?.focus(); });
     this.shadowRoot.querySelector('#cf_default_tab').addEventListener('change', e => { this._config={...this._config,default_tab:e.target.value};this._dispatch(); });
-    for (const key of ['show_help','show_support','compact']) this.shadowRoot.querySelector('#cf_'+key).addEventListener('change',e=>{this._config={...this._config,[key]:e.target.checked};this._dispatch();});
+    for (const key of ['show_help','show_support',...(!this._config.variant?['compact']:[])]) this.shadowRoot.querySelector('#cf_'+key).addEventListener('change',e=>{this._config={...this._config,[key]:e.target.checked};this._dispatch();});
     this.shadowRoot.querySelectorAll('[data-tab-option]').forEach(input=>input.addEventListener('change',()=>{
       const selected=[...this.shadowRoot.querySelectorAll('[data-tab-option]:checked')].map(node=>node.dataset.tabOption);
       if (!selected.length) {input.checked=true;return;}
       // Keep legacy/extension tab IDs untouched during visual editing.
       const extra=(this._config.tabs||[]).filter(id=>!tabs.some(([known])=>known===id));
-      this._config={...this._config,tabs:[...selected,...extra],default_tab:selected.includes(this._config.default_tab)?this._config.default_tab:selected[0]};this._dispatch();this._render();
+      this._config={...this._config,tabs:[...selected,...extra],default_tab:selected.includes(this._config.default_tab)?this._config.default_tab:selected[0]};this._dispatch();this._render();this.shadowRoot.querySelector(`[data-tab-option="${input.dataset.tabOption}"]`)?.focus();
     }));
   }
   connectedCallback() { this._render(); }

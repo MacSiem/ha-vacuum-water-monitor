@@ -31,6 +31,12 @@ class HAVacuumWaterMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
 
+        if user_input is None:
+            return self.async_create_entry(
+                title="Vacuum Water Monitor", data={},
+                options={CONF_WARNING_THRESHOLD: DEFAULT_WARNING_THRESHOLD,
+                         CONF_CRITICAL_THRESHOLD: DEFAULT_CRITICAL_THRESHOLD},
+            )
         errors = {}
         if user_input is not None:
             try:

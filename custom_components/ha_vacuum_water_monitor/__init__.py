@@ -86,6 +86,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         bucket[DATA_WS_REGISTERED] = True
 
     await _async_register_frontend(hass)
+    await _async_register_standalone_panel(hass)
+    await _async_notify_first_setup(hass, storage)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_start_tick(hass, storage, entry.entry_id)
     _async_register_services(hass)
@@ -209,6 +211,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return False
 
     bucket = hass.data.get(DOMAIN, {})
+    if bucket.pop("_standalone_panel_registered", False):
+        from homeassistant.components import frontend
+        frontend.async_remove_panel(hass, DOMAIN)
     listener = bucket.pop("_registry_listener", None)
     if listener:
         stop, tasks = listener
@@ -306,6 +311,48 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         add_extra_js_url(hass, card_url)
     bucket[DATA_FRONTEND_REGISTERED] = True
     _LOGGER.debug("Registered Lovelace card at %s via %s", _CARD_URL_PATH, registration)
+
+
+async def _async_register_standalone_panel(hass: HomeAssistant) -> None:
+    """Register our own on-demand panel independently of other HA Tools."""
+    from homeassistant.components import panel_custom
+    from homeassistant.setup import async_setup_component
+
+    bucket = hass.data.setdefault(DOMAIN, {})
+    if bucket.get("_standalone_panel_registered"):
+        return
+    if not await async_setup_component(hass, "panel_custom", {}):
+        _LOGGER.error("Could not set up the standalone panel")
+        return
+    await panel_custom.async_register_panel(
+        hass, frontend_url_path=DOMAIN, webcomponent_name="vwm-standalone-panel",
+        sidebar_title="Vacuum Water Monitor", sidebar_icon="mdi:water-percent",
+        module_url=f"/{DOMAIN}/vwm-panel.js", require_admin=False,
+    )
+    bucket["_standalone_panel_registered"] = True
+
+
+async def _async_notify_first_setup(hass: HomeAssistant, storage: VacuumWaterStorage) -> None:
+    """Offer the panel once; an explicit dismissal is not undone by reload."""
+    from homeassistant.components import persistent_notification
+    from homeassistant.setup import async_setup_component
+
+    state = await storage.async_get_state()
+    if state.get("settings", {}).get("standalone_intro_shown"):
+        return
+    if not await async_setup_component(hass, "persistent_notification", {}):
+        _LOGGER.warning("Could not start the introduction notification")
+        return
+    persistent_notification.async_create(
+        hass,
+        "Open [Vacuum Water Monitor](/ha_vacuum_water_monitor) to see your robots and add a card. "
+        "Otwórz [Vacuum Water Monitor](/ha_vacuum_water_monitor), aby zobaczyć roboty i dodać kartę.",
+        title="Vacuum Water Monitor", notification_id="ha_vacuum_water_monitor_intro",
+    )
+    try:
+        await storage.async_set_settings({"standalone_intro_shown": True})
+    except OSError:
+        _LOGGER.warning("Could not remember the standalone introduction")
 
 
 def _async_start_tick(
