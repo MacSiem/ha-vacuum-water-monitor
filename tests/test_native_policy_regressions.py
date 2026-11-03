@@ -58,12 +58,37 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
  assert.match(card.shadowRoot.textContent,lang==='pl'?/Brak dostępu/:/Access denied/);assert.equal(listeners.size,0);
  mode='full';used=222;hass.states[id]={...hass.states[id],state:'cleaning'};card.hass={...hass,states:{...hass.states}};await delay(55);
  assert.equal(card._serverState.tank_states[id].used_ml,222);assert.equal(listeners.size,1);assert(maxActive<=1);
- assert(!calls.some(x=>x.endsWith('/reset_tank')));assert(subscribed>=3);
+ assert(!calls.some(x=>x.endsWith('/reset_tank')));assert.equal(subscribed,2);
  mode='invisible';event({data:{feature_access_changed:true,authorized_vacuums:[]}});await delay(45);
  const text=card.shadowRoot.textContent;assert.match(text,lang==='pl'?/Brak dostępnych robotów|Brak dostępu/:/No available robots|Access denied/);
  assert(!/No configured devices|Add a vacuum|Brak skonfigurowanych|Dodaj odkurzacz/.test(text));assert(!card.shadowRoot.querySelector('.refill-btn'));
  dom.window.close();
 }})().catch(e=>{console.error(e);process.exit(1)});
+"""
+        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_disconnect_and_reconnect_leave_exactly_one_subscription(self):
+        script = r"""
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+ const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'});
+ dom.window.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+ const id='vacuum.robot',yes={visible:true,read:true,execute:true};let callbacks=new Set(),resolveFirst,first=true,unsubs=0;
+ const hass={language:'en',user:{id:'member',is_admin:false},states:{[id]:{entity_id:id,state:'docked',attributes:{}}},
+ connection:{subscribeMessage:cb=>{callbacks.add(cb);const unsub=()=>{unsubs++;callbacks.delete(cb)};if(first){first=false;return new Promise(resolve=>{resolveFirst=()=>resolve(unsub)})}return Promise.resolve(unsub)}},
+ callWS:async m=>{if(m.type.endsWith('/get_feature_access'))return {capabilities:{water:yes,settings:yes,measurements:yes},resources:{[id]:{water:yes,settings:yes,measurements:yes}}};
+ if(m.type.endsWith('/get_state'))return {settings:{sharing_intro_choice:'not_now'},tank_states:{[id]:{initialized:true,used_ml:123}}};
+ if(m.type.endsWith('/list_vacuums'))return {vacuums:[{entity_id:id,name:'Robot',identity_group:id}],balance_links:{}};
+ if(m.type.endsWith('/health'))return {robots:[]};if(m.type.endsWith('/set_settings'))return {settings:{sharing_intro_choice:'not_now'}};throw Error(m.type)}};
+ const card=dom.window.document.createElement('ha-vacuum-water-monitor');card.setConfig({vacuum_entity:id,water_total_ml:4000});card._refreshHealth=()=>null;card.hass=hass;dom.window.document.body.append(card);
+ await card._ensureServerState(true);await delay(20);assert(resolveFirst);assert.equal(callbacks.size,1);
+ card.remove();dom.window.document.body.append(card);card.hass={...hass,states:{...hass.states}};await delay(20);
+ assert.equal(callbacks.size,1,'no overlapping replacement before pending subscribe resolves');
+ resolveFirst();await delay(35);assert.equal(unsubs,1);assert.equal(callbacks.size,1);
+ card.remove();await delay(10);assert.equal(callbacks.size,0);assert.equal(unsubs,2);dom.window.close();
+})().catch(e=>{console.error(e);process.exit(1)});
 """
         result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stderr)
