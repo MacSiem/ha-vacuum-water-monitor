@@ -63,8 +63,15 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass,
     native = next(v for v in listed if v["entity_id"] == "vacuum.tapo")
     assert native["signals"]["cleaning_mode_entity"] == "select.confirmed_robot_mode"
     assert native["linked_mode_source"] == "vacuum.matter_tapo"
-    # The regular heartbeat adopts changed settings before new exposure.
-    await hass.data[DOMAIN]["ticker"].run(None)
+    # Establish native activity, then change only the Matter programme. The
+    # ordinary state_changed event must reach the native owner's Store state.
+    update(0)
+    await settle(hass)
+    hass.states.async_set("select.confirmed_robot_mode", "Vacuum")
+    await settle(hass)
+    tank = (await storage.async_get_state())["tank_states"]["vacuum.tapo"]
+    assert tank["last_rate_settings"]["cleaning_mode"] == "vacuum"
+    hass.states.async_set("select.confirmed_robot_mode", "Vacuum and Mop;Deep Clean")
     await settle(hass)
     await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": "vacuum.tapo"}, blocking=True)
     update(0)

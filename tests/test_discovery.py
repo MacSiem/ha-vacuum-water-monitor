@@ -541,6 +541,29 @@ class VacuumDiscoveryTests(unittest.TestCase):
         )
         self.assertNotIn("binary_sensor.unrelated_clean", descriptor["signals"].values())
 
+    def test_roborock_current_device_entry_does_not_access_deprecated_config_entries(self) -> None:
+        discovery = _load_discovery()
+
+        class Device:
+            def __init__(self, device_id, model, entry_id):
+                self.id = device_id
+                self.manufacturer = "Roborock"
+                self.model = model
+                self.config_entry_id = entry_id
+
+            @property
+            def config_entries(self):
+                raise AssertionError("deprecated config_entries was accessed")
+
+        entities = [
+            {"entity_id": "vacuum.robot", "platform": "roborock", "device_id": "robot"},
+            {"entity_id": "binary_sensor.clean", "platform": "roborock", "device_id": "dock", "translation_key": "clean_box_empty"},
+        ]
+        devices = [Device("robot", "a97", "one"), Device("dock", "a97 Dock", "one"),
+                   Device("foreign", "a97 Dock", "other")]
+        result = discovery.discover_descriptors(entities, devices, {})[0]
+        self.assertEqual(result["signals"]["dock_clean_water_sensor"], "binary_sensor.clean")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
