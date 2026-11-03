@@ -15819,7 +15819,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         purpose:sr.getElementById('cal-purpose')?.value,boundaries_confirmed:true,uninterrupted:true}};
     try {
       const result = await this._hass.callWS(request);
-      if (result?.saved !== true || !Number.isInteger(result.sample_count) || result.sample_count < 1) throw new Error('Invalid measurement acknowledgement');
+      if (result?.saved !== true || (result.sample_count != null && (!Number.isInteger(result.sample_count) || result.sample_count < 1))) throw new Error('Invalid measurement acknowledgement');
       if (result.bindings_refreshed === false) {
         this._bindingRefreshState = 'failed';
         this._render({preserveDraft:true});
@@ -15828,7 +15828,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         return true;
       }
       if (sr.getElementById('cal-local-status') !== status || generation !== (this._localMeasurementGeneration || 0)) return true;
-      if (status) status.textContent = result.calibration
+      if (status) status.textContent = result.sample_count == null ? this._waterText("Saved privately.") : result.calibration
         ? `${this._waterText("Saved privately.")} ${result.sample_count} ${this._waterText("sample(s)")}; ${this._waterText("device calibration available within its measured area range. Independent accuracy remains separate.")}`
         : `${this._waterText("Saved privately.")} ${result.sample_count} ${this._waterText("sample(s)")} ${this._waterText("for these settings; at least three distinct training cycles are needed.")}`;
       return true;
@@ -16569,7 +16569,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <label><input type="checkbox" data-access-limit ${Object.prototype.hasOwnProperty.call(rule, 'entity_ids') ? 'checked' : ''}> ${pl ? 'Ogranicz do wskazanych robotów (pusta lista: żaden)' : 'Limit to listed robots (empty list: none)'}</label>
         <label>${pl ? 'Roboty: entity_id, po przecinku' : 'Robot entity IDs, comma separated'} <input data-access-entities value="${_esc((rule.entity_ids || []).join(', '))}"></label></fieldset>`;
     })).join('');
-    return `<section id="vwm-settings-access"><h3>${pl ? 'Dostęp użytkowników' : 'User access'}</h3><p>${pl ? 'Uprawnienia VWM kontrolują funkcje i dane udostępniane przez VWM. Stany natywnych encji pozostają dostępne zgodnie z uprawnieniami Home Assistanta; brak prawa do odkurzacza nie odbiera automatycznie prawa do jego sensora. Wywołania bez użytkownika działają tylko bez jawnych reguł.' : 'VWM permissions control features and data provided by VWM. Native entity states remain available according to Home Assistant permissions; denying the vacuum does not automatically deny its sensor. Calls without a user work only without explicit rules.'}</p>${rows}<button type="button" id="vwm-access-save">${pl ? 'Zapisz dostęp' : 'Save access'}</button><p id="vwm-access-status" role="status"></p></section>`;
+    return `<section id="vwm-settings-access"><h3>${pl ? 'Dostęp użytkowników' : 'User access'}</h3><p>${pl ? 'Uprawnienia VWM kontrolują funkcje i dane udostępniane przez VWM. Stany natywnych encji pozostają dostępne zgodnie z uprawnieniami Home Assistanta; brak prawa do odkurzacza nie odbiera automatycznie prawa do jego sensora. Wywołania bez użytkownika działają tylko bez jawnych reguł.' : 'VWM permissions control features and data provided by VWM. Native entity states remain available according to Home Assistant permissions; denying the vacuum does not automatically deny its sensor. Calls without a user work only without explicit rules.'}</p><p>${pl ? 'Po zmianie tożsamości robota lub ponownym użyciu jego entity_id usuń ten identyfikator z danej reguły i zapisz, a następnie dodaj go ponownie i zapisz. Samo ponowne zapisanie starej reguły nie przyznaje dostępu nowemu robotowi.' : 'After a robot identity changes or an entity ID is reused, remove that ID from the affected rule and save, then add it again and save. Saving the old rule alone does not grant access to the new robot.'}</p>${rows}<button type="button" id="vwm-access-save">${pl ? 'Zapisz dostęp' : 'Save access'}</button><p id="vwm-access-status" role="status"></p></section>`;
   }
 
   _refillChoices(device) {

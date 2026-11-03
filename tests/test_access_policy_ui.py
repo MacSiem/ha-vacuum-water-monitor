@@ -38,6 +38,8 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
   await card._ensureServerState(true);await new Promise(r=>setTimeout(r,30));card._render();
   assert(callback);liveUsed=222;callback({data:{state_changed:true,authorized_vacuums:[id]}});
   await new Promise(r=>setTimeout(r,40));assert.equal(card._serverState.tank_states[id].used_ml,222);
+  assert.match(card.shadowRoot.getElementById('vwm-settings-access').textContent,
+    lang==='pl'?/usuń ten identyfikator.*dodaj go ponownie/s:/remove that ID.*add it again/s);
   const row=card.shadowRoot.querySelector('[data-feature="water"][data-operation="execute"]');assert(row);
   row.querySelector('[data-access-mode]').value='selected_users';row.querySelector('[data-access-users]').value='user-1';
   row.querySelector('[data-access-limit]').checked=true;row.querySelector('[data-access-entities]').value=id;

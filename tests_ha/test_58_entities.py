@@ -222,7 +222,8 @@ async def test_cleanings_left_sensor_and_health_track_record(hass: HomeAssistant
     assert robot["supply"]["water_per_cleaning_ml"] == 400
     assert robot["supply"]["days_left"] is not None
     sensor = hass.states.get(_entity(hass, "sensor", "cleanings_left"))
-    assert "water_per_cleaning_ml" not in sensor.attributes and "basis_runs" not in sensor.attributes
+    assert sensor.attributes["water_per_cleaning_ml"] > 0
+    assert sensor.attributes["basis_runs"] == 5
     assert int(sensor.state) >= 1
 
 
@@ -688,6 +689,20 @@ async def test_scoped_grant_is_not_transferred_after_registry_id_reuse(hass, has
     await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
     result = await client.receive_json()
     assert not result["success"] or VACUUM not in result["result"].get("tank_states", {})
+    # Ordinary save preserves the old binding. An explicit two-save regrant
+    # changes only this rule and authorizes the new registry identity.
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
+    assert (await admin.receive_json())["success"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM})
+    assert not (await client.receive_json())["success"]
+    rule["entity_ids"] = []
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
+    assert (await admin.receive_json())["success"]
+    rule["entity_ids"] = [VACUUM]
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
+    assert (await admin.receive_json())["success"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM})
+    assert (await client.receive_json())["success"]
 
 
 async def test_measurement_execute_without_read_returns_only_acknowledgement(hass, hass_ws_client, local_auth):
@@ -867,3 +882,96 @@ async def test_native_permission_revocation_during_store_guard_aborts_write(hass
     release.set()
     assert not (await client.receive_json())["success"]
     assert (await _tank(storage))["used_ml"] == 432
+
+
+async def test_policy_narrowing_before_full_replacement_does_not_remove_b(hass, hass_ws_client, local_auth, monkeypatch):
+    """A policy narrowed after precheck is fenced before the replacement write."""
+    import asyncio
+    from homeassistant.auth.const import GROUP_ID_USER
+    from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
+
+    storage = await _setup(hass)
+    other = MockConfigEntry(domain="matter", title="B")
+    other.add_to_hass(hass)
+    b = er.async_get(hass).async_get_or_create("vacuum", "matter", "f1-narrow-b", config_entry=other,
+        suggested_object_id="f1_narrow_b").entity_id
+    hass.states.async_set(b, "docked")
+    await storage.async_set_settings({"user_devices": [{"vacuum_entity": VACUUM}, {"vacuum_entity": b, "name": "B"}]})
+    member = MockUser(name="Initially wide", groups=[await hass.auth.async_get_group(GROUP_ID_USER)]).add_to_hass(hass)
+    token = await hass.auth.async_create_refresh_token(member, client_id="https://r5-test.invalid/")
+    client = await hass_ws_client(hass, hass.auth.async_create_access_token(token))
+    admin = await hass_ws_client(hass)
+    ready, release = asyncio.Event(), asyncio.Event()
+    original = storage.async_set_settings
+    async def pause(patch, **kwargs):
+        if "user_devices" in patch:
+            ready.set()
+            await release.wait()
+        return await original(patch, **kwargs)
+    monkeypatch.setattr(storage, "async_set_settings", pause)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"user_devices": [{"vacuum_entity": VACUUM}]}})
+    await asyncio.wait_for(ready.wait(), 3)
+    rule = {"mode": "selected_users", "user_ids": [member.id], "entity_ids": [VACUUM]}
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": {"schema": 1, "features": {"settings": {"execute": rule}}}})
+    assert (await admin.receive_json())["success"]
+    release.set()
+    response = await client.receive_json()
+    assert any(item["vacuum_entity"] == b for item in (await storage.async_get_state())["settings"]["user_devices"])
+    assert not response["success"]
+
+
+async def test_scoped_settings_refresh_accounts_for_independent_active_robot(hass, hass_ws_client, local_auth, monkeypatch):
+    """A's scoped write must not block ordinary B accounting in the internal refresh."""
+    from homeassistant.auth.const import GROUP_ID_USER
+    from homeassistant.helpers import device_registry as dr
+    from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
+    from .test_ha_runtime import SIGNALS
+
+    storage = await _setup(hass)
+    upstream = MockConfigEntry(domain="roborock", title="Independent B")
+    upstream.add_to_hass(hass)
+    device = dr.async_get(hass).async_get_or_create(config_entry_id=upstream.entry_id,
+        identifiers={("roborock", "r5-refresh-b")}, manufacturer="Roborock",
+        model="roborock.vacuum.a97", model_id="a97", name="Independent B")
+    registry = er.async_get(hass)
+    b = registry.async_get_or_create("vacuum", "roborock", "r5-refresh-b", config_entry=upstream,
+        device_id=device.id, suggested_object_id="r5_refresh_b").entity_id
+    for domain, key, _ in SIGNALS:
+        registry.async_get_or_create(domain, "roborock", "r5_b_" + key, device_id=device.id,
+            config_entry=upstream, suggested_object_id="r5_b_" + key, translation_key=key)
+    hass.states.async_set(b, "cleaning", {"status": "cleaning"})
+    hass.states.async_set("sensor.r5_b_status", "cleaning")
+    hass.states.async_set("sensor.r5_b_cleaning_area", "0", {"unit_of_measurement": "m²"})
+    hass.states.async_set("select.r5_b_mop_mode", "standard")
+    hass.states.async_set("select.r5_b_mop_intensity", "standard")
+    hass.states.async_set("sensor.r5_b_dock_error", "ok")
+    hass.states.async_set("binary_sensor.r5_b_mop_attached", "on")
+    await storage.async_set_tank_state(b, {"initialized": True, "used_ml": 0})
+    await _settle(hass)
+    before = (await storage.async_get_state())["tank_states"][b]["used_ml"]
+    member = MockUser(name="Settings A only", groups=[await hass.auth.async_get_group(GROUP_ID_USER)]).add_to_hass(hass)
+    token = await hass.auth.async_create_refresh_token(member, client_id="https://r5-test.invalid/")
+    client = await hass_ws_client(hass, hass.auth.async_create_access_token(token))
+    admin = await hass_ws_client(hass)
+    rule = {"mode": "selected_users", "user_ids": [member.id], "entity_ids": [VACUUM]}
+    policy = {"schema": 1, "features": {"settings": {"execute": rule}, "water": {"execute": rule}}}
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
+    assert (await admin.receive_json())["success"]
+    ticker = hass.data[DOMAIN]["ticker"]
+    original, emitted = ticker.run, False
+    async def tick_with_new_producer(*args, **kwargs):
+        nonlocal emitted
+        if not emitted:
+            emitted = True
+            hass.states.async_set("sensor.r5_b_cleaning_area", "5", {"unit_of_measurement": "m²"})
+        return await original(*args, **kwargs)
+    monkeypatch.setattr(ticker, "run", tick_with_new_producer)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "partial": True,
+        "patch": {"device_options": {VACUUM: {"capacity_ml": 3000}}}})
+    response = await client.receive_json()
+    assert response["success"] and response["result"]["bindings_refreshed"] is True
+    assert emitted and (await storage.async_get_state())["tank_states"][b]["used_ml"] > before
+    await client.send_json_auto_id({"type": f"{DOMAIN}/refresh_bindings"})
+    assert (await client.receive_json())["success"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": b})
+    assert not (await client.receive_json())["success"]

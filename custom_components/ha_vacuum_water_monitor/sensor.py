@@ -157,8 +157,10 @@ class VacuumSensorManager:
         tracked = {str(device.get("vacuum_entity")) for device in devices}
         # The robot the engine tracks keeps its device even when a link points
         # away from it (a stale or circular link must never remove live sensors).
+        active_origins = {origins.get(entity, entity) for entity in tracked}
         linked = {str(entity) for entity, target in links.items()
-                  if target and target != "distinct" and str(entity) not in tracked}
+                  if target and target != "distinct" and str(entity) not in tracked
+                  and origins.get(str(entity), str(entity)) not in active_origins}
         if not linked:
             return
         try:

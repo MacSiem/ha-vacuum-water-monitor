@@ -240,8 +240,15 @@ from asyncio import current_task
 _write_guard = ContextVar('vwm_feature_write_guard', default=None)
 
 
-def set_write_guard(user_id, feature, entities, *, admin=False, read_entities=(), route_sources=()):
-    return _write_guard.set((current_task(), user_id, feature, tuple(entities), admin, tuple(read_entities), tuple(route_sources)))
+def set_write_guard(user_id, feature, entities, *, admin=False, read_entities=(), route_sources=(),
+                    fence_policy=False, policy_snapshot=None):
+    return _write_guard.set((current_task(), user_id, feature, tuple(entities), admin, tuple(read_entities),
+                             tuple(route_sources), fence_policy, policy_snapshot))
+
+
+def suspend_write_guard():
+    """Internal accounting after an authorized mutation is not a user action."""
+    return _write_guard.set(None)
 
 
 def reset_write_guard(token):
@@ -253,11 +260,13 @@ async def enforce_write_guard(hass, settings, *, changed_tanks=()):
     guard = _write_guard.get()
     if guard is None:
         return
-    owner, user_id, feature, entities, admin, read_entities, route_sources = guard
+    owner, user_id, feature, entities, admin, read_entities, route_sources, fence_policy, policy_snapshot = guard
     # Child tasks (periodic accounting, issue sync) inherit context variables
     # but are not the caller's action and must not inherit its authority.
     if owner is not current_task():
         return
+    if fence_policy and settings.get('feature_access') != policy_snapshot:
+        raise Unauthorized()
     if admin:
         user = await hass.auth.async_get_user(user_id) if user_id else None
         if user is None or not user.is_active or not user.is_admin:

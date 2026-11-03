@@ -11,7 +11,7 @@ class BindingRefreshUiTests(unittest.TestCase):
         script = r"""
 const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
 (async()=>{
- for(const lang of ['en','pl'])for(const kind of ['measurement','reprofile','settings']){
+ for(const lang of ['en','pl'])for(const kind of ['measurement','measurement_minimal','reprofile','settings']){
   const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'});
   dom.window.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
   const id='vacuum.robot',card=dom.window.document.createElement('ha-vacuum-water-monitor'),calls=[];
@@ -20,7 +20,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
   const hass={language:lang,locale:{language:lang},states:{[id]:{entity_id:id,state:'docked',attributes:{}}},
    user:{is_admin:true},connection:{subscribeMessage:async()=>()=>{}},callWS:async m=>{
     calls.push(m.type);
-    if(m.type.endsWith('/save_measurement'))return {saved:true,sample_count:3,calibration:{coefficient:10},bindings_refreshed:false};
+    if(m.type.endsWith('/save_measurement'))return kind==='measurement_minimal'?{saved:true,bindings_refreshed:true}:{saved:true,sample_count:3,calibration:{coefficient:10},bindings_refreshed:false};
     if(m.type.endsWith('/reprofile'))return {settings,vacuums:[],balance_links:{},bindings_refreshed:false};
     if(m.type.endsWith('/refresh_bindings'))return {bindings_refreshed:true};
     if(m.type.endsWith('/get_state'))return {settings,tank_states:{[id]:{automatic_sessions:[{ts:123,area:10}]}}};
@@ -38,7 +38,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
   card._refreshHealth=()=>null;card._activeTab='settings';card.hass=hass;
   dom.window.document.body.append(card);card._render();
   let sr=card.shadowRoot;
-  if(kind==='measurement'){
+  if(kind.startsWith('measurement')){
    sr.getElementById('cal-observed').value='100';sr.getElementById('cal-resolution').value='5';
    sr.getElementById('cal-boundaries').checked=true;sr.getElementById('cal-uninterrupted').checked=true;
    const button=sr.getElementById('cal-save');assert(button&&!button.disabled);button.click();
@@ -48,9 +48,14 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
    const button=sr.querySelector('[data-dup="vacuum.copy"][data-target="distinct"]');assert(button);button.click();
   }
   await new Promise(r=>setTimeout(r,20));sr=card.shadowRoot;
-  const status=kind==='measurement'?sr.getElementById('cal-local-status'):
+  const status=kind.startsWith('measurement')?sr.getElementById('cal-local-status'):
    kind==='reprofile'?sr.getElementById('vwm-reprofile-status'):sr.querySelector('[data-vwm-refresh-status]');
   assert(status);assert.match(status.textContent,lang==='pl'?/zapisano/i:/saved/i);
+  if(kind==='measurement_minimal'){
+    assert(!/could not save|nie udało się zapisać/i.test(status.textContent));
+    assert.equal(calls.filter(x=>x.endsWith('/save_measurement')).length,1);
+    dom.window.close();continue;
+  }
   assert.match(status.textContent,lang==='pl'?/odśwież/i:/refresh/i);
   const retry=sr.querySelector('[data-vwm-refresh-retry]');assert(retry&&!retry.disabled);retry.click();
   await new Promise(r=>setTimeout(r,20));

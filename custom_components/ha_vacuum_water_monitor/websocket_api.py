@@ -170,7 +170,18 @@ async def _filtered_result(hass, user_id, value):
             for item in value["registry_identity_conflicts"]
             if isinstance(item, dict) and item.get("entity_id") in allowed]
     if isinstance(value.get("ambiguous_vacuum_ids"), list):
-        value["ambiguous_vacuum_ids"] = [entity for entity in value["ambiguous_vacuum_ids"] if entity in allowed]
+        # A retired id can remain ambiguous after the other robot moves away.
+        # The original owner still needs the warning even though that id is
+        # no longer a currently discoverable vacuum.
+        from . import _vacuum_registry_identities
+        current_identities = _vacuum_registry_identities(hass)
+        ambiguous_origins = ((_storage(hass)._data or {}).get("ambiguous_vacuum_identities") or {})
+        principal = await hass.auth.async_get_user(user_id)
+        value["ambiguous_vacuum_ids"] = [entity for entity in value["ambiguous_vacuum_ids"]
+            if entity in allowed or (principal is not None and principal.is_admin)
+            or (ambiguous_origins.get(entity) is not None and any(
+                identity == ambiguous_origins[entity] and current in allowed
+                for current, identity in current_identities.items()))]
     if isinstance(value.get("balance_links"), dict):
         value["balance_links"] = {k: v for k, v in value["balance_links"].items()
                                    if k in allowed and (v == "distinct" or v in allowed)}
@@ -236,6 +247,14 @@ def _authorize(feature: str, operation: str):
             entities = _request_entities(msg)
             initial_settings = (await _storage(hass).async_get_state()).get("settings") or {}
             initial_policy = initial_settings.get("feature_access")
+            if msg.get("type") == f"{DOMAIN}/refresh_bindings":
+                # A scoped administrator-authorized user may retry an internal
+                # refresh when at least one of their robots remains actionable.
+                for device in list_vacuums(hass):
+                    entity = device.get("entity_id")
+                    if entity and await check_access(hass, user_id, "settings", "execute", (entity,)):
+                        entities.add(entity)
+                        break
             features = {feature}
             if msg.get("type") == f"{DOMAIN}/set_settings":
                 patch = msg.get("patch") or {}
@@ -283,7 +302,8 @@ def _authorize(feature: str, operation: str):
             route_sources = ((msg["vacuum_entity"],) if msg.get("type") in
                              (f"{DOMAIN}/reset_tank", f"{DOMAIN}/mark_empty") and msg.get("vacuum_entity") else ())
             token = set_write_guard(user_id, tuple(features), entities, read_entities=source_entities,
-                                    route_sources=route_sources) if operation == "execute" else None
+                                    route_sources=route_sources, fence_policy=True,
+                                    policy_snapshot=initial_policy) if operation == "execute" else None
             try:
                 await handler(hass, buffered, msg)
             finally:
@@ -345,6 +365,14 @@ def _authorize(feature: str, operation: str):
                             is_active=user.is_active, is_admin=user.is_admin, entity_id=entity)
                         and user.permissions.check_entity(entity, POLICY_READ))
             if isinstance(result, dict):
+                if isinstance(result.get("ambiguous_vacuum_ids"), list) and not user.is_admin:
+                    from . import _vacuum_registry_identities
+                    identities = _vacuum_registry_identities(hass)
+                    originals = ((_storage(hass)._data or {}).get("ambiguous_vacuum_identities") or {})
+                    result["ambiguous_vacuum_ids"] = [entity for entity in result["ambiguous_vacuum_ids"]
+                        if can_read("water", entity) or (originals.get(entity) is not None and any(
+                            identity == originals[entity] and can_read("water", current)
+                            for current, identity in identities.items()))]
                 for key in ("vacuums", "robots"):
                     for item in result.get(key) or []:
                         if not isinstance(item, dict):
@@ -424,11 +452,15 @@ async def _refresh_bindings(hass: HomeAssistant) -> bool:
     ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
     if ticker is None:
         return False
+    from .feature_access import suspend_write_guard, reset_write_guard
+    token = suspend_write_guard()
     try:
         return bool(await ticker.run(None))
     except Exception:  # The settings have already been saved.
         _LOGGER.exception("Settings saved, but signal bindings could not be refreshed")
         return False
+    finally:
+        reset_write_guard(token)
 
 
 def _notify_store_updated(hass: HomeAssistant, payload: dict[str, Any]) -> None:
