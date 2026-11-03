@@ -351,8 +351,8 @@ async def test_registry_duplicate_action_uses_balance_owner(hass: HomeAssistant,
     primary = registry.async_get(VACUUM)
     roborock = next(e for e in hass.config_entries.async_entries("roborock"))
     copy = registry.async_get_or_create("vacuum", "roborock", "r2-registry-copy",
-        device_id=primary.device_id, config_entry=roborock, suggested_object_id="r2_registry_copy").entity_id
-    assert copy == "vacuum.r2_registry_copy"
+        device_id=primary.device_id, config_entry=roborock, suggested_object_id="zzz_r2_registry_copy").entity_id
+    assert copy == "vacuum.zzz_r2_registry_copy"
     hass.states.async_set(copy, "docked")
     await _settle(hass)
     await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True,
