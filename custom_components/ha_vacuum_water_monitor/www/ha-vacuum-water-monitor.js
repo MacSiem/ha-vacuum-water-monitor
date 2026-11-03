@@ -13550,7 +13550,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._applyServerSettings();
     const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig())
       .filter(device => this._featureAllowed('settings', 'execute', device));
-    if (!this.preview && configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices }, {partial:true});
+    if (this.isConnected && !this.preview && configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices }, {partial:true});
     if (!this.preview) this._ensureServerState(true);
   }
 
@@ -13574,7 +13574,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // Once loaded, the card follows Store changes through events; a full reload
   // (get_state, list_vacuums) happens at most every 5 minutes or on setConfig.
   async _ensureServerState(force = false) {
-    if (!this._hass) return null;
+    if (!this._hass || !this.isConnected) return null;
     if (this._serverLoadPromise) {
       if (force) this._serverRefreshPending = true;
       return this._serverLoadPromise;
@@ -13588,9 +13588,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
           this._hass.callWS({ type: `${VWM_DOMAIN}/get_state` }),
           this._hass.callWS({ type: `${VWM_DOMAIN}/list_vacuums` }),
         ]);
-        if (accessEpoch !== this._accessEpoch || (this.preview && !this.isConnected)) return;
+        if (accessEpoch !== this._accessEpoch || !this.isConnected) return;
         await this._refreshFeatureAccess();
-        if (accessEpoch !== this._accessEpoch || (this.preview && !this.isConnected)) return;
+        if (accessEpoch !== this._accessEpoch || !this.isConnected) return;
         // Registry or settings changed while these snapshots were in flight.
         // Do not render them; the pending refresh will fetch both again.
         if (this._serverRefreshPending) return;
@@ -17523,7 +17523,7 @@ input, select, textarea { max-width:100%; min-width:0; }
 .vwm-compact { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .vwm-compact > p, .vwm-compact > small { flex-basis:100%; margin:0; }
 .card .vwm-compact .supply-main { font-size:18px !important; font-weight:700; }
-ha-card{display:block;container-type:inline-size}ha-card > .card{background:transparent;border:0;box-shadow:none}.card:has(.vwm-compact) {padding:12px}
+ha-card{display:block;container-type:inline-size}ha-card > .card{background:transparent !important;border:0 !important;border-radius:0 !important;box-shadow:none !important}.card:has(.vwm-compact) {padding:12px}
 .card:has(.vwm-compact) .card-title {display:none}
 .vwm-compact {display:grid; gap:12px; min-width:0}
 .vwm-compact small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--secondary-text-color,#666)}
@@ -18061,6 +18061,23 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
       });
     });
 
+  }
+
+  connectedCallback() {
+    // HA's native card picker assigns hass/config while detached and does not
+    // set preview. Identify its shadow-root host before any Store writes.
+    for (let node=this; node;) {
+      if (node.localName === 'hui-card-picker' || node.localName === 'hui-suggestion-picker') {
+        this.preview = true;
+        break;
+      }
+      const root=node.getRootNode?.();
+      node=node.parentElement || root?.host || null;
+    }
+    if (this.preview) this.inert = true;
+    this._lastHtml = '';
+    this._render({preserveDraft:true});
+    this._ensureServerState(true);
   }
 
   disconnectedCallback() {

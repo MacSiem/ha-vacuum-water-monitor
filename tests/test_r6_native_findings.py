@@ -52,7 +52,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
  let resolveState,resolveList,subscriptions=0;const hass={language:'en',user:{id:'u',is_admin:false},states:{},connection:{subscribeMessage:async()=>{subscriptions++;return ()=>{}}},callWS:m=>{
  if(m.type.endsWith('/get_state'))return new Promise(resolve=>{resolveState=()=>resolve({settings:{},tank_states:{}})});
  if(m.type.endsWith('/list_vacuums'))return new Promise(resolve=>{resolveList=()=>resolve({vacuums:[],balance_links:{}})});throw Error(m.type)}};
- const card=w.document.createElement('ha-vacuum-water-monitor');card.preview=true;card.setConfig({variant:'compact'});card.hass=hass;w.document.body.append(card);card.remove();resolveState();resolveList();await new Promise(r=>setTimeout(r,30));assert.equal(subscriptions,0,'detached preview cannot subscribe from a stale read');dom.window.close();
+ const card=w.document.createElement('ha-vacuum-water-monitor');card.preview=true;card.setConfig({variant:'compact'});w.document.body.append(card);card.hass=hass;card.remove();resolveState();resolveList();await new Promise(r=>setTimeout(r,30));assert.equal(subscriptions,0,'detached preview cannot subscribe from a stale read');dom.window.close();
 })().catch(e=>{console.error(e);process.exit(1)});
 """)
 
