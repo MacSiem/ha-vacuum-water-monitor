@@ -91,6 +91,10 @@ async def _filtered_result(hass, user_id, value):
     known.update((stored.get("tank_states") or {}).keys())
     known.update(d.get("vacuum_entity") for key in ("configured_devices", "user_devices")
                  for d in (stored.get("settings", {}).get(key) or []) if isinstance(d, dict))
+    links = (stored.get("settings") or {}).get("robot_links") or {}
+    if isinstance(links, dict):
+        known.update(entity for entity in links if isinstance(entity, str) and entity.startswith("vacuum."))
+        known.update(target for target in links.values() if isinstance(target, str) and target.startswith("vacuum."))
     known.discard(None)
     allowed = {entity for entity in known if isinstance(entity, str)
                and await check_access(hass, user_id, "water", "read", (entity,), policy=policy)}
@@ -262,7 +266,7 @@ def _authorize(feature: str, operation: str):
                     calibration = patch.get("custom_calibration") or {}
                     for item in features:
                         rule = policy.get("features", {}).get(item, {}).get("execute", {})
-                        if "entity_ids" in rule and (not entities or set(patch) - scoped or not isinstance(calibration, dict)
+                        if "entity_ids" in rule and (not msg.get("partial", False) or not entities or set(patch) - scoped or not isinstance(calibration, dict)
                                 or any(not str(key).startswith(("vacuum.", "entity:vacuum.")) for key in calibration)):
                             connection.send_error(msg["id"], "unauthorized", "An entity-scoped rule cannot change global settings")
                             return
@@ -276,7 +280,10 @@ def _authorize(feature: str, operation: str):
                 def send_error(self, identity, code, message):
                     self.response = ("error", identity, code, message)
             buffered = Buffered(connection)
-            token = set_write_guard(user_id, tuple(features), entities, read_entities=source_entities) if operation == "execute" else None
+            route_sources = ((msg["vacuum_entity"],) if msg.get("type") in
+                             (f"{DOMAIN}/reset_tank", f"{DOMAIN}/mark_empty") and msg.get("vacuum_entity") else ())
+            token = set_write_guard(user_id, tuple(features), entities, read_entities=source_entities,
+                                    route_sources=route_sources) if operation == "execute" else None
             try:
                 await handler(hass, buffered, msg)
             finally:
@@ -300,7 +307,7 @@ def _authorize(feature: str, operation: str):
             # await before sending the aggregate result. HA access can change
             # independently of the VWM policy during the earlier awaits.
             from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
-            from .feature_access import default_feature_access, feature_access_allowed
+            from .feature_access import default_feature_access, feature_access_allowed, policy_for_registry
             user = await hass.auth.async_get_user(user_id)
             raw_settings = (_storage(hass)._data or {}).get("settings") or {}
             current_policy = raw_settings.get("feature_access")
@@ -309,6 +316,7 @@ def _authorize(feature: str, operation: str):
                 return
             policy = current_policy if current_policy is not None else default_feature_access()
             try:
+                policy = policy_for_registry(hass, policy)
                 required = POLICY_CONTROL if operation == "execute" else POLICY_READ
                 if any(not feature_access_allowed(policy, item, operation, user_id=user.id,
                            is_active=user.is_active, is_admin=user.is_admin, entity_id=entity)
@@ -329,6 +337,72 @@ def _authorize(feature: str, operation: str):
             except (ValueError, AttributeError, TypeError):
                 connection.send_error(msg["id"], "unauthorized", "Access denied")
                 return
+            # Re-project private fields against the final principal, not the
+            # earlier async filtering decisions. No await may follow this.
+            def can_read(feature, entity):
+                return (isinstance(entity, str)
+                        and feature_access_allowed(policy, feature, "read", user_id=user.id,
+                            is_active=user.is_active, is_admin=user.is_admin, entity_id=entity)
+                        and user.permissions.check_entity(entity, POLICY_READ))
+            if isinstance(result, dict):
+                for key in ("vacuums", "robots"):
+                    for item in result.get(key) or []:
+                        if not isinstance(item, dict):
+                            continue
+                        for ref in ("balance_owner", "possible_duplicate_of"):
+                            if item.get(ref) and not can_read("water", item[ref]):
+                                item.pop(ref, None)
+                        if isinstance(item.get("duplicate_entities"), list):
+                            item["duplicate_entities"] = [ref for ref in item["duplicate_entities"] if can_read("water", ref)]
+                        entity = item.get("vacuum_entity") or item.get("entity_id")
+                        if key == "robots" and not can_read("measurements", entity):
+                            for field in ("last_tank", "recent_errors_percent", "typical_error_percent", "calibration_factor", "calibration_samples"):
+                                item.pop(field, None)
+                            if isinstance(item.get("supply"), dict):
+                                for field in ("water_per_cleaning_ml", "water_per_day_ml", "basis_runs"):
+                                    item["supply"].pop(field, None)
+                        if key == "robots" and not can_read("settings", entity):
+                            for field in ("capacity_source", "model_capacity_ml", "profile_key", "integration"):
+                                item.pop(field, None)
+                tanks = result.get("tank_states")
+                if isinstance(tanks, dict):
+                    result["tank_states"] = {entity: tank if can_read("measurements", entity) else _shared_tank(tank)
+                                             for entity, tank in tanks.items()}
+                owner = result.get("vacuum_entity") or msg.get("vacuum_entity")
+                if msg.get("type") == f"{DOMAIN}/save_measurement" and not can_read("measurements", owner):
+                    result.pop("calibration", None)
+                    result.pop("sample_count", None)
+                if isinstance(result.get("state"), dict) and not can_read("measurements", owner):
+                    result["state"] = _shared_tank(result["state"])
+                settings_result = result.get("settings")
+                if isinstance(settings_result, dict):
+                    if not feature_access_allowed(policy, "settings", "read", user_id=user.id,
+                            is_active=user.is_active, is_admin=user.is_admin):
+                        safe = {"configured_devices", "user_devices", "robot_links", "warning_threshold", "critical_threshold"}
+                        if feature_access_allowed(policy, "measurements", "read", user_id=user.id,
+                                is_active=user.is_active, is_admin=user.is_admin):
+                            safe.update({"local_measurements", "consumption_calibrations", "measurement_plans",
+                                         "custom_calibration", "calibration_sharing", "sharing_intro_choice"})
+                        result["settings"] = settings_result = {k: v for k, v in settings_result.items() if k in safe}
+                    all_robots = {item.get("entity_id") for item in list_vacuums(hass) if isinstance(item, dict) and item.get("entity_id")}
+                    all_robots.update(((_storage(hass)._data or {}).get("tank_states") or {}).keys())
+                    can_read_default = bool(all_robots) and all(can_read("measurements", entity) for entity in all_robots)
+                    for key in ("local_measurements", "consumption_calibrations", "measurement_plans", "custom_calibration"):
+                        mapping = settings_result.get(key)
+                        if isinstance(mapping, dict):
+                            settings_result[key] = {entity: data for entity, data in mapping.items()
+                                if isinstance(entity, str) and (can_read("measurements", entity.removeprefix("entity:"))
+                                    or (key == "custom_calibration" and entity == "default" and (user.is_admin or can_read_default)))}
+                    for key in ("configured_devices", "user_devices"):
+                        if isinstance(settings_result.get(key), list):
+                            settings_result[key] = [item if can_read("settings", item.get("vacuum_entity")) else
+                                {k: item[k] for k in ("vacuum_entity", "name") if k in item}
+                                for item in settings_result[key] if isinstance(item, dict)]
+                    for key in ("refill_config", "refill_settings", "device_options", "sessions", "signal_overrides", "robot_links"):
+                        mapping = settings_result.get(key)
+                        if isinstance(mapping, dict):
+                            settings_result[key] = {entity: data for entity, data in mapping.items()
+                                if can_read("settings", entity if str(entity).startswith("vacuum.") else "vacuum." + str(entity))}
             connection.send_result(buffered.response[1], result)
         return wrapped
     return decorate
@@ -409,9 +483,10 @@ async def _ws_subscribe(hass, connection, msg):
             # The policy's own event will deliver a fresh marker or revocation.
             return
         from homeassistant.auth.permissions.const import POLICY_READ
-        from .feature_access import default_feature_access, feature_access_allowed
+        from .feature_access import default_feature_access, feature_access_allowed, policy_for_registry
         policy = after if after is not None else default_feature_access()
         try:
+            policy = policy_for_registry(hass, policy)
             if user is None or not user.is_active or not feature_access_allowed(
                     policy, "water", "read", user_id=user.id, is_active=user.is_active, is_admin=user.is_admin):
                 connection.send_event(msg["id"], {"access_revoked": True})
@@ -469,19 +544,25 @@ async def _ws_get_feature_access(hass, connection, msg):
         if user is None or not user.is_active:
             connection.send_error(msg["id"], "unauthorized", "Access denied")
             return
-        caps = effective_feature_capabilities(policy, user_id=user.id, is_active=user.is_active, is_admin=user.is_admin)
+        latest_policy = ((_storage(hass)._data or {}).get("settings") or {}).get("feature_access", default_feature_access())
+        if latest_policy != policy:
+            connection.send_error(msg["id"], "feature_access_changed", "Access settings changed; retry")
+            return
+        from .feature_access import policy_for_registry
+        effective_policy = policy_for_registry(hass, policy)
+        caps = effective_feature_capabilities(effective_policy, user_id=user.id, is_active=user.is_active, is_admin=user.is_admin)
         # Native ACL can change while resource capabilities are being collected.
         # Recompute synchronously with the fresh principal before sending.
         from homeassistant.auth.permissions.const import POLICY_READ, POLICY_CONTROL
         from .feature_access import feature_access_allowed
         resources = {entity: {feature: {operation:
-            feature_access_allowed(policy, feature, operation, user_id=user.id, is_active=user.is_active,
+            feature_access_allowed(effective_policy, feature, operation, user_id=user.id, is_active=user.is_active,
                                    is_admin=user.is_admin, entity_id=entity)
             and user.permissions.check_entity(entity, POLICY_CONTROL if operation == "execute" else POLICY_READ)
             for operation in ("visible", "read", "execute")}
             for feature in ("water", "settings", "measurements")}
             for entity in resources
-            if feature_access_allowed(policy, "water", "visible", user_id=user.id, is_active=user.is_active,
+            if feature_access_allowed(effective_policy, "water", "visible", user_id=user.id, is_active=user.is_active,
                                       is_admin=user.is_admin, entity_id=entity)
             and user.permissions.check_entity(entity, POLICY_READ)}
     except (ValueError, AttributeError, TypeError):
@@ -501,6 +582,22 @@ async def _ws_set_feature_access(hass, connection, msg):
         return
     try:
         policy = validate_feature_access(msg["policy"])
+        from . import _vacuum_registry_identities
+        current = _vacuum_registry_identities(hass)
+        previous = (await _storage(hass).async_get_settings()).get("feature_access") or {"features": {}}
+        for feature, operations in policy["features"].items():
+            for operation, rule in operations.items():
+                if "entity_ids" not in rule:
+                    continue
+                prior = previous.get("features", {}).get(feature, {}).get(operation, {})
+                old_bindings = prior.get("entity_identities", {})
+                bindings = {}
+                for entity in rule["entity_ids"]:
+                    identity = old_bindings.get(entity) or current.get(entity)
+                    if identity is None:
+                        raise ValueError("Missing registry identity")
+                    bindings[entity] = identity
+                rule["entity_identities"] = bindings
     except ValueError:
         connection.send_error(msg["id"], "invalid_feature_access", "Access settings are invalid")
         return

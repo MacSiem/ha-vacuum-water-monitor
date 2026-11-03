@@ -175,7 +175,13 @@ class VacuumSensorManager:
             # A source device may also contain a VWM identifier from an older
             # install. Never remove the source or a user-customized device.
             if (any(domain != DOMAIN for domain, _ in device_entry.identifiers)
-                    or device_entry.connections or device_entry.name_by_user or device_entry.area_id):
+                    or device_entry.connections or device_entry.name_by_user or device_entry.area_id
+                    or getattr(device_entry, "labels", None) or device_entry.disabled_by):
+                continue
+            from homeassistant.helpers import entity_registry as er
+            members = er.async_entries_for_device(er.async_get(self.hass), device_entry.id, include_disabled_entities=True)
+            if any(item.name or item.icon or item.area_id or item.disabled_by or item.hidden_by
+                   or getattr(item, "labels", None) for item in members):
                 continue
             registry.async_remove_device(device_entry.id)
             for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor,
@@ -328,7 +334,8 @@ class WaterUsedSensor(VacuumStoreSensor):
 
     sensor_key = "water_used_since_refill"
     sensor_name = "Water used since refill"
-    _attr_device_class = SensorDeviceClass.VOLUME
+    # A refill resets this live counter. HA's VOLUME device class only allows
+    # total statistics, so retain measurement semantics without that class.
     _attr_native_unit_of_measurement = WATER_VOLUME_UNIT
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -440,6 +447,9 @@ class CleaningsLeftSensor(VacuumStoreSensor):
         self._attr_extra_state_attributes = {
             "vacuum_entity": self.vacuum_entity,
             "days_left": forecast["days_left"],
+            "water_per_cleaning_ml": forecast["water_per_cleaning_ml"],
+            "water_per_day_ml": forecast["water_per_day_ml"],
+            "basis_runs": forecast["basis_runs"],
         }
 
 

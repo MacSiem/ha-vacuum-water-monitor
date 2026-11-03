@@ -70,7 +70,11 @@ class _ReportingStore(Store):
             raise OSError("Home Assistant storage cannot confirm the write")
         if hass is not None and (owner := getattr(self, "_vwm_owner", None)) is not None:
             from .feature_access import enforce_write_guard
-            await enforce_write_guard(hass, (owner._data or {}).get("settings") or {})
+            current = owner._data or {}
+            old_tanks, new_tanks = current.get("tank_states") or {}, data.get("tank_states") or {}
+            changed_tanks = {entity for entity in old_tanks.keys() | new_tanks.keys()
+                             if old_tanks.get(entity) != new_tanks.get(entity)}
+            await enforce_write_guard(hass, current.get("settings") or {}, changed_tanks=changed_tanks)
         pending = getattr(self, "_data", None)
         delayed = pending.get("data_func") if isinstance(pending, dict) else None
         outcome = {"candidate": data, "attempted": False, "error": None}

@@ -268,7 +268,8 @@ class RobotEntity(Entity):
         entities = {self.vacuum_entity, owner}
         if not await check_access(self.hass, user_id, feature, "execute", entities):
             raise Unauthorized()
-        token = set_write_guard(user_id, feature, entities)
+        token = set_write_guard(user_id, feature, entities,
+                                route_sources=(self.vacuum_entity,) if feature == "water" else ())
         try:
             return await action(*args)
         finally:

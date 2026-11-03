@@ -109,7 +109,7 @@ def validate_feature_access(policy):
                 mode = rule.get('mode')
                 if type(mode) is not str or mode not in _MODES:
                     raise ValueError(_ERROR)
-                if set(rule) - {'mode', 'user_ids', 'entity_ids'}:
+                if set(rule) - {'mode', 'user_ids', 'entity_ids', 'entity_identities'}:
                     raise ValueError(_ERROR)
                 if mode != 'selected_users' and 'user_ids' in rule:
                     raise ValueError(_ERROR)
@@ -125,6 +125,14 @@ def validate_feature_access(policy):
                     clean[operation]['user_ids'] = sorted(set(ids))
                 if entities is not None:
                     clean[operation]['entity_ids'] = sorted(set(entities))
+                identities = rule.get('entity_identities')
+                if identities is not None:
+                    if entities is None or type(identities) is not dict or set(identities) != set(entities):
+                        raise ValueError(_ERROR)
+                    if not all(type(identity) is list and len(identity) == 3 and all(type(x) is str for x in identity)
+                               for identity in identities.values()):
+                        raise ValueError(_ERROR)
+                    clean[operation]['entity_identities'] = {k: list(v) for k, v in identities.items()}
             features[feature] = clean
         return {'schema': 1, 'features': features}
     except (ValueError, TypeError, OverflowError, RecursionError) as error:
@@ -167,6 +175,22 @@ def effective_feature_capabilities(policy, *, user_id, is_active, is_admin):
             for feature, operations in _CATALOG.items()}
 
 
+def policy_for_registry(hass, policy):
+    """Never transfer a scoped grant to a reused entity_id."""
+    from . import _vacuum_registry_identities
+    policy = validate_feature_access(policy)
+    current = _vacuum_registry_identities(hass)
+    for operations in policy['features'].values():
+        for rule in operations.values():
+            if 'entity_ids' not in rule:
+                continue
+            bindings = rule.get('entity_identities') or {}
+            rule['entity_ids'] = [entity for entity in rule['entity_ids']
+                                  if entity in bindings and bindings[entity] == current.get(entity)]
+            rule['entity_identities'] = {entity: bindings[entity] for entity in rule['entity_ids']}
+    return policy
+
+
 async def check_access(hass, user_id, feature, operation, entities=(), *, policy=None):
     """Check fresh HA identity, tool policy and native entity permissions.
 
@@ -181,7 +205,7 @@ async def check_access(hass, user_id, feature, operation, entities=(), *, policy
             return False
         policy = await storage.async_get_access_policy()
     try:
-        policy = validate_feature_access(policy)
+        policy = policy_for_registry(hass, policy)
     except ValueError:
         return False
     if user_id is None:
@@ -216,20 +240,20 @@ from asyncio import current_task
 _write_guard = ContextVar('vwm_feature_write_guard', default=None)
 
 
-def set_write_guard(user_id, feature, entities, *, admin=False, read_entities=()):
-    return _write_guard.set((current_task(), user_id, feature, tuple(entities), admin, tuple(read_entities)))
+def set_write_guard(user_id, feature, entities, *, admin=False, read_entities=(), route_sources=()):
+    return _write_guard.set((current_task(), user_id, feature, tuple(entities), admin, tuple(read_entities), tuple(route_sources)))
 
 
 def reset_write_guard(token):
     _write_guard.reset(token)
 
 
-async def enforce_write_guard(hass, settings):
+async def enforce_write_guard(hass, settings, *, changed_tanks=()):
     from homeassistant.exceptions import Unauthorized
     guard = _write_guard.get()
     if guard is None:
         return
-    owner, user_id, feature, entities, admin, read_entities = guard
+    owner, user_id, feature, entities, admin, read_entities, route_sources = guard
     # Child tasks (periodic accounting, issue sync) inherit context variables
     # but are not the caller's action and must not inherit its authority.
     if owner is not current_task():
@@ -238,6 +262,16 @@ async def enforce_write_guard(hass, settings):
         user = await hass.auth.async_get_user(user_id) if user_id else None
         if user is None or not user.is_active or not user.is_admin:
             raise Unauthorized()
+    # The mutator may resolve a different owner after the request precheck.
+    # Recheck the actual changed tanks while the same Store lock is held.
+    if route_sources and changed_tanks:
+        from .robots import resolve_balance_owner
+        from .const import DOMAIN, DATA_STORAGE
+        current = hass.data[DOMAIN][DATA_STORAGE]._data or {}
+        current_owners = {resolve_balance_owner(hass, current, source) for source in route_sources}
+        if not set(changed_tanks) <= current_owners:
+            raise Unauthorized()
+    entities = tuple(set(entities) | set(changed_tanks))
     features = (feature,) if isinstance(feature, str) else feature
     for item in features:
         if not await check_access(hass, user_id, item, 'execute', entities,
@@ -245,6 +279,27 @@ async def enforce_write_guard(hass, settings):
             raise Unauthorized()
     if not await check_native_read(hass, user_id, read_entities):
         raise Unauthorized()
+    # The previous checks await HA authentication more than once. Recheck all
+    # grants together after the final await, immediately before Store IO.
+    if user_id is not None:
+        from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
+        user = await hass.auth.async_get_user(user_id)
+        try:
+            effective = policy_for_registry(hass, settings.get('feature_access', default_feature_access()))
+            if user is None or not user.is_active or (admin and not user.is_admin):
+                raise Unauthorized()
+            for item in features:
+                if not feature_access_allowed(effective, item, 'execute', user_id=user.id,
+                        is_active=user.is_active, is_admin=user.is_admin):
+                    raise Unauthorized()
+                if any(not feature_access_allowed(effective, item, 'execute', user_id=user.id,
+                           is_active=user.is_active, is_admin=user.is_admin, entity_id=entity)
+                       or not user.permissions.check_entity(entity, POLICY_CONTROL) for entity in entities):
+                    raise Unauthorized()
+            if any(not user.permissions.check_entity(entity, POLICY_READ) for entity in read_entities):
+                raise Unauthorized()
+        except (ValueError, TypeError, AttributeError):
+            raise Unauthorized() from None
 
 
 async def check_native_read(hass, user_id, entities):

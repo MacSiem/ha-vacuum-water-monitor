@@ -646,9 +646,10 @@ async def test_scoped_replacement_and_owner_change_cannot_modify_other_robot(has
     await admin.send_json_auto_id({"type": f"{DOMAIN}/set_robot_link", "vacuum_entity": VACUUM, "target": b})
     assert (await admin.receive_json())["success"]
     proceed.set()
-    assert not (await client.receive_json())["success"]
+    response = await client.receive_json()
     tanks = (await storage.async_get_state())["tank_states"]
-    assert tanks[b]["used_ml"] == 999 and tanks[VACUUM]["used_ml"] == 123
+    assert (tanks[b]["used_ml"], tanks[VACUUM]["used_ml"]) == (999, 123), response
+    assert not response["success"]
 
 
 @pytest.mark.parametrize("offline", [False, True])
@@ -837,3 +838,32 @@ async def test_access_metadata_does_not_return_old_policy_after_last_await(hass,
     response = await client.receive_json()
     assert not response["success"]
     assert response["error"]["code"] in ("unauthorized", "feature_access_changed")
+
+
+async def test_native_permission_revocation_during_store_guard_aborts_write(hass, hass_ws_client, local_auth, monkeypatch):
+    """The last principal check fences the public action immediately before Store IO."""
+    import asyncio
+    from homeassistant.auth.const import GROUP_ID_USER
+    from pytest_homeassistant_custom_component.common import MockUser
+    from custom_components.ha_vacuum_water_monitor import feature_access
+
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 432})
+    member = MockUser(name="Revoked during Store guard", groups=[await hass.auth.async_get_group(GROUP_ID_USER)]).add_to_hass(hass)
+    token = await hass.auth.async_create_refresh_token(member, client_id="https://r5-test.invalid/")
+    client = await hass_ws_client(hass, hass.auth.async_create_access_token(token))
+    ready, release = asyncio.Event(), asyncio.Event()
+    original = feature_access.check_native_read
+    async def pause(hass_, user_id, entities):
+        result = await original(hass_, user_id, entities)
+        if user_id == member.id and feature_access._write_guard.get() is not None:
+            ready.set()
+            await release.wait()
+        return result
+    monkeypatch.setattr(feature_access, "check_native_read", pause)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM})
+    await asyncio.wait_for(ready.wait(), 3)
+    member.groups = []
+    release.set()
+    assert not (await client.receive_json())["success"]
+    assert (await _tank(storage))["used_ml"] == 432

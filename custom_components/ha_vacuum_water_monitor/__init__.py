@@ -154,9 +154,9 @@ def _listen_vacuum_registry(hass: HomeAssistant, storage: VacuumWaterStorage):
         if not entity_id.startswith("vacuum."):
             own = er.async_get(hass).async_get(entity_id)
             if own is not None and own.platform == DOMAIN:
-                action = event.data.get("action")
-                if action == "create" or (action == "update" and "device_id" in (event.data.get("changes") or {})):
-                    _notify_store_updated(hass, {"registry_changed": True})
+                # Moving our entities fires registry events synchronously. Their
+                # managers already perform that move; echoing it back here can
+                # recursively reconcile and delete a live fallback mid-move.
                 return
             if entity_id not in old_sources and entity_id not in known_sources:
                 return
@@ -418,7 +418,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
         user_id = call.context.user_id
         if not await check_access(hass, user_id, "water", "execute", resources):
             raise Unauthorized()
-        token = set_write_guard(user_id, "water", resources)
+        token = set_write_guard(user_id, "water", resources, route_sources=entity_ids)
         try:
             for entity_id in sorted(owners):
                 await async_mark_refilled(hass, entity_id, "service")
