@@ -209,6 +209,53 @@ dom.window.close();
 """
         subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
 
+    def test_authored_registry_copy_tracks_owner_on_events_and_reload(self):
+        script = r"""
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
+(async()=>{
+ for(const compact of [false,true]) {
+  const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'});
+  dom.window.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+  const owner='vacuum.owner', copy='vacuum.copy', card=dom.window.document.createElement('ha-vacuum-water-monitor');
+  card.setConfig({vacuum_entity:copy,water_total_ml:4000,compact});
+  let subscriber; const writes=[];
+  let state={settings:{},tank_states:{[owner]:{initialized:true,used_ml:648,last_reset_ts:1}},ambiguous_vacuum_ids:[]};
+  let listed={balance_links:{},vacuums:[
+    {entity_id:owner,name:'Owner',identity_group:owner,balance_owner:owner},
+    {entity_id:copy,name:'Copy',identity_group:owner,balance_owner:owner}]};
+  const hass={language:'en',locale:{language:'en'},states:{[owner]:{state:'docked',attributes:{}},[copy]:{state:'docked',attributes:{}}},
+   user:{is_admin:true},connection:{subscribeMessage:async cb=>{subscriber=cb;return ()=>{}}},callWS:async msg=>{
+    if(msg.type.endsWith('/get_state')) return structuredClone(state);
+    if(msg.type.endsWith('/list_vacuums')) return structuredClone(listed);
+    if(msg.type.endsWith('/set_settings')) {state.settings={...state.settings,...msg.patch};return {settings:structuredClone(state.settings)}}
+    if(msg.type.endsWith('/reset_tank')) {writes.push(msg);state.tank_states[owner]={initialized:true,used_ml:0,last_reset_ts:2};return {vacuum_entity:owner,state:structuredClone(state.tank_states[owner])}}
+    throw Error(msg.type);
+   }};
+  card._hass=hass;card._refreshHealth=()=>null;
+  dom.window.document.body.append(card);await card._ensureServerState(true);await new Promise(r=>setTimeout(r,10));
+  assert.equal(card._getDevices()[0].vacuum_entity,owner);
+  const refill=card.shadowRoot.querySelector('.refill-btn');assert(refill);refill.click();await new Promise(r=>setTimeout(r,10));
+  assert.equal(writes.length,1);assert.equal(writes[0].vacuum_entity,owner);
+  assert.match(card.shadowRoot.textContent,/4[.,]00\s*L/);
+  state.tank_states[owner]={initialized:true,used_ml:160,last_reset_ts:2};
+  subscriber({data:{partial:true,tank_states:{[owner]:state.tank_states[owner]}}});await new Promise(r=>setTimeout(r,10));
+  assert.match(card.shadowRoot.textContent,/3[.,]84\s*L/);
+  assert.equal(state.tank_states[copy],undefined);
+  await card._ensureServerState(true);await new Promise(r=>setTimeout(r,10));
+  assert.match(card.shadowRoot.textContent,/3[.,]84\s*L/);
+  state.settings.robot_links={[copy]:'distinct'};state.tank_states[copy]={initialized:true,used_ml:600,last_reset_ts:3};
+  listed.balance_links={[copy]:'distinct'};listed.vacuums[1].balance_owner=copy;
+  subscriber({data:{settings:structuredClone(state.settings)}});await new Promise(r=>setTimeout(r,30));
+  assert.equal(card._getDevices()[0].vacuum_entity,copy);
+  assert.match(card.shadowRoot.textContent,/3[.,]40\s*L/);
+  state.ambiguous_vacuum_ids=[copy];await card._ensureServerState(true);await new Promise(r=>setTimeout(r,10));
+  assert.match(card.shadowRoot.textContent,/Card paused/);assert.equal(card.shadowRoot.querySelector('.refill-btn'),null);
+  assert.equal(writes.length,1);dom.window.close();
+ }
+})().catch(e=>{console.error(e);process.exit(1)});
+"""
+        subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
+
 
 if __name__ == "__main__":
     unittest.main()

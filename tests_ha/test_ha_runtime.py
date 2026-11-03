@@ -305,6 +305,10 @@ async def test_card_refill_uses_confirmed_balance_owner(hass: HomeAssistant, has
     await storage.async_set_tank_state(copy, other)
     target_id = VACUUM if target == "primary" else copy
     owner = copy if target == "distinct" else VACUUM
+    await client.send_json_auto_id({"type": f"{DOMAIN}/list_vacuums"})
+    listing = (await client.receive_json())["result"]
+    assert listing["balance_links"][copy] == link
+    assert next(v for v in listing["vacuums"] if v["entity_id"] == copy)["balance_owner"] == owner
     expected_other = VACUUM if owner == copy else copy
     before_other = (await storage.async_get_state())["tank_states"][expected_other]
     events = []
@@ -369,6 +373,10 @@ async def test_registry_duplicate_action_uses_balance_owner(hass: HomeAssistant,
     if route.startswith("empty"):
         assert next(r for r in reports if r["vacuum_entity"] == VACUUM)["can_calibrate"] == (route == "empty_supported")
     client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/list_vacuums"})
+    listing = (await client.receive_json())["result"]
+    assert listing["balance_links"].get(copy) is None
+    assert next(v for v in listing["vacuums"] if v["entity_id"] == copy)["balance_owner"] == VACUUM
     if route == "service":
         await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": copy}, blocking=True)
     else:

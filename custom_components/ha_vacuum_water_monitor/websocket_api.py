@@ -14,7 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import DATA_TICKER, DOMAIN, EVENT_STATE_CHANGED, event_tank_states, signal_vacuum_water_updated
 from .storage import THRESHOLD_KEYS, VacuumWaterStorage
 from .tick import list_vacuums
-from .sensor_calculations import resolve_linked_programs
+from .sensor_calculations import build_vacuum_devices, resolve_linked_programs
 from .calibration import build_contribution_draft, select_recorded_cycle
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,8 +85,21 @@ async def _ws_list_vacuums(
     msg: dict[str, Any],
 ) -> None:
     """Return enriched HA vacuum descriptors."""
-    settings = (await _storage(hass).async_get_state()).get("settings") or {}
-    connection.send_result(msg["id"], {"vacuums": resolve_linked_programs(list_vacuums(hass), settings)})
+    stored = await _storage(hass).async_get_state()
+    connection.send_result(msg["id"], _vacuum_list(hass, stored))
+
+
+def _vacuum_list(hass: HomeAssistant, stored: dict[str, Any]) -> dict[str, Any]:
+    """Describe the actual balance owner, using the same grouping as accounting."""
+    settings = stored.get("settings") or {}
+    discovered = list_vacuums(hass)
+    devices = build_vacuum_devices(settings, stored.get("tank_states"), discovered)
+    owners = {entity: device["vacuum_entity"] for device in devices
+              for entity in [device["vacuum_entity"], *device.get("duplicate_entities", [])]}
+    vacuums = resolve_linked_programs(discovered, settings)
+    for vacuum in vacuums:
+        vacuum["balance_owner"] = owners.get(vacuum["entity_id"], vacuum["entity_id"])
+    return {"vacuums": vacuums, "balance_links": settings.get("robot_links") or {}}
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/get_state"})
@@ -189,7 +202,8 @@ async def _ws_reprofile(hass, connection, msg):
         return
     bindings_refreshed = await _refresh_bindings(hass)
     _notify_store_updated(hass, {"settings": settings})
-    connection.send_result(msg["id"], {"settings": settings, "bindings_refreshed": bindings_refreshed, "vacuums": resolve_linked_programs(list_vacuums(hass), settings)})
+    listing = _vacuum_list(hass, await _storage(hass).async_get_state())
+    connection.send_result(msg["id"], {"settings": settings, "bindings_refreshed": bindings_refreshed, **listing})
 
 
 @websocket_api.websocket_command(

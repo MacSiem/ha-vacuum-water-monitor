@@ -13535,6 +13535,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           ambiguous_vacuum_ids: (state && state.ambiguous_vacuum_ids) || [],
         };
         this._discoveredVacuums = (listed && listed.vacuums) || [];
+        this._balanceLinks = listed && listed.balance_links;
         this._applyServerSettings();
         const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
         const unchanged = JSON.stringify(configuredDevices) === JSON.stringify(this._serverState.settings.configured_devices || []);
@@ -13566,17 +13567,19 @@ class HAVacuumWaterMonitor extends HTMLElement {
       if (data.registry_rename || data.registry_changed) setTimeout(() => this._ensureServerState(true), 0);
       if (data.settings) {
         const linksChanged = JSON.stringify(this._robotLinks()) !== JSON.stringify(data.settings.robot_links || {});
+        const devicesChanged = ['configured_devices', 'user_devices'].some(key =>
+          JSON.stringify(this._serverState.settings?.[key] || []) !== JSON.stringify(data.settings[key] || []));
         this._serverState.settings = data.settings;
         this._applyServerSettings();
         // Linked programs live in discovery descriptors, not in settings.
-        if (linksChanged) setTimeout(() => this._ensureServerState(true), 0);
+        if (linksChanged || devicesChanged) setTimeout(() => this._ensureServerState(true), 0);
       }
       if (data.tank_states && data.partial) {
         // A refill or a run starting/ending changes the history the event leaves
         // out: reload the full state instead of waiting for the 5-minute refresh.
         const old = this._serverState.tank_states || {};
         const historyMoved = Object.entries(data.tank_states).some(([vacuum, tank]) =>
-          (old[vacuum] || {}).last_reset_ts !== tank.last_reset_ts
+          !Object.hasOwn(old, vacuum) || (old[vacuum] || {}).last_reset_ts !== tank.last_reset_ts
           || (old[vacuum] || {}).session_start_ts !== tank.session_start_ts);
         if (historyMoved) setTimeout(() => this._ensureServerState(true), 0);
       }
@@ -14372,10 +14375,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _getDevices() {
-    const devices = this._getDeviceCandidates();
+    const links = this._robotLinks();
+    const sortedLinks = value => JSON.stringify(Object.entries(value || {}).sort(([a], [b]) => a.localeCompare(b)));
+    const mappingCurrent = this._balanceLinks && sortedLinks(this._balanceLinks) === sortedLinks(links);
+    const devices = this._getDeviceCandidates().map(device => {
+      const owner = mappingCurrent && this._backendDescriptor(device)?.balance_owner;
+      if (!owner || owner === device.vacuum_entity || !this._discoveredVacuums.some(v => v.entity_id === owner)) return device;
+      return this._withBackendDescriptor({ ...device, vacuum_entity: owner });
+    });
     const groups = new Map();
     const stored = this._serverState?.tank_states || {};
-    const links = this._robotLinks();
     const groupOf = (d) => links[d.vacuum_entity] === 'distinct'
       ? `distinct:${d.vacuum_entity}`
       : (this._backendDescriptor(d)?.identity_group || d.vacuum_entity);
@@ -15994,6 +16003,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const result = await this._hass.callWS({type: `${VWM_DOMAIN}/reprofile`, vacuum_entity: device.vacuum_entity});
       this._serverState = {...this._serverState, settings: result.settings};
       this._discoveredVacuums = result.vacuums || [];
+      this._balanceLinks = result.balance_links;
       this._render();
       const current = this.shadowRoot?.getElementById('vwm-reprofile-status');
       if (current) current.textContent = this._waterText("Profile refreshed. Your calibration and history are preserved.");
