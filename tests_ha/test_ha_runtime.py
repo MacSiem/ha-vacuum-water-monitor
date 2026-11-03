@@ -343,7 +343,7 @@ async def test_card_refill_uses_confirmed_balance_owner(hass: HomeAssistant, has
     unsub()
 
 
-@pytest.mark.parametrize("route", ["card", "service", "empty"])
+@pytest.mark.parametrize("route", ["card", "service", "empty", "empty_supported"])
 async def test_registry_duplicate_action_uses_balance_owner(hass: HomeAssistant, hass_ws_client, route):
     """A registry-proven duplicate shares the displayed owner's tank."""
     storage = await _setup(hass)
@@ -354,6 +354,9 @@ async def test_registry_duplicate_action_uses_balance_owner(hass: HomeAssistant,
         device_id=primary.device_id, config_entry=roborock, suggested_object_id="zzz_r2_registry_copy").entity_id
     assert copy == "vacuum.zzz_r2_registry_copy"
     hass.states.async_set(copy, "docked")
+    if route == "empty":
+        registry.async_remove("sensor.robot_dock_error")
+        hass.states.async_remove("sensor.robot_dock_error")
     await _settle(hass)
     await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True,
         "calibration_history": [{"sample": "owner"}], "refill_history": [{"source": "earlier"}]})
@@ -363,19 +366,31 @@ async def test_registry_duplicate_action_uses_balance_owner(hass: HomeAssistant,
     reports = await async_reports(hass)
     assert any(r["vacuum_entity"] == VACUUM for r in reports)
     assert not any(r["vacuum_entity"] == copy for r in reports)
+    if route.startswith("empty"):
+        assert next(r for r in reports if r["vacuum_entity"] == VACUUM)["can_calibrate"] == (route == "empty_supported")
     client = await hass_ws_client(hass)
     if route == "service":
         await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": copy}, blocking=True)
     else:
         await client.send_json_auto_id({"type": f"{DOMAIN}/" + ("reset_tank" if route == "card" else "mark_empty"),
                                         "vacuum_entity": copy})
-        assert (await client.receive_json())["success"]
+        result = await client.receive_json()
+        if route == "empty_supported":
+            assert not result["success"]
+            assert "reports an empty tank itself" in result["error"]["message"]
+        else:
+            assert result["success"]
+            assert result["result"]["vacuum_entity"] == VACUUM
     await _settle(hass)
     tanks = (await storage.async_get_state())["tank_states"]
     assert tanks[copy]["used_ml"] == 999
     assert tanks[copy]["refill_history"] == [{"source": "copy"}]
     assert tanks[VACUUM]["calibration_history"] == [{"sample": "owner"}]
-    if route == "empty":
+    if route == "empty_supported":
+        assert not tanks[VACUUM].get("user_empty_active")
+        assert not tanks[copy].get("user_empty_active")
+        assert tanks[VACUUM]["used_ml"] == 432
+    elif route == "empty":
         assert tanks[VACUUM]["user_empty_active"]
         assert not tanks[copy].get("user_empty_active")
     else:
