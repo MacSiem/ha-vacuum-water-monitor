@@ -152,7 +152,8 @@ class RobotEntityManager:
                         existing._device = dict(device)
                         existing._identity_active = True
                         self._known[str(entity.unique_id)] = existing.vacuum_entity
-                        self.hass.async_create_task(existing._async_refresh_and_write())
+                        if existing.entity_id is not None:
+                            self.hass.async_create_task(existing._async_refresh_and_write())
                     continue
                 self._known[str(entity.unique_id)] = str(device["vacuum_entity"])
                 self._instances[str(entity.unique_id)] = entity

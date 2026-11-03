@@ -13532,6 +13532,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           tank_states: (state && state.tank_states) || {},
           vacuum_aliases: (state && state.vacuum_aliases) || {},
           registry_identity_conflicts: (state && state.registry_identity_conflicts) || [],
+          ambiguous_vacuum_ids: (state && state.ambiguous_vacuum_ids) || [],
         };
         this._discoveredVacuums = (listed && listed.vacuums) || [];
         this._applyServerSettings();
@@ -13826,7 +13827,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   _configuredDevicesFromConfig() {
     if (!this._config) return [];
     if (this._config.devices && Array.isArray(this._config.devices)) {
-      return this._config.devices.map(d => this._withAuthoredProvenance(
+      return this._config.devices.filter(d => !this._isAmbiguousConfiguredVacuum(d)).map(d => this._withAuthoredProvenance(
         d,
         d?.config_provenance?.authored_fields || Object.keys(d || {}).filter(key => key !== 'config_provenance')
       ));
@@ -13848,7 +13849,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     ];
     const authored = this._authoredConfigKeys || new Set();
     keys.forEach(k => { if (authored.has(k)) single[k] = this._config[k]; });
-    if (!Object.keys(single).length || !single.vacuum_entity) return [];
+    if (!Object.keys(single).length || !single.vacuum_entity || this._isAmbiguousConfiguredVacuum(single)) return [];
     return [this._withAuthoredProvenance(single, [...authored].filter(key => key in single))];
   }
 
@@ -14409,6 +14410,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return _esc((v && v.name) || (this._hass?.states?.[id]?.attributes?.friendly_name) || id);
     };
     const parts = [];
+    const configured = Array.isArray(this._config?.devices) ? this._config.devices : [this._config];
+    for (const device of configured.filter(d => this._isAmbiguousConfiguredVacuum(d))) {
+      const id = _esc(device.vacuum_entity);
+      parts.push(`<div class="alert-banner alert-warn">${pl
+        ? `Karta wstrzymana: identyfikator „${id}” należy teraz do innego robota. Zmień identyfikator w konfiguracji albo utwórz kartę z automatycznym wyborem.`
+        : `Card paused: "${id}" now identifies another robot. Update the configured ID or create a card with automatic selection.`}</div>`);
+    }
     for (const conflict of this._serverState?.registry_identity_conflicts || []) {
       const id = _esc(conflict.entity_id || '');
       parts.push(`<div class="alert-banner alert-warn">${pl
@@ -14444,6 +14452,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return parts.join('');
   }
 
+  _isAmbiguousConfiguredVacuum(device) {
+    return !!device?.vacuum_entity && (this._serverState?.ambiguous_vacuum_ids || []).includes(device.vacuum_entity);
+  }
+
   _resolveConfiguredVacuum(device) {
     const entity = device?.vacuum_entity;
     const alias = this._serverState?.vacuum_aliases?.[entity];
@@ -14456,7 +14468,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _getDeviceCandidates() {
     if (this._config.devices && Array.isArray(this._config.devices)) {
-      return this._config.devices.map(d => this._withBackendDescriptor(this._decorateLegacyProfile(this._resolveConfiguredVacuum(d))));
+      return this._config.devices.filter(d => !this._isAmbiguousConfiguredVacuum(d)).map(d => this._withBackendDescriptor(this._decorateLegacyProfile(this._resolveConfiguredVacuum(d))));
     }
     // Single device mode
     const single = {};
@@ -14477,6 +14489,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     ];
     const authoredSingle = this._authoredConfigKeys || new Set();
     keys.forEach(k => { if (authoredSingle.has(k)) single[k] = this._config[k]; });
+    if (this._isAmbiguousConfiguredVacuum(single)) return [];
     Object.assign(single, this._resolveConfiguredVacuum(single));
     if (Object.keys(single).length === 0) {
       const serverDevices = (this._userDevices && this._userDevices.length)
@@ -16765,6 +16778,9 @@ target:
     else if (this._activeTab === 'stats') tabContent = this._buildStatsTab(devices);
     else if (this._activeTab === 'database') tabContent = this._buildDatabaseTab();
     else if (this._activeTab === 'settings') tabContent = this._buildSettingsTab(device, data);
+    const configured = Array.isArray(cfg.devices) ? cfg.devices : [cfg];
+    const blockedConfiguredRobot = configured.some(d => this._isAmbiguousConfiguredVacuum(d));
+    if (!devices.length && blockedConfiguredRobot) tabContent = `<div class="empty-state">${this._lang === 'pl' ? 'Wybór robota wymaga aktualizacji.' : 'The robot selection needs updating.'}</div>`;
 
     const deviceTabsHtml = this._buildDeviceTabs(devices);
 
@@ -17102,7 +17118,7 @@ input, select, textarea { max-width:100%; min-width:0; }
         <div class="card-title">${_esc(this._config.title)}${cfg.compact && this._compactExpanded ? `<button type="button" id="vwm-collapse">${this._lang === 'pl' ? 'Zwiń kartę' : 'Collapse card'}</button>` : ''}</div>
         ${cfg.show_help !== false && !(cfg.compact && !this._compactExpanded) ? `<details class="tip-banner" id="tip-banner"><summary>${this._waterText('How it works')}</summary>${this._tipHtml()}</details>` : ''}
         ${this._activeTab !== 'settings' && !(cfg.compact && !this._compactExpanded) ? this._buildSharingIntro() : ''}
-        ${cfg.compact && !this._compactExpanded ? '' : this._duplicateNoticeHtml()}
+        ${cfg.compact && !this._compactExpanded && !blockedConfiguredRobot && !(this._serverState?.registry_identity_conflicts || []).length ? '' : this._duplicateNoticeHtml()}
         ${cfg.compact && !this._compactExpanded ? '' : deviceTabsHtml}
         ${cfg.compact && !this._compactExpanded ? '' : deviceHeader}
         ${cfg.compact && !this._compactExpanded ? '' : tabNav}

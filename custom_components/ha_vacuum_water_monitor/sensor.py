@@ -135,7 +135,8 @@ class VacuumSensorManager:
                         existing.vacuum_entity = str(vacuum_entity)
                         existing._device = dict(device)
                         existing._fallback_device = dict(device)
-                        self.hass.async_create_task(existing.async_refresh())
+                        if existing.entity_id is not None:
+                            self.hass.async_create_task(existing.async_refresh())
                     continue
                 self._known.add(sensor_id)
                 sensor = sensor_cls(self.hass, self.entry, device)

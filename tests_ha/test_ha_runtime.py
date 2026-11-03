@@ -654,9 +654,9 @@ async def test_registry_vacuum_rename_keeps_its_water_history(hass, hass_ws_clie
     await hass.async_block_till_done()
     await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
         "configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234}]}})
-    assert (await client.receive_json())["success"]
+    assert not (await client.receive_json())["success"]
     state = await storage.async_get_state()
-    assert state["settings"]["configured_devices"][0]["vacuum_entity"] == VACUUM
+    assert state["settings"]["configured_devices"][0]["vacuum_entity"] == "vacuum.r1_renamed"
     assert state["tank_states"]["vacuum.r1_renamed"]["used_ml"] == 432
 
 
@@ -699,11 +699,12 @@ async def test_offline_rename_with_reused_old_id_keeps_identity_and_separate_ban
     original = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)}
     assert await hass.config_entries.async_unload(entry.entry_id)
     registry.async_update_entity(VACUUM, new_entity_id="vacuum.r1_offline_rename")
+    hass.states.async_remove(VACUUM)
     independent = MockConfigEntry(domain="matter", title="Independent")
     independent.add_to_hass(hass)
-    registry.async_get_or_create("vacuum", "matter", "r1-independent", config_entry=independent,
+    replacement = registry.async_get_or_create("vacuum", "matter", "r1-independent", config_entry=independent,
         suggested_object_id="robot")
-    hass.states.async_remove(VACUUM)
+    assert replacement.entity_id == VACUUM
     hass.states.async_set(VACUUM, "docked")
     hass.states.async_set("vacuum.r1_offline_rename", "docked")
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -724,10 +725,12 @@ async def test_offline_reuse_without_original_holds_history_instead_of_attaching
     assert await hass.config_entries.async_unload(entry.entry_id)
     registry = er.async_get(hass)
     registry.async_remove(VACUUM)
+    hass.states.async_remove(VACUUM)
     independent = MockConfigEntry(domain="matter", title="Independent")
     independent.add_to_hass(hass)
-    registry.async_get_or_create("vacuum", "matter", "r1-other-only", config_entry=independent,
+    replacement = registry.async_get_or_create("vacuum", "matter", "r1-other-only", config_entry=independent,
         suggested_object_id="robot")
+    assert replacement.entity_id == VACUUM
     hass.states.async_set(VACUUM, "docked")
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -746,9 +749,11 @@ async def test_online_reuse_holds_original_entities_and_recovers_same_id(hass):
     original_ids = {item.unique_id: item.entity_id for item in original_entries}
     await storage.async_set_tank_state(VACUUM, {'used_ml': 432, 'initialized': True})
     registry.async_remove(VACUUM)
+    hass.states.async_remove(VACUUM)
     independent = MockConfigEntry(domain='matter', title='Independent')
     independent.add_to_hass(hass)
-    registry.async_get_or_create('vacuum', 'matter', 'online-b', config_entry=independent, suggested_object_id='robot')
+    replacement = registry.async_get_or_create('vacuum', 'matter', 'online-b', config_entry=independent, suggested_object_id='robot')
+    assert replacement.entity_id == VACUUM
     hass.states.async_set(VACUUM, 'docked')
     await _settle(hass)
     await storage.async_set_tank_state(VACUUM, {'used_ml': 999, 'initialized': True})
@@ -761,11 +766,13 @@ async def test_online_reuse_holds_original_entities_and_recovers_same_id(hass):
     assert (await storage.async_get_state())['tank_states'][VACUUM]['used_ml'] == 999
     assert VACUUM not in (await storage.async_get_settings()).get('device_options', {})
     registry.async_remove(VACUUM)
+    hass.states.async_remove(VACUUM)
     upstream = hass.config_entries.async_entries('roborock')[0]
     device = next(d for d in dr.async_entries_for_config_entry(dr.async_get(hass), upstream.entry_id)
                   if ('roborock', 'robot-1') in d.identifiers)
-    registry.async_get_or_create('vacuum', 'roborock', 'robot-1', config_entry=upstream,
+    returned = registry.async_get_or_create('vacuum', 'roborock', 'robot-1', config_entry=upstream,
         device_id=device.id, suggested_object_id='robot')
+    assert returned.entity_id == VACUUM
     _robot_states(hass)
     await _settle(hass)
     state = await storage.async_get_state()

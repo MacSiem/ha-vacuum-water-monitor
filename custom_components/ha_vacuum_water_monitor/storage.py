@@ -77,6 +77,8 @@ def _public_state(data: dict[str, Any]) -> dict[str, Any]:
     """Hide registry identity and held conflict data from ordinary consumers."""
     data = deepcopy(data)
     data.pop("registry_identities", None)
+    ambiguous = data.pop("ambiguous_vacuum_identities", {})
+    data["ambiguous_vacuum_ids"] = sorted(ambiguous) if isinstance(ambiguous, dict) else []
     orphans = data.pop("identity_orphan_sources", {})
     if isinstance(orphans, dict) and orphans:
         hidden = set(orphans)
@@ -188,6 +190,11 @@ class VacuumWaterStorage:
             retired = []
             unresolved = {}
             orphan_sources = candidate.setdefault("identity_orphan_sources", {})
+            ambiguous = candidate.setdefault("ambiguous_vacuum_identities", {})
+            for source, target in (candidate.get("vacuum_aliases") or {}).items():
+                original_identity = previous.get(target) or current.get(target)
+                if source in current and original_identity and current[source] != original_identity:
+                    ambiguous.setdefault(source, original_identity)
             def hold_for_identity(old: str, identity: list[str]) -> None:
                 marker = "vacuum.vwm_unresolved_" + hashlib.sha256(repr(identity).encode()).hexdigest()[:16]
                 if marker in current or marker in orphan_sources:
@@ -204,6 +211,7 @@ class VacuumWaterStorage:
                 if old in current and current[old] != identity:
                     if not (isinstance(identity, list) and len(identity) == 3 and all(isinstance(part, str) for part in identity)):
                         raise ValueError("Vacuum identity conflict cannot be isolated safely")
+                    ambiguous.setdefault(old, identity)
                     hold_for_identity(old, identity)
                     reused.add(old)
             work = {**{old: identity for old, identity in previous.items() if old not in reused}, **unresolved}
@@ -234,6 +242,9 @@ class VacuumWaterStorage:
                     orphan_sources.pop(old, None)
                 retired.append(old)
             candidate["registry_identities"] = {**unresolved, **current}
+            for entity, identity in list(ambiguous.items()):
+                if current.get(entity) == identity:
+                    ambiguous.pop(entity)
             origins = candidate.setdefault("entity_origins", {})
             candidate["identity_unavailable_origins"] = sorted(
                 str(origins.get(entity, entity)) for entity in unresolved if entity not in orphan_sources
@@ -314,6 +325,14 @@ class VacuumWaterStorage:
                     clean["custom_calibration"].update({k: deepcopy(v) for k, v in settings["custom_calibration"].items()
                         if k in hidden or any(k == "entity:" + item for item in hidden)})
             aliases = data.get("vacuum_aliases") or {}
+            ambiguous = data.get("ambiguous_vacuum_identities") or {}
+            for key in ("configured_devices", "user_devices"):
+                if isinstance(clean.get(key), list) and any(
+                    isinstance(item, dict) and isinstance(item.get("vacuum_entity"), str)
+                    and item["vacuum_entity"] in ambiguous
+                    for item in clean[key]
+                ):
+                    raise ValueError("A configured vacuum ID was reused; update this card's robot selection")
             if self.hass is not None and aliases:
                 from homeassistant.helpers import entity_registry as er
                 registry = er.async_get(self.hass)

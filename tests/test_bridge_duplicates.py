@@ -121,6 +121,11 @@ const authored = { vacuum_entity: 'vacuum.old', water_total_ml: 1234 };
 out.renamedConfig = renamed._resolveConfiguredVacuum(authored);
 renamed._discoveredVacuums.push({ entity_id: 'vacuum.old', identity_group: 'new-robot' });
 out.reusedOldId = renamed._resolveConfiguredVacuum(authored);
+renamed._config = {vacuum_entity:'vacuum.old', water_total_ml:1234};
+renamed._authoredConfigKeys = new Set(['vacuum_entity','water_total_ml']);
+renamed._serverState.ambiguous_vacuum_ids = ['vacuum.old'];
+out.blockedConfiguredDevices = renamed._getDevices();
+out.blockedConfiguredNotice = renamed._duplicateNoticeHtml();
 renamed._serverState.registry_identity_conflicts = [{entity_id:'vacuum.<old>'}];
 out.identityConflict = renamed._duplicateNoticeHtml();
 console.log(JSON.stringify(out));
@@ -153,6 +158,8 @@ console.log(JSON.stringify(out));
     def test_rename_resolves_authored_config_without_retargeting_reused_id(self):
         self.assertEqual(self.result["renamedConfig"], {"vacuum_entity": "vacuum.s8", "water_total_ml": 1234})
         self.assertEqual(self.result["reusedOldId"], {"vacuum_entity": "vacuum.old", "water_total_ml": 1234})
+        self.assertEqual(self.result["blockedConfiguredDevices"], [])
+        self.assertIn('Card paused', self.result["blockedConfiguredNotice"])
         self.assertIn('history for', self.result["identityConflict"].lower())
         self.assertIn('vacuum.&lt;old&gt;', self.result["identityConflict"])
 
@@ -178,6 +185,24 @@ vm.runInThisContext(fs.readFileSync('custom_components/ha_vacuum_water_monitor/w
  assert(calls.some(x=>x.endsWith('/get_state'))); assert(calls.some(x=>x.endsWith('/list_vacuums')));
  assert.equal(c._serverState.tank_states['vacuum.new'].used_ml,42); assert(renders>0);
 })().catch(e=>{console.error(e);process.exit(1)});
+"""
+        subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
+
+    def test_reused_id_in_authored_card_renders_no_robot_action(self):
+        script = r"""
+const {JSDOM}=require('jsdom'), fs=require('fs'), assert=require('assert/strict');
+const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'});
+dom.window.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+const card=dom.window.document.createElement('ha-vacuum-water-monitor');
+card.setConfig({vacuum_entity:'vacuum.old',water_total_ml:1234,compact:true});
+let writes=[]; card._hass={language:'en',locale:{language:'en'},states:{'vacuum.old':{state:'docked',attributes:{}}},
+ user:{is_admin:true},callWS:async msg=>{writes.push(msg);return {}},connection:{subscribeMessage:async()=>()=>{}}};
+card._serverState={settings:{},tank_states:{'vacuum.old':{used_ml:99}},ambiguous_vacuum_ids:['vacuum.old']};
+card._discoveredVacuums=[{entity_id:'vacuum.old',identity_group:'independent-b'}];
+card._ensureServerState=()=>null;card._refreshHealth=()=>null;dom.window.document.body.append(card);card._render();
+assert.match(card.shadowRoot.textContent,/Card paused/);
+assert.equal(card.shadowRoot.querySelector('.refill-btn'),null);
+assert.equal(card._getDevices().length,0);assert.equal(writes.length,0);dom.window.close();
 """
         subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
 

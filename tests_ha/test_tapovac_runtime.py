@@ -74,6 +74,10 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass,
     hass.states.async_set("select.confirmed_robot_mode", "Vacuum and Mop;Deep Clean")
     await settle(hass)
     await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": "vacuum.tapo"}, blocking=True)
+    # The refill resets the area baseline; 0 -> 0 emits no state_changed.
+    # A normal status transition supplies the first post-refill observation.
+    update(0, code=5)
+    await settle(hass)
     update(0)
     await settle(hass)
     update(2)

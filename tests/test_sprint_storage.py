@@ -70,15 +70,17 @@ class SprintStorageTests(unittest.TestCase):
             held = await st.async_get_state()
             self.assertNotIn('vacuum.a', held['tank_states'])
             self.assertEqual(held['registry_identity_conflicts'][0]['entity_id'], 'vacuum.a')
-            await st.async_set_settings({'configured_devices': [{'vacuum_entity': 'vacuum.a', 'name': 'B'}]})
+            with self.assertRaises(ValueError):
+                await st.async_set_settings({'configured_devices': [{'vacuum_entity': 'vacuum.a', 'name': 'B'}]})
+            await st.async_set_tank_state('vacuum.a', {'used_ml': 999})
             await st.async_reconcile_registry({'vacuum.a': replacement, 'vacuum.renamed': original})
             return await st.async_get_state()
         result = asyncio.run(run())
         self.assertEqual(result['tank_states']['vacuum.renamed']['used_ml'], 432)
         self.assertEqual(result['tank_states']['vacuum.renamed']['history'], ['keep'])
-        self.assertNotIn('vacuum.a', result['tank_states'])
+        self.assertEqual(result['tank_states']['vacuum.a']['used_ml'], 999)
         self.assertEqual({d['vacuum_entity'] for d in result['settings']['configured_devices']},
-                         {'vacuum.a', 'vacuum.renamed'})
+                         {'vacuum.renamed'})
 
     def test_held_identity_returns_under_same_id_after_reuse_and_repeat(self):
         async def run():
