@@ -1318,24 +1318,23 @@ async def test_real_store_write_error_preserves_pending_tick_and_rejects_save(ha
     before_options = dict(entry.options)
     events = []
     unsub = hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event.data))
-    original_write = Store._async_write_data
     async def failed_write(*_args, **_kwargs):
         raise WriteError("synthetic low-level disk error")
-    monkeypatch.setattr(Store, "_async_write_data", failed_write)
-    if action == "ws":
-        client = await hass_ws_client(hass)
-        await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"warning_threshold": 40}})
-        assert not (await client.receive_json())["success"]
-    else:
-        flow = await hass.config_entries.options.async_init(entry.entry_id)
-        result = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
-            "warning_threshold": 40, "critical_threshold": 15})
-        assert result["type"] == "form" and result["errors"]
-    assert await storage.async_get_state() == before
-    assert hass_storage[DOMAIN]["data"] == before_disk
-    assert dict(entry.options) == before_options
-    assert not events
-    monkeypatch.setattr(Store, "_async_write_data", original_write)
+    with monkeypatch.context() as fault:
+        fault.setattr(Store, "_async_write_data", failed_write)
+        if action == "ws":
+            client = await hass_ws_client(hass)
+            await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"warning_threshold": 40}})
+            assert not (await client.receive_json())["success"]
+        else:
+            flow = await hass.config_entries.options.async_init(entry.entry_id)
+            result = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+                "warning_threshold": 40, "critical_threshold": 15})
+            assert result["type"] == "form" and result["errors"]
+        assert await storage.async_get_state() == before
+        assert hass_storage[DOMAIN]["data"] == before_disk
+        assert dict(entry.options) == before_options
+        assert not events
     hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
     await hass.async_block_till_done()
     assert hass_storage[DOMAIN]["data"]["tank_states"][VACUUM] == tank

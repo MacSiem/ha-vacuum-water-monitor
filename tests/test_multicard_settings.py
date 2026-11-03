@@ -116,7 +116,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
  const card=dom.window.document.createElement('ha-vacuum-water-monitor');
  card.setConfig({vacuum_entity:id});card._serverReady=true;card._serverLoadedAt=Date.now();
  card._serverState={settings:structuredClone(settings),tank_states:{}};card._discoveredVacuums=[];
- card._refreshHealth=()=>null;card._activeTab='settings';card.hass=hass;dom.window.document.body.append(card);card._render();
+ card._refreshHealth=()=>null;card._activeTab='settings';card.hass=hass;card._applyServerSettings();dom.window.document.body.append(card);card._render();
  const button=card.shadowRoot.getElementById('vwm-refill-save');assert(button);
  const lid=card.shadowRoot.getElementById('vwm-refill-lid');assert(lid);lid.value='';
  button.click();await new Promise(r=>setTimeout(r,40));
