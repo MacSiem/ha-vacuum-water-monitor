@@ -822,7 +822,27 @@ async def test_settings_reports_saved_even_if_refresh_fails(hass, hass_ws_client
 
 
 async def test_registry_vacuum_rename_keeps_its_water_history(hass, hass_ws_client, monkeypatch):
+    import inspect
+    import json
+    import os
     import traceback
+    from pathlib import Path
+    trace = []
+    path = os.environ.get("VWM_REGISTRY_TRACE")
+    def record(item):
+        trace.append(item)
+        if path:
+            Path(path).write_text(json.dumps(trace, indent=2))
+    original_remove_device = dr.DeviceRegistry.async_remove_device
+    def capture_device(self, device_id):
+        device = self.async_get(device_id)
+        registry = er.async_get(hass)
+        record({"kind": "device_remove", "device_id": device_id,
+                "identifiers": sorted([list(i) for i in (device.identifiers if device else [])]),
+                "entities": [e.entity_id for e in er.async_entries_for_device(registry, device_id, include_disabled_entities=True)],
+                "stack": traceback.format_stack(limit=25)})
+        return original_remove_device(self, device_id)
+    monkeypatch.setattr(dr.DeviceRegistry, "async_remove_device", capture_device)
     storage = await _setup(hass)
     vwm_entry = hass.config_entries.async_entries(DOMAIN)[0]
     registry = er.async_get(hass)
@@ -831,7 +851,13 @@ async def test_registry_vacuum_rename_keeps_its_water_history(hass, hass_ws_clie
     original_remove = type(registry).async_remove
     def capture_remove(self, entity_id):
         if entity_id in before_entities.values():
-            removals.append((entity_id, traceback.format_stack(limit=18)))
+            stack = traceback.format_stack(limit=18)
+            frame = inspect.currentframe().f_back
+            event = frame.f_locals.get("event") if frame else None
+            record({"kind": "entity_remove", "entity_id": entity_id,
+                    "event_device_id": event.data.get("device_id") if event is not None else None,
+                    "stack": stack})
+            removals.append((entity_id, stack))
         return original_remove(self, entity_id)
     monkeypatch.setattr(type(registry), "async_remove", capture_remove)
     sensor = next(item for item in er.async_entries_for_config_entry(registry, vwm_entry.entry_id)
