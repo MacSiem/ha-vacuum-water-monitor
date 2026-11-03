@@ -596,6 +596,77 @@ async def test_v8_failed_save_does_not_publish_part_of_threshold_patch(hass, mon
     assert await storage.async_get_state() == before
 
 
+@pytest.mark.parametrize("action", ["options", "link", "refill", "plan", "reprofile", "reset", "measurement"])
+async def test_failed_public_save_keeps_memory_store_and_events_consistent(hass, hass_ws_client, monkeypatch, action):
+    """A rejected disk write cannot become a later successful read or event."""
+    from copy import deepcopy
+    from unittest.mock import AsyncMock
+    from custom_components.ha_vacuum_water_monitor.contribution import SETTINGS
+
+    storage = await _setup(hass)
+    await storage.async_set_settings({"configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234,
+        "profile_key": "stale", "config_provenance": {"authored_fields": ["vacuum_entity", "water_total_ml"]}}]})
+    context = {"model_id": "roborock_s8_maxv_ultra", "sku": "EU", "dock_variant": "tank",
+        "firmware": "1.0", "integration_id": "roborock", "integration_version": "1.0",
+        "reservoir": "dock_clean", "action": "floor_mopping", "settings": dict.fromkeys(SETTINGS, "not_applicable")}
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 432,
+        "last_area": 12, "calibration_history": [{"sample": "keep"}], "automatic_sessions": [
+            {"ts": 123, "area": 10, "context": context, "accounting_valid": True, "exposure_complete": True, "segments": 1}]})
+    await _settle(hass)
+    client = await hass_ws_client(hass)
+    before = await storage.async_get_state()
+    disk_before = deepcopy(await storage._store.async_load())
+    events = []
+    unsub = hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event.data))
+    original_save = storage._store.async_save
+    monkeypatch.setattr(storage._store, "async_save", AsyncMock(side_effect=OSError("synthetic disk error")))
+    requests = {
+        "options": {"type": f"{DOMAIN}/set_device_options", "vacuum_entity": VACUUM, "options": {"capacity_ml": 3000}},
+        "link": {"type": f"{DOMAIN}/set_robot_link", "vacuum_entity": VACUUM, "target": "distinct"},
+        "refill": {"type": f"{DOMAIN}/set_refill_settings", "vacuum_entity": VACUUM, "auto_refill": False},
+        "plan": {"type": f"{DOMAIN}/set_measurement_plan", "vacuum_entity": VACUUM,
+                 "plan": {"confirmed": True, "settings": {"wash_mode": "standard"}}},
+        "reprofile": {"type": f"{DOMAIN}/reprofile", "vacuum_entity": VACUUM},
+        "reset": {"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM},
+        "measurement": {"type": f"{DOMAIN}/save_measurement", "vacuum_entity": VACUUM, "session_index": 0,
+            "session_ts": 123, "measurement": {"observed_ml": 100, "resolution_ml": 5, "instrument": "graduated_jug",
+                "boundaries_confirmed": True, "uninterrupted": True, "purpose": "training"}},
+    }
+    await client.send_json_auto_id(requests[action])
+    result = await client.receive_json()
+    assert not result["success"]
+    monkeypatch.setattr(storage._store, "async_save", original_save)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    after = (await client.receive_json())["result"]
+    assert after == before
+    assert await storage._store.async_load() == disk_before
+    assert not events
+    await storage.async_set_settings({"sharing_intro_choice": "not_now"})
+    persisted = await storage._store.async_load()
+    assert persisted["tank_states"] == disk_before["tank_states"]
+    assert persisted["settings"].get("local_measurements") == disk_before["settings"].get("local_measurements")
+    unsub()
+
+
+async def test_options_flow_save_failure_keeps_options_and_store_consistent(hass, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    storage = await _setup(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    before_options = dict(entry.options)
+    before_state = await storage.async_get_state()
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    assert flow["type"] == "form"
+    monkeypatch.setattr(storage._store, "async_save", AsyncMock(side_effect=OSError("synthetic disk error")))
+    result = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+        "warning_threshold": 40, "critical_threshold": 15})
+    await hass.async_block_till_done()
+    assert result["type"] == "form"
+    assert result["errors"]
+    assert dict(entry.options) == before_options
+    assert await storage.async_get_state() == before_state
+
+
 async def test_repair_keeps_interruption_reason_on_disk(hass: HomeAssistant, hass_storage) -> None:
     from custom_components.ha_vacuum_water_monitor.repairs import ConfirmFullFlow
     storage = await _setup(hass)
