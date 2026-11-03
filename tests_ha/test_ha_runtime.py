@@ -214,6 +214,9 @@ async def test_state_changed_event_is_an_anonymous_marker_and_store_keeps_balanc
 
 async def test_a_device_named_after_the_entity_id_is_renamed(hass: HomeAssistant) -> None:
     await _setup(hass)
+    # With no authoritative source device, naming applies to our fallback.
+    er.async_get(hass).async_update_entity(VACUUM, device_id=None)
+    await _settle(hass)
     registry = dr.async_get(hass)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     device = next(d for d in dr.async_entries_for_config_entry(registry, entry.entry_id)
@@ -323,7 +326,8 @@ async def test_card_refill_uses_confirmed_balance_owner(hass: HomeAssistant, has
     assert tanks[owner]["refill_history"][0]["source"] == "card"
     assert tanks[expected_other]["used_ml"] == before_other["used_ml"]
     assert tanks[expected_other]["refill_history"] == before_other["refill_history"]
-    assert any(owner in event.get("tank_states", {}) for event in events)
+    assert any(event.get("state_changed") is True for event in events)
+    assert all(owner not in repr(event) and "refill_history" not in repr(event) for event in events)
     if incomplete:
         assert not tanks[owner]["accounting_incomplete"]
         assert tanks[owner]["last_accounting_interruption"]["reason"] == "gap"
@@ -616,6 +620,8 @@ async def test_failed_public_save_keeps_memory_store_and_events_consistent(hass,
     await _settle(hass)
     client = await hass_ws_client(hass)
     before = await storage.async_get_state()
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    public_before = (await client.receive_json())["result"]
     disk_before = deepcopy(await storage._store.async_load())
     events = []
     unsub = hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event.data))
@@ -639,7 +645,8 @@ async def test_failed_public_save_keeps_memory_store_and_events_consistent(hass,
     monkeypatch.setattr(storage._store, "async_save", original_save)
     await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
     after = (await client.receive_json())["result"]
-    assert after == before
+    assert after == public_before
+    assert await storage.async_get_state() == before
     assert await storage._store.async_load() == disk_before
     assert not events
     await storage.async_set_settings({"sharing_intro_choice": "not_now"})

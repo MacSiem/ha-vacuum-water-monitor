@@ -50,7 +50,7 @@ const Card = classes['ha-vacuum-water-monitor'];
   card._refillConfig = { robot: { sensorEntity: 'binary_sensor.dock_lid', sensorAutoId: 'vwm_refill_robot_sensor' } };
   card._userDevices = [{ vacuum_entity: 'vacuum.robot', reset_door_sensor: 'binary_sensor.dock_lid' }];
   card._saveServerSettings = async (patch) => { calls.push({ saveSettings: patch }); return { ok: true }; };
-  card._saveUserDevices = () => calls.push({ saveUserDevices: JSON.parse(JSON.stringify(card._userDevices)) });
+  card._saveUserDevices = async (patch) => { calls.push({ saveUserDevices: patch }); return {ok:true}; };
   card._render = () => {};
   const dock = { vacuum_entity: 'vacuum.robot', dock_error_sensor: 'sensor.robot_dock_error', refill_on_clear: true, refill_on_clear_inferred: true };
   const data = { refillHistory: [{ ts: Date.now() - 2 * 3600000, source: 'dock_cleared', used_before_ml: 3800 }] };
@@ -143,7 +143,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
                                "auto_refill": False, "button_entity": "input_button.dock_refilled", "lid_entity": None}])
         self.assertNotIn("sensorEntity", self.out["legacyAfterSave"])
         cleared = [c for c in self.out["calls"] if "saveUserDevices" in c]
-        self.assertTrue(cleared and cleared[-1]["saveUserDevices"][0]["reset_door_sensor"] is None)
+        self.assertTrue(cleared and cleared[-1]["saveUserDevices"]["reset_door_sensor"] is None)
 
     def test_old_generated_automation_can_be_removed(self):
         self.assertIn({"method": "DELETE", "path": "config/automation/config/vwm_refill_robot_sensor"}, self.out["calls"])
