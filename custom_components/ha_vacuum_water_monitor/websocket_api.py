@@ -508,7 +508,14 @@ async def _ws_subscribe(hass, connection, msg):
             return
         filtered = {key: True for key in ("state_changed", "settings_changed", "registry_changed", "feature_access_changed")
                     if data.get(key) is True}
-        visible = await _filtered_result(hass, user_id, {"vacuums": list_vacuums(hass)})
+        # The public state may include retained tanks whose vacuum is not
+        # currently discovered. Include those same authorized identities in
+        # the event; otherwise an ordinary settings update looks like a revoke.
+        stored = await _storage(hass).async_get_state()
+        visible = await _filtered_result(hass, user_id, {
+            "vacuums": list_vacuums(hass),
+            "tank_states": {entity: {} for entity in (stored.get("tank_states") or {})},
+        })
         user = await hass.auth.async_get_user(user_id)
         after = ((_storage(hass)._data or {}).get("settings") or {}).get("feature_access")
         if not active or before != after:
@@ -524,10 +531,12 @@ async def _ws_subscribe(hass, connection, msg):
                 connection.send_event(msg["id"], {"access_revoked": True})
                 unsubscribe()
                 return
-            filtered["authorized_vacuums"] = [item["entity_id"] for item in visible.get("vacuums", [])
+            identities = {item["entity_id"] for item in visible.get("vacuums", [])}
+            identities.update(visible.get("tank_states", {}).keys())
+            filtered["authorized_vacuums"] = sorted(entity for entity in identities
                 if feature_access_allowed(policy, "water", "read", user_id=user.id, is_active=user.is_active,
-                                          is_admin=user.is_admin, entity_id=item["entity_id"])
-                and user.permissions.check_entity(item["entity_id"], POLICY_READ)]
+                                          is_admin=user.is_admin, entity_id=entity)
+                and user.permissions.check_entity(entity, POLICY_READ))
         except (ValueError, AttributeError, TypeError):
             connection.send_event(msg["id"], {"access_revoked": True})
             unsubscribe()

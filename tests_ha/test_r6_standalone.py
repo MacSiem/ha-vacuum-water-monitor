@@ -8,17 +8,20 @@ from .test_ha_runtime import DOMAIN, _setup
 async def test_standalone_panel_and_intro_reload(hass: HomeAssistant, hass_ws_client) -> None:
     storage = await _setup(hass)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
-    panel = hass.data[frontend.DATA_PANELS][DOMAIN]
+    panel = next(p for p in hass.data[frontend.DATA_PANELS].values()
+                 if (p.config or {}).get("_panel_custom", {}).get("name") == "vwm-standalone-panel")
     assert panel.require_admin is False
     assert (await storage.async_get_state())["settings"]["standalone_intro_shown"] is True
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": "persistent_notification/get"})
     first = await client.receive_json()
-    assert any(item["notification_id"] == "ha_vacuum_water_monitor_intro" for item in first["result"])
+    intro = next(item for item in first["result"] if item["notification_id"] == "ha_vacuum_water_monitor_intro")
+    assert f"/{panel.frontend_url_path}" in intro["message"]
     persistent_notification.async_dismiss(hass, "ha_vacuum_water_monitor_intro")
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
-    assert DOMAIN in hass.data[frontend.DATA_PANELS]
+    assert any((p.config or {}).get("_panel_custom", {}).get("name") == "vwm-standalone-panel"
+               for p in hass.data[frontend.DATA_PANELS].values())
     await client.send_json({"id": 2, "type": "persistent_notification/get"})
     after = await client.receive_json()
     assert all(item["notification_id"] != "ha_vacuum_water_monitor_intro" for item in after["result"])

@@ -8,8 +8,9 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+from aiohttp import web
 from homeassistant.components.frontend import add_extra_js_url
-from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import Event, HomeAssistant, ServiceCall, callback
@@ -54,6 +55,7 @@ from .websocket_api import _notify_store_updated, async_register_commands
 _LOGGER = logging.getLogger(__name__)
 
 _CARD_URL_PATH = f"/{DOMAIN}/ha-vacuum-water-monitor.js"
+_PANEL_URL_PATH = "vacuum-water-monitor"
 _CARD_FILENAME = "ha-vacuum-water-monitor.js"
 _CARD_PACKAGE_DIR = "www"
 
@@ -213,7 +215,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     bucket = hass.data.get(DOMAIN, {})
     if bucket.pop("_standalone_panel_registered", False):
         from homeassistant.components import frontend
-        frontend.async_remove_panel(hass, DOMAIN)
+        frontend.async_remove_panel(hass, _PANEL_URL_PATH)
     listener = bucket.pop("_registry_listener", None)
     if listener:
         stop, tasks = listener
@@ -285,6 +287,17 @@ async def _async_prune_ghost_devices(
                 registry.async_remove_device(device.id)
 
 
+class _LegacyPanelRedirect(HomeAssistantView):
+    """Keep prior panel links usable without shadowing existing static files."""
+
+    url = f"/{DOMAIN}"
+    name = f"{DOMAIN}:legacy-panel"
+    requires_auth = False
+
+    async def get(self, request):
+        raise web.HTTPFound(location=str(request.rel_url.with_path(f"/{_PANEL_URL_PATH}", keep_query=True)))
+
+
 async def _async_register_frontend(hass: HomeAssistant) -> None:
     """Register the bundled Lovelace card."""
     bucket = hass.data.setdefault(DOMAIN, {})
@@ -297,11 +310,16 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         _LOGGER.error("Bundled card file missing at %s", card_path)
         return
 
+    # Register the two shipped files at their existing URLs, not a directory
+    # prefix that captures the panel path itself. The old exact panel link can
+    # then redirect without colliding with a static route.
+    if not bucket.get("_legacy_panel_redirect_registered"):
+        hass.http.register_view(_LegacyPanelRedirect)
+        bucket["_legacy_panel_redirect_registered"] = True
     await hass.http.async_register_static_paths(
         [
-            StaticPathConfig(
-                f"/{DOMAIN}", str(card_dir), cache_headers=False
-            )
+            StaticPathConfig(_CARD_URL_PATH, str(card_path), cache_headers=False),
+            StaticPathConfig(f"/{DOMAIN}/vwm-panel.js", str(card_dir / "vwm-panel.js"), cache_headers=False),
         ]
     )
     card_bytes = await hass.async_add_executor_job(card_path.read_bytes)
@@ -325,7 +343,7 @@ async def _async_register_standalone_panel(hass: HomeAssistant) -> None:
         _LOGGER.error("Could not set up the standalone panel")
         return
     await panel_custom.async_register_panel(
-        hass, frontend_url_path=DOMAIN, webcomponent_name="vwm-standalone-panel",
+        hass, frontend_url_path=_PANEL_URL_PATH, webcomponent_name="vwm-standalone-panel",
         sidebar_title="Vacuum Water Monitor", sidebar_icon="mdi:water-percent",
         module_url=f"/{DOMAIN}/vwm-panel.js", require_admin=False,
     )
@@ -345,8 +363,8 @@ async def _async_notify_first_setup(hass: HomeAssistant, storage: VacuumWaterSto
         return
     persistent_notification.async_create(
         hass,
-        "Open [Vacuum Water Monitor](/ha_vacuum_water_monitor) to see your robots and add a card. "
-        "Otwórz [Vacuum Water Monitor](/ha_vacuum_water_monitor), aby zobaczyć roboty i dodać kartę.",
+        "Open [Vacuum Water Monitor](/vacuum-water-monitor) to see your robots and add a card. "
+        "Otwórz [Vacuum Water Monitor](/vacuum-water-monitor), aby zobaczyć roboty i dodać kartę.",
         title="Vacuum Water Monitor", notification_id="ha_vacuum_water_monitor_intro",
     )
     try:

@@ -2,6 +2,44 @@
 (function() {
 'use strict';
 
+// HA Tools theme contrast algorithm, adapted from the maintained sibling
+// ha-data-exporter/shared/ha-tools-ui.js; no shared runtime dependency.
+function vwmApplyTheme(host) {
+  const view=host?.ownerDocument?.defaultView;
+  if (!host?.isConnected || !view?.getComputedStyle) return;
+  const styles=view.getComputedStyle(host), dark=host.classList.contains('bento-dark');
+  const parse=value=>{
+    const text=String(value||'').trim(), hex=/^#([a-f0-9]{3}|[a-f0-9]{6})$/i.exec(text);
+    if(hex)return (hex[1].length===3?[...hex[1]].map(c=>c+c).join(''):hex[1]).match(/../g).map(c=>parseInt(c,16));
+    const rgb=/^rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)(?:\s*,\s*1(?:\.0+)?)?\s*\)$/i.exec(text);
+    return rgb?rgb.slice(1,4).map(c=>Math.min(255,Math.round(Number(c)))):null;
+  };
+  const resolve=(value,fallback)=>{
+    const raw=String(value||'').trim(),direct=parse(raw);if(direct)return direct;
+    if(raw&&!raw.includes('var(')&&raw!=='transparent'&&view.CSS?.supports?.('color',raw)){
+      const probe=host.ownerDocument.createElement('span');probe.style.display='none';probe.style.color=raw;host.append(probe);
+      try{return parse(view.getComputedStyle(probe).color)||parse(fallback);}finally{probe.remove();}
+    }
+    return parse(fallback);
+  };
+  const lum=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i],0);
+  const ratio=(a,b)=>(Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05);
+  const hex=rgb=>'#'+rgb.map(c=>c.toString(16).padStart(2,'0')).join('');
+  const adjusted=(original,background)=>{
+    const target=ratio([0,0,0],background)>=ratio([255,255,255],background)?0:255;let result=original;
+    for(let step=1;ratio(result,background)<4.5&&step<=20;step++) result=original.map(c=>Math.round(c+(target-c)*step*.05));
+    return result;
+  };
+  const bg=resolve(styles.getPropertyValue('--ha-card-background')||styles.getPropertyValue('--card-background-color'),dark?'#1c1c1e':'#ffffff');
+  const original=resolve(styles.getPropertyValue('--primary-color'),dark?'#818cf8':'#2563eb'),white=[255,255,255],ink=[15,23,42];
+  const foreground=ratio(original,white)>=ratio(original,ink)?white:ink,target=foreground===white?0:255;let fill=original;
+  for(let step=1;ratio(fill,foreground)<4.5&&step<=20;step++)fill=original.map(c=>Math.round(c+(target-c)*step*.05));
+  const warn=adjusted(resolve(styles.getPropertyValue('--hat-warn-text'),dark?'#fab219':'#a16207'),bg);
+  const crit=adjusted(resolve(styles.getPropertyValue('--hat-crit-text'),dark?'#f87171':'#b91c1c'),bg);
+  for(const [key,value] of [['--hat-primary-fill-computed',hex(fill)],['--hat-on-primary-computed',hex(foreground)],['--vwm-warn-text-computed',hex(warn)],['--vwm-crit-text-computed',hex(crit)]])
+    if(host.style.getPropertyValue(key)!==value)host.style.setProperty(key,value);
+}
+
 // Bundled shared/ha-tools-format.js (Energy canonical; no external resource needed).
 // Localized presentation; raw values remain available to callers for details/export.
 function createFormatUi(language = 'en', timeZone = 'UTC', preferences = {}) {
@@ -12852,7 +12890,7 @@ const HA_VACUUM_WATER_MONITOR_BENTO_CSS = `
   --bento-trans-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Typography */
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui));
   font-feature-settings: "cv11" 1, "ss01" 1;
   letter-spacing: -0.01em;
   display: block;
@@ -12916,7 +12954,7 @@ const HA_VACUUM_WATER_MONITOR_BENTO_CSS = `
   border-radius: var(--bento-radius-md);
   box-shadow: var(--bento-shadow-md);
   color: var(--bento-text);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui));
   position: relative;
   transition: box-shadow var(--bento-trans), border-color var(--bento-trans);
 }
@@ -12956,7 +12994,7 @@ const HA_VACUUM_WATER_MONITOR_BENTO_CSS = `
   padding: 8px 16px !important;
   border: none !important; background: transparent !important; cursor: pointer !important;
   font-size: 13px !important; font-weight: 600 !important;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif !important;
+  font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)) !important;
   color: var(--bento-text-secondary) !important;
   border-radius: var(--bento-radius-pill) !important;
   margin-bottom: 0 !important;
@@ -13068,7 +13106,7 @@ const HA_VACUUM_WATER_MONITOR_BENTO_CSS = `
   border-radius: var(--bento-radius-pill); padding: 6px 14px;
   font-size: 12px; color: var(--bento-text-secondary);
   cursor: pointer; font-weight: 600; transition: all var(--bento-trans);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
+  font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui));
 }
 .refresh-btn:hover {
   background: var(--bento-card); color: var(--bento-primary);
@@ -13079,7 +13117,7 @@ const HA_VACUUM_WATER_MONITOR_BENTO_CSS = `
   background: var(--bento-grad-primary); border: none;
   border-radius: var(--bento-radius-xs); padding: 8px 16px;
   font-size: 13px; color: #fff; cursor: pointer; font-weight: 600;
-  transition: all var(--bento-trans); font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
+  transition: all var(--bento-trans); font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui));
   letter-spacing: -0.005em;
   box-shadow: 0 4px 12px -2px var(--bento-primary-glow);
 }
@@ -13092,7 +13130,7 @@ const HA_VACUUM_WATER_MONITOR_BENTO_CSS = `
   background: var(--bento-grad-primary); color: #fff;
   border: none; border-radius: var(--bento-radius-sm);
   padding: 12px 20px; font-size: 14px; font-weight: 700;
-  cursor: pointer; font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
+  cursor: pointer; font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui));
   letter-spacing: -0.01em;
   transition: all var(--bento-trans);
   box-shadow: 0 4px 14px -2px var(--bento-primary-glow);
@@ -13151,7 +13189,7 @@ input, select, textarea {
   padding: 10px 14px; border: 1.5px solid var(--bento-border);
   border-radius: var(--bento-radius-xs);
   background: var(--bento-card); color: var(--bento-text);
-  font-size: 14px; font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
+  font-size: 14px; font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui));
   transition: all var(--bento-trans); outline: none;
   letter-spacing: -0.005em;
 }
@@ -13333,8 +13371,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     this._hass = hass;
     if (!hass) return;
-    if (this.preview) { this._render(); return; }
-
+    vwmApplyTheme(this);
+    if (this.preview) this.inert = true;
     this._ensureServerState();
 
     // Gate ONLY the periodic hass-driven refresh: server Store changes render
@@ -13550,9 +13588,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
           this._hass.callWS({ type: `${VWM_DOMAIN}/get_state` }),
           this._hass.callWS({ type: `${VWM_DOMAIN}/list_vacuums` }),
         ]);
-        if (accessEpoch !== this._accessEpoch) return;
+        if (accessEpoch !== this._accessEpoch || (this.preview && !this.isConnected)) return;
         await this._refreshFeatureAccess();
-        if (accessEpoch !== this._accessEpoch) return;
+        if (accessEpoch !== this._accessEpoch || (this.preview && !this.isConnected)) return;
         // Registry or settings changed while these snapshots were in flight.
         // Do not render them; the pending refresh will fetch both again.
         if (this._serverRefreshPending) return;
@@ -13576,7 +13614,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
             return JSON.stringify(prior[key]) === JSON.stringify(value);
           });
         });
-        if (configuredDevices.length && !unchanged) {
+        if (!this.preview && configuredDevices.length && !unchanged) {
           const saved = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch: { configured_devices: configuredDevices }, partial: true });
           if (this._serverRefreshPending) return;
           if (saved?.bindings_refreshed === false) this._bindingRefreshState = 'failed';
@@ -13992,7 +14030,6 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // default vacuum_entity into saved settings, creating a ghost device for
     // every user who added the card from the UI picker (issue #1, v5.1.7).
     return {
-      title: 'Vacuum Water Monitor',
       variant: 'compact',
     };
   }
@@ -15158,6 +15195,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     // Refill button resets the integration's HA Store state.
     const refillBtn = (cfg.show_refill_button !== false)
       ? `<button class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolano' : 'Refilled'}</button>` : '';
+    const compactRefill = (cfg.show_refill_button !== false)
+      ? `<button type="button" class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">${this._lang === 'pl' ? 'Dolano' : 'Refilled'}</button>` : '';
 
     const alertBanner = this._buildWaterAlert(device, data);
 
@@ -15210,20 +15249,21 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const critical = data.waterEmpty || (authoredPercent && percent!==null && percent<=Number(cfg.critical_threshold||10)) || (!authoredPercent && forecast && runs<1);
       const tone = critical ? 'crit' : warning ? 'warn' : 'normal';
       const meter = percent == null ? '' : `<div class="vwm-meter ${tone}" role="progressbar" aria-label="${_esc(L.remaining)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div>`;
+      const displayTitle=this._authoredConfigKeys?.has('title') && typeof cfg.title==='string' && cfg.title.trim() ? cfg.title : (this._lang==='pl'?(tile?'Woda robota':'Woda w robocie'):'Robot water');
       const shortValue = data.remainingL == null ? unknown : `${this._formatUi().number(data.remainingL,{maximumFractionDigits:2})} L${percent===null?'':' · '+this._formatUi().number(percent,{maximumFractionDigits:0})+'%'}`;
       if (tile) return `<div class="tab-content vwm-compact vwm-tile"><button type="button" class="vwm-tile-surface" id="vwm-expand" data-r6-open>
-        <span class="vwm-icon ${tone}"><ha-icon icon="mdi:water-percent" aria-hidden="true"></ha-icon></span><span class="vwm-tile-copy"><strong>${this._lang==='pl'?'Woda robota':'Robot water'}</strong>
+        <span class="vwm-icon ${tone}"><ha-icon icon="mdi:water-percent" aria-hidden="true"></ha-icon></span><span class="vwm-tile-copy"><strong>${_esc(displayTitle)}</strong>
         <span class="vwm-tile-long">${_esc(data.remainingL == null ? unknown : shortValue+(forecast?' · '+forecastText:''))}</span>
         <span class="vwm-tile-short">${_esc(shortValue)}</span></span></button>
-        <div class="vwm-tile-action">${refillBtn}</div></div>`;
+        <div class="vwm-tile-action">${compactRefill}</div></div>`;
       const name=device.name || device.device_name || device.vacuum_entity || '';
       const subtitle=(data.lastReset?this._formatReset(data.lastReset)+' · ':'')+name;
       const confidence=presentation.known && presentation.band!=null ? (this._lang==='pl'?'Szacunek · niepewność ±':'Estimate · uncertainty ±')+this._formatUi().number(presentation.band*100,{maximumFractionDigits:1})+'%' : (this._lang==='pl'?'Pewność nieznana':'Confidence unknown');
       const main=data.remainingL==null?`<span class="vwm-unknown">${_esc(unknown)}</span>`:`<span class="vwm-main-value">${_esc(this._formatUi().number(data.remainingL,{minimumFractionDigits:1,maximumFractionDigits:2}))}</span><span class="vwm-main-unit">${data.totalMl>0?' / '+_esc(this._formatUi().number(data.totalMl/1000,{maximumFractionDigits:2})):''} L</span>`;
       return `<div class="tab-content vwm-compact"><button type="button" class="vwm-compact-surface" id="vwm-expand" data-r6-open>
-        <div class="vwm-compact-heading"><span class="vwm-icon ${tone}"><ha-icon icon="mdi:water-percent" aria-hidden="true"></ha-icon></span><span class="vwm-heading-copy"><strong>${this._lang==='pl'?'Woda w robocie':'Robot water'}</strong><small title="${_esc(subtitle)}">${_esc(subtitle)}</small></span>${warning?`<span class="vwm-state-chip ${tone}">${_esc(warning)}</span>`:''}</div>
+        <div class="vwm-compact-heading"><span class="vwm-icon ${tone}"><ha-icon icon="mdi:water-percent" aria-hidden="true"></ha-icon></span><span class="vwm-heading-copy"><strong>${_esc(displayTitle)}</strong><small title="${_esc(subtitle)}">${_esc(subtitle)}</small></span>${warning?`<span class="vwm-state-chip ${tone}">${_esc(warning)}</span>`:''}</div>
         <div class="vwm-value-row"><span>${main}</span><small>${_esc(forecastText)}</small></div>${meter}<div class="vwm-confidence"><span>${percent===null?'':_esc(this._formatUi().number(percent,{maximumFractionDigits:0}))+'%'}</span><span>${_esc(confidence)}</span></div></button>
-        <div class="vwm-compact-actions">${refillBtn}<button type="button" data-r6-details>${this._lang==='pl'?'Szczegóły':'Details'}</button></div>
+        <div class="vwm-compact-actions">${compactRefill}<button type="button" data-r6-details>${this._lang==='pl'?'Szczegóły':'Details'}</button></div>
       </div>`;
     }
     return `
@@ -15792,15 +15832,34 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._hass.callWS({type:'history/history_during_period',entity_ids:[key],start_time:new Date(now-30*86400000).toISOString(),end_time:new Date(now).toISOString(),significant_changes_only:false,minimal_response:false}).then(result=>{
       if (epoch !== this._accessEpoch || this._waterHistory !== pending) return;
       const raw=Array.isArray(result?.[key]) ? result[key] : [];
-      const points=raw.map(s=>({ts:Date.parse(s.last_changed || s.last_updated),value: typeof s.state === 'string' && s.state.trim()!=='' && !['unknown','unavailable'].includes(s.state) ? Number(s.state) : null}))
-        .filter(p=>Number.isFinite(p.ts)).map(p=>({...p,value:Number.isFinite(p.value)&&p.value>=0&&p.value<=100?p.value:null})).sort((a,b)=>a.ts-b.ts);
+      // HA history websocket returns compressed `s`/`lc`/`lu` states, with
+      // timestamps in seconds, even when minimal_response is false. Keep the
+      // long-form representation too for older clients and fixtures.
+      const points=raw.map(record=>{
+        const stamp=record.lc ?? record.lu ?? record.last_changed ?? record.last_updated;
+        const ts=typeof stamp==='number' ? stamp*1000 : Date.parse(stamp);
+        const state=record.s ?? record.state;
+        const value=(typeof state==='string' && state.trim()!=='' && !['unknown','unavailable'].includes(state)) || typeof state==='number' ? Number(state) : null;
+        return {ts,value};
+      }).filter(point=>Number.isFinite(point.ts)).map(point=>({...point,value:Number.isFinite(point.value)&&point.value>=0&&point.value<=100?point.value:null})).sort((a,b)=>a.ts-b.ts);
       this._waterHistory={vacuum,sensor:key,status:'ready',at:now,points};
       this._lastHtml=''; this._render({preserveDraft:true});
     }).catch(()=>{if(epoch!==this._accessEpoch || this._waterHistory!==pending)return;this._waterHistory={vacuum,sensor:key,status:'error',at:now};this._lastHtml='';this._render({preserveDraft:true});});
   }
 
+  _sessionNumber(value) {
+    if (value === null || value === undefined || (typeof value === 'string' && !value.trim())) return null;
+    if (typeof value !== 'number' && typeof value !== 'string') return null;
+    if (typeof value === 'string' && !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) return null;
+    const parsed=Number(value);
+    return Number.isFinite(parsed) && parsed>=0 ? parsed : null;
+  }
+
   _buildWaterHistory(device, data, sessions) {
     this._requestWaterHistory(device);
+    // Normalize only the presentation copy. Old manual strings remain intact
+    // in Store and adding a new session must not rewrite historical records.
+    sessions=sessions.map(session=>({...session,water:this._sessionNumber(session.water)}));
     const pl=this._lang==='pl', h=this._waterHistory?.vacuum===device?.vacuum_entity?this._waterHistory:null;
     const label=(en,pol)=>pl?pol:en;
     const time=ts=>new Intl.DateTimeFormat(pl?'pl-PL':'en-GB',{timeZone:this._hass?.config?.time_zone || undefined,dateStyle:'short',timeStyle:'short'}).format(new Date(ts));
@@ -15824,7 +15883,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const marks=refills.map(r=>`<line x1="${x(r.ts)}" x2="${x(r.ts)}" y1="0" y2="100" stroke="var(--warning-color,#b45309)" stroke-dasharray="2 2" tabindex="0" data-chart-tip="${_esc(label('Refilled','Dolano')+' · '+time(r.ts))}"><title>${_esc(label('Refilled','Dolano')+' · '+time(r.ts))}</title></line>`).join('');
     const valid=sessions.filter(s=>typeof s.water==='number'&&Number.isFinite(s.water)&&s.water>=0);
     const max=Math.max(1,...valid.map(s=>s.water));
-    const evidence=s=>s.water==null ? label('Unknown','Nieznany') : s.evidence==='labeled_estimate' ? label('Labelled estimate','Szacunek oznaczony') : label('Recorded','Zapisano');
+    const evidence=s=>s.water==null ? label('Unknown','Nieznany') : s.evidence==='labeled_estimate' ? label('Labelled estimate','Szacunek oznaczony') : s.type==='automatic' ? label('Recorded','Zapisano') : label('Manual entry','Wpis ręczny');
     const quantity=s=>typeof s.water==='number'&&Number.isFinite(s.water)&&s.water>=0
       ? `${s.evidence==='labeled_estimate'?'~':''}${this._formatUi().number(s.water)} ml` : label('Unknown','Nieznany');
     const tip=s=>`${time(s.ts)} · ${quantity(s)} · ${evidence(s)}`;
@@ -15902,14 +15961,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     // Manual sessions from HA Store
     const manualRows = sessions.slice(0, 10).map(s => {
+      const water=this._sessionNumber(s.water), area=this._sessionNumber(s.area);
       const d = new Date(s.ts);
       const daysAgo = this._calendarDaysAgo(s.ts);
       const label = daysAgo === 0 ? this._waterText('Today') : daysAgo === 1 ? this._waterText('Yesterday') : (this._lang === 'pl' ? daysAgo + ' dni temu' : daysAgo + 'd ago');
       return `<div class="session-row">
         <div class="session-date">${label} <span class="session-time">${this._formatUi().clock(d.getTime())}</span></div>
         <div class="session-stats">
-          ${s.area ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${this._formatUi().number(Number(s.area))} m\u00B2</span>` : ''}
-          ${typeof s.water === 'number' && Number.isFinite(s.water) && s.water >= 0 ? `<span class="session-stat" title="${this._waterText(s.evidence === 'labeled_estimate' ? 'Labelled estimate' : 'Recorded')}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${_esc(this._formatMl(s.water))}</span>` : ''}
+          ${area !== null ? `<span class="session-stat">\uD83D\uDDFA\uFE0F ${this._formatUi().number(area)} m\u00B2</span>` : ''}
+          ${water !== null ? `<span class="session-stat" title="${s.evidence === 'labeled_estimate' ? this._waterText('Labelled estimate') : s.type === 'automatic' ? this._waterText('Recorded') : (this._lang==='pl'?'Wpis ręczny':'Manual entry')}">\uD83D\uDCA7 ${s.evidence === 'labeled_estimate' ? '~' : ''}${_esc(this._formatMl(water))}</span>` : ''}
           ${s.duration ? `<span class="session-stat">\u23F1\uFE0F ${_esc(Number.isFinite(Number(s.duration)) ? this._formatUi().number(Number(s.duration))+' min' : s.duration)}</span>` : ''}
         </div>
       </div>`;
@@ -16253,17 +16313,18 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
     const weekAgo = Date.now() - 7 * 86400000;
     const thisWeek = allSessions.filter(s => s.ts > weekAgo);
-    const totalArea = thisWeek.reduce((sum, s) => sum + (parseFloat(s.area) || 0), 0);
-    const knownWater = thisWeek.filter(s => typeof s.water === 'number' && Number.isFinite(s.water));
-    const totalWater = knownWater.reduce((sum, s) => sum + s.water, 0);
+    const knownArea = thisWeek.map(s=>this._sessionNumber(s.area)).filter(value=>value!==null);
+    const totalArea = knownArea.reduce((sum, value)=>sum+value,0);
+    const knownWater = thisWeek.map(s=>this._sessionNumber(s.water)).filter(value=>value!==null);
+    const totalWater = knownWater.reduce((sum, value) => sum + value, 0);
     const totalSessions = thisWeek.length;
 
     return `<div class="section-block">
       <div class="section-title">\uD83D\uDCC5 ${this._waterText("This Week (logged)")}</div>
       <div class="stats-grid">
         <div class="stat-box"><div class="stat-num">${totalSessions}</div><div class="stat-label">${this._waterText("sessions")}</div></div>
-        <div class="stat-box"><div class="stat-num">${this._formatUi().number(totalArea || 0, {maximumFractionDigits:0})}</div><div class="stat-label">${this._waterText("m² cleaned")}</div></div>
-        <div class="stat-box"><div class="stat-num">${knownWater.length ? this._formatUi().number(totalWater / 1000, {minimumFractionDigits:1,maximumFractionDigits:1}) : '—'}</div><div class="stat-label">${this._waterText("L water")} (${knownWater.length}/${thisWeek.length} ${this._waterText("known")})</div></div>
+        <div class="stat-box"><div class="stat-num">${knownArea.length ? this._formatUi().number(totalArea, {maximumFractionDigits:0}) : '—'}</div><div class="stat-label">${this._waterText("m² cleaned")} (${knownArea.length}/${thisWeek.length} ${this._waterText("known")})</div></div>
+        <div class="stat-box"><div class="stat-num">${knownWater.length ? this._formatUi().number(totalWater / 1000, {minimumFractionDigits:2,maximumFractionDigits:3}) : '—'}</div><div class="stat-label">${this._waterText("L water")} (${knownWater.length}/${thisWeek.length} ${this._waterText("known")})</div></div>
       </div>
     </div>`;
   }
@@ -16776,8 +16837,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const cardSt = 'margin-bottom:10px;padding:14px;background:var(--vwm-bg,#fff);border-radius:12px;border:1.5px solid var(--vwm-border,#e5e7eb)';
     const labelSt = 'font-weight:700;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap';
     const descSt = 'font-size:12px;color:var(--vwm-text-secondary,#6b7280);line-height:1.5;margin-bottom:10px';
-    const selectSt = 'width:100%;max-width:100%;min-width:0;padding:8px 12px;border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:12px;background:var(--vwm-bg,#fff);color:var(--vwm-text,#1e293b);font-family:Inter,sans-serif';
-    const btnSt = 'padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif';
+    const selectSt = 'width:100%;max-width:100%;min-width:0;padding:8px 12px;border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:12px;background:var(--vwm-bg,#fff);color:var(--vwm-text,#1e293b);font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui))';
+    const btnSt = 'padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui))';
     const btnSuccess = btnSt + ';background:rgba(34,197,94,0.12);color:#16a34a;border:1px solid rgba(34,197,94,0.3)';
     const legacyIds = [legacy.buttonAutoId, legacy.sensorAutoId].filter(id => typeof id === 'string' && id);
     const legacyNotice = legacyIds.length ? `
@@ -16996,7 +17057,7 @@ target:
 
     const rowSt = 'padding:10px 12px;margin-bottom:8px;background:var(--vwm-bg,#fff);border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:10px';
     const rowWarnSt = 'padding:10px 12px;margin-bottom:8px;background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.45);border-radius:10px';
-    const selectSt = 'width:100%;margin-top:6px;padding:7px 10px;border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:12px;background:var(--vwm-bg,#fff);color:var(--vwm-text,#1e293b);font-family:Inter,sans-serif';
+    const selectSt = 'width:100%;margin-top:6px;padding:7px 10px;border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:12px;background:var(--vwm-bg,#fff);color:var(--vwm-text,#1e293b);font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui))';
     const labelSt = 'font-size:12px;font-weight:700;color:var(--bento-text)';
 
     const rows = this._signalRoleCatalog().map(([role, label]) => {
@@ -17036,7 +17097,7 @@ target:
         ${noSiblings}
         ${rows}
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
-          <button id="vwm-signal-save" style="padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:#fff;font-weight:600;font-size:12px;cursor:pointer;font-family:Inter,sans-serif">\uD83D\uDCBE ${this._waterText("Save signal mapping")}</button>
+          <button id="vwm-signal-save" style="padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:#fff;font-weight:600;font-size:12px;cursor:pointer;font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui))">\uD83D\uDCBE ${this._waterText("Save signal mapping")}</button>
           <span id="vwm-signal-status" role="status" aria-live="polite" style="font-size:11px;color:var(--bento-text-secondary)"></span>
         </div>
       </div>`;
@@ -17074,6 +17135,7 @@ target:
   _render({ preserveDraft = false } = {}) {
     const draft = preserveDraft ? this._captureDraftState() : null;
     if (!this._hass) return;
+    vwmApplyTheme(this);
    try {
     const devices = this._getDevices();
     const device = this._selectedDevice(devices) || {};
@@ -17140,7 +17202,7 @@ target:
 .donate-section .support-dismiss { margin-left:auto; padding:2px 6px; border:0; background:none; color:var(--secondary-text-color,#64748b); cursor:pointer; }
 
 /* Prereq banner — premium */
-.prereq-banner {  display: flex; align-items: flex-start; gap: 14px; padding: 16px 20px;  border-radius: var(--bento-radius-sm, 12px); margin: 0 0 16px;  font-size: 13px; line-height: 1.55; border: 1px solid;  font-family: 'Inter', sans-serif; letter-spacing: -0.005em;  position: relative; overflow: hidden;}
+.prereq-banner {  display: flex; align-items: flex-start; gap: 14px; padding: 16px 20px;  border-radius: var(--bento-radius-sm, 12px); margin: 0 0 16px;  font-size: 13px; line-height: 1.55; border: 1px solid;  font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)); letter-spacing: -0.005em;  position: relative; overflow: hidden;}
 .prereq-banner::before {  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;}
 .prereq-banner.prereq-error { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.25); color: #991b1b; }
 .prereq-banner.prereq-error::before { background: linear-gradient(180deg, #ef4444, #f87171); }
@@ -17158,7 +17220,7 @@ target:
 @media (max-width: 600px) {  .prereq-banner { flex-direction: column; align-items: stretch; padding-left: 20px; }  .prereq-banner .prereq-cta { align-self: flex-start; } }
 
 /* First-run intro banner — premium */
-.intro-banner {  position: relative; padding: 18px 52px 18px 22px; margin: 0 0 18px;  background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.06));  border: 1px solid rgba(99,102,241,0.20);  border-radius: var(--bento-radius-sm, 12px);  font-size: 13px; line-height: 1.55; overflow: hidden;  font-family: 'Inter', sans-serif; letter-spacing: -0.005em;  animation: bentoSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);}
+.intro-banner {  position: relative; padding: 18px 52px 18px 22px; margin: 0 0 18px;  background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.06));  border: 1px solid rgba(99,102,241,0.20);  border-radius: var(--bento-radius-sm, 12px);  font-size: 13px; line-height: 1.55; overflow: hidden;  font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)); letter-spacing: -0.005em;  animation: bentoSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);}
 .intro-banner::before {  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;  background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);}
 .intro-banner .intro-headline {  font-weight: 700; font-size: 14.5px; margin-bottom: 10px; letter-spacing: -0.02em;  background: linear-gradient(135deg, #6366f1, #ec4899);  -webkit-background-clip: text; background-clip: text; color: transparent;  display: flex; align-items: center; gap: 8px;}
 .intro-banner .intro-steps {  margin: 8px 0 0; padding: 0; list-style: none; counter-reset: introstep;}
@@ -17209,7 +17271,7 @@ target:
 
 :host {
   display: block;
-  font-family: Inter, sans-serif;
+  font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui));
   --vwm-bg: var(--bento-card);
   --vwm-text: var(--bento-text);
   --vwm-text-secondary: var(--bento-text-secondary);
@@ -17230,11 +17292,11 @@ target:
         .status-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.3px; }
         /* Device tabs */
         .device-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
-        .dtab { background: var(--bento-primary-light); color: var(--bento-text-secondary); border: 1px solid var(--bento-border); border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: Inter, sans-serif; transition: all 0.2s; }
+        .dtab { background: var(--bento-primary-light); color: var(--bento-text-secondary); border: 1px solid var(--bento-border); border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)); transition: all 0.2s; }
         .dtab-active { background: rgba(99,102,241,0.2); color: #818cf8; border-color: rgba(99,102,241,0.4); }
         /* Tab navigation */
         .tab-nav { display: flex; gap: 2px; margin-bottom: 14px; background: var(--bento-primary-light); border-radius: 10px; padding: 3px; border-bottom: none !important; }
-        .tab-btn { flex: 1; background: transparent; color: var(--bento-text-muted); border: none; border-radius: 8px; padding: 7px 4px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: Inter, sans-serif; transition: all 0.2s; }
+        .tab-btn { flex: 1; background: transparent; color: var(--bento-text-muted); border: none; border-radius: 8px; padding: 7px 4px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)); transition: all 0.2s; }
         .tab-active { background: rgba(59,130,246,0.12); color: var(--bento-text); }
         /* Content */
         :host { container-type: inline-size; min-width: 0; }
@@ -17274,7 +17336,7 @@ target:
         .chip-idle { background: var(--bento-primary-light); color: var(--bento-text-muted); border: 1px solid var(--bento-border); }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         .refill-wrap { margin-top: 12px; text-align: right; }
-        .refill-btn { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: Inter, sans-serif; }
+        .refill-btn { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)); }
         .refill-btn:hover { background: rgba(59,130,246,0.25); }
         .alert-banner { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 500; margin-bottom: 10px; }
         .alert-warn { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.3); color: #fcd34d; }
@@ -17305,10 +17367,10 @@ target:
         .contribution-form .maint-input { width: 100%; box-sizing: border-box; }
         .contribution-form button { justify-self: start; max-width: 100%; white-space: normal; }
         .contribution-form button:disabled { opacity: 0.45; cursor: default; }
-        .maint-input { background: var(--bento-primary-light); border: 1px solid var(--bento-border); border-radius: 6px; color: var(--bento-text); padding: 6px 10px; font-size: 12px; font-family: Inter, sans-serif; flex: 1; min-width: 80px; }
+        .maint-input { background: var(--bento-primary-light); border: 1px solid var(--bento-border); border-radius: 6px; color: var(--bento-text); padding: 6px 10px; font-size: 12px; font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)); flex: 1; min-width: 80px; }
         .maint-days, .maint-icon { max-width: 100px; }
         .maint-input::placeholder { color: var(--bento-text-muted); }
-        .maint-add-btn { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: Inter, sans-serif; white-space: nowrap; }
+        .maint-add-btn { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)); white-space: nowrap; }
         #vwm-custom-form label { display:grid; gap:4px; font-size:12px !important; line-height:1.4; }
         #vwm-custom-form input { min-height:34px; font-size:12px !important; }
         @media (max-width: 520px) { #vwm-custom-form { grid-template-columns:1fr !important; } .device-body { align-items:flex-start; } }
@@ -17424,7 +17486,7 @@ input, select, textarea { max-width:100%; min-width:0; }
 @container (max-width:520px) { .diagnostics-grid { grid-template-columns:minmax(0,1fr); gap:3px; } .diagnostics-value { margin-bottom:7px; } #vwm-custom-form, #vwm-custom-modes { grid-template-columns:1fr !important; } [id^="vwm-settings-"] [style*="grid-template-columns"] { grid-template-columns:1fr !important; } }
 
 /* Bound tokens are checked in CI; native QA checks the consumed result. */
-.card .tab-nav .tab-btn { font-size:12px !important; }
+.card .tab-nav .tab-btn { font-size:14px !important; white-space:normal !important; line-height:1.2; }
 .card .tab-nav .tab-btn[aria-selected="true"] { color:#1d4ed8 !important; }
 :host(.bento-dark) .card .tab-nav .tab-btn[aria-selected="true"] { color:#c7d2fe !important; }
 .card .vwm-link { color:#1d4ed8 !important; }
@@ -17441,7 +17503,9 @@ input, select, textarea { max-width:100%; min-width:0; }
 .card :where(.diagnostics-label,.diagnostics-value,.session-time,.session-date,small,.chip,.status-badge) { font-size:12px !important; }
 .card :where(.device-name,.supply-main,h3) { font-size:18px !important; }
 .card :where(p,span,label,td,th,div,a) { min-width:0; overflow-wrap:anywhere; }
-.card :where(button,input,select,textarea,summary) { min-height:44px; box-sizing:border-box; }
+ .card :where(button,input,select,textarea,summary) { min-height:44px; box-sizing:border-box; }
+.card button { min-width:44px; }
+:host,.card,.card :where(button,input,select,textarea) { font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)) !important; }
 .card :where(input,select,textarea) { color:var(--primary-text-color,#1c1c1c); background:var(--card-background-color,#fff); accent-color:var(--primary-color,#1976d2); }
 .card :where(button):focus-visible, .card summary:focus-visible { outline:2px solid var(--primary-text-color,#1c1c1c); outline-offset:3px; }
 .card .refill-btn, .card #vwm-signal-save, .card #vwm-custom-save, .card .vwm-setup-btn.primary { color:#fff !important; background:#1d4ed8 !important; }
@@ -17459,24 +17523,29 @@ input, select, textarea { max-width:100%; min-width:0; }
 .vwm-compact { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .vwm-compact > p, .vwm-compact > small { flex-basis:100%; margin:0; }
 .card .vwm-compact .supply-main { font-size:18px !important; font-weight:700; }
-ha-card{display:block;container-type:inline-size}.card:has(.vwm-compact) {padding:12px}
+ha-card{display:block;container-type:inline-size}ha-card > .card{background:transparent;border:0;box-shadow:none}.card:has(.vwm-compact) {padding:12px}
 .card:has(.vwm-compact) .card-title {display:none}
 .vwm-compact {display:grid; gap:12px; min-width:0}
 .vwm-compact small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--secondary-text-color,#666)}
 .vwm-compact-heading,.vwm-compact-actions {display:flex; align-items:center; gap:12px}
 .vwm-compact-actions button{min-height:44px}
+.card .vwm-compact-actions .refill-btn{background:var(--hat-primary-fill-computed,#2563eb)!important;color:var(--hat-on-primary-computed,#fff)!important;border:0;border-radius:999px;padding:8px 16px;font-weight:600}
+.card .vwm-compact-actions [data-r6-details],.card .vwm-tile-action .refill-btn{background:var(--hat-chip,var(--secondary-background-color,#f3f4f6))!important;color:var(--primary-text-color,#111827)!important;border:0;border-radius:999px;padding:8px 16px;font-weight:500}
+.card .vwm-compact-actions .refill-btn:disabled,.card .vwm-tile-action .refill-btn:disabled{opacity:.6}
+
 .vwm-compact-surface{display:grid;gap:8px;width:100%;padding:0;border:0;background:transparent;color:var(--primary-text-color);text-align:left;cursor:pointer}
 .vwm-icon{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:50%;background:var(--secondary-background-color,#eef2f6);color:var(--primary-color,#0284c7)}
-.vwm-icon ha-icon{--mdc-icon-size:20px;width:20px;height:20px}.vwm-icon.warn{color:var(--warning-color,#a56800)}.vwm-icon.crit{color:var(--error-color,#b91c1c)}
-.vwm-heading-copy{display:grid;min-width:0;flex:1}.vwm-heading-copy strong{font-size:16px;font-weight:600}.vwm-state-chip{font-size:12px!important;border:1px solid currentColor;border-radius:999px;padding:3px 8px}.vwm-state-chip.warn{color:var(--warning-color,#a56800)}.vwm-state-chip.crit{color:var(--error-color,#b91c1c)}
+.vwm-icon ha-icon{--mdc-icon-size:20px;width:20px;height:20px}.vwm-icon.warn{color:var(--vwm-warn-text-computed,#9a5b05)}.vwm-icon.crit{color:var(--vwm-crit-text-computed,#b91c1c)}
+@supports (background:color-mix(in srgb, red 18%, white)){.vwm-icon{background:color-mix(in srgb,var(--primary-color,#2563eb) 18%,var(--card-background-color,#fff))}.vwm-icon.warn{background:color-mix(in srgb,var(--hat-warn,#fab219) 18%,var(--card-background-color,#fff))}.vwm-icon.crit{background:color-mix(in srgb,var(--hat-crit,#d03b3b) 18%,var(--card-background-color,#fff))}}
+.vwm-heading-copy{display:grid;min-width:0;flex:1}.vwm-heading-copy strong{font-size:16px;font-weight:600}.vwm-state-chip{font-size:12px!important;border:1px solid currentColor;border-radius:999px;padding:3px 8px}.vwm-state-chip.warn{color:var(--vwm-warn-text-computed,#9a5b05)}.vwm-state-chip.crit{color:var(--vwm-crit-text-computed,#b91c1c)}
 .vwm-value-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.vwm-value-row small{max-width:46%;white-space:normal;text-align:right}.card .vwm-main-value{font-size:28px!important;font-weight:600;line-height:1}.vwm-main-unit{font-size:14px!important;color:var(--secondary-text-color,#666)}
 .vwm-confidence{display:flex;justify-content:space-between;gap:8px;color:var(--secondary-text-color,#666)}.card .vwm-confidence span{font-size:12px!important}
 .r6-chart-axis{display:flex;justify-content:space-between;gap:8px;font-size:12px}.r6-history svg{display:block;width:100%;height:160px;border-bottom:1px solid var(--divider-color);overflow:visible}
 .r6-history table{width:100%;border-collapse:collapse;text-align:left}.r6-history th,.r6-history td{padding:6px}
 .r6-session-bar{display:grid;grid-template-columns:minmax(80px,auto) 1fr auto;gap:8px;align-items:center;font-size:14px}.r6-session-bar div{background:var(--divider-color,#ddd);height:12px}.r6-session-bar i{display:block;height:100%;background:var(--primary-color,#0284c7)}
 .vwm-meter{height:8px;border-radius:8px;background:var(--divider-color,#ddd);overflow:hidden}
-.vwm-meter span{display:block;height:100%;background:var(--primary-color,#03a9f4)}.vwm-meter.warn span{background:var(--warning-color,#a56800)}.vwm-meter.crit span{background:var(--error-color,#b91c1c)}
-.card:has(.vwm-tile){padding:6px 8px 6px 12px}.vwm-tile-surface{border:0;background:transparent;color:var(--primary-text-color);text-align:left;cursor:pointer}
+.vwm-meter span{display:block;height:100%;background:var(--primary-color,#03a9f4)}.vwm-meter.warn span{background:var(--hat-warn,#fab219)}.vwm-meter.crit span{background:var(--hat-crit,#d03b3b)}
+ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){height:100%;padding:5px 8px 5px 12px;border:0;box-shadow:none}.vwm-tile-surface{border:0;background:transparent;color:var(--primary-text-color);text-align:left;cursor:pointer}
 .vwm-tile{display:flex;justify-content:space-between;flex-wrap:nowrap;height:44px;gap:4px}.vwm-skeleton:not(.vwm-tile){min-height:176px;display:flex;align-items:flex-start}.vwm-skeleton-lines{display:grid;gap:8px;flex:1}.vwm-skeleton-lines i{display:block;height:10px;width:70%;background:var(--divider-color,#ddd);border-radius:5px}.vwm-skeleton-lines i+ i{width:45%}
 .vwm-tile-surface{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:0}
 .vwm-tile-copy{display:grid;min-width:0}.vwm-tile-copy strong,.vwm-tile-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vwm-tile-copy span{font-size:12px !important}.vwm-tile-short{display:none}
@@ -17504,7 +17573,8 @@ ha-card{display:block;container-type:inline-size}.card:has(.vwm-compact) {paddin
     if (_newHtml !== this._lastHtml) {
       this.shadowRoot.innerHTML = _newHtml;
       this._lastHtml = _newHtml;
-      this._attachListeners(devices, device);
+      if (this.preview) this.shadowRoot.querySelectorAll('button,input,select,textarea').forEach(control=>{control.setAttribute('aria-disabled','true');});
+      else this._attachListeners(devices, device);
       this._restoreDraftState(draft);
     }
     this._restoreContributionPreview(device);
@@ -17570,7 +17640,7 @@ ha-card{display:block;container-type:inline-size}.card:has(.vwm-compact) {paddin
       }
       if (this._config.tap_target === 'panel') {
         const query=device.vacuum_entity ? '?vacuum='+encodeURIComponent(device.vacuum_entity) : '';
-        history.pushState(null,'','/ha_vacuum_water_monitor'+query); window.dispatchEvent(new Event('location-changed')); return;
+        history.pushState(null,'','/vacuum-water-monitor'+query); window.dispatchEvent(new Event('location-changed')); return;
       }
       this._compactExpanded = true; this._render({preserveDraft:true});
       sr.querySelector('.tab-btn[aria-selected="true"]')?.focus();
@@ -17700,12 +17770,12 @@ ha-card{display:block;container-type:inline-size}.card:has(.vwm-compact) {paddin
         const vacuumId = btn.dataset.vacuum;
         const ok = () => {
           btn.textContent = '\u2705 Done!'; btn.style.color = '#22c55e';
-          setTimeout(() => { btn.textContent = `\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolano' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 2000);
+          setTimeout(() => { btn.textContent = `${this._variant()==='full'||this._compactExpanded?'\uD83D\uDCA7 ':''}${this._lang === 'pl' ? 'Dolano' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 2000);
         };
         const fail = (err) => {
           console.error('[ha-vacuum-water-monitor] refill failed:', err);
           btn.textContent = '\u274C Error!'; btn.style.color = '#ef4444';
-          setTimeout(() => { btn.textContent = `\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolano' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 3000);
+          setTimeout(() => { btn.textContent = `${this._variant()==='full'||this._compactExpanded?'\uD83D\uDCA7 ':''}${this._lang === 'pl' ? 'Dolano' : 'Refilled'}`; btn.style.color = '#60a5fa'; }, 3000);
         };
         if (vacuumId) {
           try {
@@ -17811,9 +17881,10 @@ ha-card{display:block;container-type:inline-size}.card:has(.vwm-compact) {paddin
     if (histLogBtn) {
       histLogBtn.addEventListener('click', async () => {
         const area = (sr.querySelector('#hist-area') || {}).value || '';
-        const water = (sr.querySelector('#hist-water') || {}).value || '';
+        const waterInput = (sr.querySelector('#hist-water') || {}).value || '';
         const duration = (sr.querySelector('#hist-duration') || {}).value || '';
-        if (!area && !water && !duration) return;
+        if (!area && !waterInput && !duration) return;
+        const water = this._sessionNumber(waterInput);
         await this._saveSession(device, { area, water, duration });
         this._render({preserveDraft:true});
       });

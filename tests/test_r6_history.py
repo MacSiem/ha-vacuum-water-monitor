@@ -18,7 +18,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
  const settings={sharing_intro_choice:'not_now',sessions:{[id]:sessions}};
  const states={[id]:{entity_id:id,state:'docked',attributes:{friendly_name:'Robot'}},[sensor]:{entity_id:sensor,state:'50',attributes:{vacuum_entity:id,unit_of_measurement:'%',remaining_ml:2000}}};
  const hass={language:lang,locale:{language:lang},config:{time_zone:'Europe/Warsaw'},user:{id:'u',is_admin:false},states,connection:{subscribeMessage:async cb=>{emit=cb;return ()=>{}}},callWS:async m=>{calls.push(m);
- if(m.type==='history/history_during_period')return {[sensor]:historyEmpty?[]:[{state:'80',last_changed:new Date(now-400000).toISOString()},{state:'unavailable',last_changed:new Date(now-300000).toISOString()},{state:'50',last_changed:new Date(now-200000).toISOString()}]};
+ if(m.type==='history/history_during_period')return {[sensor]:historyEmpty?[]:[{s:'80',lc:(now-400000)/1000,lu:(now-400000)/1000},{s:'unavailable',lu:(now-300000)/1000},{state:'50',last_changed:new Date(now-200000).toISOString()}]};
  if(m.type.endsWith('/get_state'))return {settings,tank_states:{[id]:{initialized:true,used_ml:2000,refill_history:[{ts:now-250000,source:'manual'}]}}};
  if(m.type.endsWith('/list_vacuums'))return {vacuums:[{entity_id:id,name:'Robot',identity_group:id}],balance_links:{}};
  if(m.type.endsWith('/get_feature_access'))return {capabilities:{water:yes,settings:yes,measurements:yes},resources:{[id]:{water:yes,settings:yes,measurements:yes}}};
