@@ -20,7 +20,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
   let calls=[];
   const sample2={...sample,id:'local.2',observed_ml:110};
   const settings={sharing_intro_choice:'not_now',local_measurements:{[id]:[sample,sample2]}};
-  card._hass={language:lang,locale:{language:lang},states:{[id]:{state:'docked',attributes:{}}},user:{is_admin:true},
+  card._hass={language:lang,locale:{language:lang},states:{[id]:{entity_id:id,state:'docked',attributes:{}}},user:{is_admin:true},
    connection:{subscribeMessage:async()=>()=>{}},callWS:async m=>{calls.push(m);if(m.type.endsWith('/contribution_preview'))
     return {kind:'confirmed_measurement_contribution',publication_consent:false,runtime_eligible:false,samples:[{measured_ml:m.sample_ids[0]==='local.2'?110:100}]};
     throw Error(m.type)}};
