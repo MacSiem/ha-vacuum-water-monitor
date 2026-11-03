@@ -25,10 +25,19 @@ function vwmApplyTheme(host) {
   const lum=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i],0);
   const ratio=(a,b)=>(Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05);
   const hex=rgb=>'#'+rgb.map(c=>c.toString(16).padStart(2,'0')).join('');
-  const adjusted=(original,background)=>{
-    const target=ratio([0,0,0],background)>=ratio([255,255,255],background)?0:255;let result=original;
-    for(let step=1;ratio(result,background)<4.5&&step<=20;step++) result=original.map(c=>Math.round(c+(target-c)*step*.05));
+  const adjusted=(original,background,minimum=4.5)=>{
+    const backgrounds=Array.isArray(background[0])?background:[background];
+    const worst=color=>Math.min(...backgrounds.map(bg=>ratio(color,bg)));
+    const target=worst([0,0,0])>=worst([255,255,255])?0:255;let result=original;
+    for(let step=1;worst(result)<minimum&&step<=20;step++) result=original.map(c=>Math.round(c+(target-c)*step*.05));
     return result;
+  };
+  const blend=(color,background,alpha)=>color.map((c,i)=>Math.round(c*alpha+background[i]*(1-alpha)));
+  const composite=(value,background)=>{
+    const raw=String(value||'').trim();
+    const rgba=/^rgba\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(0(?:\.\d+)?|\.\d+|1(?:\.0+)?)\s*\)$/i.exec(raw);
+    if(rgba)return blend(rgba.slice(1,4).map(Number),background,Number(rgba[4]));
+    return resolve(raw,hex(background));
   };
   const bg=resolve(styles.getPropertyValue('--ha-card-background')||styles.getPropertyValue('--card-background-color'),dark?'#1c1c1e':'#ffffff');
   const original=resolve(styles.getPropertyValue('--primary-color'),dark?'#818cf8':'#2563eb'),white=[255,255,255],ink=[15,23,42];
@@ -36,7 +45,14 @@ function vwmApplyTheme(host) {
   for(let step=1;ratio(fill,foreground)<4.5&&step<=20;step++)fill=original.map(c=>Math.round(c+(target-c)*step*.05));
   const warn=adjusted(resolve(styles.getPropertyValue('--hat-warn-text'),dark?'#fab219':'#a16207'),bg);
   const crit=adjusted(resolve(styles.getPropertyValue('--hat-crit-text'),dark?'#f87171':'#b91c1c'),bg);
-  for(const [key,value] of [['--hat-primary-fill-computed',hex(fill)],['--hat-on-primary-computed',hex(foreground)],['--vwm-warn-text-computed',hex(warn)],['--vwm-crit-text-computed',hex(crit)]])
+  const track=composite(styles.getPropertyValue('--divider-color')||'#dddddd',bg);
+  const palette={warn:resolve(styles.getPropertyValue('--hat-warn'),'#fab219'),crit:resolve(styles.getPropertyValue('--hat-crit'),'#d03b3b')};
+  const badgeColors={ok:parse('#22c55e'),warn:parse('#f59e0b'),crit:parse('#ef4444'),unknown:parse('#6b7280')};
+  const badgeVars=Object.entries(badgeColors).map(([key,color])=>[`--vwm-badge-${key}`,hex(adjusted(color,blend(color,bg,32/255)))]);
+  const meterVars=Object.entries({...palette,normal:original}).map(([key,color])=>[`--vwm-meter-${key}`,hex(adjusted(color,track,3))]);
+  const tipColor=parse('#3b82f6');
+  const tip=adjusted(tipColor,[blend(tipColor,bg,.03),blend(tipColor,bg,.08)]);
+  for(const [key,value] of [['--hat-primary-fill-computed',hex(fill)],['--hat-on-primary-computed',hex(foreground)],['--vwm-warn-text-computed',hex(warn)],['--vwm-crit-text-computed',hex(crit)],['--vwm-tip-text',hex(tip)],['--vwm-meter-track',hex(track)],...badgeVars,...meterVars])
     if(host.style.getPropertyValue(key)!==value)host.style.setProperty(key,value);
 }
 
@@ -13372,7 +13388,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._hass = hass;
     if (!hass) return;
     vwmApplyTheme(this);
-    if (this.preview) this.inert = true;
+    this._syncPreviewMode();
     this._ensureServerState();
 
     // Gate ONLY the periodic hass-driven refresh: server Store changes render
@@ -13416,12 +13432,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const active = sr && sr.activeElement;
     const activeEditable = active && active.matches?.('input, select, textarea') ? active : null;
     const calibrationExpanded = sr.getElementById('vwm-custom-calibration-body')?.style.display === 'block';
+    const historyDraft = ['hist-area', 'hist-water', 'hist-duration'].some(id => Boolean(sr.getElementById(id)?.value));
+    const historyVacuum = sr.getElementById('hist-area')?.closest('[data-history-owner]')?.dataset.historyOwner ?? null;
     const details = [...sr.querySelectorAll('details')].map(detail => ({ id: detail.id, className: detail.className, open: detail.open }));
-    if (!activeEditable && !calibrationExpanded && !details.length) return null;
+    if (!activeEditable && !calibrationExpanded && !historyDraft && !details.length) return null;
     const controls = [...sr.querySelectorAll('input, select, textarea')];
     const activeIndex = activeEditable ? controls.indexOf(activeEditable) : -1;
     return {
-      controls: (activeEditable || calibrationExpanded || details.some(d => d.open && (d.id === "cal-plan" || d.id === "cal-sharing" || d.className.includes("contribution-form"))) ? controls : []).map((control, index) => ({
+      historyVacuum,
+      controls: (activeEditable || calibrationExpanded || historyDraft || details.some(d => d.open && (d.id === "cal-plan" || d.id === "cal-sharing" || d.className.includes("contribution-form"))) ? controls : []).map((control, index) => ({
         index,
         id: control.id || '',
         value: control.value,
@@ -13448,13 +13467,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
     for (const saved of draft.controls) {
       const control = saved.id ? sr.getElementById(saved.id) : controls[saved.index];
       if (!control || (control.readOnly && control.dataset.measurementField)) continue;
+      if (saved.id?.startsWith('hist-') && draft.historyVacuum !== control.closest('[data-history-owner]')?.dataset.historyOwner) continue;
       control.value = saved.value;
       if ('checked' in control) control.checked = saved.checked;
     }
     const expanded = sr.getElementById('vwm-custom-calibration-body');
     if (expanded && draft.calibrationExpanded) { expanded.style.display = 'block'; expanded.previousElementSibling?.setAttribute('aria-expanded', 'true'); }
     const active = draft.activeId ? sr.getElementById(draft.activeId) : (draft.activeIndex >= 0 ? controls[draft.activeIndex] : null);
-    if (!active) return;
+    if (!active || (draft.activeId?.startsWith('hist-') && draft.historyVacuum !== active.closest('[data-history-owner]')?.dataset.historyOwner)) return;
     active.focus();
     if (draft.selectionStart !== null && typeof active.setSelectionRange === 'function') {
       try { active.setSelectionRange(draft.selectionStart, draft.selectionEnd); } catch (e) {}
@@ -15987,7 +16007,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ${noHistory ? `<div class="empty-state">${this._waterText("No session history available. Start a cleaning to record sessions.")}</div>` : ''}
         <div class="section-block">
           <div class="section-title">\u270F\uFE0F ${this._waterText("Log Manual Session")}</div>
-          <div class="add-maint-form">
+          <div class="add-maint-form" data-history-owner="${_esc(device.vacuum_entity || '')}">
             <input class="maint-input" id="hist-area" aria-label="${_esc(this._waterText("Area m²"))}" placeholder="${_esc(this._waterText("Area m²"))}" type="number" min="0"/>
             <input class="maint-input maint-days" id="hist-water" aria-label="${_esc(this._waterText("Water ml"))}" placeholder="${_esc(this._waterText("Water ml"))}" type="number" min="0"/>
             <input class="maint-input maint-days" id="hist-duration" aria-label="${_esc(this._waterText("Duration (e.g. 45m)"))}" placeholder="${_esc(this._waterText("Duration (e.g. 45m)"))}" type="text"/>
@@ -17160,10 +17180,11 @@ target:
       ${tabs.map(t => `<button class="tab-btn ${this._activeTab === t.id ? 'tab-active' : ''}" data-tab="${t.id}" role="tab" id="vwm-tab-${t.id}" aria-controls="vwm-tab-panel" tabindex="${this._activeTab === t.id ? 0 : -1}" aria-selected="${this._activeTab === t.id}" aria-pressed="${this._activeTab === t.id}"><span aria-hidden="true" class="tab-icon">${t.icon}</span> ${_esc(this._waterText(t.label))}</button>`).join('')}
     </div>`;
 
+    const badgeTone = status.color === '#ef4444' ? 'crit' : status.color === '#f59e0b' ? 'warn' : status.color === '#22c55e' ? 'ok' : 'unknown';
     const deviceHeader = devices.length > 0 ? `
       <div class="device-header">
         <div class="device-name">${_esc(this._deviceIcon(device.icon))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
-        ${data.vacState !== undefined ? `<div class="status-badge" style="background:${status.color}20;color:${status.color};border:1px solid ${status.color}40">${status.icon} ${status.label}</div>` : ''}
+        ${data.vacState !== undefined ? `<div class="status-badge" style="background:${status.color}20;color:var(--vwm-badge-${badgeTone},${status.color});border:1px solid ${status.color}40">${status.icon} ${status.label}</div>` : ''}
       </div>` : '';
 
     let tabContent = '';
@@ -17418,7 +17439,7 @@ target:
   line-height: 1.6;
   position: relative;
 }
-.tip-banner-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: #3B82F6; }
+.tip-banner-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: var(--vwm-tip-text,#3B82F6); }
 .tip-banner ul { margin: 6px 0 0 16px; padding: 0; }
 .tip-banner li { margin-bottom: 3px; }
 .tip-banner .tip-dismiss {
@@ -17507,7 +17528,7 @@ input, select, textarea { max-width:100%; min-width:0; }
 .card button { min-width:44px; }
 :host,.card,.card :where(button,input,select,textarea) { font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui)) !important; }
 .card :where(input,select,textarea) { color:var(--primary-text-color,#1c1c1c); background:var(--card-background-color,#fff); accent-color:var(--primary-color,#1976d2); }
-.card :where(button):focus-visible, .card summary:focus-visible { outline:2px solid var(--primary-text-color,#1c1c1c); outline-offset:3px; }
+:host(.bento-dark) .card :focus-visible, :host .card :focus-visible { outline:2px solid var(--hat-primary,var(--primary-color,#2563eb)) !important; outline-offset:2px !important; }
 .card .refill-btn, .card #vwm-signal-save, .card #vwm-custom-save, .card .vwm-setup-btn.primary { color:#fff !important; background:#1d4ed8 !important; }
 .card .refill-btn:hover, .card #vwm-signal-save:hover, .card #vwm-custom-save:hover, .card .vwm-setup-btn.primary:hover { background:#1e40af !important; }
 .card .refill-btn:disabled { opacity:1; background:#475569 !important; color:#fff !important; }
@@ -17543,8 +17564,8 @@ ha-card{display:block;container-type:inline-size}ha-card > .card{background:tran
 .r6-chart-axis{display:flex;justify-content:space-between;gap:8px;font-size:12px}.r6-history svg{display:block;width:100%;height:160px;border-bottom:1px solid var(--divider-color);overflow:visible}
 .r6-history table{width:100%;border-collapse:collapse;text-align:left}.r6-history th,.r6-history td{padding:6px}
 .r6-session-bar{display:grid;grid-template-columns:minmax(80px,auto) 1fr auto;gap:8px;align-items:center;font-size:14px}.r6-session-bar div{background:var(--divider-color,#ddd);height:12px}.r6-session-bar i{display:block;height:100%;background:var(--primary-color,#0284c7)}
-.vwm-meter{height:8px;border-radius:8px;background:var(--divider-color,#ddd);overflow:hidden}
-.vwm-meter span{display:block;height:100%;background:var(--primary-color,#03a9f4)}.vwm-meter.warn span{background:var(--hat-warn,#fab219)}.vwm-meter.crit span{background:var(--hat-crit,#d03b3b)}
+.vwm-meter{height:8px;border-radius:8px;background:var(--vwm-meter-track,#ddd);overflow:hidden}
+.vwm-meter span{display:block;height:100%;background:var(--vwm-meter-normal,var(--primary-color,#03a9f4))}.vwm-meter.warn span{background:var(--vwm-meter-warn,var(--hat-warn,#fab219))}.vwm-meter.crit span{background:var(--vwm-meter-crit,var(--hat-crit,#d03b3b))}
 ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){height:100%;padding:5px 8px 5px 12px;border:0;box-shadow:none}.vwm-tile-surface{border:0;background:transparent;color:var(--primary-text-color);text-align:left;cursor:pointer}
 .vwm-tile{display:flex;justify-content:space-between;flex-wrap:nowrap;height:44px;gap:4px}.vwm-skeleton:not(.vwm-tile){min-height:176px;display:flex;align-items:flex-start}.vwm-skeleton-lines{display:grid;gap:8px;flex:1}.vwm-skeleton-lines i{display:block;height:10px;width:70%;background:var(--divider-color,#ddd);border-radius:5px}.vwm-skeleton-lines i+ i{width:45%}
 .vwm-tile-surface{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:0}
@@ -17885,7 +17906,12 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
         const duration = (sr.querySelector('#hist-duration') || {}).value || '';
         if (!area && !waterInput && !duration) return;
         const water = this._sessionNumber(waterInput);
-        await this._saveSession(device, { area, water, duration });
+        const saved = await this._saveSession(device, { area, water, duration });
+        const current = ['hist-area', 'hist-water', 'hist-duration'].map(id => sr.getElementById(id));
+        const sameOwner = current[0]?.closest('[data-history-owner]')?.dataset.historyOwner === (device?.vacuum_entity || '');
+        if (saved && sameOwner && current.every((input, index) => input && input.value === [area, waterInput, duration][index])) {
+          current.forEach(input => { input.value = ''; });
+        }
         this._render({preserveDraft:true});
       });
     }
@@ -18063,18 +18089,46 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
 
   }
 
+  get preview() { return Boolean(this._explicitPreview || this._pickerPreview); }
+
+  set preview(value) {
+    const previous = this.preview;
+    this._explicitPreview = Boolean(value);
+    if (previous === this.preview) return;
+    this._syncPreviewMode();
+    if (this.isConnected) {
+      this._lastHtml = '';
+      this._render({preserveDraft:true});
+      this._ensureServerState(true);
+    }
+  }
+
+  _syncPreviewMode() {
+    if (this.preview) {
+      if (!this.inert && !this.hasAttribute('inert')) {
+        this.inert = true;
+        this._ownsPreviewInert = true;
+      }
+    } else if (this._ownsPreviewInert) {
+      this.inert = false;
+      this._ownsPreviewInert = false;
+    }
+  }
+
   connectedCallback() {
     // HA's native card picker assigns hass/config while detached and does not
     // set preview. Identify its shadow-root host before any Store writes.
+    let picker = false;
     for (let node=this; node;) {
       if (node.localName === 'hui-card-picker' || node.localName === 'hui-suggestion-picker') {
-        this.preview = true;
+        picker = true;
         break;
       }
       const root=node.getRootNode?.();
       node=node.parentElement || root?.host || null;
     }
-    if (this.preview) this.inert = true;
+    this._pickerPreview = picker;
+    this._syncPreviewMode();
     this._lastHtml = '';
     this._render({preserveDraft:true});
     this._ensureServerState(true);

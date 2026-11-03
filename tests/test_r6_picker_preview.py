@@ -7,6 +7,34 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PickerPreviewTests(unittest.TestCase):
+    def test_same_card_exits_ha_edit_and_picker_without_clearing_external_inert(self):
+        script = r"""
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+(async()=>{
+ const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'}),w=dom.window;
+ w.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+ const id='vacuum.robot',yes={visible:true,read:true,execute:true},calls=[];let emit,allowed=true;
+ const hass={language:'en',user:{id:'admin',is_admin:true,is_active:true},states:{[id]:{entity_id:id,state:'docked',attributes:{friendly_name:'Robot'}}},connection:{subscribeMessage:async cb=>{emit=cb;return ()=>{}}},callWS:async m=>{
+ calls.push(m.type);if(m.type.endsWith('/get_state'))return {settings:{sharing_intro_choice:'not_now'},tank_states:{[id]:{initialized:true,used_ml:1000}}};
+ if(m.type.endsWith('/list_vacuums'))return {vacuums:[{entity_id:id,name:'Robot',identity_group:id,tracked_capacity_ml:4000}],balance_links:{}};
+ if(m.type.endsWith('/get_feature_access')&&!allowed)throw Object.assign(new Error('denied'),{code:'unauthorized'});if(m.type.endsWith('/get_feature_access'))return {capabilities:{water:yes,settings:yes,measurements:yes},resources:{[id]:{water:yes,settings:yes,measurements:yes}}};
+ if(m.type.endsWith('/health'))return {robots:[]};if(m.type.endsWith('/reset_tank'))return {state:{initialized:true,used_ml:0}};throw Error(m.type)}};
+ const card=w.document.createElement('ha-vacuum-water-monitor');card.setConfig({variant:'compact'});card.preview=true;card.hass=hass;w.document.body.append(card);await pause(120);
+ assert(card.inert);card.shadowRoot.querySelector('.refill-btn').click();await pause(20);assert.equal(calls.filter(x=>x.endsWith('/reset_tank')).length,0);
+ // HA updates the same element when edit mode ends, without a reload.
+ card.preview=false;await pause(100);assert(!card.inert);card.shadowRoot.querySelector('.refill-btn').click();await pause(30);assert.equal(calls.filter(x=>x.endsWith('/reset_tank')).length,1);
+ // The same instance can also move from picker shadow DOM into a dashboard.
+ const picker=w.document.createElement('hui-card-picker'),root=picker.attachShadow({mode:'open'}),wrapper=w.document.createElement('div');root.append(wrapper);w.document.body.append(picker);wrapper.append(card);await pause(100);assert(card.inert);card.preview=false;card.shadowRoot.querySelector('.refill-btn').click();await pause(20);assert.equal(calls.filter(x=>x.endsWith('/reset_tank')).length,1);
+ w.document.body.append(card);await pause(100);assert(!card.inert);card.shadowRoot.querySelector('.refill-btn').click();await pause(30);assert.equal(calls.filter(x=>x.endsWith('/reset_tank')).length,2);
+ allowed=false;emit({access_revoked:true});await pause(30);card.preview=true;card.preview=false;await pause(100);assert.match(card.shadowRoot.textContent,/Access denied/);assert.equal(card.shadowRoot.querySelector('.refill-btn'),null);assert.equal(calls.filter(x=>x.endsWith('/reset_tank')).length,2);
+ const external=w.document.createElement('ha-vacuum-water-monitor');external.inert=true;external.preview=true;external.preview=false;assert(external.inert,'external inert is not removed');
+ card.remove();picker.remove();dom.window.close();
+})().catch(e=>{console.error(e);process.exit(1)});
+"""
+        result = subprocess.run(['node', '-e', script], cwd=ROOT, capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_picker_is_read_only_but_saved_card_remains_actionable(self):
         script = r"""
 const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
