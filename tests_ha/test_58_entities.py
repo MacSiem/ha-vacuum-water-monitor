@@ -38,7 +38,9 @@ async def test_settings_entities_are_created_on_the_robot_device(hass: HomeAssis
                   if e.platform == DOMAIN and e.unique_id.endswith("_vacuum_robot_water_remaining"))
     assert {registry.async_get(entity).device_id for entity in (number, switch, button)} == {sensor.device_id}
     assert float(hass.states.get(number).state) > 0
-    assert hass.states.get(number).attributes["source"] == "model"
+    from custom_components.ha_vacuum_water_monitor.robots import async_reports
+    assert next(r for r in await async_reports(hass) if r["vacuum_entity"] == VACUUM)["capacity_source"] == "model"
+    assert "source" not in hass.states.get(number).attributes
     assert hass.states.get(switch).state == "on"
 
 
@@ -50,7 +52,9 @@ async def test_tank_size_entity_is_the_one_source(hass: HomeAssistant) -> None:
     settings = (await storage.async_get_state())["settings"]
     assert settings["device_options"][VACUUM] == {"capacity_ml": 3000.0}
     assert float(hass.states.get(number).state) == 3000
-    assert hass.states.get(number).attributes["source"] == "user_option"
+    from custom_components.ha_vacuum_water_monitor.robots import async_reports
+    assert next(r for r in await async_reports(hass) if r["vacuum_entity"] == VACUUM)["capacity_source"] == "user_option"
+    assert "source" not in hass.states.get(number).attributes
     remaining = next(state for state in hass.states.async_all("sensor")
                      if state.attributes.get("vacuum_entity") == VACUUM and state.attributes.get("total_ml") is not None)
     assert remaining.attributes["total_ml"] == 3000
@@ -217,8 +221,8 @@ async def test_cleanings_left_sensor_and_health_track_record(hass: HomeAssistant
     assert robot["last_tank"]["error_percent"] == 7.4
     assert robot["supply"]["water_per_cleaning_ml"] == 400
     assert robot["supply"]["days_left"] is not None
-    sensor = next(state for state in hass.states.async_all("sensor") if state.attributes.get("basis_runs") is not None)
-    assert sensor.attributes["water_per_cleaning_ml"] == 400
+    sensor = hass.states.get(_entity(hass, "sensor", "cleanings_left"))
+    assert "water_per_cleaning_ml" not in sensor.attributes and "basis_runs" not in sensor.attributes
     assert int(sensor.state) >= 1
 
 
@@ -281,6 +285,8 @@ async def test_capability_entities_follow_dock_signal_removal_and_return(hass: H
     await client.send_json_auto_id({"type": f"{DOMAIN}/mark_empty", "vacuum_entity": VACUUM})
     assert not (await client.receive_json())["success"]
     switch = _entity(hass, "switch", "auto_refill")
+    switch_unique = registry.async_get(switch).unique_id
+    registry.async_update_entity(switch, name="My auto refill")
     assert hass.states.get(switch).state != "unavailable"
     registry.async_remove("sensor.robot_dock_error")
     hass.states.async_remove("sensor.robot_dock_error")
@@ -290,6 +296,8 @@ async def test_capability_entities_follow_dock_signal_removal_and_return(hass: H
     await client.send_json_auto_id({"type": f"{DOMAIN}/mark_empty", "vacuum_entity": VACUUM})
     assert (await client.receive_json())["success"]
     empty = _entity(hass, "button", "tank_empty")
+    empty_unique = registry.async_get(empty).unique_id
+    registry.async_update_entity(empty, name="My empty report")
     assert hass.states.get(empty).state != "unavailable"
     assert hass.states.get(switch).state == "unavailable"
     restored = registry.async_get_or_create("sensor", "roborock", source_unique, device_id=source_device,
@@ -303,6 +311,8 @@ async def test_capability_entities_follow_dock_signal_removal_and_return(hass: H
     assert not (await client.receive_json())["success"]
     assert hass.states.get(switch).state != "unavailable"
     assert hass.states.get(empty).state == "unavailable"
+    assert registry.async_get(switch).unique_id == switch_unique and registry.async_get(switch).name == "My auto refill"
+    assert registry.async_get(empty).unique_id == empty_unique and registry.async_get(empty).name == "My empty report"
 
 
 async def test_policy_is_admin_only_and_controls_household_actions(hass, hass_ws_client, hass_admin_user):
@@ -325,3 +335,260 @@ async def test_policy_is_admin_only_and_controls_household_actions(hass, hass_ws
     await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM})
     denied = await client.receive_json()
     assert not denied["success"] and denied["error"]["code"] == "unauthorized"
+
+
+async def test_policy_uses_distinct_users_native_permissions_scope_and_live_revocation(
+    hass, hass_ws_client, hass_read_only_user, hass_read_only_access_token, local_auth, monkeypatch
+):
+    """Actual authenticated clients cannot elevate HA rights or keep a revoked subscription."""
+    from homeassistant.auth.const import GROUP_ID_USER
+    from homeassistant.core import Context
+    from homeassistant.exceptions import Unauthorized
+    from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
+
+    storage = await _setup(hass)
+    other = MockConfigEntry(domain="matter", title="Other robot")
+    other.add_to_hass(hass)
+    from homeassistant.helpers import device_registry as dr
+    source = dr.async_get(hass).async_get_or_create(config_entry_id=other.entry_id,
+        identifiers={("matter", "r5-other")}, name="Other")
+    second = er.async_get(hass).async_get_or_create("vacuum", "matter", "r5-other",
+        device_id=source.id, config_entry=other, suggested_object_id="r5_other")
+    hass.states.async_set(second.entity_id, "docked")
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 123})
+    await storage.async_set_tank_state(second.entity_id, {"initialized": True, "used_ml": 999})
+    group = await hass.auth.async_get_group(GROUP_ID_USER)
+    member = MockUser(name="Allowed", groups=[group]).add_to_hass(hass)
+    denied_user = MockUser(name="Denied", groups=[group]).add_to_hass(hass)
+    async def token(user):
+        refresh = await hass.auth.async_create_refresh_token(user)
+        return hass.auth.async_create_access_token(refresh)
+    admin = await hass_ws_client(hass)
+    allowed = await hass_ws_client(hass, await token(member))
+    denied = await hass_ws_client(hass, await token(denied_user))
+    read_only = await hass_ws_client(hass, hass_read_only_access_token)
+    rule = {"mode": "selected_users", "user_ids": [member.id, hass_read_only_user.id], "entity_ids": [VACUUM]}
+    policy = {"schema": 1, "features": {"water": {"visible": rule, "read": rule, "execute": rule},
+                                         "settings": {"execute": {"mode": "admin"}}}}
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
+    assert (await admin.receive_json())["success"]
+    await allowed.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    state = await allowed.receive_json()
+    assert state["success"] and VACUUM in state["result"]["tank_states"]
+    assert second.entity_id not in state["result"]["tank_states"]
+    await denied.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    assert not (await denied.receive_json())["success"]
+    await read_only.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM})
+    assert not (await read_only.receive_json())["success"]
+    await allowed.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": second.entity_id})
+    assert not (await allowed.receive_json())["success"]
+    # HA passes this real caller through its native button service.
+    await hass.services.async_call("button", "press", {"entity_id": _entity(hass, "button", "refilled")},
+                                   blocking=True, context=Context(user_id=member.id))
+    assert (await _tank(storage))["used_ml"] == 0
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 123})
+    for domain, service, payload in (
+        ("number", "set_value", {"entity_id": _entity(hass, "number", "tank_capacity"), "value": 3000}),
+        ("switch", "turn_off", {"entity_id": _entity(hass, "switch", "auto_refill")}),
+    ):
+        with pytest.raises(Unauthorized):
+            await hass.services.async_call(domain, service, payload, blocking=True, context=Context(user_id=member.id))
+    before = await storage.async_get_state()
+    with pytest.raises(Unauthorized):
+        await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": VACUUM}, blocking=True, context=Context())
+    assert await storage.async_get_state() == before
+    # Revoke while a real public action is paused immediately before Store IO.
+    import asyncio
+    entered, proceed = asyncio.Event(), asyncio.Event()
+    original_reset = storage.async_reset_tank
+    async def paused_reset(*args, **kwargs):
+        entered.set()
+        await proceed.wait()
+        return await original_reset(*args, **kwargs)
+    monkeypatch.setattr(storage, "async_reset_tank", paused_reset)
+    await allowed.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM})
+    await asyncio.wait_for(entered.wait(), 3)
+    policy["features"]["water"]["execute"] = {"mode": "admin"}
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
+    assert (await admin.receive_json())["success"]
+    proceed.set()
+    assert not (await allowed.receive_json())["success"]
+    assert (await _tank(storage))["used_ml"] == 123
+    with pytest.raises(Unauthorized):
+        await hass.services.async_call("button", "press", {"entity_id": _entity(hass, "button", "refilled")},
+                                       blocking=True, context=Context(user_id=member.id))
+    assert (await _tank(storage))["used_ml"] == 123
+
+    await allowed.send_json_auto_id({"type": f"{DOMAIN}/subscribe"})
+    subscription = await allowed.receive_json()
+    assert subscription["success"]
+    # Hold the already-read response, revoke, then prove it is not returned.
+    from custom_components.ha_vacuum_water_monitor import websocket_api as vwm_ws
+    original_filter = vwm_ws._filtered_result
+    read_entered, release_read = asyncio.Event(), asyncio.Event()
+    async def paused_filter(hass_, user_id, value):
+        result = await original_filter(hass_, user_id, value)
+        if user_id == member.id and isinstance(value, dict) and "tank_states" in value and "settings" in value:
+            read_entered.set()
+            await release_read.wait()
+        return result
+    monkeypatch.setattr(vwm_ws, "_filtered_result", paused_filter)
+    await allowed.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    await asyncio.wait_for(read_entered.wait(), 3)
+    policy["features"]["water"]["read"] = {"mode": "admin"}
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": policy})
+    assert (await admin.receive_json())["success"]
+    release_read.set()
+    replies = [await allowed.receive_json(), await allowed.receive_json()]
+    assert any(reply.get("event", {}).get("access_revoked") is True for reply in replies)
+    assert any(reply.get("type") == "result" and not reply["success"] for reply in replies)
+    await allowed.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    assert not (await allowed.receive_json())["success"]
+
+
+async def test_entity_device_migration_preserves_user_registry_customizations(hass: HomeAssistant):
+    """Fallback → source uses the same unique IDs, entity IDs, names and disabled flags."""
+    from copy import deepcopy
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers.entity_registry import RegistryEntryDisabler
+
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 432,
+                                               "refill_history": [{"used_before_ml": 876}]})
+    entities = er.async_get(hass)
+    devices = dr.async_get(hass)
+    vacuum = entities.async_get(VACUUM)
+    source_id = vacuum.device_id
+    source = devices.async_get(source_id)
+    source_before = deepcopy((source.identifiers, source.name, source.name_by_user, source.area_id))
+    water = _entity(hass, "sensor", "water_remaining")
+    entry_before = entities.async_get(water)
+    entities.async_update_entity(water, name="My water level", disabled_by=RegistryEntryDisabler.USER)
+    entities.async_update_entity(VACUUM, device_id=None)
+    await _settle(hass)
+    fallback = entities.async_get(water)
+    assert fallback.device_id != source_id
+    assert fallback.unique_id == entry_before.unique_id
+    assert fallback.name == "My water level" and fallback.disabled_by == RegistryEntryDisabler.USER
+    entities.async_update_entity(VACUUM, device_id=source_id)
+    await _settle(hass)
+    migrated = entities.async_get(water)
+    assert migrated.entity_id == water and migrated.unique_id == entry_before.unique_id
+    assert migrated.device_id == source_id
+    assert migrated.name == "My water level" and migrated.disabled_by == RegistryEntryDisabler.USER
+    current = devices.async_get(source_id)
+    assert (current.identifiers, current.name, current.name_by_user, current.area_id) == source_before
+    assert (await _tank(storage))["used_ml"] == 432
+    assert (await _tank(storage))["refill_history"] == [{"used_before_ml": 876}]
+
+
+async def test_five_sensor_contracts_have_accurate_classes_and_units(hass: HomeAssistant):
+    """W28's historical count is not used to fabricate four extra sensors."""
+    storage = await _setup(hass)
+    from homeassistant.util import dt as dt_util
+    await storage.async_set_settings({"maintenance_items": [{"name": "Clean brush", "intervalDays": 30,
+        "lastDone": int(dt_util.utcnow().timestamp() * 1000)}]})
+    await hass.services.async_call("homeassistant", "update_entity",
+        {"entity_id": _entity(hass, "sensor", "next_maintenance_due")}, blocking=True)
+    checks = {
+        "water_remaining": ("%", None, "measurement"),
+        "water_used_since_refill": ("mL", "volume", "measurement"),
+        "last_refill": (None, "timestamp", None),
+        "next_maintenance_due": ("d", "duration", "measurement"),
+        "cleanings_left": (None, None, "measurement"),
+    }
+    registry = er.async_get(hass)
+    sensors = [entry for entry in registry.entities.values()
+               if entry.platform == DOMAIN and entry.domain == "sensor" and "_vacuum_robot_" in entry.unique_id]
+    assert len(sensors) == len(checks)
+    for key, (unit, device_class, state_class) in checks.items():
+        state = hass.states.get(_entity(hass, "sensor", key))
+        assert state is not None
+        assert state.attributes.get("unit_of_measurement") == unit
+        assert state.attributes.get("device_class") == device_class
+        assert state.attributes.get("state_class") == state_class
+    remaining = hass.states.get(_entity(hass, "sensor", "water_remaining"))
+    assert "source" in remaining.attributes and "uncertainty_kind" in remaining.attributes
+    maintenance = hass.states.get(_entity(hass, "sensor", "next_maintenance_due"))
+    assert maintenance.attributes["next_item"] == "Clean brush"
+    assert maintenance.attributes["due_at"] and maintenance.attributes["interval_days"] == 30
+
+
+async def test_repairs_health_share_first_interruption_source_and_time(hass, hass_ws_client):
+    storage = await _setup(hass)
+    incident = {"ts": 1791800000000, "reasons": ["accounting_context_changed"], "source": "area"}
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 240,
+        "accounting_incomplete": True, "last_accounting_reason": "idle", "last_accounting_interruption": incident})
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"sharing_intro_choice": "not_now"}})
+    assert (await client.receive_json())["success"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/health"})
+    health = (await client.receive_json())["result"]["robots"]
+    report = next(r for r in health if r["vacuum_entity"] == VACUUM)
+    check = next(c for c in report["checks"] if c["id"] == "accounting_paused")
+    assert check["params"]["reason"] == "accounting_context_changed"
+    assert check["params"]["source"] == "area" and check["params"]["occurred_at"] == incident["ts"]
+    issues = await _issues(hass)
+    issue = issues["accounting_paused_vacuum_robot"]
+    assert issue.data["reason"] == check["params"]["reason"]
+    assert issue.data["source"] == "area" and issue.data["occurred_at"] == incident["ts"]
+    from custom_components.ha_vacuum_water_monitor import repairs
+    flow = await repairs.async_create_fix_flow(hass, issue.issue_id, issue.data)
+    flow.hass = hass
+    placeholders = (await flow.async_step_init())["description_placeholders"]
+    assert placeholders["reason"] == "accounting_context_changed" and placeholders["source"] == "area"
+    assert placeholders["occurred_at"].startswith("2026-")
+    assert (await _tank(storage))["last_accounting_interruption"] == incident
+
+
+async def test_native_sensor_acl_is_independent_of_vwm_read_policy(hass, hass_ws_client, local_auth):
+    """A sensor is a shared HA state; policy blocks VWM API, HA ACL controls it."""
+    from homeassistant.auth.models import Group
+    from pytest_homeassistant_custom_component.common import MockUser
+
+    storage = await _setup(hass)
+    sensor = _entity(hass, "sensor", "water_remaining")
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 123,
+        "calibration_history": [{"private_marker": "never-global"}],
+        "automatic_sessions": [{"ts": 123, "private_sample": "never-global"}]})
+    groups = [Group(name="Sensor reader", policy={"entities": {"entity_ids": {sensor: {"read": True}}}}),
+              Group(name="No sensor read", policy={"entities": {"entity_ids": {VACUUM: {"read": True}}}})]
+    users = [MockUser(name="Sensor reader", groups=[groups[0]]).add_to_hass(hass),
+             MockUser(name="No sensor", groups=[groups[1]]).add_to_hass(hass)]
+    clients = []
+    for user in users:
+        refresh = await hass.auth.async_create_refresh_token(user)
+        clients.append(await hass_ws_client(hass, hass.auth.async_create_access_token(refresh)))
+    admin = await hass_ws_client(hass)
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": {"schema": 1,
+        "features": {"water": {"read": {"mode": "admin"}}}}})
+    assert (await admin.receive_json())["success"]
+    await clients[0].send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    assert not (await clients[0].receive_json())["success"]
+    for index, client in enumerate(clients):
+        await client.send_json_auto_id({"type": "get_states"})
+        states = (await client.receive_json())["result"]
+        ids = {state["entity_id"] for state in states}
+        assert (sensor in ids) is (index == 0)
+        if index == 0:
+            native = next(state for state in states if state["entity_id"] == sensor)
+            assert "private_marker" not in repr(native) and "private_sample" not in repr(native)
+            assert "calibration_factor" not in native["attributes"]
+
+
+async def test_vwm_response_does_not_reveal_source_sensor_without_native_read(hass, hass_ws_client, local_auth):
+    """Robot access does not imply access to a separately protected source."""
+    from homeassistant.auth.models import Group
+    from pytest_homeassistant_custom_component.common import MockUser
+
+    storage = await _setup(hass)
+    await storage.async_set_settings({"refill_settings": {VACUUM: {"lid_entity": "binary_sensor.private_lid"}}})
+    group = Group(name="Robot only", policy={"entities": {"entity_ids": {VACUUM: {"read": True}}}})
+    user = MockUser(name="Robot reader", groups=[group]).add_to_hass(hass)
+    refresh = await hass.auth.async_create_refresh_token(user)
+    client = await hass_ws_client(hass, hass.auth.async_create_access_token(refresh))
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    response = await client.receive_json()
+    assert response["success"]
+    assert "binary_sensor.private_lid" not in repr(response["result"])
+    assert VACUUM in repr(response["result"])

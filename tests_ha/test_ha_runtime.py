@@ -192,8 +192,8 @@ async def test_unload_removes_the_service_and_listeners(hass: HomeAssistant) -> 
     assert not hass.services.has_service(DOMAIN, "mark_refilled")
 
 
-async def test_state_changed_event_carries_the_balance_not_the_history(hass: HomeAssistant) -> None:
-    """5.7.0-beta.4: events over 32 KB are dropped by the recorder and bloat the database."""
+async def test_state_changed_event_is_an_anonymous_marker_and_store_keeps_balance(hass: HomeAssistant) -> None:
+    """Shared HA events contain no robot data; authorized clients read Store."""
     storage = await _setup(hass)
     await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": VACUUM}, blocking=True)
     sessions = [{"ts": i, "started_ts": i, "water": 10, "context": {"pad": "x" * 400}} for i in range(50)]
@@ -205,13 +205,10 @@ async def test_state_changed_event_carries_the_balance_not_the_history(hass: Hom
     _robot_states(hass, status="cleaning", vacuum="cleaning", area="5")
     await _settle(hass)
     assert events
-    import json
-
     for event in events:
-        tank = event.data["tank_states"][VACUUM]
-        assert "automatic_sessions" not in tank and "used_ml" in tank
-        assert event.data.get("partial") is True
-        assert len(json.dumps(event.data, default=str)) < 16_384
+        assert event.data == {"state_changed": True}
+        assert VACUUM not in repr(event.data) and "automatic_sessions" not in repr(event.data)
+    assert (await _tank(storage))["used_ml"] > 0
     assert len((await _tank(storage))["automatic_sessions"]) >= 50
 
 
@@ -423,17 +420,21 @@ async def test_a_device_with_the_old_placeholder_name_gets_the_robots_name(hass:
 async def test_household_can_subscribe_to_water_balance_updates(hass: HomeAssistant, hass_ws_client, hass_admin_user) -> None:
     """A normal authenticated account receives compact domain events immediately."""
     await _setup(hass)
-    hass_admin_user.groups = []
+    from homeassistant.auth.const import GROUP_ID_USER
+    hass_admin_user.groups = [await hass.auth.async_get_group(GROUP_ID_USER)]
     assert not hass_admin_user.is_admin
     client = await hass_ws_client(hass)
     await client.send_json_auto_id({"type": f"{DOMAIN}/subscribe"})
     response = await client.receive_json()
     assert response["success"], response
-    payload = {"partial": True, "tank_states": {VACUUM: {"used_ml": 175}}}
-    hass.bus.async_fire(f"{DOMAIN}_state_changed", payload)
+    await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": VACUUM}, blocking=True)
     await hass.async_block_till_done()
     event = await client.receive_json()
-    assert event["event"] == {"data": payload}
+    assert event["event"]["data"]["state_changed"] is True
+    assert VACUUM in event["event"]["data"]["authorized_vacuums"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    state = await client.receive_json()
+    assert state["success"] and state["result"]["tank_states"][VACUUM]["initialized"]
     await client.send_json_auto_id({"type": "unsubscribe_events", "subscription": response["id"]})
     assert (await client.receive_json())["success"]
 

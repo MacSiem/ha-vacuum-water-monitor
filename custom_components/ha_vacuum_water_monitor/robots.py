@@ -22,7 +22,6 @@ from .const import (
     DATA_TICKER,
     DOMAIN,
     EVENT_STATE_CHANGED,
-    event_tank_states,
     signal_vacuum_water_updated,
 )
 from .health import MOP_ATTRIBUTE_KEYS, REPAIR_CHECKS, robot_health
@@ -60,10 +59,17 @@ def async_notify(hass: HomeAssistant, payload: dict[str, Any]) -> None:
     """Tell sensors, entities and open cards that the Store changed."""
     for entry in hass.config_entries.async_entries(DOMAIN):
         async_dispatcher_send(hass, signal_vacuum_water_updated(entry.entry_id), payload)
-    event = dict(payload)
-    if isinstance(event.get("tank_states"), dict):
-        event["tank_states"] = event_tank_states(event["tank_states"])
-        event["partial"] = True
+    # HA custom events are broadcast outside our per-user authorization.
+    # Publish only change markers; authorized clients fetch their own view.
+    event = {}
+    if "settings" in payload:
+        event["settings_changed"] = True
+    if "tank_states" in payload:
+        event["state_changed"] = True
+    if payload.get("registry_rename") or payload.get("registry_changed"):
+        event["registry_changed"] = True
+    if payload.get("feature_access_changed"):
+        event["feature_access_changed"] = True
     hass.bus.async_fire(EVENT_STATE_CHANGED, event)
     async_schedule_issue_sync(hass)
 
@@ -256,7 +262,8 @@ async def async_sync_issues(hass: HomeAssistant) -> None:
                 "target_name": str(params.get("target_name") or ""),
                 "model_capacity": str(int(report["model_capacity_ml"])) if report.get("model_capacity_ml") else "",
             }
-            data = {"vacuum_entity": entity, "check": check["id"], "target": params.get("target")}
+            data = {"vacuum_entity": entity, "check": check["id"], "target": params.get("target"),
+                    "reason": params.get("reason"), "source": params.get("source"), "occurred_at": params.get("occurred_at")}
             wanted[issue_id(check["id"], entity)] = (check["id"], check["severity"], tuple(sorted(placeholders.items())),
                                                      tuple(sorted((k, v) for k, v in data.items() if v is not None)))
     registry = ir.async_get(hass)

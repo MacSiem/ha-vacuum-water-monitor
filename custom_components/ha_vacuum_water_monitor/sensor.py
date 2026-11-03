@@ -32,7 +32,7 @@ from .sensor_calculations import (
     setup_guidance,
     vacuum_slug,
 )
-from .entity import robot_device_info, vacuum_display_name
+from .entity import robot_device_info, sync_entity_device, vacuum_display_name
 from .storage import VacuumWaterStorage
 from .tick import list_vacuums
 
@@ -131,15 +131,18 @@ class VacuumSensorManager:
                 sensor_id = (origin, sensor_cls.sensor_key)
                 if sensor_id in self._known:
                     existing = self._instances.get(sensor_id)
-                    if existing is not None and existing.vacuum_entity != vacuum_entity:
+                    if existing is not None:
+                        changed = existing.vacuum_entity != vacuum_entity
                         existing.vacuum_entity = str(vacuum_entity)
                         existing._device = dict(device)
                         existing._fallback_device = dict(device)
-                        if existing.entity_id is not None:
+                        sync_entity_device(self.hass, self.entry, existing, device)
+                        if changed and existing.entity_id is not None:
                             self.hass.async_create_task(existing.async_refresh())
                     continue
                 self._known.add(sensor_id)
                 sensor = sensor_cls(self.hass, self.entry, device)
+                sync_entity_device(self.hass, self.entry, sensor, device)
                 self._instances[sensor_id] = sensor
                 entities.append(sensor)
 
@@ -168,6 +171,11 @@ class VacuumSensorManager:
         for device_entry in list(dr.async_entries_for_config_entry(registry, self.entry.entry_id)):
             match = next((wanted[i] for i in device_entry.identifiers if i in wanted), None)
             if match is None:
+                continue
+            # A source device may also contain a VWM identifier from an older
+            # install. Never remove the source or a user-customized device.
+            if (any(domain != DOMAIN for domain, _ in device_entry.identifiers)
+                    or device_entry.connections or device_entry.name_by_user or device_entry.area_id):
                 continue
             registry.async_remove_device(device_entry.id)
             for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor,
@@ -214,6 +222,8 @@ class VacuumStoreSensor(SensorEntity):
 
     _attr_has_entity_name = True
     _attr_should_poll = False
+    # Keep bulky diagnostics live, without copying history into Recorder.
+    _unrecorded_attributes = frozenset({"recent_refills", "consumption_resolution", "reservoir_levels", "accounting_v2"})
 
     sensor_key = ""
     sensor_name = ""
@@ -233,7 +243,7 @@ class VacuumStoreSensor(SensorEntity):
             self._attr_name = self.sensor_name
 
     @property
-    def device_info(self) -> DeviceInfo:
+    def device_info(self) -> DeviceInfo | None:
         """Return a per-vacuum device (shared with the settings entities)."""
         return robot_device_info(self.hass, self.entry, self._device)
 
@@ -247,6 +257,7 @@ class VacuumStoreSensor(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to Store writes."""
+        sync_entity_device(self.hass, self.entry, self, self._device)
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
@@ -317,6 +328,7 @@ class WaterUsedSensor(VacuumStoreSensor):
 
     sensor_key = "water_used_since_refill"
     sensor_name = "Water used since refill"
+    _attr_device_class = SensorDeviceClass.VOLUME
     _attr_native_unit_of_measurement = WATER_VOLUME_UNIT
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -351,10 +363,6 @@ class LastRefillSensor(VacuumStoreSensor):
         self._attr_native_value = refill_at
         self._attr_extra_state_attributes = {
             "vacuum_entity": self.vacuum_entity,
-            "last_reset_iso": tank_state.get("last_reset_iso"),
-            "last_reset_ts": tank_state.get("last_reset_ts"),
-            "refill_source": tank_state.get("last_reset_source"),
-            "recent_refills": list(tank_state.get("refill_history") or [])[:5],
             **setup_guidance(None if refill_at else "awaiting_refill"),
         }
 
@@ -364,6 +372,8 @@ class NextMaintenanceDueSensor(VacuumStoreSensor):
 
     sensor_key = "next_maintenance_due"
     sensor_name = "Next maintenance due"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = DAYS_UNIT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -430,9 +440,6 @@ class CleaningsLeftSensor(VacuumStoreSensor):
         self._attr_extra_state_attributes = {
             "vacuum_entity": self.vacuum_entity,
             "days_left": forecast["days_left"],
-            "water_per_cleaning_ml": forecast["water_per_cleaning_ml"],
-            "water_per_day_ml": forecast["water_per_day_ml"],
-            "basis_runs": forecast["basis_runs"],
         }
 
 
@@ -446,47 +453,15 @@ _vacuum_display_name = vacuum_display_name
 def _water_state_attributes(
     estimate: dict[str, Any], tank_state: dict[str, Any]
 ) -> dict[str, Any]:
-    """Expose initialization, profile and last-accounting diagnostics."""
+    """Only shared live status; banks and provenance stay in authorized VWM API."""
     return {
-        "initialized": estimate["initialized"],
-        "state_reason": estimate["state_reason"],
-        "capability": estimate["capability"],
-        "profile_key": estimate["profile_key"],
-        "profile_source": estimate["profile_source"],
-        "profile_confidence": estimate["profile_confidence"],
-        "integration_adapter": estimate.get("integration_adapter"),
-        "signal_contract_version": estimate.get("signal_contract_version"),
-        "mop_evidence_required": estimate.get("mop_evidence_required", False),
-        "accounting_evidence": estimate["accounting_evidence"],
-        "estimate_basis": estimate.get("estimate_basis"),
-        "nominal_time_resolution": estimate.get("nominal_time_resolution"),
-        "estimate_sources": estimate.get("estimate_sources", []),
+        "initialized": bool(estimate.get("initialized")),
+        "state_reason": estimate.get("state_reason"),
+        "capability": estimate.get("capability"),
         "uncertainty_kind": estimate.get("uncertainty_kind"),
-        "physical_accuracy_verified": estimate.get("physical_accuracy_verified", False),
         "uncertainty_percent": estimate.get("uncertainty_percent"),
-        "calibration_factor": estimate.get("calibration_factor"),
-        "calibration_samples": estimate.get("calibration_samples"),
+        "physical_accuracy_verified": estimate.get("physical_accuracy_verified", False),
         "water_empty_active": bool(tank_state.get("water_empty_active")),
-        "water_empty_acknowledged": bool(tank_state.get("water_empty_acknowledged")),
-        "calibration_pending": tank_state.get("calibration_pending_log_factor") is not None,
-        "intensity_unmapped": tank_state.get("intensity_unmapped"),
-        "bridged_gaps": tank_state.get("bridged_gaps") or 0,
-        **setup_guidance(estimate.get("state_reason")),
-        "water_anchor_source": tank_state.get("water_anchor_source"),
-        "water_anchor_kind": tank_state.get("water_anchor_kind"),
-        "water_anchor_confidence": tank_state.get("water_anchor_confidence"),
-        "last_low_water_ts": tank_state.get("last_low_water_ts"),
-        "last_calibration_predicted_ml": tank_state.get(
-            "last_calibration_predicted_ml"
-        ),
-        "last_calibration_target_ml": tank_state.get(
-            "last_calibration_target_ml"
-        ),
-        "consumption_resolution": tank_state.get("consumption_resolution"),
-        "reservoir_levels": tank_state.get("reservoir_levels"),
-        "accounting_v2": {k: v for k, v in (tank_state.get("accounting_v2") or {}).items() if k not in {"journal", "events", "device_identity"}},
         "accounting_incomplete": bool(tank_state.get("accounting_incomplete")),
-        "last_accounting_source": tank_state.get("last_accounting_source"),
-        "last_accounting_rate_ml": tank_state.get("last_accounting_rate_ml"),
-        "last_accounting_reason": tank_state.get("last_accounting_reason"),
+        **setup_guidance(estimate.get("state_reason")),
     }

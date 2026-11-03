@@ -156,7 +156,9 @@ def robot_health(
             interruption = tank_state.get("last_accounting_interruption") or {}
             reasons = interruption.get("reasons") if isinstance(interruption, dict) else None
             detail = ", ".join(str(r) for r in reasons) if isinstance(reasons, list) and reasons else "reason_unavailable"
-            add("accounting_paused", "warning", FIX_CONFIRM_FULL, auto_refill=method == "dock_auto", reason=detail)
+            add("accounting_paused", "warning", FIX_CONFIRM_FULL, auto_refill=method == "dock_auto", reason=detail,
+                source=interruption.get("source") if isinstance(interruption, dict) else None,
+                occurred_at=interruption.get("ts") if isinstance(interruption, dict) else None)
         elif reason in {"vacuum_unavailable", "status_unavailable", "area_unavailable", "duration_unavailable",
                         "real_sensor_unavailable"}:
             add("signal_unavailable", "info", None, reason=reason)

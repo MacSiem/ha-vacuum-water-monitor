@@ -13299,6 +13299,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._serverState = { settings: {}, tank_states: {} };
     this._discoveredVacuums = [];
     this._serverReady = false;
+    this._featureAccess = null;
+    this._accessDenied = false;
+    this._accessEpoch = 0;
     this._serverLoadPromise = null;
     this._serverRefreshPending = false;
     this._serverUnsub = null;
@@ -13321,6 +13324,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
       this.classList.toggle('bento-dark', _d);
     } catch (e) {}
     if (hass?.locale?.language || hass?.language) this._lang = (hass.locale?.language || hass.language).startsWith('pl') ? 'pl' : 'en';
+    const previous = this._hass?.user, next = hass?.user;
+    if (previous && (previous.id !== next?.id || previous.is_admin !== next?.is_admin || next?.is_active === false)) {
+      this._serverUnsub?.(); this._serverUnsub = null; this._serverReady = false;
+      this._clearPrivateAccess();
+    }
     this._hass = hass;
     if (!hass) return;
 
@@ -13499,7 +13507,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ? savedNavigation._activeDeviceIdx : 0;
     try { localStorage.setItem('ha-tools-vacuum-water-monitor-settings', JSON.stringify({ _activeTab: this._activeTab, _activeDeviceIdx: this._activeDeviceIdx })); } catch(e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
     this._applyServerSettings();
-    const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
+    const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig())
+      .filter(device => this._featureAllowed('settings', 'execute', device));
     if (configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices }, {partial:true});
     this._ensureServerState(true);
   }
@@ -13527,12 +13536,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
     if (!force && this._serverReady && Date.now() - (this._serverLoadedAt || 0) < 300000) return null;
     this._serverLoadedAt = Date.now();
+    const accessEpoch = this._accessEpoch;
     this._serverLoadPromise = (async () => {
       try {
         const [state, listed] = await Promise.all([
           this._hass.callWS({ type: `${VWM_DOMAIN}/get_state` }),
           this._hass.callWS({ type: `${VWM_DOMAIN}/list_vacuums` }),
         ]);
+        if (accessEpoch !== this._accessEpoch) return;
+        await this._refreshFeatureAccess();
+        if (accessEpoch !== this._accessEpoch) return;
         // Registry or settings changed while these snapshots were in flight.
         // Do not render them; the pending refresh will fetch both again.
         if (this._serverRefreshPending) return;
@@ -13546,7 +13559,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._discoveredVacuums = (listed && listed.vacuums) || [];
         this._balanceLinks = listed && listed.balance_links;
         this._applyServerSettings();
-        const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig());
+        const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig())
+          .filter(device => this._featureAllowed('settings', 'execute', device));
         const existing = this._serverState.settings.configured_devices || [];
         const unchanged = configuredDevices.every(item => {
           const prior = existing.find(d => d.vacuum_entity === item.vacuum_entity);
@@ -13570,6 +13584,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._lastHtml = '';
         this._render({ preserveDraft: true });
       } catch (err) {
+        if (accessEpoch !== this._accessEpoch) return;
+        if (err?.code === 'unauthorized') {
+          this._accessDenied = true;
+          this._clearPrivateAccess(false);
+          this._lastHtml = '';
+          this._render();
+        }
         console.error('[ha-vacuum-water-monitor] server state load failed:', err);
       } finally {
         this._serverLoadPromise = null;
@@ -13584,10 +13605,28 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _subscribeServerEvents() {
     if (this._serverUnsub || !this._hass?.connection?.subscribeMessage) return;
+    const accessEpoch = this._accessEpoch;
     this._hass.connection.subscribeMessage((event) => {
+      if (accessEpoch !== this._accessEpoch) return;
+      if (event?.access_revoked) {
+        this._clearPrivateAccess(false); this._accessDenied = true;
+        this._serverUnsub = null; this._lastHtml = ''; this._render(); return;
+      }
       const data = (event && event.data) || {};
-      if (data.registry_rename || data.registry_changed) setTimeout(() => this._ensureServerState(true), 0);
-      if (data.settings) {
+      if (data.feature_access_changed) {
+        this._clearPrivateAccess(); this._accessDenied = true; this._lastHtml = ''; this._render();
+        setTimeout(() => this._ensureServerState(true), 0); return;
+      }
+      if (Array.isArray(data.authorized_vacuums)) {
+        const allowed = new Set(data.authorized_vacuums);
+        const old = this._serverState.tank_states || {};
+        if (Object.keys(old).some(entity => !allowed.has(entity))) {
+          this._clearPrivateAccess(); this._accessDenied = true; this._lastHtml = ''; this._render();
+          setTimeout(() => this._ensureServerState(true), 0); return;
+        }
+      }
+      if (data.registry_rename || data.registry_changed || data.settings_changed || data.state_changed || (data.settings && this._featureAccess)) setTimeout(() => this._ensureServerState(true), 0);
+      if (data.settings && !this._featureAccess) {
         const linksChanged = JSON.stringify(this._robotLinks()) !== JSON.stringify(data.settings.robot_links || {});
         const devicesChanged = ['configured_devices', 'user_devices'].some(key =>
           JSON.stringify(this._serverState.settings?.[key] || []) !== JSON.stringify(data.settings[key] || []));
@@ -13617,10 +13656,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
       // A refill, a paused count or a finished setup changes what the panel asks.
       const setupMoved = Boolean(data.tank_states) && Object.values(data.tank_states).some(tank => tank
         && ('initialized' in tank || 'accounting_incomplete' in tank || 'last_reset_ts' in tank));
-      this._refreshHealth(Boolean(data.settings) || setupMoved);
+      this._refreshHealth(Boolean(data.settings || data.settings_changed) || setupMoved);
       this._lastHtml = '';
       this._render({ preserveDraft: true });
-    }, { type: `${VWM_DOMAIN}/subscribe` }).then((unsub) => { this._serverUnsub = unsub; }).catch((err) => {
+    }, { type: `${VWM_DOMAIN}/subscribe` }).then((unsub) => { if (accessEpoch !== this._accessEpoch) unsub(); else this._serverUnsub = unsub; }).catch((err) => {
       console.debug('[ha-vacuum-water-monitor] event subscription failed:', err);
     });
   }
@@ -13640,8 +13679,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return null;
     }
     this._healthAt = Date.now();
+    const accessEpoch = this._accessEpoch;
     this._healthPromise = this._hass.callWS({ type: `${VWM_DOMAIN}/health` })
       .then((result) => {
+        if (accessEpoch !== this._accessEpoch) return;
         const map = {};
         for (const report of (result && result.robots) || []) {
           if (report && report.vacuum_entity) map[report.vacuum_entity] = report;
@@ -13814,6 +13855,43 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return `<div class="vwm-setup"><div class="vwm-setup-title">${L.setupTitle(_esc(report.name || device.vacuum_entity))}</div>${factsHtml}${capacityEditor}${steps}${hints}</div>`;
   }
 
+  _clearPrivateAccess(refreshPending = true) {
+    this._accessEpoch++;
+    if (this._serverLoadPromise && refreshPending) this._serverRefreshPending = true;
+    if (!refreshPending) this._serverRefreshPending = false;
+    this._serverState = {settings:{}, tank_states:{}};
+    this._featureAccess = null; this._discoveredVacuums = []; this._balanceLinks = null;
+    this._health = {}; this._userDevices = []; this._refillConfig = {}; this._customCalib = null;
+    this._invalidateContribution?.();
+    this._localMeasurementGeneration = (this._localMeasurementGeneration || 0) + 1;
+  }
+
+  async _refreshFeatureAccess() {
+    const accessEpoch = this._accessEpoch;
+    try {
+      const result = await this._hass.callWS({type:`${VWM_DOMAIN}/get_feature_access`});
+      if (accessEpoch !== this._accessEpoch) return;
+      this._featureAccess = result;
+      this._accessDenied = result?.capabilities?.water?.read !== true;
+      if (this._accessDenied) throw Object.assign(new Error('Access denied'), {code:'unauthorized'});
+    } catch (err) {
+      // An older backend has no policy endpoint; do not invent an access grant
+      // after an authorization or connection error on this backend.
+      if (err?.code === 'unknown_command' || String(err?.message || '').endsWith('/get_feature_access')) {
+        this._featureAccess = null; this._accessDenied = false; return;
+      }
+      throw err;
+    }
+  }
+
+  _featureAllowed(feature, operation, device = null) {
+    if (!this._featureAccess) return !this._accessDenied;
+    const entity = device?.vacuum_entity;
+    const resource = entity && this._featureAccess.resources?.[entity];
+    return entity ? resource?.[feature]?.[operation] === true
+                  : this._featureAccess.capabilities?.[feature]?.[operation] === true;
+  }
+
   _applyServerSettings() {
     const settings = (this._serverState && this._serverState.settings) || {};
     this._maintenanceItems = Array.isArray(settings.maintenance_items) ? [...settings.maintenance_items] : [];
@@ -13829,7 +13907,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
   async _saveServerSettings(patch, {partial = false, expected = null} = {}) {
     if (!this._hass) return { ok: false, error: new Error('Home Assistant is unavailable') };
     try {
+      const accessEpoch = this._accessEpoch;
       const result = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch, ...(partial ? {partial:true} : {}), ...(expected ? {expected} : {}) });
+      if (accessEpoch !== this._accessEpoch) return {ok:false, error:new Error('Access changed')};
       if (result && result.settings) {
         this._serverState.settings = result.settings;
         this._applyServerSettings();
@@ -14390,7 +14470,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const links = this._robotLinks();
     const sortedLinks = value => JSON.stringify(Object.entries(value || {}).sort(([a], [b]) => a.localeCompare(b)));
     const mappingCurrent = this._balanceLinks && sortedLinks(this._balanceLinks) === sortedLinks(links);
-    const devices = this._getDeviceCandidates().map(device => {
+    const devices = this._getDeviceCandidates().filter(device =>
+      !this._featureAccess || (this._featureAllowed('water', 'visible', device) && this._featureAllowed('water', 'read', device))).map(device => {
       const owner = mappingCurrent && this._backendDescriptor(device)?.balance_owner;
       if (!owner || owner === device.vacuum_entity || !this._discoveredVacuums.some(v => v.entity_id === owner)) return device;
       return this._withBackendDescriptor({ ...device, vacuum_entity: owner });
@@ -16465,13 +16546,30 @@ class HAVacuumWaterMonitor extends HTMLElement {
         </section>
         <section id="vwm-settings-thresholds" tabindex="-1"><h3>${this._waterText('Thresholds and reminders')}</h3>${this._buildThresholdSettings ? this._buildThresholdSettings(data) : ''}</section>
         <section id="vwm-settings-signals" tabindex="-1"><h3>${this._waterText('Signals')}</h3>${this._buildSignalSummary(device)}</section>
-        <section id="vwm-settings-calibration" tabindex="-1"><h3>${this._waterText('Calibration and measurements')}</h3>
+        ${this._featureAllowed('measurements', 'visible', device) && this._featureAllowed('measurements', 'read', device) ? `<section id="vwm-settings-calibration" tabindex="-1"><h3>${this._waterText('Calibration and measurements')}</h3>
           <p data-learning-status>${this._waterText('Learning status')}: ${this._waterText('Learned tanks')} <b>${Math.max(0, Number(data.calibrationSamples) || 0)}</b> · ${this._waterText('Correction factor')} <b>×${this._formatUi().number(Number(data.calibrationFactor || 1), {maximumFractionDigits:2})}</b></p>
           ${this._buildCalibrationInfo(device, data)}${this._buildCustomMeasurements(device, data)}${this._buildPrivateMeasurements(device)}${this._buildCalibrationSharingSection(device, data)}
-        </section>
+        </section>` : ''}
         <section id="vwm-settings-model" tabindex="-1"><h3>${this._waterText('Model and capacity')}</h3>${this._buildSetupPanel(device, this._healthFor(device))}${this._buildDatabaseTab()}</section>
+        ${this._buildFeatureAccessEditor()}
         <p>${this._waterText('Card appearance and sensor overrides remain in the dashboard YAML editor.')}</p>
       </div>`;
+  }
+
+  _buildFeatureAccessEditor() {
+    if (this._hass?.user?.is_admin !== true || !this._featureAccess?.policy) return '';
+    const pl = this._lang === 'pl', policy = this._featureAccess.policy;
+    const labels = pl ? {water:'Woda',settings:'Ustawienia',measurements:'Pomiary',visible:'Widoczność',read:'Odczyt',execute:'Akcje',inherit:'Domyślne',household:'Domownicy',admin:'Administrator',selected_users:'Wybrani użytkownicy'}
+      : {water:'Water',settings:'Settings',measurements:'Measurements',visible:'Visibility',read:'Read',execute:'Actions',inherit:'Default',household:'Household',admin:'Administrator',selected_users:'Selected users'};
+    const rows = ['water','settings','measurements'].flatMap(feature => ['visible','read','execute'].map(operation => {
+      const rule = policy.features?.[feature]?.[operation] || {mode:'inherit'};
+      return `<fieldset data-access-row data-feature="${feature}" data-operation="${operation}"><legend>${_esc(labels[feature])} · ${_esc(labels[operation])}</legend>
+        <select data-access-mode aria-label="${_esc(labels[feature]+' '+labels[operation])}">${['inherit','household','admin','selected_users'].map(mode => `<option value="${mode}" ${rule.mode === mode ? 'selected' : ''}>${_esc(labels[mode])}</option>`).join('')}</select>
+        <label>${pl ? 'Identyfikatory użytkowników, po przecinku' : 'User IDs, comma separated'} <input data-access-users value="${_esc((rule.user_ids || []).join(', '))}"></label>
+        <label><input type="checkbox" data-access-limit ${Object.prototype.hasOwnProperty.call(rule, 'entity_ids') ? 'checked' : ''}> ${pl ? 'Ogranicz do wskazanych robotów (pusta lista: żaden)' : 'Limit to listed robots (empty list: none)'}</label>
+        <label>${pl ? 'Roboty: entity_id, po przecinku' : 'Robot entity IDs, comma separated'} <input data-access-entities value="${_esc((rule.entity_ids || []).join(', '))}"></label></fieldset>`;
+    })).join('');
+    return `<section id="vwm-settings-access"><h3>${pl ? 'Dostęp użytkowników' : 'User access'}</h3><p>${pl ? 'Uprawnienia VWM kontrolują funkcje i dane udostępniane przez VWM. Stany natywnych encji pozostają dostępne zgodnie z uprawnieniami Home Assistanta; brak prawa do odkurzacza nie odbiera automatycznie prawa do jego sensora. Wywołania bez użytkownika działają tylko bez jawnych reguł.' : 'VWM permissions control features and data provided by VWM. Native entity states remain available according to Home Assistant permissions; denying the vacuum does not automatically deny its sensor. Calls without a user work only without explicit rules.'}</p>${rows}<button type="button" id="vwm-access-save">${pl ? 'Zapisz dostęp' : 'Save access'}</button><p id="vwm-access-status" role="status"></p></section>`;
   }
 
   _refillChoices(device) {
@@ -16820,7 +16918,8 @@ target:
       { id: 'history', icon: '\uD83D\uDDD3\uFE0F', label: 'History' },
       { id: 'maintenance', icon: '\uD83D\uDD27', label: 'Maintenance' },
       { id: 'settings', icon: '\u2699\uFE0F', label: 'Settings' },
-    ].filter(tab => !Array.isArray(cfg.tabs) || cfg.tabs.includes(tab.id));
+    ].filter(tab => (!Array.isArray(cfg.tabs) || cfg.tabs.includes(tab.id)) &&
+      (tab.id !== 'settings' || (this._featureAllowed('settings', 'visible', device) && this._featureAllowed('settings', 'read', device))));
     if (!tabs.length) tabs.push({id:'water', icon:'', label:'Water'});
     if (!tabs.some(tab => tab.id === this._activeTab)) this._activeTab = tabs[0].id;
 
@@ -16848,6 +16947,7 @@ target:
     const blockedConfiguredRobot = configured.some(d => this._isAmbiguousConfiguredVacuum(d));
     if (!devices.length && blockedConfiguredRobot) tabContent = `<div class="empty-state">${this._lang === 'pl' ? 'Wybór robota wymaga aktualizacji.' : 'The robot selection needs updating.'}</div>`;
 
+    if (this._accessDenied) tabContent = `<div role="alert">${this._lang === 'pl' ? 'Brak dostępu. Skontaktuj się z administratorem.' : 'Access denied. Contact an administrator.'}</div>`;
     const deviceTabsHtml = this._buildDeviceTabs(devices);
 
     const _newHtml = `
@@ -17279,6 +17379,28 @@ input, select, textarea { max-width:100%; min-width:0; }
       }
     });
 
+    sr.querySelector('#vwm-access-save')?.addEventListener('click', async () => {
+      const status = sr.querySelector('#vwm-access-status');
+      const features = {};
+      for (const row of sr.querySelectorAll('[data-access-row]')) {
+        const feature = row.dataset.feature, operation = row.dataset.operation;
+        const mode = row.querySelector('[data-access-mode]').value;
+        const ids = row.querySelector('[data-access-users]').value.split(',').map(x => x.trim()).filter(Boolean);
+        const entities = row.querySelector('[data-access-entities]').value.split(',').map(x => x.trim()).filter(Boolean);
+        const limited = row.querySelector('[data-access-limit]').checked;
+        if (mode === 'inherit' && !limited) continue;
+        const rule = {mode, ...(mode === 'selected_users' ? {user_ids:ids} : {}), ...(limited ? {entity_ids:entities} : {})};
+        (features[feature] ||= {})[operation] = rule;
+      }
+      try {
+        await this._hass.callWS({type:`${VWM_DOMAIN}/set_feature_access`, policy:{schema:1,features}});
+        await this._refreshFeatureAccess();
+        if (status) status.textContent = this._lang === 'pl' ? 'Dostęp zapisano.' : 'Access saved.';
+      } catch (err) { if (status) status.textContent = this._lang === 'pl' ? 'Nie zapisano dostępu. Sprawdź dane i uprawnienia.' : 'Access was not saved. Check the inputs and permissions.'; }
+    });
+    if (!this._featureAllowed('water', 'execute', device)) sr.querySelectorAll('.refill-btn, [data-setup="confirm-full"], [data-setup="mark-empty"]').forEach(button => { button.disabled = true; });
+    if (!this._featureAllowed('settings', 'execute', device)) sr.querySelectorAll('.dup-btn, #hist-log-btn, .maint-done-btn, .maint-del-btn, #vwm-tab-panel .maint-add-btn:not(#cal-save), #vwm-settings-robots input, #vwm-settings-robots button, #vwm-settings-refill input, #vwm-settings-refill select, #vwm-settings-refill button, #vwm-settings-signals input, #vwm-settings-signals select, #vwm-settings-signals button, #vwm-settings-model button').forEach(control => { control.disabled = true; });
+    if (!this._featureAllowed('measurements', 'execute', device)) sr.querySelectorAll('#vwm-settings-calibration input, #vwm-settings-calibration select, #vwm-settings-calibration button').forEach(control => { control.disabled = true; });
     sr.querySelector('[data-vwm-refresh-retry]')?.addEventListener('click', () => this._retryBindingRefresh());
     sr.querySelectorAll('.dup-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {

@@ -49,6 +49,7 @@ WASH_SEQUENCE_GAP_SECONDS = 240
 # Area change across an observation gap below this is counter noise, not a session.
 GAP_AREA_TOLERANCE_M2 = 0.5
 _PASS_REASONS_KEY = "_pass_reasons"
+_PASS_FIRST_SOURCE_KEY = "_pass_first_source"
 _PASS_AREA_OBSERVATION_KEY = "_pass_area_observation"
 # Reasons that prove water was dispensed without an applicable rate.
 _MISSING_RATE_REASONS = frozenset({"missing_area_rate", "missing_time_rate", "missing_intensity_factor"})
@@ -350,12 +351,14 @@ def tick_device(
         new_state["last_accounting_interruption"] = {
             "ts": now_ts or new_state.get("last_tick_ts") or 0,
             "reasons": reasons or ["reason_unavailable"],
+            "source": new_state.get(_PASS_FIRST_SOURCE_KEY),
         }
         observation = new_state.get(_PASS_AREA_OBSERVATION_KEY)
         if isinstance(observation, dict):
             new_state["last_accounting_interruption"]["area_observation"] = observation
         dirty = True
     new_state.pop(_PASS_REASONS_KEY, None)
+    new_state.pop(_PASS_FIRST_SOURCE_KEY, None)
     new_state.pop(_PASS_AREA_OBSERVATION_KEY, None)
     return new_state, dirty
 
@@ -370,6 +373,7 @@ def _tick_device_pass(
     """Translate one v4 `_tickWaterState` pass into Python."""
     state = dict(state)
     state[_PASS_REASONS_KEY] = []
+    state.pop(_PASS_FIRST_SOURCE_KEY, None)
     state.pop(_PASS_AREA_OBSERVATION_KEY, None)
     if "cycle_full_confirmed" not in state:
         # Migration accepts the saved explicit full gesture, not initialization
@@ -2478,6 +2482,8 @@ def _record_accounting(
             payload["missing_usage_rate_reason"] = None
     reasons = state.get(_PASS_REASONS_KEY)
     if isinstance(reasons, list) and reason:
+        if not reasons:
+            state[_PASS_FIRST_SOURCE_KEY] = source
         reasons.append(reason)
     changed = False
     for key, value in payload.items():

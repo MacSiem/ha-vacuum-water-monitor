@@ -151,7 +151,7 @@ stay **unknown** rather than displaying a fabricated 100% full tank.
 What happens under the hood:
 
 1. **Auto-discovery.** The integration finds every `vacuum.*` entity in your Home Assistant
-   and creates a device with water sensors for each robot. No YAML, no entity picking.
+   and adds water sensors to its uniquely identified device, with a fallback device when necessary. No YAML, no entity picking.
 2. **Water accounting runs server-side when a bound entity changes** (status, cleaned area, dock
    error, mop settings, refill button or lid), with a 60-second heartbeat as a fallback. A gap of
    up to 5 minutes in the robot's signals is bridged from the cumulative area counter when the
@@ -330,14 +330,17 @@ tank) are shown in the panel only.
 
 ## Entities for automations
 
-Each discovered vacuum gets its own device with these sensors:
+When the vacuum has an unambiguous Home Assistant device-registry entry, its water entities appear on that source device. Otherwise the integration creates a separate fallback device. Existing entity IDs, names and disabled settings are retained when the association changes.
+
+Each tracked robot has these sensors:
 
 | Sensor | Unit | Entity category | Meaning |
 |---|---:|---|---|
 | Water remaining | `%` | normal | Estimated water left in the tank |
 | Water used since refill | `mL` | normal | Usage accumulated since the last refill |
-| Last refill | timestamp | diagnostic | When the tank was last refilled; attributes show what reported it and recent refills |
+| Last refill | timestamp | diagnostic | When the tank was last refilled |
 | Next maintenance due | `d` | diagnostic | Days until the next custom maintenance item |
+| Cleanings left | count | normal | Estimated cleanings from the remaining water; `days_left` is an attribute |
 
 Use them like any other sensor — dashboards, template sensors, and automations.
 
@@ -353,7 +356,6 @@ Settings entities on each robot's device:
 | Refill from dock automatically | switch (config) | Only for docks that report their clean tank empty and refilled |
 | Refilled | button | Marks the tracked tank full (a second press within 10 minutes is ignored) |
 | Tank empty | button | Press when the robot ran out of water; the estimate learns from it (for docks that cannot report an empty tank) |
-| Cleanings left | sensor | Cleanings the water left lasts at the robot's usual use; `days_left` attribute |
 
 **Diagnostics:** Settings → Devices & services → Vacuum Water Monitor → ⋮ → *Download
 diagnostics* gives a local file with health, detected signals and recent history. User-assigned
@@ -496,6 +498,14 @@ v4 was a HACS Lovelace plugin. v5 is a HACS integration.
 
 Browser-only v4 tank counters are not automatically imported. After installing v5, press
 **Refilled** once when the tank is full to establish the server-side baseline.
+
+## User access
+
+An administrator can configure visibility, reading and actions for water, settings and measurements in the card's Settings → User access. Rules can select household members and restrict robot entity IDs. Home Assistant's own read or control permissions remain an upper bound; VWM does not grant access to a resource that Home Assistant denies.
+
+VWM rules control VWM's card, API, subscription data and actions. Native entity states remain visible according to Home Assistant permissions for each entity: denying access to the vacuum does not automatically deny access to a separate water sensor. Private measurement records, calibration banks and their provenance are not broadcast in native entity attributes or VWM change events. Authorized VWM views retain the details. Home Assistant Diagnostics remains administrator-only.
+
+With no explicit VWM rules, existing household behavior and automation calls without a user context are retained. Once an administrator configures any rules, calls without an identifiable user are denied; use an authorized user context for those actions. An unavailable capability keeps its entity ID and customization but cannot be operated until its signal returns.
 
 ## Privacy
 

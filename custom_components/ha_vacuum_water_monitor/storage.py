@@ -68,6 +68,9 @@ class _ReportingStore(Store):
                 raise OSError("Home Assistant storage cannot confirm the write")
         if getattr(self, "_read_only", False):
             raise OSError("Home Assistant storage cannot confirm the write")
+        if hass is not None and (owner := getattr(self, "_vwm_owner", None)) is not None:
+            from .feature_access import enforce_write_guard
+            await enforce_write_guard(hass, (owner._data or {}).get("settings") or {})
         pending = getattr(self, "_data", None)
         delayed = pending.get("data_func") if isinstance(pending, dict) else None
         outcome = {"candidate": data, "attempted": False, "error": None}
@@ -251,6 +254,7 @@ class VacuumWaterStorage:
         self._store: Store[dict[str, Any]] = _ReportingStore(
             hass, STORAGE_VERSION, STORAGE_KEY
         )
+        self._store._vwm_owner = self
         self._lock = asyncio.Lock()
         self._data: dict[str, Any] | None = None
         self._retired_vacuum_ids: set[str] = set()
@@ -393,6 +397,13 @@ class VacuumWaterStorage:
     async def async_get_settings(self) -> dict[str, Any]:
         """Return persisted settings."""
         return (await self.async_get_state())["settings"]
+
+    async def async_get_access_policy(self) -> dict[str, Any]:
+        """Read only access rules; do not copy measurement banks per check."""
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            settings = data.get("settings") or {}
+            return deepcopy(settings["feature_access"] if "feature_access" in settings else {"schema": 1, "features": {}})
 
     async def async_set_settings(self, patch: dict[str, Any], *, partial: bool = False, expected: dict[str, Any] | None = None) -> dict[str, Any]:
         """Apply a shallow settings patch.

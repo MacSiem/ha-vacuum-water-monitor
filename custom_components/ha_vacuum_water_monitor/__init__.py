@@ -36,7 +36,6 @@ from .const import (
     SERVICE_MARK_REFILLED,
     DOMAIN,
     EVENT_STATE_CHANGED,
-    event_tank_states,
     VERSION,
     signal_vacuum_water_updated,
 )
@@ -47,7 +46,6 @@ from .robots import (
     async_clear_issues,
     async_mark_refilled,
     async_schedule_issue_sync,
-    resolve_link,
 )
 from .storage import VacuumWaterStorage
 from .tick import async_tick_water_state
@@ -138,9 +136,36 @@ def _listen_vacuum_registry(hass: HomeAssistant, storage: VacuumWaterStorage):
             if not old:
                 _notify_store_updated(hass, {"registry_changed": True})
 
+    def source_entities() -> set[str]:
+        registry = er.async_get(hass)
+        devices = {item.device_id for item in registry.entities.values()
+                   if item.domain == "vacuum" and item.device_id and item.platform != DOMAIN}
+        return {item.entity_id for item in registry.entities.values()
+                if item.device_id in devices and item.platform != DOMAIN}
+
+    known_sources = source_entities()
+
     @callback
     def on_registry_update(event: Event) -> None:
-        if not str(event.data.get("entity_id") or "").startswith("vacuum."):
+        nonlocal known_sources
+        entity_id = str(event.data.get("entity_id") or "")
+        old_sources = known_sources
+        known_sources = source_entities()
+        if not entity_id.startswith("vacuum."):
+            own = er.async_get(hass).async_get(entity_id)
+            if own is not None and own.platform == DOMAIN:
+                action = event.data.get("action")
+                if action == "create" or (action == "update" and "device_id" in (event.data.get("changes") or {})):
+                    _notify_store_updated(hass, {"registry_changed": True})
+                return
+            if entity_id not in old_sources and entity_id not in known_sources:
+                return
+            _notify_store_updated(hass, {"registry_changed": True})
+            ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+            if ticker is not None:
+                task = hass.async_create_task(ticker.run(None))
+                tasks.add(task)
+                task.add_done_callback(tasks.discard)
             return
         task = hass.async_create_task(process(event))
         tasks.add(task)
@@ -299,7 +324,7 @@ def _async_start_tick(
                 signal_vacuum_water_updated(entry_id),
                 {"tank_states": changed},
             )
-            hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": event_tank_states(changed), "partial": True})
+            hass.bus.async_fire(EVENT_STATE_CHANGED, {"state_changed": True})
             async_schedule_issue_sync(hass, ISSUE_SYNC_TICK_DELAY_SECONDS)
 
     @callback
@@ -383,10 +408,22 @@ def _async_register_services(hass: HomeAssistant) -> None:
         entity_ids = sorted(entity_id for entity_id in extracted if entity_id.startswith("vacuum."))
         if not entity_ids:
             raise ServiceValidationError("Select at least one vacuum entity")
-        # A robot the user linked as a duplicate (Matter copy) refills its owner.
-        settings = (await storage.async_get_state()).get("settings") or {}
-        for entity_id in sorted({resolve_link(settings, entity_id) for entity_id in entity_ids}):
-            await async_mark_refilled(hass, entity_id, "service")
+        # Check both requested copies and resolved owners before any side effect.
+        from homeassistant.exceptions import Unauthorized
+        from .feature_access import check_access, reset_write_guard, set_write_guard
+        from .robots import resolve_balance_owner
+        stored = await storage.async_get_state()
+        owners = {resolve_balance_owner(hass, stored, entity_id) for entity_id in entity_ids}
+        resources = set(entity_ids) | owners
+        user_id = call.context.user_id
+        if not await check_access(hass, user_id, "water", "execute", resources):
+            raise Unauthorized()
+        token = set_write_guard(user_id, "water", resources)
+        try:
+            for entity_id in sorted(owners):
+                await async_mark_refilled(hass, entity_id, "service")
+        finally:
+            reset_write_guard(token)
 
     hass.services.async_register(
         DOMAIN,
