@@ -814,6 +814,11 @@ async def test_measurements_follow_registry_identity_after_rename_and_reuse(hass
         assert result["success"]
     before = (await storage.async_get_state())["settings"]
     assert before["consumption_calibrations"][VACUUM][0]["coefficient"] == 10
+    await client.send_json_auto_id({"type": f"{DOMAIN}/contribution_preview", "vacuum_entity": VACUUM,
+                                   "sample_ids": ["local.101"]})
+    baseline_preview = await client.receive_json()
+    assert baseline_preview["success"], baseline_preview
+    assert baseline_preview["result"]["samples"][0]["measured_ml"] == 100
     registry = er.async_get(hass)
     renamed = "vacuum.r3_renamed"
     registry.async_update_entity(VACUUM, new_entity_id=renamed)

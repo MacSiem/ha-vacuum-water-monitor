@@ -215,6 +215,13 @@ async def test_nominal_bank_follows_registry_identity_after_rename_and_reuse(has
     assert learning.resolve(bank, context=context, capacity_ml=capacity)["status"] == "active"
     tank.update(nominal_time_learning=bank, initialized=True, used_ml=123)
     await storage.async_set_tank_state(original, tank)
+    hass.states.async_set("select.r3_nominal_mode", "Vacuum")
+    await settle(hass)
+    hass.states.async_set("select.r3_nominal_mode", "Vacuum and Mop;Deep Clean")
+    await settle(hass)
+    baseline = (await storage.async_get_state())["tank_states"][original]["nominal_time_resolution"]
+    assert baseline["status"] == "active"
+    assert baseline["sample_count"] == 3
     renamed = "vacuum.r3_nominal_renamed"
     registry.async_update_entity(original, new_entity_id=renamed)
     hass.states.async_remove(original)
