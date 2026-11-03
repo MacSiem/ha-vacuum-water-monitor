@@ -166,7 +166,7 @@ console.log(JSON.stringify(out));
     def test_registry_event_fetches_new_state_and_renders_without_reload(self):
         script = r"""
 const fs = require('fs'), vm = require('vm'), assert = require('assert'), classes = {};
-global.HTMLElement = class {constructor(){this.tagName='HA-VACUUM-WATER-MONITOR'} attachShadow(){this.shadowRoot={querySelector(){return null},querySelectorAll(){return []}}}};
+global.HTMLElement = class {constructor(){this.tagName='HA-VACUUM-WATER-MONITOR';this.isConnected=true} attachShadow(){this.shadowRoot={querySelector(){return null},querySelectorAll(){return []}}}};
 global.customElements={get:n=>classes[n],define:(n,c)=>classes[n]=c};
 global.localStorage={getItem(){return null},setItem(){},removeItem(){}};
 global.window=global; global.history={replaceState(){}};global.location={pathname:'/'};global.CustomEvent=class {};

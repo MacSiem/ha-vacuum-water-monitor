@@ -14553,7 +14553,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const sortedLinks = value => JSON.stringify(Object.entries(value || {}).sort(([a], [b]) => a.localeCompare(b)));
     const mappingCurrent = this._balanceLinks && sortedLinks(this._balanceLinks) === sortedLinks(links);
     const devices = this._getDeviceCandidates().filter(device =>
-      !this._featureAccess || (this._featureAllowed('water', 'visible', device) && this._featureAllowed('water', 'read', device))).map(device => {
+      !this._accessDenied && (!this._featureAccess || (this._featureAllowed('water', 'visible', device) && this._featureAllowed('water', 'read', device)))).map(device => {
       const owner = mappingCurrent && this._backendDescriptor(device)?.balance_owner;
       if (!owner || owner === device.vacuum_entity || !this._discoveredVacuums.some(v => v.entity_id === owner)) return device;
       return this._withBackendDescriptor({ ...device, vacuum_entity: owner });
