@@ -34,18 +34,30 @@ class _ReportingStore(Store):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._vwm_writes = {}
+        self._vwm_delayed_retry = None
 
     async def _async_write_data(self, *args, **kwargs):
         envelope = args[-1] if args else kwargs.get("data")
         candidate = envelope.get("data") if isinstance(envelope, dict) else None
+        delayed = envelope.get("data_func") if isinstance(envelope, dict) else None
         outcome = self._vwm_writes.get(id(candidate))
         if outcome is not None and outcome["candidate"] is candidate:
             outcome["attempted"] = True
         try:
-            return await super()._async_write_data(*args, **kwargs)
+            result = await super()._async_write_data(*args, **kwargs)
+            if callable(delayed) and self._vwm_delayed_retry is delayed:
+                self._vwm_delayed_retry = None
+            return result
         except Exception as err:
             if outcome is not None and outcome["candidate"] is candidate:
                 outcome["error"] = err
+            elif callable(delayed):
+                # HA consumes the callback and final-write listener before
+                # swallowing a delayed write error. Re-arm only the previous
+                # committed state, never an unacknowledged immediate candidate.
+                self._vwm_delayed_retry = delayed
+                if getattr(self, "_data", None) is None:
+                    self.async_delay_save(delayed, 60)
             raise
 
     async def async_save(self, data):
@@ -68,9 +80,11 @@ class _ReportingStore(Store):
                 # Lightweight test doubles do not implement HA's writer.
                 if hass is not None and not outcome["attempted"]:
                     raise OSError("Home Assistant storage did not confirm the write")
+                self._vwm_delayed_retry = None
             except Exception:
-                if delayed is not None:
-                    self.async_delay_save(delayed, 60)
+                retry = delayed or self._vwm_delayed_retry
+                if retry is not None and getattr(self, "_data", None) is None:
+                    self.async_delay_save(retry, 60)
                 raise
         finally:
             self._vwm_writes.pop(id(data), None)

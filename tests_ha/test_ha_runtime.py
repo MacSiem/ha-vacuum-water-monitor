@@ -1379,3 +1379,36 @@ async def test_fresh_session_cas_ignores_hidden_orphan_without_changing_its_hist
         assert raw_after["settings"]["sessions"].get(marker) == raw_before["settings"]["sessions"].get(marker)
         assert raw_after["tank_states"].get(marker) == raw_before["tank_states"].get(marker)
     assert raw_after["settings"]["sessions"][VACUUM] == [{"ts": 222, "water": 13}]
+
+
+async def test_delayed_store_write_error_rearms_final_write(hass, hass_storage, monkeypatch):
+    """A failing timer must retain the tick for FINAL_WRITE without another tick."""
+    import asyncio
+    from copy import deepcopy
+    from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE
+    from homeassistant.helpers.storage import Store
+    from homeassistant.util.file import WriteError
+    from custom_components.ha_vacuum_water_monitor.storage import VacuumWaterStorage
+
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 100,
+        "calibration_history": [{"sample": "keep"}], "automatic_sessions": [{"ts": 123, "area": 10}]})
+    before_disk = deepcopy(hass_storage[DOMAIN]["data"])
+    tank = deepcopy((await storage.async_get_state())["tank_states"][VACUUM])
+    tank["used_ml"] = 135
+    calls = []
+    async def failed_write(*_args, **_kwargs):
+        calls.append(True)
+        raise WriteError("synthetic delayed disk error")
+    with monkeypatch.context() as fault:
+        fault.setattr(Store, "_async_write_data", failed_write)
+        await storage.async_set_tank_states({VACUUM: tank}, delay_seconds=0.01)
+        await asyncio.sleep(0.05)  # Real HA call_later timer, not a private callback.
+        await hass.async_block_till_done()
+        assert calls
+        assert hass_storage[DOMAIN]["data"] == before_disk
+        assert (await storage.async_get_state())["tank_states"][VACUUM] == tank
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+    await hass.async_block_till_done()
+    assert hass_storage[DOMAIN]["data"]["tank_states"][VACUUM] == tank
+    assert (await VacuumWaterStorage(hass).async_get_state())["tank_states"][VACUUM] == tank
