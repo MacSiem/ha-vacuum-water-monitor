@@ -231,23 +231,27 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
     if(msg.type.endsWith('/reset_tank')) {writes.push(msg);state.tank_states[owner]={initialized:true,used_ml:0,last_reset_ts:2};return {vacuum_entity:owner,state:structuredClone(state.tank_states[owner])}}
     throw Error(msg.type);
    }};
+  const expectLitres=value=>{
+    if(compact){const number=card.shadowRoot.querySelector('.vwm-main-value'),unit=card.shadowRoot.querySelector('.vwm-main-unit');assert(number&&unit);assert.equal(Number(number.textContent.replace(',','.')),value);assert.match(unit.textContent,/^\s*\/\s*4\s*L$/);}
+    else assert.match(card.shadowRoot.querySelector('#vwm-tab-panel').textContent,new RegExp(value.toFixed(2).replace('.', '[.,]')+'\\s*L'));
+  };
   card._hass=hass;card._refreshHealth=()=>null;
   dom.window.document.body.append(card);await card._ensureServerState(true);await new Promise(r=>setTimeout(r,10));
   assert.equal(card._getDevices()[0].vacuum_entity,owner);
   const refill=card.shadowRoot.querySelector('.refill-btn');assert(refill);refill.click();await new Promise(r=>setTimeout(r,10));
   assert.equal(writes.length,1);assert.equal(writes[0].vacuum_entity,owner);
-  assert.match(card.shadowRoot.textContent,/4[.,]00\s*L/);
+  expectLitres(4);
   state.tank_states[owner]={initialized:true,used_ml:160,last_reset_ts:2};
   subscriber({data:{partial:true,tank_states:{[owner]:state.tank_states[owner]}}});await new Promise(r=>setTimeout(r,10));
-  assert.match(card.shadowRoot.textContent,/3[.,]84\s*L/);
+  expectLitres(3.84);
   assert.equal(state.tank_states[copy],undefined);
   await card._ensureServerState(true);await new Promise(r=>setTimeout(r,10));
-  assert.match(card.shadowRoot.textContent,/3[.,]84\s*L/);
+  expectLitres(3.84);
   state.settings.robot_links={[copy]:'distinct'};state.tank_states[copy]={initialized:true,used_ml:600,last_reset_ts:3};
   listed.balance_links={[copy]:'distinct'};listed.vacuums[1].balance_owner=copy;
   subscriber({data:{settings:structuredClone(state.settings)}});await new Promise(r=>setTimeout(r,30));
   assert.equal(card._getDevices()[0].vacuum_entity,copy);
-  assert.match(card.shadowRoot.textContent,/3[.,]40\s*L/);
+  expectLitres(3.4);
   state.ambiguous_vacuum_ids=[copy];await card._ensureServerState(true);await new Promise(r=>setTimeout(r,10));
   assert.match(card.shadowRoot.textContent,/Card paused/);assert.equal(card.shadowRoot.querySelector('.refill-btn'),null);
   assert.equal(writes.length,1);dom.window.close();
@@ -295,7 +299,8 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
   assert.equal(reads,3);assert.equal(lists,3);
   assert.deepEqual([...card._serverState.ambiguous_vacuum_ids],[]);
   assert.doesNotMatch(card.shadowRoot.textContent,/Card paused/);
-  assert.match(card.shadowRoot.textContent,/3[.,]99\s*L/);
+  if(compact){const number=card.shadowRoot.querySelector('.vwm-main-value'),unit=card.shadowRoot.querySelector('.vwm-main-unit');assert(number&&unit);assert.equal(Number(number.textContent.replace(',','.')),3.99);assert.match(unit.textContent,/^\s*\/\s*4\s*L$/);}
+  else assert.match(card.shadowRoot.querySelector('#vwm-tab-panel').textContent,/3[.,]99\s*L/);
   assert(card.shadowRoot.querySelector('.refill-btn'));
   await new Promise(r=>setTimeout(r,40));assert.equal(reads,3);assert.equal(lists,3);
   assert.equal(calls.filter(x=>x.endsWith('/set_settings')).length,1);
