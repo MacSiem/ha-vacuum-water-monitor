@@ -46,7 +46,7 @@ def robot_device_info(hass: HomeAssistant, entry: ConfigEntry, device: dict[str,
     name = (device.get("name") or device.get("device_name") or device.get("label")
             or vacuum_display_name(hass, vacuum_entity))
     return DeviceInfo(
-        identifiers={(DOMAIN, f"{entry.entry_id}_{vacuum_slug(vacuum_entity)}")},
+        identifiers={(DOMAIN, f"{entry.entry_id}_{vacuum_slug(device.get('_entity_origin') or vacuum_entity)}")},
         manufacturer=str(device.get("manufacturer") or MANUFACTURER),
         model=str(device.get("brand_profile") or MODEL),
         name=str(name),
@@ -67,7 +67,11 @@ async def async_tracked_devices(hass: HomeAssistant) -> tuple[dict[str, Any], li
         discovered = []
     known = {str(item.get("entity_id")) for item in discovered if isinstance(item, dict) and item.get("entity_id")}
     devices = filter_active_devices(build_vacuum_devices(settings, tank_states, discovered), known, tank_states)
-    return settings, [device for device in devices if device.get("vacuum_entity")]
+    origins = stored.get("entity_origins") or {}
+    unavailable = set(stored.get("identity_unavailable_origins") or [])
+    for device in devices:
+        device["_entity_origin"] = origins.get(device.get("vacuum_entity"), device.get("vacuum_entity"))
+    return settings, [device for device in devices if device.get("vacuum_entity") and device["_entity_origin"] not in unavailable]
 
 
 def robot_tracks_water(hass: HomeAssistant, device: dict[str, Any], settings: dict[str, Any]) -> bool:
@@ -100,6 +104,7 @@ class RobotEntityManager:
         self.async_add_entities = async_add_entities
         self.factory = factory
         self._known: dict[str, str] = {}
+        self._instances: dict[str, RobotEntity] = {}
         self._seen: set[str] = set()
 
     async def async_setup(self) -> None:
@@ -110,23 +115,47 @@ class RobotEntityManager:
     @callback
     def _handle_update(self, payload: dict[str, Any] | None = None) -> None:
         # Ticks of robots that already have entities change nothing here.
-        if isinstance(payload, dict) and "settings" not in payload:
+        if isinstance(payload, dict) and not ({"settings", "registry_rename", "registry_changed"} & payload.keys()):
             if all(vacuum in self._seen for vacuum in payload.get("tank_states") or {}):
                 return
         self.hass.async_create_task(self.async_sync())
 
     async def async_sync(self) -> None:
         settings, devices = await async_tracked_devices(self.hass)
+        stored = await self.hass.data[DOMAIN][DATA_STORAGE].async_get_state()
+        held = {item.get("entity_origin") for item in stored.get("registry_identity_conflicts") or []}
+        held.update(stored.get("identity_unavailable_origins") or [])
         present = {str(device["vacuum_entity"]) for device in devices}
         self._seen = present
         # A robot that left (linked as a duplicate, removed) may come back later.
-        self._known = {uid: vacuum for uid, vacuum in self._known.items() if vacuum in present}
+        by_origin = {str(device.get("_entity_origin") or device["vacuum_entity"]): str(device["vacuum_entity"])
+                     for device in devices}
+        for uid, entity in self._instances.items():
+            origin = str(entity._device.get("_entity_origin") or entity.vacuum_entity)
+            if origin in by_origin:
+                self._known[uid] = by_origin[origin]
+            active = origin in by_origin
+            if entity._identity_active != active:
+                entity._identity_active = active
+                if entity.entity_id is not None:
+                    entity.async_write_ha_state()
+        self._known = {uid: vacuum for uid, vacuum in self._known.items() if vacuum in present
+                       or str(self._instances[uid]._device.get("_entity_origin") or vacuum) in held}
+        self._instances = {uid: entity for uid, entity in self._instances.items() if uid in self._known}
         new: list[Entity] = []
         for device in devices:
             for entity in self.factory(device, settings):
                 if entity.unique_id in self._known:
+                    existing = self._instances.get(str(entity.unique_id))
+                    if existing is not None:
+                        existing.vacuum_entity = str(device["vacuum_entity"])
+                        existing._device = dict(device)
+                        existing._identity_active = True
+                        self._known[str(entity.unique_id)] = existing.vacuum_entity
+                        self.hass.async_create_task(existing._async_refresh_and_write())
                     continue
                 self._known[str(entity.unique_id)] = str(device["vacuum_entity"])
+                self._instances[str(entity.unique_id)] = entity
                 new.append(entity)
         if new:
             self.async_add_entities(new)
@@ -143,12 +172,17 @@ class RobotEntity(Entity):
         self.entry = entry
         self.vacuum_entity = str(device["vacuum_entity"])
         self._device = dict(device)
-        self._attr_unique_id = f"{entry.entry_id}_{vacuum_slug(self.vacuum_entity)}_{key}"
+        self._identity_active = True
+        self._attr_unique_id = f"{entry.entry_id}_{vacuum_slug(device.get('_entity_origin') or self.vacuum_entity)}_{key}"
         self._attr_translation_key = key
 
     @property
     def device_info(self) -> DeviceInfo:
         return robot_device_info(self.hass, self.entry, self._device)
+
+    @property
+    def available(self) -> bool:
+        return self._identity_active and super().available
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(async_dispatcher_connect(
@@ -158,7 +192,7 @@ class RobotEntity(Entity):
     @callback
     def _handle_store_update(self, payload: dict[str, Any] | None = None) -> None:
         # Settings entities depend on settings and discovery, not on every tick.
-        if isinstance(payload, dict) and "settings" not in payload:
+        if isinstance(payload, dict) and not ({"settings", "registry_rename", "registry_changed"} & payload.keys()):
             return
         self.hass.async_create_task(self._async_refresh_and_write())
 

@@ -60,6 +60,7 @@ class VacuumSensorManager:
         self.entry = entry
         self.async_add_entities = async_add_entities
         self._known: set[tuple[str, str]] = set()
+        self._instances: dict[tuple[str, str], VacuumStoreSensor] = {}
 
     async def async_setup(self) -> None:
         """Subscribe to Store updates and add initial entities."""
@@ -98,12 +99,28 @@ class VacuumSensorManager:
             known_entities,
             tank_states,
         )
+        origins = stored.get("entity_origins") or {}
+        unavailable = set(stored.get("identity_unavailable_origins") or [])
+        devices = [device for device in devices
+                   if origins.get(device.get("vacuum_entity"), device.get("vacuum_entity")) not in unavailable]
+        active_origins = {str(origins.get(device.get("vacuum_entity"), device.get("vacuum_entity"))) for device in devices}
+        for (origin, _key), sensor in self._instances.items():
+            active = origin in active_origins
+            if sensor._identity_active != active:
+                sensor._identity_active = active
+                if sensor.entity_id is not None:
+                    if active:
+                        self.hass.async_create_task(sensor.async_refresh())
+                    else:
+                        sensor.async_write_ha_state()
 
         entities: list[VacuumStoreSensor] = []
         for device in devices:
             vacuum_entity = device.get("vacuum_entity")
             if not vacuum_entity:
                 continue
+            origin = str(origins.get(vacuum_entity, vacuum_entity))
+            device["_entity_origin"] = origin
             for sensor_cls in (
                 WaterRemainingSensor,
                 WaterUsedSensor,
@@ -111,18 +128,26 @@ class VacuumSensorManager:
                 NextMaintenanceDueSensor,
                 CleaningsLeftSensor,
             ):
-                sensor_id = (str(vacuum_entity), sensor_cls.sensor_key)
+                sensor_id = (origin, sensor_cls.sensor_key)
                 if sensor_id in self._known:
+                    existing = self._instances.get(sensor_id)
+                    if existing is not None and existing.vacuum_entity != vacuum_entity:
+                        existing.vacuum_entity = str(vacuum_entity)
+                        existing._device = dict(device)
+                        existing._fallback_device = dict(device)
+                        self.hass.async_create_task(existing.async_refresh())
                     continue
                 self._known.add(sensor_id)
-                entities.append(sensor_cls(self.hass, self.entry, device))
+                sensor = sensor_cls(self.hass, self.entry, device)
+                self._instances[sensor_id] = sensor
+                entities.append(sensor)
 
         if entities:
             self.async_add_entities(entities, True)
         self._rename_raw_id_devices(devices)
-        self._remove_linked_duplicates(settings, devices)
+        self._remove_linked_duplicates(settings, devices, origins)
 
-    def _remove_linked_duplicates(self, settings: dict[str, Any], devices: list[dict[str, Any]]) -> None:
+    def _remove_linked_duplicates(self, settings: dict[str, Any], devices: list[dict[str, Any]], origins: dict[str, str]) -> None:
         """Drop the device (and its sensors) of an entity the user linked to another robot."""
         links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
         tracked = {str(device.get("vacuum_entity")) for device in devices}
@@ -138,7 +163,7 @@ class VacuumSensorManager:
             registry = dr.async_get(self.hass)
         except Exception:  # noqa: BLE001
             return
-        wanted = {(DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(entity)}"): entity for entity in linked}
+        wanted = {(DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(origins.get(entity, entity))}"): entity for entity in linked}
         for device_entry in list(dr.async_entries_for_config_entry(registry, self.entry.entry_id)):
             match = next((wanted[i] for i in device_entry.identifiers if i in wanted), None)
             if match is None:
@@ -146,7 +171,9 @@ class VacuumSensorManager:
             registry.async_remove_device(device_entry.id)
             for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor,
                                CleaningsLeftSensor):
-                self._known.discard((match, sensor_cls.sensor_key))
+                key = (origins.get(match, match), sensor_cls.sensor_key)
+                self._known.discard(key)
+                self._instances.pop(key, None)
 
     def _rename_raw_id_devices(self, devices: list[dict[str, Any]]) -> None:
         """Replace a device name that is only the vacuum's entity id.
@@ -196,9 +223,10 @@ class VacuumStoreSensor(SensorEntity):
         self.hass = hass
         self.entry = entry
         self.vacuum_entity = str(device["vacuum_entity"])
-        self.vacuum_slug = vacuum_slug(self.vacuum_entity)
+        self.vacuum_slug = vacuum_slug(device.get("_entity_origin") or self.vacuum_entity)
         self._device = dict(device)
         self._fallback_device = dict(device)
+        self._identity_active = True
         self._attr_unique_id = f"{entry.entry_id}_{self.vacuum_slug}_{self.sensor_key}"
         if self.sensor_name:
             self._attr_name = self.sensor_name
@@ -207,6 +235,10 @@ class VacuumStoreSensor(SensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return a per-vacuum device (shared with the settings entities)."""
         return robot_device_info(self.hass, self.entry, self._device)
+
+    @property
+    def available(self) -> bool:
+        return self._identity_active and super().available
 
     @property
     def _storage(self) -> VacuumWaterStorage:
@@ -229,6 +261,9 @@ class VacuumStoreSensor(SensorEntity):
 
     async def async_refresh(self) -> None:
         """Refresh from Store and write state."""
+        if not self._identity_active:
+            self.async_write_ha_state()
+            return
         await self.async_update()
         self.async_write_ha_state()
 

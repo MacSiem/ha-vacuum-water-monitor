@@ -563,6 +563,12 @@ class VacuumDiscoveryTests(unittest.TestCase):
                    Device("foreign", "a97 Dock", "other")]
         result = discovery.discover_descriptors(entities, devices, {})[0]
         self.assertEqual(result["signals"]["dock_clean_water_sensor"], "binary_sensor.clean")
+        # Even malformed/missing current IDs must fail closed without touching
+        # the deprecated compatibility property.
+        for empty in (None, ""):
+            devices[0].config_entry_id = empty
+            result = discovery.discover_descriptors(entities, devices, {})[0]
+            self.assertNotIn("dock_clean_water_sensor", result["signals"])
 
 
 if __name__ == "__main__":

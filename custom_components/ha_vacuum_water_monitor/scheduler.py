@@ -126,6 +126,11 @@ class EventTicker:
         async with self._lock:
             return await self._run_tick(vacuums)
 
+    async def run_serialized(self, action: Callable[[], Any]) -> Any:
+        """Serialize a registry migration with in-flight accounting ticks."""
+        async with self._lock:
+            return await action()
+
     def cancel(self) -> None:
         if self._cancel is not None:
             self._cancel()

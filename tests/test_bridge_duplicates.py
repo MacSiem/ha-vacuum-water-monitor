@@ -113,6 +113,16 @@ const apart = make({ 'vacuum.robotic_vacuum_cleaner': 'distinct' }, 'pl');
 apart._getDeviceCandidates = linked._getDeviceCandidates;
 apart._backendDescriptor = linked._backendDescriptor;
 out.apartDevices = apart._getDevices().map(d => d.vacuum_entity).sort();
+linked._discoveredVacuums[1].identity_group = linked._discoveredVacuums[0].identity_group;
+out.apartSharedIdentity = apart._getDevices().map(d => d.vacuum_entity).sort();
+const renamed = make(null, 'en');
+renamed._serverState.vacuum_aliases = { 'vacuum.old': 'vacuum.s8' };
+const authored = { vacuum_entity: 'vacuum.old', water_total_ml: 1234 };
+out.renamedConfig = renamed._resolveConfiguredVacuum(authored);
+renamed._discoveredVacuums.push({ entity_id: 'vacuum.old', identity_group: 'new-robot' });
+out.reusedOldId = renamed._resolveConfiguredVacuum(authored);
+renamed._serverState.registry_identity_conflicts = [{entity_id:'vacuum.<old>'}];
+out.identityConflict = renamed._duplicateNoticeHtml();
 console.log(JSON.stringify(out));
 """
         cls.result = json.loads(subprocess.run(["node", "-e", script], cwd=ROOT, check=True,
@@ -138,6 +148,38 @@ console.log(JSON.stringify(out));
     def test_linked_duplicate_is_not_a_separate_device_tab(self):
         self.assertEqual(self.result["linkedDevices"], ["vacuum.s8"])
         self.assertEqual(self.result["apartDevices"], ["vacuum.robotic_vacuum_cleaner", "vacuum.s8"])
+        self.assertEqual(self.result["apartSharedIdentity"], ["vacuum.robotic_vacuum_cleaner", "vacuum.s8"])
+
+    def test_rename_resolves_authored_config_without_retargeting_reused_id(self):
+        self.assertEqual(self.result["renamedConfig"], {"vacuum_entity": "vacuum.s8", "water_total_ml": 1234})
+        self.assertEqual(self.result["reusedOldId"], {"vacuum_entity": "vacuum.old", "water_total_ml": 1234})
+        self.assertIn('history for', self.result["identityConflict"].lower())
+        self.assertIn('vacuum.&lt;old&gt;', self.result["identityConflict"])
+
+    def test_registry_event_fetches_new_state_and_renders_without_reload(self):
+        script = r"""
+const fs = require('fs'), vm = require('vm'), assert = require('assert'), classes = {};
+global.HTMLElement = class {attachShadow(){this.shadowRoot={querySelector(){return null},querySelectorAll(){return []}}}};
+global.customElements={get:n=>classes[n],define:(n,c)=>classes[n]=c};
+global.localStorage={getItem(){return null},setItem(){},removeItem(){}};
+global.window=global; global.history={replaceState(){}};global.location={pathname:'/'};global.CustomEvent=class {};
+vm.runInThisContext(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+(async()=>{
+ const c=new classes['ha-vacuum-water-monitor'](); let handler, renders=0; const calls=[];
+ c._config={}; c._serverState={settings:{},tank_states:{}}; c._discoveredVacuums=[];
+ c._render=()=>renders++; c._refreshHealth=()=>{}; c._applyServerSettings=()=>{};
+ c._hass={states:{},connection:{subscribeMessage:async cb=>{handler=cb;return ()=>{}}},callWS:async msg=>{
+   calls.push(msg.type); if(msg.type.endsWith('/get_state')) return {settings:{},tank_states:{'vacuum.new':{used_ml:42}},vacuum_aliases:{'vacuum.old':'vacuum.new'}};
+   if(msg.type.endsWith('/list_vacuums')) return {vacuums:[{entity_id:'vacuum.new'}]}; throw Error(msg.type);
+ }};
+ c._subscribeServerEvents(); await new Promise(r=>setTimeout(r,0));
+ handler({data:{registry_rename:{old:'vacuum.old',new:'vacuum.new'}}});
+ await new Promise(r=>setTimeout(r,30));
+ assert(calls.some(x=>x.endsWith('/get_state'))); assert(calls.some(x=>x.endsWith('/list_vacuums')));
+ assert.equal(c._serverState.tank_states['vacuum.new'].used_ml,42); assert(renders>0);
+})().catch(e=>{console.error(e);process.exit(1)});
+"""
+        subprocess.run(["node", "-e", script], cwd=ROOT, check=True, capture_output=True, text=True)
 
 
 if __name__ == "__main__":

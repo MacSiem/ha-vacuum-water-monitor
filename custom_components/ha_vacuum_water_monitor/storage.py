@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from copy import deepcopy
 from typing import Any
@@ -22,6 +23,84 @@ _LOGGER = logging.getLogger(__name__)
 
 
 THRESHOLD_KEYS = ("warning_threshold", "critical_threshold")
+_VACUUM_KEYED_SETTINGS = ("refill_config", "refill_settings", "device_options", "local_measurements",
+                          "consumption_calibrations", "measurement_plans", "sessions", "intro_dismissed")
+
+
+def _move_vacuum_references(data: dict[str, Any], old: str, new: str) -> None:
+    """Move typed live references only; refuse any overlapping destination."""
+    settings = data["settings"]
+    maps = [data["tank_states"]]
+    maps.extend(settings[key] for key in _VACUUM_KEYED_SETTINGS if isinstance(settings.get(key), dict))
+    links = settings.get("robot_links")
+    if isinstance(links, dict):
+        maps.append(links)
+    custom = settings.get("custom_calibration")
+    origins = data.get("entity_origins") or {}
+    def referenced(entity: str) -> bool:
+        return (any(entity in mapping for mapping in maps)
+                or (isinstance(links, dict) and entity in links.values())
+                or (isinstance(custom, dict) and ("entity:" + entity in custom or entity in custom))
+                or any(isinstance(item, dict) and item.get("vacuum_entity") == entity
+                       for key in ("configured_devices", "user_devices")
+                       for item in (settings.get(key) or [])))
+    if referenced(old) and referenced(new):
+        raise ValueError("rename conflict: destination already has data")
+    if old in origins and new in origins:
+        raise ValueError("rename conflict: destination has an entity identity")
+    data["entity_origins"] = origins
+    for mapping in maps:
+        if old in mapping:
+            mapping[new] = mapping.pop(old)
+    if isinstance(links, dict):
+        for entity, target in links.items():
+            if target == old:
+                links[entity] = new
+    if isinstance(custom, dict) and "entity:" + old in custom:
+        custom["entity:" + new] = custom.pop("entity:" + old)
+    if isinstance(custom, dict) and old in custom:
+        custom[new] = custom.pop(old)
+    for key in ("configured_devices", "user_devices"):
+        for item in settings.get(key) or []:
+            if isinstance(item, dict) and item.get("vacuum_entity") == old:
+                item["vacuum_entity"] = new
+    origins[new] = origins.pop(old, old)
+    aliases = data.setdefault("vacuum_aliases", {})
+    for source, target in aliases.items():
+        if target == old:
+            aliases[source] = new
+    aliases[old] = new
+    aliases.pop(new, None)
+
+
+def _public_state(data: dict[str, Any]) -> dict[str, Any]:
+    """Hide registry identity and held conflict data from ordinary consumers."""
+    data = deepcopy(data)
+    data.pop("registry_identities", None)
+    orphans = data.pop("identity_orphan_sources", {})
+    if isinstance(orphans, dict) and orphans:
+        hidden = set(orphans)
+        data["registry_identity_conflicts"] = [{"entity_id": old, "reason": "identity_unresolved",
+            "entity_origin": (data.get("entity_origins") or {}).get(marker, old)}
+            for marker, old in orphans.items()]
+        data["tank_states"] = {key: value for key, value in data.get("tank_states", {}).items() if key not in hidden}
+        settings = data.get("settings", {})
+        for key in _VACUUM_KEYED_SETTINGS:
+            if isinstance(settings.get(key), dict):
+                settings[key] = {k: v for k, v in settings[key].items() if k not in hidden}
+        for key in ("configured_devices", "user_devices"):
+            if isinstance(settings.get(key), list):
+                settings[key] = [item for item in settings[key]
+                                 if not isinstance(item, dict) or item.get("vacuum_entity") not in hidden]
+        if isinstance(settings.get("robot_links"), dict):
+            settings["robot_links"] = {k: v for k, v in settings["robot_links"].items()
+                                       if k not in hidden and (not isinstance(v, str) or v not in hidden)}
+        if isinstance(settings.get("custom_calibration"), dict):
+            settings["custom_calibration"] = {k: v for k, v in settings["custom_calibration"].items()
+                if k not in hidden and not any(k == "entity:" + item for item in hidden)}
+        if isinstance(data.get("entity_origins"), dict):
+            data["entity_origins"] = {k: v for k, v in data["entity_origins"].items() if k not in hidden}
+    return data
 
 
 def validate_threshold_settings(settings: dict[str, Any]) -> None:
@@ -64,6 +143,117 @@ class VacuumWaterStorage:
         )
         self._lock = asyncio.Lock()
         self._data: dict[str, Any] | None = None
+        self._retired_vacuum_ids: set[str] = set()
+        self._identity_unavailable_ids: set[str] = set()
+
+    async def async_rename_vacuum(self, old: str, new: str) -> bool:
+        """Apply an authoritative registry rename as a single Store write."""
+        if not (old.startswith("vacuum.") and new.startswith("vacuum.")) or old == new:
+            return False
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            candidate = deepcopy(data)
+            try:
+                _move_vacuum_references(candidate, old, new)
+            except ValueError as err:
+                _LOGGER.warning("Vacuum rename conflict %s -> %s: %s", old, new, err)
+                return False
+            identities = candidate.get("registry_identities")
+            if isinstance(identities, dict) and old in identities:
+                identities[new] = identities.pop(old)
+            await self._store.async_save(candidate)
+            self._data = candidate
+            self._retired_vacuum_ids.add(old)
+            self._retired_vacuum_ids.discard(new)
+            return True
+
+    async def async_reconcile_registry(self, current: dict[str, list[str]]) -> None:
+        """Reconcile only unique, previously recorded registry identities."""
+        async with self._lock:
+            data = await self._ensure_loaded_locked()
+            candidate = deepcopy(data)
+            previous = candidate.get("registry_identities") or {}
+            if not isinstance(previous, dict):
+                previous = {}
+            for entity in candidate.get("tank_states", {}):
+                if entity not in current and entity not in previous:
+                    _LOGGER.warning("Vacuum history %s has no recorded registry identity; a rename cannot be reconciled automatically", entity)
+            reverse: dict[tuple[str, ...], list[str]] = {}
+            for entity, identity in current.items():
+                reverse.setdefault(tuple(identity), []).append(entity)
+            previous_reverse: dict[tuple[str, ...], list[str]] = {}
+            for entity, identity in previous.items():
+                if isinstance(identity, list) and len(identity) == 3 and all(isinstance(part, str) for part in identity):
+                    previous_reverse.setdefault(tuple(identity), []).append(entity)
+            retired = []
+            unresolved = {}
+            orphan_sources = candidate.setdefault("identity_orphan_sources", {})
+            def hold_for_identity(old: str, identity: list[str]) -> None:
+                marker = "vacuum.vwm_unresolved_" + hashlib.sha256(repr(identity).encode()).hexdigest()[:16]
+                if marker in current or marker in orphan_sources:
+                    raise ValueError("Vacuum identity conflict cannot be isolated safely")
+                _move_vacuum_references(candidate, old, marker)
+                candidate.get("vacuum_aliases", {}).pop(old, None)
+                orphan_sources[marker] = old
+                unresolved[marker] = identity
+                _LOGGER.warning("Vacuum identity conflict for %s: previous history is held until its registry identity returns", old)
+            # Vacate every reused id before attempting any recovery. Otherwise
+            # an old occupant's origin can block a returning identity forever.
+            reused = set()
+            for old, identity in previous.items():
+                if old in current and current[old] != identity:
+                    if not (isinstance(identity, list) and len(identity) == 3 and all(isinstance(part, str) for part in identity)):
+                        raise ValueError("Vacuum identity conflict cannot be isolated safely")
+                    hold_for_identity(old, identity)
+                    reused.add(old)
+            work = {**{old: identity for old, identity in previous.items() if old not in reused}, **unresolved}
+            unresolved = {}
+            previous_reverse = {}
+            for entity, identity in work.items():
+                if isinstance(identity, list) and len(identity) == 3 and all(isinstance(part, str) for part in identity):
+                    previous_reverse.setdefault(tuple(identity), []).append(entity)
+            for old, identity in work.items():
+                if current.get(old) == identity:
+                    continue
+                if not (isinstance(identity, list) and len(identity) == 3 and all(isinstance(part, str) for part in identity)):
+                    unresolved[old] = identity
+                    continue
+                matches = reverse.get(tuple(identity), [])
+                if len(matches) != 1 or len(previous_reverse.get(tuple(identity), [])) != 1:
+                    unresolved[old] = identity
+                    continue
+                new = matches[0]
+                try:
+                    _move_vacuum_references(candidate, old, new)
+                except ValueError as err:
+                    _LOGGER.warning("Vacuum rename conflict %s -> %s: %s", old, new, err)
+                    unresolved[old] = identity
+                    continue
+                if old in orphan_sources:
+                    candidate.get("vacuum_aliases", {}).pop(old, None)
+                    orphan_sources.pop(old, None)
+                retired.append(old)
+            candidate["registry_identities"] = {**unresolved, **current}
+            origins = candidate.setdefault("entity_origins", {})
+            candidate["identity_unavailable_origins"] = sorted(
+                str(origins.get(entity, entity)) for entity in unresolved if entity not in orphan_sources
+            )
+            for entity, identity in current.items():
+                if entity in origins:
+                    continue
+                if entity in origins.values():
+                    digest = hashlib.sha256("|".join(identity).encode()).hexdigest()[:10]
+                    origins[entity] = entity + "_" + digest
+            aliases = candidate.get("vacuum_aliases")
+            if isinstance(aliases, dict):
+                for entity in current:
+                    aliases.pop(entity, None)
+            if candidate != data:
+                await self._store.async_save(candidate)
+                self._data = candidate
+            self._retired_vacuum_ids.update(retired)
+            self._retired_vacuum_ids.difference_update(current)
+            self._identity_unavailable_ids = {entity for entity in unresolved if entity not in orphan_sources}
 
     async def async_load(self) -> dict[str, Any]:
         """Load storage, creating the default shape when absent."""
@@ -77,13 +267,13 @@ class VacuumWaterStorage:
             return deepcopy(self._data)
 
     async def async_get_state(self) -> dict[str, Any]:
-        """Return the full persisted state."""
-        return await self.async_load()
+        """Return product state without internal registry identity keys."""
+        data = await self.async_load()
+        return _public_state(data)
 
     async def async_get_settings(self) -> dict[str, Any]:
         """Return persisted settings."""
-        data = await self.async_load()
-        return data["settings"]
+        return (await self.async_get_state())["settings"]
 
     async def async_set_settings(self, patch: dict[str, Any]) -> dict[str, Any]:
         """Apply a shallow settings patch.
@@ -108,6 +298,39 @@ class VacuumWaterStorage:
                     _LOGGER.warning("Refusing empty-list settings patch for %s", key)
                     continue
                 clean[str(key)] = deepcopy(value)
+            hidden = set((data.get("identity_orphan_sources") or {}).keys())
+            if hidden:
+                for key in _VACUUM_KEYED_SETTINGS:
+                    if isinstance(clean.get(key), dict) and isinstance(settings.get(key), dict):
+                        clean[key].update({k: deepcopy(v) for k, v in settings[key].items() if k in hidden})
+                for key in ("configured_devices", "user_devices"):
+                    if isinstance(clean.get(key), list) and isinstance(settings.get(key), list):
+                        clean[key].extend(deepcopy(item) for item in settings[key]
+                                          if isinstance(item, dict) and item.get("vacuum_entity") in hidden)
+                if isinstance(clean.get("robot_links"), dict) and isinstance(settings.get("robot_links"), dict):
+                    clean["robot_links"].update({k: v for k, v in settings["robot_links"].items()
+                        if k in hidden or (isinstance(v, str) and v in hidden)})
+                if isinstance(clean.get("custom_calibration"), dict) and isinstance(settings.get("custom_calibration"), dict):
+                    clean["custom_calibration"].update({k: deepcopy(v) for k, v in settings["custom_calibration"].items()
+                        if k in hidden or any(k == "entity:" + item for item in hidden)})
+            aliases = data.get("vacuum_aliases") or {}
+            if self.hass is not None and aliases:
+                from homeassistant.helpers import entity_registry as er
+                registry = er.async_get(self.hass)
+                for key in ("configured_devices", "user_devices"):
+                    if not isinstance(clean.get(key), list):
+                        continue
+                    for item in clean[key]:
+                        if not isinstance(item, dict):
+                            continue
+                        old = item.get("vacuum_entity")
+                        if not isinstance(old, str):
+                            continue
+                        target = aliases.get(old)
+                        if target and registry.async_get(old) is None:
+                            if registry.async_get(target) is None:
+                                raise ValueError("Renamed vacuum is not present in the entity registry")
+                            item["vacuum_entity"] = target
             updated_settings = {**settings, **clean}
             if any(key in clean for key in THRESHOLD_KEYS):
                 validate_threshold_settings(updated_settings)
@@ -115,7 +338,7 @@ class VacuumWaterStorage:
             updated_data = {**data, "settings": updated_settings}
             await self._store.async_save(updated_data)
             self._data = updated_data
-            return deepcopy(updated_settings)
+            return _public_state(updated_data)["settings"]
 
     async def async_replace_settings_key(self, key: str, value: Any) -> None:
         """Replace one settings key, bypassing the empty-list guard.
@@ -125,6 +348,10 @@ class VacuumWaterStorage:
         """
         async with self._lock:
             data = await self._ensure_loaded_locked()
+            hidden = set((data.get("identity_orphan_sources") or {}).keys())
+            if key in ("configured_devices", "user_devices") and isinstance(value, list) and hidden:
+                value = [*value, *(deepcopy(item) for item in data["settings"].get(key, [])
+                                  if isinstance(item, dict) and item.get("vacuum_entity") in hidden)]
             data["settings"][str(key)] = deepcopy(value)
             await self._store.async_save(data)
 
@@ -168,6 +395,8 @@ class VacuumWaterStorage:
             data = await self._ensure_loaded_locked()
             written: dict[str, dict[str, Any]] = {}
             for vacuum_entity, tank_state in tank_states.items():
+                if vacuum_entity in self._retired_vacuum_ids or vacuum_entity in self._identity_unavailable_ids:
+                    continue
                 if expected_reset_ts is not None and vacuum_entity in expected_reset_ts:
                     current = data["tank_states"].get(vacuum_entity) or {}
                     if int(current.get("last_reset_ts") or 0) != int(expected_reset_ts[vacuum_entity] or 0):
@@ -277,7 +506,7 @@ class VacuumWaterStorage:
                 all_settings.pop(vacuum_entity, None)
             settings["refill_settings"] = all_settings
             await self._store.async_save(data)
-            return deepcopy(settings)
+            return _public_state(data)["settings"]
 
     async def async_set_device_options(self, vacuum_entity: str, patch: dict[str, Any]) -> dict[str, Any]:
         """Validate and store one robot's options; return all settings."""
@@ -298,7 +527,7 @@ class VacuumWaterStorage:
                 all_options.pop(vacuum_entity, None)
             settings["device_options"] = all_options
             await self._store.async_save(data)
-            return deepcopy(settings)
+            return _public_state(data)["settings"]
 
     async def async_set_robot_link(self, vacuum_entity: str, target: str | None) -> dict[str, Any]:
         """Record whether a (bridged) robot is the same as another one.
@@ -321,7 +550,7 @@ class VacuumWaterStorage:
                 links[vacuum_entity] = target
             settings["robot_links"] = links
             await self._store.async_save(data)
-            return deepcopy(settings)
+            return _public_state(data)["settings"]
 
     async def async_save_measurement(self, vacuum_entity, index, expected_ts, values):
         """Select and save a measured cycle under one lock; never retarget a stale UI."""
@@ -367,7 +596,7 @@ class VacuumWaterStorage:
             plans[vacuum_entity] = clean
             data["settings"]["measurement_plans"] = plans
             await self._store.async_save(data)
-            return deepcopy(data["settings"])
+            return _public_state(data)["settings"]
 
     async def async_reprofile(self, vacuum_entity: str) -> dict[str, Any]:
         """Refresh generated discovery, retaining authored config and all history."""
@@ -390,7 +619,7 @@ class VacuumWaterStorage:
                 state.update(last_area=None, last_duration_seconds=None, last_tick_ts=0,
                              last_water_volume_ml=None, area_gap=True, duration_gap=True)
             await self._store.async_save(data)
-            return deepcopy(data["settings"])
+            return _public_state(data)["settings"]
 
     async def _ensure_loaded_locked(self) -> dict[str, Any]:
         """Load data while caller holds the lock."""

@@ -189,6 +189,10 @@ def load_catalog(path: Path | str = _CATALOG_PATH) -> dict[str, dict[str, Any]]:
             raise CatalogValidationError(f"Profile {key!r} has invalid rate_signal")
         if record.get("mop_system") is not None and record["mop_system"] not in estimation.MOP_SYSTEMS | {"none"}:
             raise CatalogValidationError(f"Profile {key!r} has invalid mop_system")
+        if not isinstance(record.get("allow_class_prior", True), bool):
+            raise CatalogValidationError(f"Profile {key!r} has invalid allow_class_prior")
+        if not isinstance(record.get("allow_inferred_dock_anchor", True), bool):
+            raise CatalogValidationError(f"Profile {key!r} has invalid allow_inferred_dock_anchor")
         if "estimate" in record:
             error = estimation.validate_estimate(key, record["estimate"])
             if error:
@@ -388,7 +392,7 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
         "mop_system": record.get("mop_system") or "unknown",
         "estimate_basis": None,
     }
-    if tracked_reservoir == "dock_clean":
+    if tracked_reservoir == "dock_clean" and record.get("allow_inferred_dock_anchor", True):
         # The dock's own empty-water state identifies the dock clean tank, and an
         # empty tank cleared to OK is a full refill (partial refills are not a
         # supported usage pattern; the Refilled button remains the override).
@@ -397,7 +401,8 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
         resolved["refill_on_clear"] = True
         resolved["refill_on_clear_inferred"] = True
     published = bool(area_rates or minute_rates or accounting["wash_volume_ml"] is not None)
-    estimate = None if published else estimation.estimate_for_record(record)
+    allow_estimate = record.get("allow_class_prior", True) or isinstance(record.get("estimate"), dict)
+    estimate = None if published or not allow_estimate else estimation.estimate_for_record(record)
     if estimate:
         resolved.update(
             capability="automatic_estimate",

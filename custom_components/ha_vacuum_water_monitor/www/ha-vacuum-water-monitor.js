@@ -3290,6 +3290,84 @@ const CALIBRATION_DATA = {
     "data_quality": "capacity_verified",
     "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
+  "ecovacs_deebot_t90_pro_omni": {
+    "label": "Ecovacs DEEBOT T90 PRO OMNI",
+    "tank_ml": 4000,
+    "tracked_reservoir": "dock_clean",
+    "robot_tank_ml": null,
+    "dock_clean_tank_ml": 4000,
+    "dock_dirty_tank_ml": 2200,
+    "robot_clean_tank_ml": null,
+    "robot_dirty_tank_ml": null,
+    "detergent_tank_ml": null,
+    "mop_system": "roller",
+    "profile_descriptor": {
+      "profile_key": "ecovacs_deebot_t90_pro_omni",
+      "profile_source": "locked_override",
+      "profile_confidence": "high",
+      "capability": "calibration_required",
+      "evidence": "not_published",
+      "sources": [
+        "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/26",
+        "https://www.ecovacs.com/au/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
+        "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni"
+      ],
+      "provenance": [
+        {
+          "source_type": "user_report",
+          "url": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/26",
+          "claim": "Reported model_id k2iwaq and firmware 1.103.0; no entity inventory or regional SKU supplied.",
+          "last_verified": "2026-11-03",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/au/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
+          "claim": "Manufacturer model page lists station clean water 4 L and dirty water 2.2 L. Exact reported SKU equivalence is unverified.",
+          "last_verified": "2026-11-03",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
+          "claim": "Manufacturer describes a roller mop; no measured consumption rate adopted.",
+          "last_verified": "2026-11-03",
+          "retrieval_status": "read"
+        }
+      ],
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "reservoirs_ml": {
+        "dock_clean": 4000,
+        "dock_dirty": 2200,
+        "robot_clean": null,
+        "robot_dirty": null,
+        "detergent": null
+      },
+      "usage_ml_per_m2": {},
+      "usage_ml_per_active_minute": {},
+      "wash_volume_ml": null,
+      "accounting_evidence": "not_published",
+      "uncertainty_percent": null,
+      "rate_signal": null,
+      "time_accounting_evidence": "not_published",
+      "estimated_m2_per_active_minute": null,
+      "mop_system": "roller",
+      "estimate_basis": null
+    },
+    "estimate_basis": null,
+    "estimate_label": null,
+    "uncertainty_percent": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
+    "source_urls": [
+      "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/26",
+      "https://www.ecovacs.com/au/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
+      "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni"
+    ],
+    "data_quality": "capacity_verified",
+    "notes": "No verified automatic empty-tank signal; confirm refills manually and configure a measured consumption rate."
+  },
   "ecovacs_deebot_t50_pro_omni": {
     "label": "Ecovacs ECOVACS DEEBOT T50 PRO OMNI",
     "tank_ml": 4000,
@@ -13452,6 +13530,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
         this._serverState = {
           settings: (state && state.settings) || {},
           tank_states: (state && state.tank_states) || {},
+          vacuum_aliases: (state && state.vacuum_aliases) || {},
+          registry_identity_conflicts: (state && state.registry_identity_conflicts) || [],
         };
         this._discoveredVacuums = (listed && listed.vacuums) || [];
         this._applyServerSettings();
@@ -13482,6 +13562,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (this._serverUnsub || !this._hass?.connection?.subscribeMessage) return;
     this._hass.connection.subscribeMessage((event) => {
       const data = (event && event.data) || {};
+      if (data.registry_rename || data.registry_changed) setTimeout(() => this._ensureServerState(true), 0);
       if (data.settings) {
         const linksChanged = JSON.stringify(this._robotLinks()) !== JSON.stringify(data.settings.robot_links || {});
         this._serverState.settings = data.settings;
@@ -14293,14 +14374,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const groups = new Map();
     const stored = this._serverState?.tank_states || {};
     const links = this._robotLinks();
-    const groupOf = (d) => this._backendDescriptor(d)?.identity_group || d.vacuum_entity;
+    const groupOf = (d) => links[d.vacuum_entity] === 'distinct'
+      ? `distinct:${d.vacuum_entity}`
+      : (this._backendDescriptor(d)?.identity_group || d.vacuum_entity);
     const byEntity = new Map(devices.map(d => [d.vacuum_entity, d]));
     for (const device of devices) {
-      const descriptor = this._backendDescriptor(device);
       const linked = links[device.vacuum_entity];
       const key = (linked && linked !== 'distinct' && byEntity.has(linked))
         ? groupOf(byEntity.get(linked))
-        : (descriptor?.identity_group || device.vacuum_entity);
+        : groupOf(device);
       const current = groups.get(key);
       const rank = d => [(links[d.vacuum_entity] && links[d.vacuum_entity] !== 'distinct') ? 1 : 0,
         Object.hasOwn(stored, d.vacuum_entity) ? 0 : 1,
@@ -14327,6 +14409,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return _esc((v && v.name) || (this._hass?.states?.[id]?.attributes?.friendly_name) || id);
     };
     const parts = [];
+    for (const conflict of this._serverState?.registry_identity_conflicts || []) {
+      const id = _esc(conflict.entity_id || '');
+      parts.push(`<div class="alert-banner alert-warn">${pl
+        ? `Historia „${id}” została wstrzymana: nie można potwierdzić tożsamości robota.`
+        : `History for "${id}" is held because the robot identity cannot be confirmed.`}</div>`);
+    }
     for (const v of vacuums) {
       const target = v.possible_duplicate_of;
       const tapo = vacuums.find(x => x.entity_id === target)?.integration_adapter === 'tapo_rv30';
@@ -14356,9 +14444,19 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return parts.join('');
   }
 
+  _resolveConfiguredVacuum(device) {
+    const entity = device?.vacuum_entity;
+    const alias = this._serverState?.vacuum_aliases?.[entity];
+    const known = this._discoveredVacuums || [];
+    if (alias && !known.some(v => v.entity_id === entity) && known.some(v => v.entity_id === alias)) {
+      return { ...device, vacuum_entity: alias };
+    }
+    return device;
+  }
+
   _getDeviceCandidates() {
     if (this._config.devices && Array.isArray(this._config.devices)) {
-      return this._config.devices.map(d => this._withBackendDescriptor(this._decorateLegacyProfile(d)));
+      return this._config.devices.map(d => this._withBackendDescriptor(this._decorateLegacyProfile(this._resolveConfiguredVacuum(d))));
     }
     // Single device mode
     const single = {};
@@ -14379,6 +14477,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     ];
     const authoredSingle = this._authoredConfigKeys || new Set();
     keys.forEach(k => { if (authoredSingle.has(k)) single[k] = this._config[k]; });
+    Object.assign(single, this._resolveConfiguredVacuum(single));
     if (Object.keys(single).length === 0) {
       const serverDevices = (this._userDevices && this._userDevices.length)
         ? this._userDevices

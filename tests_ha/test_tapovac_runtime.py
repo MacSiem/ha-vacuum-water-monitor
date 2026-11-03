@@ -106,3 +106,66 @@ async def test_tapovac_attribute_updates_reach_native_accounting_and_store(hass,
     await client.send_json_auto_id({"type": f"{DOMAIN}/list_vacuums"})
     native = next(v for v in (await client.receive_json())["result"]["vacuums"] if v["entity_id"] == "vacuum.tapo")
     assert "cleaning_mode_entity" not in native["signals"]
+
+
+async def test_settings_rebinds_a_to_b_and_unlinks_without_a_heartbeat(hass, hass_ws_client):
+    native = MockConfigEntry(domain="tapo_rv30", title="Tapo")
+    native.add_to_hass(hass)
+    devices, entities = dr.async_get(hass), er.async_get(hass)
+    robot = devices.async_get_or_create(config_entry_id=native.entry_id,
+        identifiers={("tapo_rv30", "r1-robot")}, manufacturer="Tapo", model="RV50 Pro Omni")
+    entities.async_get_or_create("vacuum", "tapo_rv30", native.entry_id + "_vacuum", device_id=robot.id,
+        config_entry=native, suggested_object_id="r1_native")
+    entities.async_get_or_create("select", "tapo_rv30", native.entry_id + "_area_unit", device_id=robot.id,
+        config_entry=native, suggested_object_id="r1_area_unit")
+    hass.states.async_set("select.r1_area_unit", "m²")
+    for suffix in ("a", "b"):
+        upstream = MockConfigEntry(domain="matter", title=f"Matter {suffix}")
+        upstream.add_to_hass(hass)
+        bridge = devices.async_get_or_create(config_entry_id=upstream.entry_id,
+            identifiers={("matter", f"r1-{suffix}")}, manufacturer="Tapo", model="Robot")
+        entities.async_get_or_create("vacuum", "matter", f"r1-vac-{suffix}", device_id=bridge.id,
+            config_entry=upstream, suggested_object_id=f"r1_{suffix}")
+        entities.async_get_or_create("select", "matter", f"r1-mode-{suffix}", device_id=bridge.id,
+            config_entry=upstream, suggested_object_id=f"r1_mode_{suffix}", translation_key="clean_mode")
+        hass.states.async_set(f"vacuum.r1_{suffix}", "docked")
+        hass.states.async_set(f"select.r1_mode_{suffix}", "Vacuum")
+    hass.states.async_set("vacuum.r1_native", "cleaning", {"status_code": 1, "clean_area": 0,
+        "clean_time_min": 0, "water_level": "low", "mop_attached": True})
+    entry = MockConfigEntry(domain=DOMAIN, title="VWM", data={}, options={})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await settle(hass)
+    client = await hass_ws_client(hass)
+    storage = hass.data[DOMAIN]["storage"]
+    await storage.async_set_tank_state("vacuum.r1_b", {"used_ml": 123, "initialized": True,
+        "refill_history": [{"used_before_ml": 456}]})
+
+    async def links(value):
+        await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"robot_links": value}})
+        assert (await client.receive_json())["success"]
+        await settle(hass)
+
+    async def mode():
+        return (await storage.async_get_state())["tank_states"]["vacuum.r1_native"]["last_rate_settings"]["cleaning_mode"]
+
+    await links({"vacuum.r1_a": "vacuum.r1_native", "vacuum.r1_b": "distinct"})
+    hass.states.async_set("select.r1_mode_a", "Vacuum and Mop")
+    await settle(hass)
+    assert await mode() == "vacuum_and_mop"
+    await links({"vacuum.r1_a": "distinct", "vacuum.r1_b": "vacuum.r1_native"})
+    hass.states.async_set("select.r1_mode_a", "Vacuum then Mop")
+    await settle(hass)
+    assert await mode() == "vacuum"
+    hass.states.async_set("select.r1_mode_b", "Vacuum and Mop")
+    await settle(hass)
+    assert await mode() == "vacuum_and_mop"
+    await links({"vacuum.r1_a": "distinct", "vacuum.r1_b": "distinct"})
+    assert await mode() is None
+    hass.states.async_set("select.r1_mode_b", "Vacuum")
+    await settle(hass)
+    assert await mode() is None
+    state = await storage.async_get_state()
+    assert state["tank_states"]["vacuum.r1_native"].get("used_ml", 0) == 0
+    assert state["tank_states"]["vacuum.r1_b"]["used_ml"] == 123
+    assert state["tank_states"]["vacuum.r1_b"]["refill_history"] == [{"used_before_ml": 456}]

@@ -33,6 +33,11 @@ def discover_descriptors(
     for descriptor in descriptors:
         record = devices.get(descriptor.get("device_id"))
         keys = {"device:" + str(descriptor["device_id"])} if descriptor.get("device_id") else set()
+        # HA 2026.8+ splits an earlier shared registry device by config entry.
+        # Its preserved composite id carries the original registry identity.
+        composite_id = _value(record, "composite_device_id")
+        if isinstance(composite_id, str) and composite_id:
+            keys.add("device:" + composite_id)
         for connection in _value(record, "connections") or []:
             if len(connection) == 2 and connection[0] == "mac":
                 mac = normalize_identifier(connection[1]).replace("_", "")
@@ -357,6 +362,13 @@ def _verified_related_dock_ids(
 
 
 def _config_entries(device: Any) -> set[str]:
+    # HA 2026.10 has one entry per device; its old config_entries property
+    # emits a deprecation warning. HA 2025.1 still exposes the set directly.
+    has_current_id = ("config_entry_id" in device if isinstance(device, dict)
+                      else hasattr(device, "config_entry_id"))
+    if has_current_id:
+        entry_id = _value(device, "config_entry_id")
+        return {entry_id} if isinstance(entry_id, str) and entry_id else set()
     entries = _value(device, "config_entries")
     if isinstance(entries, (set, frozenset, list, tuple)):
         return {str(entry) for entry in entries if entry}

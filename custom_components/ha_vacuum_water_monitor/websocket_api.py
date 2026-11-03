@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -17,6 +18,8 @@ from .tick import list_vacuums
 from .sensor_calculations import resolve_linked_programs
 from .calibration import build_contribution_draft, select_recorded_cycle
 
+_LOGGER = logging.getLogger(__name__)
+
 
 def _storage(hass: HomeAssistant) -> VacuumWaterStorage:
     return hass.data[DOMAIN]["storage"]
@@ -27,6 +30,18 @@ def _entry_id(hass: HomeAssistant) -> str:
     if entries:
         return entries[0].entry_id
     return DOMAIN
+
+
+async def _refresh_bindings(hass: HomeAssistant) -> bool:
+    """Adopt persisted signal/identity changes before acknowledging the write."""
+    ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+    if ticker is None:
+        return False
+    try:
+        return bool(await ticker.run(None))
+    except Exception:  # The settings have already been saved.
+        _LOGGER.exception("Settings saved, but signal bindings could not be refreshed")
+        return False
 
 
 def _notify_store_updated(hass: HomeAssistant, payload: dict[str, Any]) -> None:
@@ -119,8 +134,11 @@ async def _ws_set_settings(
         options = {**entry.options, **{key: settings[key] for key in THRESHOLD_KEYS}}
         if options != entry.options:
             hass.config_entries.async_update_entry(entry, options=options)
+    bindings_refreshed = None
+    if any(key in msg["patch"] for key in ("configured_devices", "user_devices", "robot_links")):
+        bindings_refreshed = await _refresh_bindings(hass)
     _notify_store_updated(hass, {"settings": settings})
-    connection.send_result(msg["id"], {"settings": settings})
+    connection.send_result(msg["id"], {"settings": settings, "bindings_refreshed": bindings_refreshed})
 
 
 @websocket_api.websocket_command(
@@ -154,9 +172,10 @@ async def _ws_remove_user_device(
     ]
     await storage.async_replace_settings_key("user_devices", remaining)
     settings = await storage.async_get_settings()
+    bindings_refreshed = await _refresh_bindings(hass)
     _notify_store_updated(hass, {"settings": settings})
     connection.send_result(
-        msg["id"], {"settings": settings, "removed": msg["vacuum_entity"]}
+        msg["id"], {"settings": settings, "removed": msg["vacuum_entity"], "bindings_refreshed": bindings_refreshed}
     )
 
 
@@ -169,8 +188,9 @@ async def _ws_reprofile(hass, connection, msg):
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
+    bindings_refreshed = await _refresh_bindings(hass)
     _notify_store_updated(hass, {"settings": settings})
-    connection.send_result(msg["id"], {"settings": settings, "vacuums": resolve_linked_programs(list_vacuums(hass), settings)})
+    connection.send_result(msg["id"], {"settings": settings, "bindings_refreshed": bindings_refreshed, "vacuums": resolve_linked_programs(list_vacuums(hass), settings)})
 
 
 @websocket_api.websocket_command(

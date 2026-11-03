@@ -192,6 +192,10 @@ def build_vacuum_devices(
     # robot as a native one: it joins that robot's identity group, so it gets no
     # second tank, sensors or accounting. "distinct" keeps it separate.
     links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
+    # An explicit distinct decision must override a shared registry identity.
+    for entity, target in links.items():
+        if target == "distinct" and entity in devices:
+            devices[entity]["identity_group"] = "distinct:" + entity
     for entity, target in links.items():
         if target != "distinct" and entity in devices and target in devices and entity != target:
             devices[entity]["identity_group"] = str(devices[target].get("identity_group") or target)

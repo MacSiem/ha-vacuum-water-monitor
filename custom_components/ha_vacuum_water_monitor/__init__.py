@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from pathlib import Path
@@ -16,6 +17,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service import async_extract_entity_ids
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
@@ -74,6 +76,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await storage.async_set_settings(option_patch)
     bucket[DATA_STORAGE] = storage
 
+    await storage.async_reconcile_registry(_vacuum_registry_identities(hass))
+    stop_registry, registry_tasks = _listen_vacuum_registry(hass, storage)
+    bucket["_registry_listener"] = (stop_registry, registry_tasks)
+    entry.async_on_unload(stop_registry)
+
     await _async_prune_ghost_devices(hass, storage)
 
     if not bucket.get(DATA_WS_REGISTERED):
@@ -94,6 +101,60 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.debug("Vacuum Water Monitor set up (entry_id=%s)", entry.entry_id)
     return True
+
+
+@callback
+def _vacuum_registry_identities(hass: HomeAssistant) -> dict[str, list[str]]:
+    """Snapshot authoritative registry identity, never names or model guesses."""
+    result = {}
+    for entity in er.async_get(hass).entities.values():
+        if (entity.entity_id.startswith("vacuum.") and entity.platform and entity.unique_id):
+            result[entity.entity_id] = [entity.platform, entity.unique_id, entity.config_entry_id or ""]
+    return result
+
+
+@callback
+def _listen_vacuum_registry(hass: HomeAssistant, storage: VacuumWaterStorage):
+    tasks = set()
+    async def process(event: Event) -> None:
+        old = event.data.get("old_entity_id")
+        new = event.data.get("entity_id")
+        if isinstance(old, str) and isinstance(new, str) and old.startswith("vacuum.") and new.startswith("vacuum."):
+            ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+            renamed = (await ticker.run_serialized(lambda: storage.async_rename_vacuum(old, new))
+                       if ticker is not None else await storage.async_rename_vacuum(old, new))
+            if renamed:
+                _notify_store_updated(hass, {"registry_rename": {"old": old, "new": new}})
+                if ticker is not None:
+                    await ticker.run(None)
+        if isinstance(new, str) and new.startswith("vacuum."):
+            ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+            async def reconcile() -> None:
+                await storage.async_reconcile_registry(_vacuum_registry_identities(hass))
+            if ticker is not None:
+                await ticker.run_serialized(reconcile)
+            else:
+                await reconcile()
+            if not old:
+                _notify_store_updated(hass, {"registry_changed": True})
+
+    @callback
+    def on_registry_update(event: Event) -> None:
+        if not str(event.data.get("entity_id") or "").startswith("vacuum."):
+            return
+        task = hass.async_create_task(process(event))
+        tasks.add(task)
+        task.add_done_callback(tasks.discard)
+
+    unsubscribe = hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, on_registry_update)
+    active = True
+    @callback
+    def stop() -> None:
+        nonlocal active
+        if active:
+            active = False
+            unsubscribe()
+    return stop, tasks
 
 
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -123,6 +184,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return False
 
     bucket = hass.data.get(DOMAIN, {})
+    listener = bucket.pop("_registry_listener", None)
+    if listener:
+        stop, tasks = listener
+        stop()
+        if tasks:
+            await asyncio.gather(*tasks)
     if unsub := bucket.pop(DATA_TICK_UNSUB, None):
         unsub()
     async_clear_issues(hass)
@@ -251,7 +318,7 @@ def _async_start_tick(
                 hass, sorted(ticker.entities), _on_state_change
             )
 
-    async def _run(vacuums: set[str] | None) -> None:
+    async def _run(vacuums: set[str] | None) -> bool:
         try:
             changed = await async_tick_water_state(
                 hass,
@@ -262,8 +329,9 @@ def _async_start_tick(
             )
         except Exception as err:  # noqa: BLE001
             _LOGGER.exception("Water state tick failed: %s", err)
-            return
+            return False
         _publish(changed)
+        return True
 
     def _schedule(delay: float, action: Any) -> Any:
         # A plain function would run in the executor; the ticker must stay on the loop.
