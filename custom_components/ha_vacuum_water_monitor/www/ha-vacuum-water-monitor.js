@@ -13529,7 +13529,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   getGridOptions() {
     if (!this._compactExpanded && this._variant() === 'tile') return {columns:6, rows:1, min_columns:6, min_rows:1};
     if (!this._compactExpanded && !this._config?.variant && this._config?.compact) return {columns:6, rows:'auto', min_rows:3, min_columns:3};
-    return {columns:12, rows:'auto', min_rows:2, min_columns:3};
+    return {columns:12, rows:'auto', min_rows:2, min_columns:6};
   }
 
   // Home Assistant calls the hass setter on every state change in the house.
@@ -14427,7 +14427,25 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return merged;
   }
 
+  // Navigation selects a device for this view without authoring or persisting
+  // a Lovelace configuration or changing another card's settings.
+  selectVacuumForView(entity) {
+    this._viewVacuum = typeof entity === 'string' && entity.startsWith('vacuum.') ? entity : null;
+    this._lastHtml = '';
+    if (this._hass) this._render({preserveDraft:true});
+  }
+
   _selectedDevice(devices = this._getDevices()) {
+    if (this._viewVacuum) {
+      let index=devices.findIndex(device=>device.vacuum_entity===this._viewVacuum);
+      const links=this._robotLinks(), sort=x=>JSON.stringify(Object.entries(x||{}).sort(([a],[b])=>a.localeCompare(b)));
+      const descriptor=this._backendDescriptor({vacuum_entity:this._viewVacuum});
+      if(index<0 && this._balanceLinks && sort(this._balanceLinks)===sort(links) && this._featureAllowed('water','read',{vacuum_entity:this._viewVacuum}) && descriptor?.balance_owner)
+        index=devices.findIndex(device=>device.vacuum_entity===descriptor.balance_owner);
+      if (index<0) return null;
+      this._activeDeviceIdx=index;
+      this._viewVacuum=null;
+    }
     return devices[this._activeDeviceIdx] || devices[0] || null;
   }
 
@@ -15189,17 +15207,22 @@ class HAVacuumWaterMonitor extends HTMLElement {
         : authoredPercent && percent!==null && percent<=Number(cfg.warning_threshold||20) ? this._waterText('Low')
         : !authoredPercent && forecast && Number.isFinite(runs) && runs < 1 ? (this._lang==='pl'?'Krytycznie mało wody':'Water critically low')
         : !authoredPercent && forecast && Number.isFinite(runs) && runs <= 2 ? (this._lang==='pl'?'Mało wody':'Water low') : '';
-      const meter = percent == null ? '' : `<div class="vwm-meter" role="progressbar" aria-label="${_esc(L.remaining)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div>`;
+      const critical = data.waterEmpty || (authoredPercent && percent!==null && percent<=Number(cfg.critical_threshold||10)) || (!authoredPercent && forecast && runs<1);
+      const tone = critical ? 'crit' : warning ? 'warn' : 'normal';
+      const meter = percent == null ? '' : `<div class="vwm-meter ${tone}" role="progressbar" aria-label="${_esc(L.remaining)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div>`;
+      const shortValue = data.remainingL == null ? unknown : `${this._formatUi().number(data.remainingL,{maximumFractionDigits:2})} L${percent===null?'':' · '+this._formatUi().number(percent,{maximumFractionDigits:0})+'%'}`;
       if (tile) return `<div class="tab-content vwm-compact vwm-tile"><button type="button" class="vwm-tile-surface" id="vwm-expand" data-r6-open>
-        <span aria-hidden="true" class="vwm-tile-icon">💧</span><span class="vwm-tile-copy"><strong>${this._lang==='pl'?'Woda robota':'Robot water'}</strong>
-        <span class="vwm-tile-long">${_esc(data.remainingL == null ? unknown : remainingText+(forecast?' · '+forecastText:''))}</span>
-        <span class="vwm-tile-short">${_esc(data.remainingL == null ? unknown : remainingText)}</span></span></button>
+        <span class="vwm-icon ${tone}"><ha-icon icon="mdi:water-percent" aria-hidden="true"></ha-icon></span><span class="vwm-tile-copy"><strong>${this._lang==='pl'?'Woda robota':'Robot water'}</strong>
+        <span class="vwm-tile-long">${_esc(data.remainingL == null ? unknown : shortValue+(forecast?' · '+forecastText:''))}</span>
+        <span class="vwm-tile-short">${_esc(shortValue)}</span></span></button>
         <div class="vwm-tile-action">${refillBtn}</div></div>`;
-      return `<div class="tab-content vwm-compact ${tile?'vwm-tile':''}">
-        <button type="button" class="vwm-compact-heading vwm-compact-open" id="vwm-expand" data-r6-open><span aria-hidden="true">💧</span><strong>${this._lang==='pl'?'Woda w robocie':'Robot water'}</strong></button>
-        ${tile ? '' : `<small title="${_esc(device.name || device.device_name || device.vacuum_entity || '')}">${_esc(device.name || device.device_name || device.vacuum_entity || '')}${data.lastReset ? ' · '+_esc(this._formatReset(data.lastReset)) : ''}</small>`}
-        <p class="supply-main" role="status">${data.remainingL == null ? unknown : _esc(remainingText)}${data.remainingL != null && data.totalMl > 0 ? ' / '+_esc(this._formatUi().number(data.totalMl/1000,{maximumFractionDigits:2}))+' L' : ''}</p>
-        ${tile ? '' : `<small>${_esc(warning ? warning+' · '+forecastText : forecastText)}${presentation.band != null ? ' · ±'+_esc(this._formatUi().number(presentation.band*100,{maximumFractionDigits:1}))+'%' : ''}</small>${meter}`}
+      const name=device.name || device.device_name || device.vacuum_entity || '';
+      const subtitle=(data.lastReset?this._formatReset(data.lastReset)+' · ':'')+name;
+      const confidence=presentation.known && presentation.band!=null ? (this._lang==='pl'?'Szacunek · niepewność ±':'Estimate · uncertainty ±')+this._formatUi().number(presentation.band*100,{maximumFractionDigits:1})+'%' : (this._lang==='pl'?'Pewność nieznana':'Confidence unknown');
+      const main=data.remainingL==null?`<span class="vwm-unknown">${_esc(unknown)}</span>`:`<span class="vwm-main-value">${_esc(this._formatUi().number(data.remainingL,{minimumFractionDigits:1,maximumFractionDigits:2}))}</span><span class="vwm-main-unit">${data.totalMl>0?' / '+_esc(this._formatUi().number(data.totalMl/1000,{maximumFractionDigits:2})):''} L</span>`;
+      return `<div class="tab-content vwm-compact"><button type="button" class="vwm-compact-surface" id="vwm-expand" data-r6-open>
+        <div class="vwm-compact-heading"><span class="vwm-icon ${tone}"><ha-icon icon="mdi:water-percent" aria-hidden="true"></ha-icon></span><span class="vwm-heading-copy"><strong>${this._lang==='pl'?'Woda w robocie':'Robot water'}</strong><small title="${_esc(subtitle)}">${_esc(subtitle)}</small></span>${warning?`<span class="vwm-state-chip ${tone}">${_esc(warning)}</span>`:''}</div>
+        <div class="vwm-value-row"><span>${main}</span><small>${_esc(forecastText)}</small></div>${meter}<div class="vwm-confidence"><span>${percent===null?'':_esc(this._formatUi().number(percent,{maximumFractionDigits:0}))+'%'}</span><span>${_esc(confidence)}</span></div></button>
         <div class="vwm-compact-actions">${refillBtn}<button type="button" data-r6-details>${this._lang==='pl'?'Szczegóły':'Details'}</button></div>
       </div>`;
     }
@@ -15789,26 +15812,32 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const last=showBand?Math.max(now+1,forecastEnd):now;
     const x=ts=>Math.max(0,Math.min(100,(ts-first)/(last-first)*100)), y=v=>100-v;
     const bandLabel=showBand ? label('Estimated empty interval','Szacowany przedział opróżnienia')+': '+time(forecastStart)+' – '+time(forecastEnd) : '';
-    const band=showBand?`<rect x="${x(forecastStart)}" y="0" width="${Math.max(0.25,x(forecastEnd)-x(forecastStart))}" height="100" fill="var(--primary-color,#0284c7)" opacity=".12" tabindex="0"><title>${_esc(bandLabel)}</title></rect>`:'';
+    const band=showBand?(forecastStart===forecastEnd
+      ? `<line data-r6-band-point data-chart-tip="${_esc(bandLabel)}" x1="${x(forecastStart)}" x2="${x(forecastStart)}" y1="0" y2="100" stroke="var(--primary-color,#0284c7)" stroke-dasharray="1 2" tabindex="0"><title>${_esc(bandLabel)}</title></line>`
+      : `<rect data-chart-tip="${_esc(bandLabel)}" x="${x(forecastStart)}" y="0" width="${x(forecastEnd)-x(forecastStart)}" height="100" fill="var(--primary-color,#0284c7)" opacity=".12" tabindex="0"><title>${_esc(bandLabel)}</title></rect>`):'';
     let path='', previous=null;
     for(const p of points){if(p.value===null){previous=null;continue;} const px=x(p.ts),py=y(p.value); path+=previous?` H ${px} V ${py}`:` M ${px} ${py}`;previous=p;}
     const refills=(data.refillHistory||[]).filter(r=>Number.isFinite(r.ts)&&r.ts>=first&&r.ts<=last);
     const rows=points.map(p=>`<tr><td>${_esc(time(p.ts))}</td><td>${p.value===null?label('Unknown','Nieznany'):_esc(String(p.value))+'%'}</td></tr>`).join('');
-    const dots=points.filter(p=>p.value!==null).map(p=>`<circle cx="${x(p.ts)}" cy="${y(p.value)}" r="1" fill="var(--primary-color,#0284c7)" tabindex="0"><title>${_esc(time(p.ts)+' · '+p.value+'%')}</title></circle>`).join('');
+    const dots=points.filter(p=>p.value!==null).map(p=>`<circle cx="${x(p.ts)}" cy="${y(p.value)}" r="1" fill="var(--primary-color,#0284c7)" tabindex="0" data-chart-tip="${_esc(time(p.ts)+' · '+p.value+'%')}"><title>${_esc(time(p.ts)+' · '+p.value+'%')}</title></circle>`).join('');
     const refillRows=refills.map(r=>`<tr><td>${_esc(time(r.ts))}</td><td>${label('Refilled','Dolano')}</td></tr>`).join('');
-    const marks=refills.map(r=>`<line x1="${x(r.ts)}" x2="${x(r.ts)}" y1="0" y2="100" stroke="var(--warning-color,#b45309)" stroke-dasharray="2 2"><title>${_esc(label('Refilled','Dolano')+' · '+time(r.ts))}</title></line>`).join('');
+    const marks=refills.map(r=>`<line x1="${x(r.ts)}" x2="${x(r.ts)}" y1="0" y2="100" stroke="var(--warning-color,#b45309)" stroke-dasharray="2 2" tabindex="0" data-chart-tip="${_esc(label('Refilled','Dolano')+' · '+time(r.ts))}"><title>${_esc(label('Refilled','Dolano')+' · '+time(r.ts))}</title></line>`).join('');
     const valid=sessions.filter(s=>typeof s.water==='number'&&Number.isFinite(s.water)&&s.water>=0);
     const max=Math.max(1,...valid.map(s=>s.water));
-    const bars=valid.map(s=>`<div class="r6-session-bar"><span>${_esc(time(s.ts))}</span><div tabindex="0" aria-label="${_esc(time(s.ts)+' · '+s.water+' ml')}"><i style="width:${s.water/max*100}%" title="${_esc(time(s.ts)+' · '+s.water+' ml')}"></i></div><span>${_esc(this._formatUi().number(s.water))} ml</span></div>`).join('');
-    const sessionRows=valid.map(s=>`<tr><td>${_esc(time(s.ts))}</td><td>${_esc(this._formatUi().number(s.water))} ml</td></tr>`).join('');
+    const evidence=s=>s.water==null ? label('Unknown','Nieznany') : s.evidence==='labeled_estimate' ? label('Labelled estimate','Szacunek oznaczony') : label('Recorded','Zapisano');
+    const quantity=s=>typeof s.water==='number'&&Number.isFinite(s.water)&&s.water>=0
+      ? `${s.evidence==='labeled_estimate'?'~':''}${this._formatUi().number(s.water)} ml` : label('Unknown','Nieznany');
+    const tip=s=>`${time(s.ts)} · ${quantity(s)} · ${evidence(s)}`;
+    const bars=valid.map(s=>`<div class="r6-session-bar"><span>${_esc(time(s.ts))}</span><div tabindex="0" data-r6-session-evidence="${_esc(s.evidence||'recorded')}" data-chart-tip="${_esc(tip(s))}" aria-label="${_esc(tip(s))}" title="${_esc(tip(s))}"><i style="width:${s.water/max*100}%"></i></div><span>${_esc(quantity(s))} · ${_esc(evidence(s))}</span></div>`).join('');
+    const sessionRows=sessions.map(s=>`<tr><td>${_esc(time(s.ts))}</td><td>${_esc(quantity(s))} · ${_esc(evidence(s))}</td></tr>`).join('');
     // Compare complete single-context automatic sessions of the same method,
     // context and area. Coverage here is complete session exposure, not hours
     // or a claim that every calendar-period run was recorded.
     const complete=valid.filter(s=>s.type==='automatic'&&s.accounting_valid===true&&s.exposure_complete===true&&s.context&&s.segments===1&&typeof s.area==='number'&&s.area>0&&s.method);
-    const latest=complete[0], comparable=latest?complete.slice(1).filter(s=>JSON.stringify(s.context)===JSON.stringify(latest.context)&&s.method===latest.method&&Math.abs(s.area-latest.area)/latest.area<=0.1):[];
+    const latest=complete[0], comparable=latest?complete.slice(1).filter(s=>JSON.stringify(s.context)===JSON.stringify(latest.context)&&s.method===latest.method&&s.evidence===latest.evidence&&Math.abs(s.area-latest.area)/latest.area<=0.1):[];
     const average=comparable.length ? comparable.reduce((a,s)=>a+s.water,0)/comparable.length : null;
     const percent=average!==null && comparable.length>=3 && valid.length===sessions.length && complete.length===sessions.length && comparable.length===complete.length-1 && average>0 ? (latest.water-average)/average*100 : null;
-    const compare=average!==null ? `${label('Latest comparable session','Ostatnia porównywalna sesja')}: ${_esc(this._formatUi().number(latest.water))} ml · ${label('mean of','średnia z')} ${comparable.length} (${label('complete exposure, same context and method, area within 10%','pełne pokrycie sesji, ten sam kontekst i metoda, powierzchnia ±10%')}): ${_esc(this._formatUi().number(average,{maximumFractionDigits:1}))} ml · ${latest.water-average>=0?'+':''}${_esc(this._formatUi().number(latest.water-average,{maximumFractionDigits:1}))} ml ${percent===null ? label('No percentage: insufficient complete sessions.','Bez procentu: za mało pełnych sesji.') : `(${percent>=0?'+':''}${_esc(this._formatUi().number(percent,{maximumFractionDigits:1}))}%)`}` : label('No comparison — incomplete comparable data.','Brak porównania — niepełne porównywalne dane.');
+    const compare=average!==null ? `${_esc(evidence(latest))} · ${label('Latest comparable session','Ostatnia porównywalna sesja')}: ${_esc(this._formatUi().number(latest.water))} ml · ${label('mean of','średnia z')} ${comparable.length} (${label('complete exposure, same context and method, area within 10%','pełne pokrycie sesji, ten sam kontekst i metoda, powierzchnia ±10%')}): ${_esc(this._formatUi().number(average,{maximumFractionDigits:1}))} ml · ${latest.water-average>=0?'+':''}${_esc(this._formatUi().number(latest.water-average,{maximumFractionDigits:1}))} ml ${percent===null ? label('No percentage: insufficient complete sessions.','Bez procentu: za mało pełnych sesji.') : `(${percent>=0?'+':''}${_esc(this._formatUi().number(percent,{maximumFractionDigits:1}))}%)`}` : label('No comparison — incomplete comparable data.','Brak porównania — niepełne porównywalne dane.');
     // Calendar-local days, including only the same elapsed part of the last
     // day in the previous period. DST changes do not assume 24-hour days.
     const local=new Intl.DateTimeFormat('en-CA',{timeZone:this._hass?.config?.time_zone||undefined,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
@@ -15816,18 +15845,24 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const today=localPart(now), currentPeriod=[], previousPeriod=[];
     for(const session of sessions){const p=localPart(session.ts),delta=today.day-p.day;if(delta>=0&&delta<7)currentPeriod.push(session);else if(delta>=7&&delta<14&&(delta!==7||p.second<=today.second))previousPeriod.push(session);}
     const reference=currentPeriod.find(s=>complete.includes(s));
-    const comparablePeriod=arr=>reference?arr.filter(s=>complete.includes(s)&&JSON.stringify(s.context)===JSON.stringify(reference.context)&&s.method===reference.method&&Math.abs(s.area-reference.area)/reference.area<=0.1):[];
+    const comparablePeriod=arr=>reference?arr.filter(s=>complete.includes(s)&&JSON.stringify(s.context)===JSON.stringify(reference.context)&&s.method===reference.method&&s.evidence===reference.evidence&&Math.abs(s.area-reference.area)/reference.area<=0.1):[];
     const cur=comparablePeriod(currentPeriod), prev=comparablePeriod(previousPeriod);
     const coverage=arr=>arr.length?comparablePeriod(arr).length/arr.length:0;
     const prevMean=prev.length?prev.reduce((sum,s)=>sum+s.water,0)/prev.length:null;
     const curMean=cur.length?cur.reduce((sum,s)=>sum+s.water,0)/cur.length:null;
     const periodReady=curMean!==null&&prevMean!==null&&coverage(currentPeriod)>=0.9&&coverage(previousPeriod)>=0.9;
     const periodDelta=periodReady?curMean-prevMean:null, periodPercent=periodReady&&prevMean>0?periodDelta/prevMean*100:null;
-    const periodText=periodReady?`${label('Comparable recorded sessions, current 7 local days vs previous 7 at the same local time','Porównywalne zapisane sesje, bieżące 7 dni lokalnych vs poprzednie 7 do tej samej godziny')}: ${_esc(this._formatUi().number(curMean,{maximumFractionDigits:1}))} / ${_esc(this._formatUi().number(prevMean,{maximumFractionDigits:1}))} ml · ${periodDelta>=0?'+':''}${_esc(this._formatUi().number(periodDelta,{maximumFractionDigits:1}))} ml${periodPercent===null?'':` (${periodPercent>=0?'+':''}${_esc(this._formatUi().number(periodPercent,{maximumFractionDigits:1}))}%)`} · ${Math.round(coverage(currentPeriod)*100)}% / ${Math.round(coverage(previousPeriod)*100)}% ${label('of recorded sessions complete','zapisanych sesji pełnych')}`:label('No period comparison — incomplete or incomparable recorded sessions.','Brak porównania okresów — niepełne lub nieporównywalne zapisane sesje.');
+    const periodText=periodReady?`${_esc(evidence(reference))} · ${label('Comparable recorded sessions, current 7 local days vs previous 7 at the same local time','Porównywalne zapisane sesje, bieżące 7 dni lokalnych vs poprzednie 7 do tej samej godziny')}: ${_esc(this._formatUi().number(curMean,{maximumFractionDigits:1}))} / ${_esc(this._formatUi().number(prevMean,{maximumFractionDigits:1}))} ml · ${periodDelta>=0?'+':''}${_esc(this._formatUi().number(periodDelta,{maximumFractionDigits:1}))} ml${periodPercent===null?'':` (${periodPercent>=0?'+':''}${_esc(this._formatUi().number(periodPercent,{maximumFractionDigits:1}))}%)`} · ${Math.round(coverage(currentPeriod)*100)}% / ${Math.round(coverage(previousPeriod)*100)}% ${label('of recorded sessions complete','zapisanych sesji pełnych')}`:label('No period comparison — incomplete or incomparable recorded sessions.','Brak porównania okresów — niepełne lub nieporównywalne zapisane sesje.');
     const status=h?.status==='loading'?label('Loading history…','Ładowanie historii…'):h?.status==='error'?label('Could not load history.','Nie udało się wczytać historii.'):label('No recorded water-level history.','Brak zapisanej historii poziomu wody.');
+    const tips=[...points.map(p=>`${time(p.ts)} · ${p.value===null?label('Unknown','Nieznany'):p.value+'%'}`),...refills.map(r=>`${label('Refilled','Dolano')} · ${time(r.ts)}`),...(showBand?[bandLabel]:[])];
+    const draw=Boolean(path || refills.length || showBand);
     return `<section class="section-block r6-history"><h3>${label('Water history','Historia wody')}</h3><p>${label('Source: HA Recorder, last 30 days, local time. Gaps are unknown.','Źródło: HA Recorder, ostatnie 30 dni, czas lokalny. Luki są nieznane.')}</p>
-      ${path?`<div data-r6-chart><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${label('Water level (%)','Poziom wody (%)')}">${band}<path d="${path}" fill="none" stroke="var(--primary-color,#0284c7)" vector-effect="non-scaling-stroke"/>${marks}${dots}</svg><p>${label('Level (%)','Poziom (%)')}${refills.length?' · '+label('Refill','Dolanie'):''}${showBand?' · '+_esc(bandLabel):''}</p></div><details><summary>${label('Data','Dane')}</summary><table><thead><tr><th>${label('Time','Czas')}</th><th>%</th></tr></thead><tbody>${rows}${refillRows}${showBand?`<tr><td>${_esc(time(forecastStart))} – ${_esc(time(forecastEnd))}</td><td>${_esc(bandLabel)}</td></tr>`:''}</tbody></table></details>`:`<p role="status">${status}</p>${h?.status==='error'?`<button type="button" data-history-retry>${label('Retry','Spróbuj ponownie')}</button>`:''}`}
-      <h3>${label('Water per session','Woda na sesję')}</h3>${bars||`<p>${label('No measured session water.','Brak zapisanej ilości wody na sesję.')}</p>`}<details><summary>${label('Data','Dane')}</summary><table><tbody>${sessionRows}</tbody></table></details><p>${compare}</p><p>${periodText}</p><p>${label('Room-level water is unavailable unless the producer records measured room boundaries.','Woda na pokój jest niedostępna, dopóki producent nie zapisuje zmierzonych granic pokoi.')}</p></section>`;
+      ${!path?`<p role="status">${status}</p>${h?.status==='error'?`<button type="button" data-history-retry>${label('Retry','Spróbuj ponownie')}</button>`:''}`:''}
+      ${draw?`<div data-r6-chart><svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="${label('Water level (%)','Poziom wody (%)')}">${band}<path d="${path}" fill="none" stroke="var(--primary-color,#0284c7)" vector-effect="non-scaling-stroke"/>${marks}${dots}</svg>
+      <div class="r6-chart-axis"><span>${_esc(time(first))}</span><span>${_esc(time(last))}</span></div><p>${label('Level (%)','Poziom (%)')}${refills.length?' · '+label('Refill','Dolanie'):''}${showBand?' · '+_esc(bandLabel):''}</p>
+      <label>${label('Inspect chart point','Sprawdź punkt wykresu')} <select data-chart-selector><option value="">${label('Select…','Wybierz…')}</option>${tips.map(t=>`<option value="${_esc(t)}">${_esc(t)}</option>`).join('')}</select></label><p data-chart-tooltip role="status" aria-live="polite"></p></div>`:''}
+      ${points.length||refills.length||showBand?`<details><summary>${label('Data','Dane')}</summary><table><thead><tr><th>${label('Time','Czas')}</th><th>%</th></tr></thead><tbody>${rows}${refillRows}${showBand?`<tr><td>${_esc(time(forecastStart))} – ${_esc(time(forecastEnd))}</td><td>${_esc(bandLabel)}</td></tr>`:''}</tbody></table></details>`:''}
+      <h3>${label('Water per session','Woda na sesję')}</h3>${bars||`<p>${label('No measured session water.','Brak zapisanej ilości wody na sesję.')}</p>`}<details><summary>${label('Data','Dane')}</summary><table data-r6-session-data><tbody>${sessionRows}</tbody></table></details><p>${compare}</p><p>${periodText}</p><p>${label('Room-level water is unavailable unless the producer records measured room boundaries.','Woda na pokój jest niedostępna, dopóki producent nie zapisuje zmierzonych granic pokoi.')}</p></section>`;
   }
 
   _calendarDaysAgo(ts) {
@@ -17088,7 +17123,10 @@ target:
 
     if (!this.preview && !this._serverReady && !this._accessDenied) tabContent = this._serverLoadError
       ? `<div role="alert">${this._lang==='pl'?'Nie udało się wczytać danych.':'Could not load data.'} <button type="button" data-server-retry>${this._lang==='pl'?'Spróbuj ponownie':'Retry'}</button></div>`
-      : `<div role="status">${this._lang==='pl'?'Ładowanie danych…':'Loading data…'}</div>`;
+      : cfg.compact && !this._compactExpanded
+        ? `<div class="vwm-compact vwm-skeleton ${this._variant()==='tile'?'vwm-tile':''}" role="status" aria-label="${this._lang==='pl'?'Ładowanie danych':'Loading data'}"><span class="vwm-icon" aria-hidden="true"></span><span class="vwm-skeleton-lines" aria-hidden="true"><i></i><i></i></span></div>`
+        : `<div role="status">${this._lang==='pl'?'Ładowanie danych…':'Loading data…'}</div>`;
+    if (this._viewVacuum && this._serverReady) tabContent = `<div class="empty-state" role="status">${this._lang==='pl'?'Wybrany robot nie jest dostępny.':'The selected robot is unavailable.'}</div>`;
     if (this._accessDenied) tabContent = `<div role="alert">${this._lang === 'pl' ? 'Brak dostępu. Skontaktuj się z administratorem.' : 'Access denied. Contact an administrator.'}</div>`;
     const deviceTabsHtml = this._buildDeviceTabs(devices);
 
@@ -17421,22 +17459,27 @@ input, select, textarea { max-width:100%; min-width:0; }
 .vwm-compact { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .vwm-compact > p, .vwm-compact > small { flex-basis:100%; margin:0; }
 .card .vwm-compact .supply-main { font-size:18px !important; font-weight:700; }
-.card:has(.vwm-compact) {padding:12px; container-type:inline-size}
+ha-card{display:block;container-type:inline-size}.card:has(.vwm-compact) {padding:12px}
 .card:has(.vwm-compact) .card-title {display:none}
-.vwm-compact {display:grid; gap:4px; min-width:0}
-.vwm-compact p,.vwm-compact small{margin:0; min-width:0; overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vwm-compact small{font-size:12px; color:var(--secondary-text-color,#666)}
-.vwm-compact-heading,.vwm-compact-actions {display:flex; align-items:center; gap:8px}
+.vwm-compact {display:grid; gap:12px; min-width:0}
+.vwm-compact small{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--secondary-text-color,#666)}
+.vwm-compact-heading,.vwm-compact-actions {display:flex; align-items:center; gap:12px}
 .vwm-compact-actions button{min-height:44px}
-.r6-history svg{display:block;width:100%;height:160px;border-bottom:1px solid var(--divider-color);overflow:visible}
+.vwm-compact-surface{display:grid;gap:8px;width:100%;padding:0;border:0;background:transparent;color:var(--primary-text-color);text-align:left;cursor:pointer}
+.vwm-icon{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:50%;background:var(--secondary-background-color,#eef2f6);color:var(--primary-color,#0284c7)}
+.vwm-icon ha-icon{--mdc-icon-size:20px;width:20px;height:20px}.vwm-icon.warn{color:var(--warning-color,#a56800)}.vwm-icon.crit{color:var(--error-color,#b91c1c)}
+.vwm-heading-copy{display:grid;min-width:0;flex:1}.vwm-heading-copy strong{font-size:16px;font-weight:600}.vwm-state-chip{font-size:12px!important;border:1px solid currentColor;border-radius:999px;padding:3px 8px}.vwm-state-chip.warn{color:var(--warning-color,#a56800)}.vwm-state-chip.crit{color:var(--error-color,#b91c1c)}
+.vwm-value-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.vwm-value-row small{max-width:46%;white-space:normal;text-align:right}.card .vwm-main-value{font-size:28px!important;font-weight:600;line-height:1}.vwm-main-unit{font-size:14px!important;color:var(--secondary-text-color,#666)}
+.vwm-confidence{display:flex;justify-content:space-between;gap:8px;color:var(--secondary-text-color,#666)}.card .vwm-confidence span{font-size:12px!important}
+.r6-chart-axis{display:flex;justify-content:space-between;gap:8px;font-size:12px}.r6-history svg{display:block;width:100%;height:160px;border-bottom:1px solid var(--divider-color);overflow:visible}
 .r6-history table{width:100%;border-collapse:collapse;text-align:left}.r6-history th,.r6-history td{padding:6px}
 .r6-session-bar{display:grid;grid-template-columns:minmax(80px,auto) 1fr auto;gap:8px;align-items:center;font-size:14px}.r6-session-bar div{background:var(--divider-color,#ddd);height:12px}.r6-session-bar i{display:block;height:100%;background:var(--primary-color,#0284c7)}
 .vwm-meter{height:8px;border-radius:8px;background:var(--divider-color,#ddd);overflow:hidden}
-.vwm-meter span{display:block;height:100%;background:var(--primary-color,#03a9f4)}
-.vwm-compact-open,.vwm-tile-surface{border:0;background:transparent;color:var(--primary-text-color);text-align:left;cursor:pointer}
-.vwm-tile{display:flex;justify-content:space-between;flex-wrap:nowrap;height:44px;gap:4px}
+.vwm-meter span{display:block;height:100%;background:var(--primary-color,#03a9f4)}.vwm-meter.warn span{background:var(--warning-color,#a56800)}.vwm-meter.crit span{background:var(--error-color,#b91c1c)}
+.card:has(.vwm-tile){padding:6px 8px 6px 12px}.vwm-tile-surface{border:0;background:transparent;color:var(--primary-text-color);text-align:left;cursor:pointer}
+.vwm-tile{display:flex;justify-content:space-between;flex-wrap:nowrap;height:44px;gap:4px}.vwm-skeleton:not(.vwm-tile){min-height:176px;display:flex;align-items:flex-start}.vwm-skeleton-lines{display:grid;gap:8px;flex:1}.vwm-skeleton-lines i{display:block;height:10px;width:70%;background:var(--divider-color,#ddd);border-radius:5px}.vwm-skeleton-lines i+ i{width:45%}
 .vwm-tile-surface{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:0}
-.vwm-tile-icon{font-size:24px !important}.vwm-tile-copy{display:grid;min-width:0}.vwm-tile-copy strong,.vwm-tile-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vwm-tile-copy span{font-size:12px !important}.vwm-tile-short{display:none}
+.vwm-tile-copy{display:grid;min-width:0}.vwm-tile-copy strong,.vwm-tile-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vwm-tile-copy span{font-size:12px !important}.vwm-tile-short{display:none}
 @container (max-width:279px){.vwm-tile-long{display:none}.vwm-tile-short{display:block}}
 @container (max-width:219px){.vwm-tile-action{display:none}}
 @media (prefers-reduced-motion:reduce){.card *{animation-duration:.001ms !important;transition-duration:.001ms !important}}
@@ -17574,6 +17617,9 @@ input, select, textarea { max-width:100%; min-width:0; }
     if (!this._featureAllowed('water', 'execute', device)) sr.querySelectorAll('.refill-btn, [data-setup="confirm-full"], [data-setup="mark-empty"]').forEach(button => { button.disabled = true; });
     if (!this._featureAllowed('settings', 'execute', device)) sr.querySelectorAll('.dup-btn, #hist-log-btn, .maint-done-btn, .maint-del-btn, #vwm-tab-panel .maint-add-btn:not(#cal-save), #vwm-settings-robots input, #vwm-settings-robots button, #vwm-settings-refill input, #vwm-settings-refill select, #vwm-settings-refill button, #vwm-settings-signals input, #vwm-settings-signals select, #vwm-settings-signals button, #vwm-settings-model button').forEach(control => { control.disabled = true; });
     if (!this._featureAllowed('measurements', 'execute', device)) sr.querySelectorAll('#vwm-settings-calibration input, #vwm-settings-calibration select, #vwm-settings-calibration button').forEach(control => { control.disabled = true; });
+    const chartTip=sr.querySelector('[data-chart-tooltip]');
+    sr.querySelectorAll('[data-chart-tip]').forEach(point=>{const show=()=>{if(chartTip)chartTip.textContent=point.dataset.chartTip;};point.addEventListener('focus',show);point.addEventListener('pointerenter',show);point.addEventListener('click',show);});
+    sr.querySelector('[data-chart-selector]')?.addEventListener('change',event=>{if(chartTip)chartTip.textContent=event.target.value;});
     sr.querySelector('[data-server-retry]')?.addEventListener('click', () => {this._serverLoadError=false;this._ensureServerState(true);this._lastHtml='';this._render({preserveDraft:true});});
     sr.querySelector('[data-history-retry]')?.addEventListener('click', () => {this._waterHistory=null;this._lastHtml='';this._render({preserveDraft:true});});
     sr.querySelector('[data-vwm-refresh-retry]')?.addEventListener('click', () => this._retryBindingRefresh());
@@ -17725,6 +17771,7 @@ input, select, textarea { max-width:100%; min-width:0; }
     // Device tabs
     sr.querySelectorAll('.dtab').forEach(btn => {
       btn.addEventListener('click', () => {
+        this._viewVacuum = null;
         this._activeDeviceIdx = parseInt(btn.dataset.didx) || 0;
         try { localStorage.setItem('ha-tools-vacuum-water-monitor-settings', JSON.stringify({ _activeTab: this._activeTab, _activeDeviceIdx: this._activeDeviceIdx })); } catch(e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
         this._render();

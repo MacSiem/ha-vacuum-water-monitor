@@ -389,6 +389,11 @@ function createDashboardPlacementV53({host, getHass, getCardConfig,
           const backup = await call(s, intent, 'ha_vacuum_water_monitor/dashboard_backup_prepare',
             {target:s.target, before:clone(before), after:clone(expected)});
           if (!current(s, intent) || !backup?.id) throw Error('backup_failed');
+          // The backup itself is an asynchronous write. Recheck after it, so
+          // an intervening editor cannot be overwritten by the stale preview.
+          const afterBackup = validateConfig(await read(s, intent));
+          if (!current(s, intent)) return;
+          if (key(afterBackup) !== key(expectedCurrent)) { s.blocked=true; s.tx=null; s.status='conflict'; return; }
         }
         s.tx = {before, expected, confirmed:null, undoing}; s.blocked = true;
         // Deliberate compare-before-save, NOT atomic compare-and-swap.
@@ -451,7 +456,7 @@ function createDashboardPlacementV53({host, getHass, getCardConfig,
     q('[data-copy]').textContent=text('Copy card configuration','Kopiuj konfigurację karty');
     q('[data-label-view]').textContent = text('View', 'Widok'); q('[data-label-section]').textContent = text('Section', 'Sekcja');
     q('[data-preview-label]').textContent = text('Card preview (destination layout may resize it)', 'Podgląd karty (układ miejsca docelowego może zmienić rozmiar)');
-    q('[data-limit]').textContent = (cancelledWrite ? text('A previous save was cancelled while pending and may have completed. Inspect the dashboard in HA before another Add. ', 'Poprzedni zapis anulowano w trakcie i mógł się zakończyć. Przed kolejnym Dodaj sprawdź dashboard w HA. ') : '') + text('You can undo this addition until this window closes.', 'Możesz cofnąć dodanie karty do zamknięcia tego okna.');
+    q('[data-limit]').textContent = (cancelledWrite ? text('A previous save was cancelled while pending and may have completed. Inspect the dashboard in HA before another Add. ', 'Poprzedni zapis anulowano w trakcie i mógł się zakończyć. Przed kolejnym Dodaj sprawdź dashboard w HA. ') : '') + text('Undo is available here and later from Dashboard backups while the dashboard remains unchanged.', 'Możesz cofnąć tutaj lub później z Kopii dashboardów, dopóki dashboard nie zostanie zmieniony.');
     q('[role=status]').textContent = text(...messages[s.status]);
     const selected = s.dashboards.findIndex(d => d.url_path === s.target);
     options(q('[data-dashboard]'), [['',text('Choose…','Wybierz…')],...s.dashboards.map((d,i)=>[String(i),d.title])], selected < 0 ? '' : selected);
@@ -473,14 +478,15 @@ function createDashboardPlacementV53({host, getHass, getCardConfig,
     native.setAttribute('href', s.target === undefined ? '/lovelace' : `/${s.target || 'lovelace'}`);
   }
   function mount() {
-    dialog = host.ownerDocument.createElement('dialog');
+    dialog = host.ownerDocument.createElement('ha-dialog');
+    dialog.setAttribute('without-header','');
     dialog.setAttribute('data-ha-tools-placement','');
     dialog.setAttribute('aria-labelledby',titleId);
     dialog.setAttribute('aria-describedby',titleId+'-limit');
     dialog.innerHTML = `<style>
-dialog[data-ha-tools-placement]{box-sizing:border-box;width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:20px;border:1px solid var(--divider-color,#888);border-radius:var(--ha-card-border-radius,12px);background:var(--card-background-color,#fff);color:var(--primary-text-color,#202124);font:14px/1.5 var(--paper-font-body1_-_font-family,system-ui)}dialog[data-ha-tools-placement]::backdrop{background:rgba(0,0,0,.45)}dialog[data-ha-tools-placement] h2{font-size:20px;margin:0 0 16px}dialog[data-ha-tools-placement] label{display:block;margin:12px 0}dialog[data-ha-tools-placement] select,dialog[data-ha-tools-placement] button,dialog[data-ha-tools-placement] a{box-sizing:border-box;min-height:44px;font:inherit}dialog[data-ha-tools-placement] select{width:100%;padding:8px;background:var(--secondary-background-color,#eee);color:inherit;border:1px solid var(--divider-color,#888);border-radius:8px}dialog[data-ha-tools-placement] button{padding:10px 16px;background:var(--secondary-background-color,#eee);color:inherit;border:1px solid var(--divider-color,#888);border-radius:8px;cursor:pointer}dialog[data-ha-tools-placement] button:disabled{opacity:.55;cursor:default}dialog[data-ha-tools-placement] [data-add]{background:var(--primary-color,#1565c0);color:var(--text-primary-color,#fff)}dialog[data-ha-tools-placement] button:focus-visible,dialog[data-ha-tools-placement] select:focus-visible,dialog[data-ha-tools-placement] a:focus-visible{outline:3px solid var(--primary-color,#1565c0);outline-offset:2px}dialog[data-ha-tools-placement] [data-actions]{display:flex;gap:8px;flex-wrap:wrap}dialog[data-ha-tools-placement] [data-preview]{max-width:100%;overflow:hidden}dialog[data-ha-tools-placement] [data-meta]{font-size:12px;color:var(--secondary-text-color,#555)}dialog[data-ha-tools-placement] a{display:inline-flex;align-items:center;color:var(--primary-color,#1565c0)}dialog[data-ha-tools-placement] [hidden]{display:none!important}
-      dialog[data-ha-tools-placement] textarea{box-sizing:border-box;width:100%;min-height:140px;background:var(--secondary-background-color,#eee);color:inherit;font:12px/1.5 ui-monospace,monospace}dialog[data-ha-tools-placement] [data-add]{background:var(--hat-primary-fill-computed,#1565c0);color:var(--hat-on-primary-computed,#fff)}
-      dialog[data-ha-tools-placement] a{color:inherit;text-decoration:underline}dialog[data-ha-tools-placement] :focus-visible{outline-color:var(--primary-text-color,#202124)}
+ha-dialog[data-ha-tools-placement]{box-sizing:border-box;width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:20px;border:1px solid var(--divider-color,#888);border-radius:var(--ha-card-border-radius,12px);background:var(--card-background-color,#fff);color:var(--primary-text-color,#202124);font:14px/1.5 var(--paper-font-body1_-_font-family,system-ui)}ha-dialog[data-ha-tools-placement]::backdrop{background:rgba(0,0,0,.45)}ha-dialog[data-ha-tools-placement] h2{font-size:20px;margin:0 0 16px}ha-dialog[data-ha-tools-placement] label{display:block;margin:12px 0}ha-dialog[data-ha-tools-placement] select,ha-dialog[data-ha-tools-placement] button,ha-dialog[data-ha-tools-placement] a{box-sizing:border-box;min-height:44px;font:inherit}ha-dialog[data-ha-tools-placement] select{width:100%;padding:8px;background:var(--secondary-background-color,#eee);color:inherit;border:1px solid var(--divider-color,#888);border-radius:8px}ha-dialog[data-ha-tools-placement] button{padding:10px 16px;background:var(--secondary-background-color,#eee);color:inherit;border:1px solid var(--divider-color,#888);border-radius:8px;cursor:pointer}ha-dialog[data-ha-tools-placement] button:disabled{opacity:.55;cursor:default}ha-dialog[data-ha-tools-placement] [data-add]{background:var(--primary-color,#1565c0);color:var(--text-primary-color,#fff)}ha-dialog[data-ha-tools-placement] button:focus-visible,ha-dialog[data-ha-tools-placement] select:focus-visible,ha-dialog[data-ha-tools-placement] a:focus-visible{outline:3px solid var(--primary-color,#1565c0);outline-offset:2px}ha-dialog[data-ha-tools-placement] [data-actions]{display:flex;gap:8px;flex-wrap:wrap}ha-dialog[data-ha-tools-placement] [data-preview]{max-width:100%;overflow:hidden}ha-dialog[data-ha-tools-placement] [data-meta]{font-size:12px;color:var(--secondary-text-color,#555)}ha-dialog[data-ha-tools-placement] a{display:inline-flex;align-items:center;color:var(--primary-color,#1565c0)}ha-dialog[data-ha-tools-placement] [hidden]{display:none!important}
+      ha-dialog[data-ha-tools-placement] textarea{box-sizing:border-box;width:100%;min-height:140px;background:var(--secondary-background-color,#eee);color:inherit;font:12px/1.5 ui-monospace,monospace}ha-dialog[data-ha-tools-placement] [data-add]{background:var(--hat-primary-fill-computed,#1565c0);color:var(--hat-on-primary-computed,#fff)}
+      ha-dialog[data-ha-tools-placement] a{color:inherit;text-decoration:underline}ha-dialog[data-ha-tools-placement] :focus-visible{outline-color:var(--primary-text-color,#202124)}
       </style><h2 id="${titleId}"></h2>
       <label><span data-label-dashboard></span><select data-dashboard></select></label>
       <label><span data-label-view></span><select data-view></select></label>
@@ -508,10 +514,11 @@ dialog[data-ha-tools-placement]{box-sizing:border-box;width:min(640px,calc(100vw
     dialog.querySelector('[data-reconcile]').addEventListener('click', reconcile);
     dialog.querySelector('[data-cancel]').addEventListener('click', close);
     dialog.addEventListener('cancel', e => {e.preventDefault(); close();});
+    dialog.addEventListener('closed', () => { if (dialog) close(); });
     dialog.addEventListener('close', () => { if (dialog && !dialog.open) close(); });
     host.append(dialog);
 
-    if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.open = true;
+    dialog.open = true;
   }
   function open() {
     if (destroyed) return false;
@@ -576,7 +583,7 @@ class VwmStandalonePanel extends HTMLElement {
   _render(){
     const pl=String(this._hass?.locale?.language||this._hass?.language||'en').startsWith('pl');
     this.shadowRoot.innerHTML=`<style>:host{display:block;color:var(--primary-text-color);background:var(--primary-background-color);min-height:100%;font-size:14px}main{box-sizing:border-box;max-width:900px;margin:auto;padding:16px}button{min-height:44px;padding:8px 16px;color:var(--primary-text-color);background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px;font-size:14px}button:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}</style><main><h1>Vacuum Water Monitor</h1><p>${pl?'Stan wody i konfiguracja robotów.':'Water status and robot setup.'}</p>${this._hass?.user?.is_admin?`<button type="button" data-place>${pl?'Dodaj do dashboardu':'Add to dashboard'}</button> <button type="button" data-backups>${pl?'Kopie dashboardów':'Dashboard backups'}</button><section data-backup-ui></section>`:''}<ha-vacuum-water-monitor></ha-vacuum-water-monitor></main>`;
-    const card=this.shadowRoot.querySelector('ha-vacuum-water-monitor');const vacuum=new URLSearchParams(window.location.search).get('vacuum');card.setConfig({variant:'full',...(vacuum?.startsWith('vacuum.')?{vacuum_entity:vacuum}:{})});card.hass=this._hass;
+    const card=this.shadowRoot.querySelector('ha-vacuum-water-monitor');const vacuum=new URLSearchParams(window.location.search).get('vacuum');card.setConfig({variant:'full'});if(vacuum?.startsWith('vacuum.'))card.selectVacuumForView(vacuum);card.hass=this._hass;
     this.shadowRoot.querySelector('[data-backups]')?.addEventListener('click',()=>this._showBackups());
     this.shadowRoot.querySelector('[data-place]')?.addEventListener('click',()=>{
       this._placement ||= createDashboardPlacementV53({host:this,getHass:()=>this._hass,
