@@ -249,21 +249,27 @@ async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     registry = dr.async_get(hass)
 
-    def ours():
-        return {i[1] for d in dr.async_entries_for_config_entry(registry, entry.entry_id) for i in d.identifiers}
+    entities = er.async_get(hass)
+    def balance_entity(origin):
+        uid = f"{entry.entry_id}_{origin}_water_used_since_refill"
+        return next(e for e in er.async_entries_for_config_entry(entities, entry.entry_id) if e.unique_id == uid)
 
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": f"{DOMAIN}/list_vacuums"})
     listed = {v["entity_id"]: v for v in (await client.receive_json())["result"]["vacuums"]}
     assert listed["vacuum.robotic_vacuum_cleaner"]["possible_duplicate_of"] == VACUUM
-    assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" in ours()  # nothing hidden without the user
+    copy = balance_entity("vacuum_robotic_vacuum_cleaner")
+    primary = balance_entity("vacuum_robot")
+    assert copy.device_id == bridged.id and hass.states.get(copy.entity_id).state != "unavailable"
+    assert primary.device_id == entities.async_get(VACUUM).device_id
 
     await client.send_json({"id": 2, "type": f"{DOMAIN}/set_settings",
                             "patch": {"robot_links": {"vacuum.robotic_vacuum_cleaner": VACUUM}}})
     assert (await client.receive_json())["success"]
     await hass.async_block_till_done()
-    assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" not in ours()
-    assert f"{entry.entry_id}_vacuum_robot" in ours()
+    assert hass.states.get(copy.entity_id).state == "unavailable"
+    assert hass.states.get(primary.entity_id).state != "unavailable"
+    assert entities.async_get(copy.entity_id).device_id == bridged.id
     storage = hass.data[DOMAIN]["storage"]
     await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": "vacuum.robotic_vacuum_cleaner"}, blocking=True)
     tanks = (await storage.async_get_state())["tank_states"]
@@ -274,7 +280,8 @@ async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(
                             "patch": {"robot_links": {"vacuum.robotic_vacuum_cleaner": "distinct"}}})
     assert (await client.receive_json())["success"]
     await hass.async_block_till_done()
-    assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" in ours()
+    assert hass.states.get(copy.entity_id).state != "unavailable"
+    assert entities.async_get(copy.entity_id).device_id == bridged.id
 
 
 @pytest.mark.parametrize("target,incomplete", [("linked", False), ("linked", True), ("primary", True), ("distinct", False)])
@@ -410,6 +417,9 @@ async def test_registry_duplicate_action_uses_balance_owner(hass: HomeAssistant,
 async def test_a_device_with_the_old_placeholder_name_gets_the_robots_name(hass: HomeAssistant) -> None:
     """5.8.0: single-device cards saved "Vacuum" as the robot's name."""
     storage = await _setup(hass)
+    # The integration owns and may rename only its fallback device.
+    er.async_get(hass).async_update_entity(VACUUM, device_id=None)
+    await _settle(hass)
     await storage.async_set_settings({"configured_devices": [{"vacuum_entity": VACUUM, "name": "Vacuum"}]})
     registry = dr.async_get(hass)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
@@ -491,8 +501,14 @@ async def test_v8_household_settings_remain_allowed_but_threshold_patch_is_atomi
 ):
     storage = await _setup(hass)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
-    # Fixture user remains authenticated but lacks administrator privileges.
-    hass_admin_user.groups = []
+    # Grant only the normal household settings capability, not admin thresholds.
+    from homeassistant.auth.const import GROUP_ID_USER
+    admin = await hass_ws_client(hass)
+    rule = {"mode": "selected_users", "user_ids": [hass_admin_user.id]}
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": {
+        "schema": 1, "features": {"settings": {"execute": rule}}}})
+    assert (await admin.receive_json())["success"]
+    hass_admin_user.groups = [await hass.auth.async_get_group(GROUP_ID_USER)]
     assert not hass_admin_user.is_admin
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": f"{DOMAIN}/set_settings", "patch": {

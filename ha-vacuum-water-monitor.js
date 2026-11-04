@@ -13950,6 +13950,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
     this._health = {}; this._userDevices = []; this._refillConfig = {}; this._customCalib = null; this._waterHistory = null;
     this._invalidateContribution?.();
     this._localMeasurementGeneration = (this._localMeasurementGeneration || 0) + 1;
+    this._localMeasurementStatus = null;
+    this._reprofileStatus = null;
   }
 
   async _refreshFeatureAccess() {
@@ -15645,7 +15647,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
             ${effectiveCalibration}
             <button type="button" style="padding:8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);cursor:pointer" onclick="this.getRootNode().host._reprofileDevice()">${this._waterText("Refresh detected profile")}</button>
-            <div id="vwm-reprofile-status" role="status" aria-live="polite"></div>
+            <div id="vwm-reprofile-status" role="status" aria-live="polite">${this._reprofileStatus?.owner === device?.vacuum_entity ? _esc(this._reprofileStatus.text) : ''}</div>
             <p>${this._waterText("Refresh updates robot recognition from Home Assistant. Your tank sizes, calibration, signal assignments and history are kept.")}</p>
             <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
               ${this._waterText("With supported refill and empty-tank signals, calibration learns during normal cleaning. You do not need to test each mode. The measurements below are optional overrides.")}
@@ -15850,7 +15852,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <label><span><input type="checkbox" id="cal-boundaries" /> ${this._waterText("Same full reservoir level before and after; no intermediate refill or unmeasured transfer")}</span></label>
       <label><span><input type="checkbox" id="cal-uninterrupted" /> ${this._waterText("Complete cycle observed from zero area, with unchanged settings and no interruption")}</span></label>
       <button type="button" id="cal-save" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>${this._waterText("Save private measurement")}</button>
-      <div id="cal-local-status" role="status" aria-live="polite"></div>
+      <div id="cal-local-status" role="status" aria-live="polite">${this._localMeasurementStatus?.owner === device?.vacuum_entity ? _esc(this._localMeasurementStatus.text) : ''}</div>
     </details>`;
 
     return contributionForm;
@@ -16088,20 +16090,27 @@ class HAVacuumWaterMonitor extends HTMLElement {
     try {
       const result = await this._hass.callWS(request);
       if (result?.saved !== true || (result.sample_count != null && (!Number.isInteger(result.sample_count) || result.sample_count < 1))) throw new Error('Invalid measurement acknowledgement');
+      if (generation !== (this._localMeasurementGeneration || 0) || this._selectedDevice()?.vacuum_entity !== device.vacuum_entity) return true;
+      let message;
       if (result.bindings_refreshed === false) {
         this._bindingRefreshState = 'failed';
-        this._render({preserveDraft:true});
-        const current = sr.getElementById('cal-local-status');
-        if (current) current.textContent = this._bindingRefreshMessage();
-        return true;
+        message = this._bindingRefreshMessage();
+      } else {
+        message = result.sample_count == null ? this._waterText("Saved privately.") : result.calibration
+          ? `${this._waterText("Saved privately.")} ${result.sample_count} ${this._waterText("sample(s)")}; ${this._waterText("device calibration available within its measured area range. Independent accuracy remains separate.")}`
+          : `${this._waterText("Saved privately.")} ${result.sample_count} ${this._waterText("sample(s)")} ${this._waterText("for these settings; at least three distinct training cycles are needed.")}`;
       }
-      if (sr.getElementById('cal-local-status') !== status || generation !== (this._localMeasurementGeneration || 0)) return true;
-      if (status) status.textContent = result.sample_count == null ? this._waterText("Saved privately.") : result.calibration
-        ? `${this._waterText("Saved privately.")} ${result.sample_count} ${this._waterText("sample(s)")}; ${this._waterText("device calibration available within its measured area range. Independent accuracy remains separate.")}`
-        : `${this._waterText("Saved privately.")} ${result.sample_count} ${this._waterText("sample(s)")} ${this._waterText("for these settings; at least three distinct training cycles are needed.")}`;
+      this._localMeasurementStatus = {owner: device.vacuum_entity, text: message};
+      if (result.bindings_refreshed === false) this._render({preserveDraft:true});
+      const current = sr.getElementById('cal-local-status');
+      if (current) current.textContent = message;
       return true;
     } catch (_) {
-      if (sr.getElementById('cal-local-status') === status && status) status.textContent = this._waterText("Could not save. Check complete historical context, measurement boundaries, duplicate cycle and connection.");
+      if (generation === (this._localMeasurementGeneration || 0) && this._selectedDevice()?.vacuum_entity === device.vacuum_entity) {
+        const message = this._waterText("Could not save. Check complete historical context, measurement boundaries, duplicate cycle and connection.");
+        this._localMeasurementStatus = {owner: device.vacuum_entity, text: message};
+        const current = sr.getElementById('cal-local-status'); if (current) current.textContent = message;
+      }
       return false;
     } finally {
       if (sr.getElementById('cal-save') === button && button) button.disabled = false;
@@ -16374,15 +16383,16 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const device = this._selectedDevice() || {};
     const status = this.shadowRoot?.getElementById('vwm-reprofile-status');
     if (!device.vacuum_entity || !this._hass?.callWS) return false;
+    const accessEpoch = this._accessEpoch;
     try {
       const result = await this._hass.callWS({type: `${VWM_DOMAIN}/reprofile`, vacuum_entity: device.vacuum_entity});
+      if (accessEpoch !== this._accessEpoch) return false;
       this._serverState = {...this._serverState, settings: result.settings};
       this._discoveredVacuums = result.vacuums || [];
       this._balanceLinks = result.balance_links;
       if (result.bindings_refreshed === false) this._bindingRefreshState = 'failed';
+      this._reprofileStatus = {owner: device.vacuum_entity, text: result.bindings_refreshed === false ? this._bindingRefreshMessage() : this._waterText("Profile refreshed. Your calibration and history are preserved.")};
       this._render({preserveDraft:true});
-      const current = this.shadowRoot?.getElementById('vwm-reprofile-status');
-      if (current) current.textContent = result.bindings_refreshed === false ? this._bindingRefreshMessage() : this._waterText("Profile refreshed. Your calibration and history are preserved.");
       return true;
     } catch (error) {
       if (status) status.textContent = this._waterText("Could not refresh the profile. Please try again.");
@@ -17163,6 +17173,8 @@ target:
       if (result.vacuums) this._discoveredVacuums = result.vacuums;
       if (result.balance_links) this._balanceLinks = result.balance_links;
       this._bindingRefreshState = 'recovered';
+      this._localMeasurementStatus = null;
+      this._reprofileStatus = null;
       this._applyServerSettings();
     } catch (_) { this._bindingRefreshState = 'failed'; }
     this._lastHtml = '';
@@ -17613,10 +17625,10 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
       const style = this.shadowRoot.firstElementChild;
       const card = style?.nextElementSibling;
       if (style?.localName === 'style' && card?.localName === 'ha-card') {
-        const template = document.createElement('template');
-        template.innerHTML = _newHtml;
-        const nextStyle = template.content.querySelector('style');
-        const nextCard = template.content.querySelector('ha-card');
+        // Parse in the active document so existing inline handlers are live.
+        const fragment = document.createRange().createContextualFragment(_newHtml);
+        const nextStyle = fragment.querySelector('style');
+        const nextCard = fragment.querySelector('ha-card');
         if (style.textContent !== nextStyle.textContent) style.textContent = nextStyle.textContent;
         card.replaceChildren(...nextCard.childNodes);
       } else {
@@ -17965,6 +17977,7 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
       sr.getElementById(id)?.addEventListener('input', () => {
         this._invalidateContribution();
         this._localMeasurementGeneration = (this._localMeasurementGeneration || 0) + 1;
+        this._localMeasurementStatus = null;
         const localStatus = sr.getElementById('cal-local-status');
         if (localStatus) localStatus.textContent = '';
         if (id === 'cal-cycle') {

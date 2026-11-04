@@ -89,6 +89,7 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
   card._hass={language:'en',locale:{language:'en'},states:{},user:{is_admin:true},
     callWS:async msg=>{calls.push(msg);return {vacuum_entity:'vacuum.owner',state:{used_ml:0,initialized:true}}},
     connection:{subscribeMessage:async()=>()=>{}}};
+  card._serverReady=true; // This fixture supplies the loaded server state directly.
   card._serverState={settings:{},tank_states:{'vacuum.owner':{used_ml:432},'vacuum.copy':{used_ml:999}}};
   const device={vacuum_entity:'vacuum.copy',name:'Copy',water_total_ml:4000};
   card._getDevices=()=>[device];card._calcDeviceData=()=>({totalMl:4000,percentRemaining:70,remainingL:3,usedMl:999,initialized:true,vacState:'docked',calibrationHistory:[],refillHistory:[]});
