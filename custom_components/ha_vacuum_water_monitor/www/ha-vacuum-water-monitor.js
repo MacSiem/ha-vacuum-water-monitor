@@ -17592,7 +17592,19 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
 
     // Only update DOM if content actually changed
     if (_newHtml !== this._lastHtml) {
-      this.shadowRoot.innerHTML = _newHtml;
+      // Keep the already-rendered HA slot so restored focus is immediately valid.
+      const style = this.shadowRoot.firstElementChild;
+      const card = style?.nextElementSibling;
+      if (style?.localName === 'style' && card?.localName === 'ha-card') {
+        const template = document.createElement('template');
+        template.innerHTML = _newHtml;
+        const nextStyle = template.content.querySelector('style');
+        const nextCard = template.content.querySelector('ha-card');
+        if (style.textContent !== nextStyle.textContent) style.textContent = nextStyle.textContent;
+        card.replaceChildren(...nextCard.childNodes);
+      } else {
+        this.shadowRoot.innerHTML = _newHtml;
+      }
       this._lastHtml = _newHtml;
       if (this.preview) this.shadowRoot.querySelectorAll('button,input,select,textarea').forEach(control=>{control.setAttribute('aria-disabled','true');});
       else this._attachListeners(devices, device);
