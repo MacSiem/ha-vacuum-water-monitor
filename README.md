@@ -275,13 +275,13 @@ show_support: false
 
 ## Screenshots
 
-Version **5.12.0**, captured **18 October 2026** with synthetic device data. Estimates and nominal tank learning are not independent measurements of physical volume. Unknown water balances keep an explicit unknown state.
+Version **5.13.0-beta.3**, captured with synthetic device data in Home Assistant. Estimates and nominal tank learning are not independent measurements of physical volume. Unknown water balances keep an explicit unknown state.
 
-![Water tab — light](docs/screenshots/5.12/final-light1280.jpg)
+![Water panel — English](docs/screenshots/5.13/water-en.png)
 
-![Water tab — dark](docs/screenshots/5.12/final-dark390.jpg)
+![Water panel — Polish, 320 px](docs/screenshots/5.13/water-pl-mobile.png)
 
-The [eight-view QA gallery](docs/screenshots/5.12/README.md) includes 1280 light/dark, 390 light/dark, 320 dark, native Chrome 200%, Sections at 3 columns and Panel. Additional checks cover Sections at 6/12 columns, the visual editor and Polish/English output.
+The previous [5.12.0 QA gallery](docs/screenshots/5.12/README.md) remains available for historical reference.
 
 ## Installation
 

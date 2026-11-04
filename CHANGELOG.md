@@ -2,6 +2,9 @@
 
 ## 5.13.0-beta.3 (2026-11-04)
 
+- Restore configured external water counters and remaining sensors, including initial YAML setup, unit conversion, unavailable-state recovery and source access checks; preserve existing history without resetting external helpers.
+- Keep save confirmations visible through ordinary updates and make compact cards and narrow-screen tabs readable.
+- Recognize the reported Ecovacs T90 Pro Omni identifier k2iwaq; physical signals, firmware behaviour and water accuracy remain unverified.
 - Keep vacuum identity, calibration history and existing device associations across registry renames and refreshes; route shared tank actions to the selected balance owner.
 - Preserve concurrent settings changes and report storage or binding-refresh failures, with scoped access and revocation for users and robot resources.
 - Add standalone and dashboard views, compact and tile cards, a readonly preview, dashboard placement with undo, and first-use setup improvements.
