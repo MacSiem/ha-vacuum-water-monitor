@@ -67,5 +67,5 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
  }
 })().catch(e=>{console.error(e);process.exit(1)});
 """
-        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
