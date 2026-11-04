@@ -14836,11 +14836,25 @@ class HAVacuumWaterMonitor extends HTMLElement {
       percentRemaining = valid && totalMl > 0 ? Math.max(0, Math.min(100, measured / totalMl * 100)) : null;
     }
 
+    // Explicit DIY helpers own this balance. Never show stale Store values if
+    // the helper is unavailable or the current user cannot read its sources.
+    const external = tankState.external_counter;
+    const externalMode = Boolean(device.water_used_input || device.water_used_sensor || device.water_sensor || external);
+    if (externalMode) {
+      const source = external || {};
+      usedMl = typeof source.used_ml === 'number' && Number.isFinite(source.used_ml) && source.used_ml >= 0 ? source.used_ml : null;
+      const remaining = source.remaining_sensor ? source.remaining_ml : (usedMl !== null && totalMl > 0 ? Math.max(0, totalMl - usedMl) : null);
+      remainingL = typeof remaining === 'number' && Number.isFinite(remaining) && remaining >= 0 ? remaining / 1000 : null;
+      percentRemaining = remainingL !== null && totalMl > 0 ? Math.max(0, Math.min(100, remainingL * 1000 / totalMl * 100)) : null;
+      initialized = usedMl !== null || remainingL !== null;
+      stateReason = initialized ? null : 'external_counter_unavailable';
+    }
+
     const dockErr = this._getStateValue(device.dock_error_sensor);
     const waterAnchorKind = tankState.water_anchor_kind || null;
     const anchorActive = Boolean(tankState.water_empty_active);
-    const waterLow = anchorActive && waterAnchorKind === 'shortage';
-    const waterEmpty = anchorActive && !waterLow;
+    const waterLow = !externalMode && anchorActive && waterAnchorKind === 'shortage';
+    const waterEmpty = !externalMode && anchorActive && !waterLow;
     const vacState = this._getStateValue(device.vacuum_entity);
     const isCleaning = device.integration_adapter === 'tapo_rv30'
       ? this._getAttr(device.vacuum_entity, 'status_code') === 1
@@ -14855,8 +14869,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     let sessionMl = null;
     const sessionRaw = this._getStateValue(device.last_session_sensor);
     if (sessionRaw !== null && sessionRaw !== 'unavailable') sessionMl = parseFloat(sessionRaw);
+    const auxiliary = external || tankState.external_metadata;
+    if (externalMode || device.last_session_sensor) sessionMl = auxiliary?.last_session_ml ?? null;
 
-    const lastReset = this._getEffectiveLastReset(device);
+    const lastReset = externalMode || device.last_reset_entity ? (auxiliary?.last_reset || null) : this._getEffectiveLastReset(device);
 
     // Cleaning stats
     const areaCleaned = device.integration_adapter === 'tapo_rv30' && this._getStateValue(device.area_unit_entity) !== 'm²'
@@ -14902,7 +14918,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       partialUsedMl: stateReason === 'accounting_incomplete' && initialized
         && typeof tankState.used_ml === 'number' && Number.isFinite(tankState.used_ml)
         && tankState.used_ml >= 0 ? tankState.used_ml : null,
-      initialized, stateReason,
+      initialized, stateReason, externalMode,
       sessionActive: Boolean(tankState.session_start_ts),
       profileKey: device.profile_key || profileKey || null,
       profileSource: device.profile_source || (device.profile_key ? 'backend' : 'legacy_client_fallback'),
@@ -14932,7 +14948,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ? _vwmUncertainty(device.estimate_basis, _vwmStoredWindow(tankState)
           || (Number(tankState.calibration_samples) > 0 && Number(tankState.calibration_factor) > 0 ? [Math.log(Number(tankState.calibration_factor))] : []))
         : (typeof device.uncertainty_percent === 'number' && Number.isFinite(device.uncertainty_percent) ? device.uncertainty_percent : null),
-      lastResetSource: tankState.last_reset_source || null,
+      lastResetSource: externalMode || device.last_reset_entity ? null : (tankState.last_reset_source || null),
       refillHistory: Array.isArray(tankState.refill_history) ? tankState.refill_history : [],
       calibrationPending: tankState.calibration_pending_log_factor != null,
       intensityUnmapped: tankState.intensity_unmapped || null,
@@ -15061,7 +15077,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (!reasons.length) return '';
     return `<section class="water-alert section-block" role="status" aria-live="polite"><b>⚠ ${this._waterText('Water needs attention')}</b><ul>${reasons.join('')}</ul>
       ${(data.waterEmpty || data.waterLow) ? `<p>${this._waterText('Level anchored by an estimate; this is not a physical volume measurement.')} ${this._waterText('The empty signal anchors the estimated level. Only a qualified full cycle can update nominal learning; it is not a physical volume measurement.')}${data.waterLow && data.percentRemaining != null ? ` ${data.percentRemaining}%` : ''}</p>` : ''}
-      <p>${this._waterText(data.dockDirtyWaterProblem && !data.waterEmpty && !data.waterLow && !data.waterShortage && !data.dockCleanWaterProblem && !(data.percentRemaining != null && data.percentRemaining <= this._config.critical_threshold) ? 'Check the listed tanks. Empty the dirty-water tank or put it back in place.' : 'Check the listed tanks. Refill the tracked clean-water tank, then confirm Refilled.')}</p>
+      <p>${data.externalMode ? (this._lang === 'pl' ? 'Sprawdź zbiorniki i obsłuż dolanie we własnej automatyzacji licznika.' : 'Check the tanks and handle refills in your counter automation.') : this._waterText(data.dockDirtyWaterProblem && !data.waterEmpty && !data.waterLow && !data.waterShortage && !data.dockCleanWaterProblem && !(data.percentRemaining != null && data.percentRemaining <= this._config.critical_threshold) ? 'Check the listed tanks. Empty the dirty-water tank or put it back in place.' : 'Check the listed tanks. Refill the tracked clean-water tank, then confirm Refilled.')}</p>
       <button type="button" data-water-action>${this._waterText('Check the tanks')}</button></section>`;
   }
 
@@ -15122,6 +15138,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _supplyPresentation(device, data) {
+    if (data.externalMode) return {report:null, known:false, band:null, range:() => null};
     const report = this._healthFor(device);
     const uncertainty = report?.uncertainty_percent ?? data.uncertaintyPercent;
     const band = typeof uncertainty === 'number' && Number.isFinite(uncertainty) && uncertainty >= 0 ? uncertainty / 100 : null;
@@ -15213,9 +15230,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
 
     // Refill button resets the integration's HA Store state.
-    const refillBtn = (cfg.show_refill_button !== false)
+    const refillBtn = (cfg.show_refill_button !== false && !data.externalMode)
       ? `<button class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">\uD83D\uDCA7 ${this._lang === 'pl' ? 'Dolano' : 'Refilled'}</button>` : '';
-    const compactRefill = (cfg.show_refill_button !== false)
+    const compactRefill = (cfg.show_refill_button !== false && !data.externalMode)
       ? `<button type="button" class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">${this._lang === 'pl' ? 'Dolano' : 'Refilled'}</button>` : '';
 
     const alertBanner = this._buildWaterAlert(device, data);
@@ -15231,14 +15248,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
         </div>`
       : '';
 
-    const healthReport = this._healthFor(device);
+    const healthReport = data.externalMode ? null : this._healthFor(device);
     const setupHtml = this._buildSetupPanel(device, healthReport);
     const setupBlocking = Boolean(healthReport && healthReport.status === 'action_needed');
     // The setup panel asks the question the guidance box would only describe.
-    const accountingHtml = setupBlocking && ['awaiting_refill', 'accounting_incomplete', 'mop_signal_unbound'].includes(data.stateReason)
+    const accountingHtml = data.externalMode ? `<div role="status">${this._lang === 'pl' ? 'Stan pochodzi z zewnętrznego licznika i odświeża się po jego zmianie. Dolanie obsłuż we własnej automatyzacji; VWM nie resetuje licznika.' : 'Water state follows your external counter. Handle refills in your own automation; VWM does not reset the counter.'}</div>` : setupBlocking && ['awaiting_refill', 'accounting_incomplete', 'mop_signal_unbound'].includes(data.stateReason)
       ? '' : this._buildAccountingGuidance(data);
     const nominal = this._serverState?.tank_states?.[device.vacuum_entity]?.nominal_time_resolution;
-    const diagnosticsHtml = this._buildDiagnostics({...data, nominalTimeResolution: nominal});
+    const diagnosticsHtml = data.externalMode ? '' : this._buildDiagnostics({...data, nominalTimeResolution: nominal});
 
     const dockHtml = (cfg.show_dock_status !== false) ? this._buildDockSection(device, data) : '';
     // A mop-capable robot still needs water setup when its tank size is unknown.
@@ -15307,7 +15324,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ${noWaterTracking && data.charge !== null ? `<div class="details">${this._buildBatteryBar(data.charge)}</div>` : ''}
         ${dockHtml}
         <details class="water-details section-block"><summary>${this._waterText('Details')}</summary>${configMissingBanner}${setupHtml}${accountingHtml}${diagnosticsHtml}</details>
-        ${this._buildEstimateConfidence(device, data)}
+        ${data.externalMode ? '' : this._buildEstimateConfidence(device, data)}
       </div>`;
   }
 

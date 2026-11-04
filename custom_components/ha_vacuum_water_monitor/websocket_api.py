@@ -58,7 +58,7 @@ def _request_source_entities(msg: dict[str, Any]) -> set[str]:
             for key, item in value.items():
                 key = str(key)
                 visit(item, binding or key.endswith(("_sensor", "_entity")) or key in
-                      ("signal_overrides", "button_entity", "lid_entity", "signals"))
+                      ("signal_overrides", "button_entity", "lid_entity", "signals", "water_used_input"))
         elif isinstance(value, list):
             for item in value:
                 visit(item, binding)
@@ -70,8 +70,12 @@ def _request_source_entities(msg: dict[str, Any]) -> set[str]:
 def _shared_tank(state: dict[str, Any]) -> dict[str, Any]:
     """Live balance only, without a measurement bank or origin details."""
     fields = ("initialized", "used_ml", "accounting_incomplete", "water_empty_active", "last_reset_ts",
-              "last_reset_iso", "last_water_volume_ml", "last_status")
+              "last_reset_iso", "last_water_volume_ml", "last_status", "external_counter", "external_metadata")
     result = {key: state[key] for key in fields if key in state}
+    if isinstance(result.get("external_counter"), dict):
+        result["external_counter"] = {k: v for k, v in result["external_counter"].items() if k != "last_session_ml"}
+    if isinstance(result.get("external_metadata"), dict):
+        result["external_metadata"] = {k: v for k, v in result["external_metadata"].items() if k != "last_session_ml"}
     physical = state.get("accounting_v2")
     if isinstance(physical, dict):
         result["accounting_v2"] = {key: physical[key] for key in ("status", "balances_ml") if key in physical}
@@ -139,6 +143,23 @@ async def _filtered_result(hass, user_id, value):
     if isinstance(value.get("tank_states"), dict):
         value["tank_states"] = {entity: (tank if entity in measurements else _shared_tank(tank))
                                 for entity, tank in value["tank_states"].items()}
+    # Re-check source ACL immediately before returning the per-user view: it
+    # may have changed after the handler built the external projection.
+    if isinstance(value.get("tank_states"), dict) and any(
+            isinstance(t, dict) and (isinstance(t.get("external_counter"), dict) or isinstance(t.get("external_metadata"), dict)) for t in value["tank_states"].values()):
+        from .external_counter import source_entities
+        from .feature_access import check_native_read
+        devices = build_vacuum_devices(stored.get("settings") or {}, stored.get("tank_states") or {}, list_vacuums(hass))
+        for device in devices:
+            sources = source_entities(device)
+            tank = value["tank_states"].get(device.get("vacuum_entity"))
+            if sources and isinstance(tank, dict) and not await check_native_read(hass, user_id, sources):
+                if isinstance(tank.get("external_counter"), dict):
+                    tank.update(used_ml=None, initialized=False, last_reset_iso=None)
+                    tank["external_counter"] = {"used_ml": None, "remaining_ml": None, "remaining_sensor": True,
+                                                "last_session_ml": None, "last_reset": None}
+                if isinstance(tank.get("external_metadata"), dict):
+                    tank["external_metadata"] = {"last_session_ml": None, "last_reset": None}
     if isinstance(value.get("state"), dict):
         owner = value.get("vacuum_entity")
         if owner not in allowed:
@@ -155,7 +176,16 @@ async def _filtered_result(hass, user_id, value):
         if isinstance(value.get(key), list):
             value[key] = [v for v in value[key] if isinstance(v, dict)
                           and (v.get("entity_id") or v.get("vacuum_entity")) in allowed]
+    from .external_counter import source_entities
+    from .feature_access import check_native_read
+    configured = (build_vacuum_devices(stored.get("settings") or {}, stored.get("tank_states") or {}, list_vacuums(hass))
+                  if value.get("robots") else [])
+    external_sources = {d.get("vacuum_entity"): source_entities(d) for d in configured
+                        if any(d.get(k) for k in ("water_used_input", "water_used_sensor", "water_sensor"))}
     for report in value.get("robots") or []:
+        sources = external_sources.get(report.get("vacuum_entity"))
+        if sources and not await check_native_read(hass, user_id, sources):
+            report.update(remaining_percent=None, initialized=False, supply=None, checks=[], status="unknown")
         if report.get("vacuum_entity") not in measurements:
             for key in ("last_tank", "recent_errors_percent", "typical_error_percent", "calibration_factor", "calibration_samples"):
                 report.pop(key, None)
@@ -195,7 +225,7 @@ async def _filtered_result(hass, user_id, value):
             return item if user is not None and user.permissions.check_entity(item, POLICY_READ) else None
         if isinstance(item, dict):
             return {key: scrub_sources(child, binding or str(key).endswith(("_sensor", "_entity")) or str(key) in
-                    ("signal_overrides", "button_entity", "lid_entity", "signals")) for key, child in item.items()}
+                    ("signal_overrides", "button_entity", "lid_entity", "signals", "water_used_input")) for key, child in item.items()}
         if isinstance(item, list):
             return [scrub_sources(child, binding) for child in item]
         return item
@@ -365,6 +395,29 @@ def _authorize(feature: str, operation: str):
                             is_active=user.is_active, is_admin=user.is_admin, entity_id=entity)
                         and user.permissions.check_entity(entity, POLICY_READ))
             if isinstance(result, dict):
+                # Native source rights may change after async filtering. Fence
+                # external values against the final principal without awaiting.
+                tanks_for_acl = result.get("tank_states") or {}
+                if result.get("robots") or any(isinstance(t, dict) and (isinstance(t.get("external_counter"), dict) or isinstance(t.get("external_metadata"), dict)) for t in tanks_for_acl.values()):
+                    from .external_counter import source_entities
+                    stored_now = _storage(hass)._data or {}
+                    devices_now = build_vacuum_devices(stored_now.get("settings") or {}, stored_now.get("tank_states") or {}, list_vacuums(hass))
+                    for device in devices_now:
+                        sources = source_entities(device)
+                        if not sources or all(user.permissions.check_entity(e, POLICY_READ) for e in sources):
+                            continue
+                        entity = device.get("vacuum_entity")
+                        tank = tanks_for_acl.get(entity)
+                        if isinstance(tank, dict) and isinstance(tank.get("external_counter"), dict):
+                            tank.update(used_ml=None, initialized=False, last_reset_iso=None)
+                            tank["external_counter"] = {"used_ml": None, "remaining_ml": None, "remaining_sensor": True,
+                                                        "last_session_ml": None, "last_reset": None}
+                        if isinstance(tank, dict) and isinstance(tank.get("external_metadata"), dict):
+                            tank["external_metadata"] = {"last_session_ml": None, "last_reset": None}
+                        if any(device.get(k) for k in ("water_used_input", "water_used_sensor", "water_sensor")):
+                            for report in result.get("robots") or []:
+                                if report.get("vacuum_entity") == entity:
+                                    report.update(remaining_percent=None, initialized=False, supply=None, checks=[], status="unknown")
                 if isinstance(result.get("ambiguous_vacuum_ids"), list) and not user.is_admin:
                     from . import _vacuum_registry_identities
                     identities = _vacuum_registry_identities(hass)
@@ -689,8 +742,28 @@ async def _ws_get_state(
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Return persisted settings and tank states."""
-    connection.send_result(msg["id"], await _storage(hass).async_get_state())
+    """Return settings and a read-only, permission-scoped external counter view."""
+    from copy import deepcopy
+    from .external_counter import apply_external_view, project_auxiliary, project_external_counter, source_entities
+    from .feature_access import check_native_read
+    stored = deepcopy(await _storage(hass).async_get_state())
+    devices = build_vacuum_devices(stored.get("settings") or {}, stored.get("tank_states") or {}, list_vacuums(hass))
+    for device in devices:
+        sources = source_entities(device)
+        if not sources:
+            continue
+        entity = device["vacuum_entity"]
+        allowed = await check_native_read(hass, connection.user.id, sources)
+        external_mode = any(device.get(k) for k in ("water_used_input", "water_used_sensor", "water_sensor"))
+        tank = stored.setdefault("tank_states", {}).setdefault(entity, {})
+        if external_mode:
+            projection = project_external_counter(hass, device, stored.get("settings") or {}) if allowed else {
+                "used_ml": None, "remaining_ml": None, "remaining_sensor": True,
+                "last_session_ml": None, "last_reset": None}
+            apply_external_view(tank, projection)
+        else:
+            tank["external_metadata"] = project_auxiliary(hass, device) if allowed else {"last_session_ml": None, "last_reset": None}
+    connection.send_result(msg["id"], stored)
 
 
 @websocket_api.websocket_command(

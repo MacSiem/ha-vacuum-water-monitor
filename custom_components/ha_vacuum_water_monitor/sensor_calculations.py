@@ -313,6 +313,22 @@ def estimate_water_state(
         "water_anchor_kind": tank_state.get("water_anchor_kind"),
         "water_anchor_confidence": tank_state.get("water_anchor_confidence"),
     }
+    external = tank_state.get("external_counter")
+    if isinstance(external, dict):
+        used = external.get("used_ml")
+        remaining = external.get("remaining_ml") if external.get("remaining_sensor") else (
+            max(0, total_ml - used) if total_ml is not None and used is not None else None)
+        return {**metadata, "initialized": used is not None or remaining is not None,
+                "source": "external_counter", "state_reason": None if used is not None or remaining is not None else "external_counter_unavailable",
+                "total_ml": _format_number(total_ml) if total_ml is not None else None,
+                "used_ml": _format_number(used) if used is not None else None,
+                "remaining_ml": _format_number(remaining) if remaining is not None else None,
+                "remaining_percent": _format_number(round(_clamp(remaining / total_ml * 100, 0, 100), 1)) if remaining is not None and total_ml else None,
+                "estimate_basis": None, "estimate_sources": [], "uncertainty_kind": None, "uncertainty_percent": None,
+                "nominal_time_resolution": {}, "calibration_history": [], "calibration_factor": None,
+                "calibration_basis": None, "calibration_samples": 0, "accounting_evidence": "external_counter",
+                "water_anchor_kind": None, "water_anchor_confidence": None, "cycle_full_confirmed": False,
+                "cycle_full_confirmation_source": None, "whole_cycle_fallback_reason": None, "cycle_action_totals": {}}
     if device.get("water_volume_sensor") or tank_state.get("last_accounting_source") == "real_sensor":
         measured = tank_state.get("last_water_volume_ml")
         valid = type(measured) in (int, float) and math.isfinite(measured) and measured >= 0

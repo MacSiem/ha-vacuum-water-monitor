@@ -302,6 +302,13 @@ class VacuumStoreSensor(SensorEntity):
         stored_tank = tank_states.get(self.vacuum_entity)
         if isinstance(stored_tank, dict):
             tank_state.update(stored_tank)
+        from .external_counter import apply_external_view, project_auxiliary, project_external_counter
+        external = project_external_counter(self.hass, self._device, settings)
+        if external is not None:
+            apply_external_view(tank_state, external)
+        if self._device.get("last_reset_entity") or external is not None:
+            tank_state["last_reset_iso"] = project_auxiliary(self.hass, self._device).get("last_reset")
+            tank_state["last_reset_ts"] = 0
         return settings, tank_state
 
 
@@ -443,8 +450,11 @@ class CleaningsLeftSensor(VacuumStoreSensor):
 
         settings, tank_state = await self._store_context()
         estimate = estimate_water_state(self._device, tank_state, settings)
-        forecast = supply_forecast(tank_state, estimate.get("remaining_ml"),
-                                   int(datetime.now(timezone.utc).timestamp() * 1000))
+        forecast = (supply_forecast(tank_state, estimate.get("remaining_ml"),
+                                    int(datetime.now(timezone.utc).timestamp() * 1000))
+                    if "external_counter" not in tank_state else
+                    {"cleanings_left": None, "days_left": None, "water_per_cleaning_ml": None,
+                     "water_per_day_ml": None, "basis_runs": 0})
         self._attr_native_value = forecast["cleanings_left"]
         self._attr_extra_state_attributes = {
             "vacuum_entity": self.vacuum_entity,

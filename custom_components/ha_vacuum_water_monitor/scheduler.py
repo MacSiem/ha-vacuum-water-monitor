@@ -35,9 +35,13 @@ def bound_entities(device: dict[str, Any]) -> set[str]:
     for key, value in device.items():
         if key in _IGNORED_FIELDS:
             continue
-        if key == "vacuum_entity" or key.endswith("_sensor") or key.endswith("_entity"):
+        if key in ("vacuum_entity", "water_used_input") or key.endswith("_sensor") or key.endswith("_entity"):
             if isinstance(value, str) and "." in value:
                 entities.add(value)
+    for key in ("water_used_input", "water_used_sensor", "water_sensor", "last_session_sensor", "last_reset_entity"):
+        value = device.get(key)
+        if isinstance(value, str) and "." in value:
+            entities.add(value)
     signals = device.get("signals")
     if isinstance(signals, dict):
         entities.update(v for v in signals.values() if isinstance(v, str) and "." in v)

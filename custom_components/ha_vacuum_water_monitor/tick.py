@@ -207,9 +207,8 @@ async def async_tick_water_state(
         if vacuum_entities is not None and vacuum_entity not in vacuum_entities:
             continue
         # Respect user's pre-existing DIY automations: if the device config
-        # points at an input_number/input_datetime for water tracking AND that
-        # entity is registered in HA, the user already has automation/template
-        # accounting in place. Skip our own tick to avoid double-counting.
+        # points at a DIY counter or remaining sensor, the user owns accounting. Skip our
+        # tick even when that helper is temporarily unavailable.
         if _has_user_priv_helpers(hass, device):
             continue
         state = VacuumWaterStorage.default_tank_state()
@@ -1916,13 +1915,10 @@ def _has_user_priv_helpers(
     template sensor created by a DIY automation). In that case the integration
     must defer accounting to the user's existing setup and only display state.
 
-    The card mirror (`www/ha-vacuum-water-monitor.js::_hasPrivHelpers`) is kept
-    in sync — it queries the same key (`water_used_input`) against `hass.states`.
+    A configured helper remains authoritative while unavailable; readers
+    project its current value without replacing the stored accounting state.
     """
-    input_id = device.get("water_used_input")
-    if not input_id:
-        return False
-    return hass.states.get(input_id) is not None
+    return any(device.get(key) for key in ("water_used_input", "water_used_sensor", "water_sensor"))
 
 
 def _state_value(hass: HomeAssistant, entity_id: str | None) -> str | None:

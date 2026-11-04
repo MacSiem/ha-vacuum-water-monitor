@@ -381,6 +381,7 @@ def _async_start_tick(
     if bucket.get(DATA_TICK_UNSUB):
         return
     subscription: dict[str, Any] = {"unsub": None}
+    external_entities: set[str] = set()
 
     def _publish(changed: dict[str, Any]) -> None:
         if changed:
@@ -395,9 +396,16 @@ def _async_start_tick(
     @callback
     def _on_state_change(event: Event) -> None:
         data = event.data
-        ticker.handle_change(data.get("entity_id"), data.get("old_state"), data.get("new_state"))
+        entity = data.get("entity_id")
+        if entity in external_entities and data.get("old_state") != data.get("new_state"):
+            async_dispatcher_send(hass, signal_vacuum_water_updated(entry_id), {})
+            hass.bus.async_fire(EVENT_STATE_CHANGED, {"state_changed": True})
+        ticker.handle_change(entity, data.get("old_state"), data.get("new_state"))
 
     def _rebind(devices: list[dict[str, Any]]) -> None:
+        from .external_counter import source_entities
+        external_entities.clear()
+        external_entities.update(entity for device in devices for entity in source_entities(device))
         if not ticker.update_bindings(devices) and subscription["unsub"] is not None:
             return
         if subscription["unsub"] is not None:

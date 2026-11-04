@@ -13,6 +13,7 @@ from typing import Any
 
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import CoreState, HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later
@@ -109,6 +110,9 @@ async def async_mark_refilled_with_owner(hass: HomeAssistant, vacuum_entity: str
     """Return the actual owner and its state for consumers caching the result."""
     stored = await storage(hass).async_get_state()
     vacuum_entity = resolve_balance_owner(hass, stored, vacuum_entity)
+    devices = build_vacuum_devices(stored.get("settings") or {}, stored.get("tank_states") or {})
+    if any(d.get("vacuum_entity") == vacuum_entity and any(d.get(k) for k in ("water_used_input", "water_used_sensor", "water_sensor")) for d in devices):
+        raise HomeAssistantError("This robot uses an external water counter. Update it in your own automation; VWM does not reset it.")
     now = datetime.now(timezone.utc)
     state = await storage(hass).async_reset_tank(
         vacuum_entity, now.isoformat(), int(now.timestamp() * 1000), source=source)
@@ -126,6 +130,9 @@ async def async_mark_empty_with_owner(hass: HomeAssistant, vacuum_entity: str) -
     """Return the owner as well as the state after marking its tank empty."""
     stored = await storage(hass).async_get_state()
     vacuum_entity = resolve_balance_owner(hass, stored, vacuum_entity)
+    devices = build_vacuum_devices(stored.get("settings") or {}, stored.get("tank_states") or {})
+    if any(d.get("vacuum_entity") == vacuum_entity and any(d.get(k) for k in ("water_used_input", "water_used_sensor", "water_sensor")) for d in devices):
+        raise HomeAssistantError("This robot uses an external water counter. Update it in your own automation; VWM does not reset it.")
     report = next((r for r in await async_reports(hass) if r.get("vacuum_entity") == vacuum_entity), None)
     if report is not None and report.get("can_calibrate"):
         raise ValueError("This robot reports an empty tank itself; Tank empty is for robots that cannot")
@@ -179,6 +186,10 @@ def build_reports(hass: HomeAssistant, stored: dict[str, Any], discovered: list[
         tank = VacuumWaterStorage.default_tank_state()
         if isinstance(tank_states.get(entity), dict):
             tank.update(tank_states[entity])
+        from .external_counter import apply_external_view, project_external_counter
+        external = project_external_counter(hass, device, settings)
+        if external is not None:
+            apply_external_view(tank, external)
         effective = apply_custom_calibration(device, settings)
         estimate = estimate_water_state(device, tank, settings)
         _capacity, source = water_capacity(device, settings)
@@ -196,6 +207,11 @@ def build_reports(hass: HomeAssistant, stored: dict[str, Any], discovered: list[
             duplicate_of_name=(by_entity.get(duplicate_of) or {}).get("name") if duplicate_of else None,
             mop_attribute_present=mop_attribute_present,
         )
+        if external is not None:
+            report.update(can_calibrate=False, refill_method="external_counter", auto_refill=False,
+                          auto_refill_supported=False, supply=None, last_tank=None, recent_errors_percent=[],
+                          typical_error_percent=None, calibration_factor=None, calibration_samples=0)
+            report["checks"] = [c for c in report["checks"] if c.get("id") not in ("manual_refill", "no_empty_signal")]
         report["available"] = state is not None and state.state != STATE_UNAVAILABLE
         reports.append(report)
     return reports
