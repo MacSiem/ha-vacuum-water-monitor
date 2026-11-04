@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.13.0-beta.3 (2026-11-04)
+
+- Keep vacuum identity, calibration history and existing device associations across registry renames and refreshes; route shared tank actions to the selected balance owner.
+- Preserve concurrent settings changes and report storage or binding-refresh failures, with scoped access and revocation for users and robot resources.
+- Add standalone and dashboard views, compact and tile cards, a readonly preview, dashboard placement with undo, and first-use setup improvements.
+- Preserve an unsaved history draft and active input focus during ordinary updates; restore normal interaction after leaving the card editor.
+- TapoVac and model-specific physical measurements remain experimental; estimates and forecasts are not independent measurements of tank volume.
+
 ## 5.13.0-beta.2 (2026-10-19)
 
 - After confirming that the TapoVac and Matter entries are the same robot in the card, automatically use its Matter cleaning programme without YAML. Refresh the linked control immediately and revoke it on unlink. Keep one accounting owner and preserve existing calibration banks.
