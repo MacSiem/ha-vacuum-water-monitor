@@ -124,7 +124,8 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
         self.assertIn("button.zigbee_refill", html, "button entities are offered, not only input_button")
         self.assertIn('value="binary_sensor.dock_lid" selected', html, "a pre-5.7 lid binding is shown")
         self.assertIn("Recent refills", html)
-        self.assertIn("dock reported refilled", html)
+        self.assertIn("station alarm cleared", html)
+        self.assertNotIn("dock reported refilled", html)
         self.assertIn("automation.vwm_refill_robot_sensor", html)
 
     def test_automatic_refill_needs_a_dock_signal(self):
