@@ -15647,7 +15647,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
             ${effectiveCalibration}
             <button type="button" style="padding:8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);cursor:pointer" onclick="this.getRootNode().host._reprofileDevice()">${this._waterText("Refresh detected profile")}</button>
-            <div id="vwm-reprofile-status" role="status" aria-live="polite">${this._reprofileStatus?.owner === device?.vacuum_entity ? _esc(this._reprofileStatus.text) : ''}</div>
+            <div id="vwm-reprofile-status" role="status" aria-live="polite">${this._reprofileStatus && this._reprofileStatus.owner === device?.vacuum_entity ? _esc(this._reprofileStatus.text) : ''}</div>
             <p>${this._waterText("Refresh updates robot recognition from Home Assistant. Your tank sizes, calibration, signal assignments and history are kept.")}</p>
             <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
               ${this._waterText("With supported refill and empty-tank signals, calibration learns during normal cleaning. You do not need to test each mode. The measurements below are optional overrides.")}
@@ -15852,7 +15852,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <label><span><input type="checkbox" id="cal-boundaries" /> ${this._waterText("Same full reservoir level before and after; no intermediate refill or unmeasured transfer")}</span></label>
       <label><span><input type="checkbox" id="cal-uninterrupted" /> ${this._waterText("Complete cycle observed from zero area, with unchanged settings and no interruption")}</span></label>
       <button type="button" id="cal-save" class="maint-add-btn" ${recordedCycles.length ? '' : 'disabled'}>${this._waterText("Save private measurement")}</button>
-      <div id="cal-local-status" role="status" aria-live="polite">${this._localMeasurementStatus?.owner === device?.vacuum_entity ? _esc(this._localMeasurementStatus.text) : ''}</div>
+      <div id="cal-local-status" role="status" aria-live="polite">${this._localMeasurementStatus && this._localMeasurementStatus.owner === device?.vacuum_entity ? _esc(this._localMeasurementStatus.text) : ''}</div>
     </details>`;
 
     return contributionForm;

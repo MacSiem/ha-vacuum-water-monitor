@@ -13,7 +13,7 @@ function fixture(language='en',config={}) {
  const device={vacuum_entity:'vacuum.demo',name:'Robot',water_total_ml:4000};
  const data={totalMl:4000,percentRemaining:null,remainingL:null,usedMl:null,charge:null,stateReason:'missing_time_rate',initialized:false,calibrationHistory:[],refillHistory:[],vacState:'docked'};
  card._getDevices=()=>[device];card._calcDeviceData=()=>data;card._healthFor=()=>null;
- card._ensureServerState=()=>null;dom.window.document.body.append(card);card._render();return {dom,card,device,data,sr:card.shadowRoot};
+ card._ensureServerState=()=>null;card._serverReady=true;dom.window.document.body.append(card);card._render();return {dom,card,device,data,sr:card.shadowRoot};
 }
 test('unknown state replaces the empty ring in PL and EN',()=>{
  for(const [lang,unknown,refill] of [['pl','Stan zbiornika nieznany','Dolano'],['en','Tank state unknown','Refilled']]) {
@@ -26,8 +26,9 @@ test('unknown state replaces the empty ring in PL and EN',()=>{
 });
 test('missing rate is visible and refill does not claim to repair it',()=>{
  const {dom,card,data,sr}=fixture('en',{compact:true});
- assert.match(sr.querySelector('.vwm-compact').textContent,/Time consumption rate missing/);
- assert.match(sr.querySelector('.vwm-compact').textContent,/does not provide a consumption rate/);
+ sr.querySelector('#vwm-expand').click();
+ assert.match(sr.textContent,/Time consumption rate missing/);
+ assert.match(card._buildAccountingGuidance(data),/paused until an applicable measured calibration rate/);
  data.initialized=false;
  assert.doesNotMatch(card._buildAccountingGuidance(data),/until you press Refilled/);
  dom.window.close();
