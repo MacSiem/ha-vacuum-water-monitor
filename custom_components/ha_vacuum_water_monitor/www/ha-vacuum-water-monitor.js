@@ -17601,6 +17601,20 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
 .vwm-tile-copy{display:grid;min-width:0}.vwm-tile-copy strong,.vwm-tile-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vwm-tile-copy span{font-size:12px !important}.vwm-tile-short{display:none}
 @container (max-width:279px){.vwm-tile-long{display:none}.vwm-tile-short{display:block}}
 @container (max-width:219px){.vwm-tile-action{display:none}}
+@container (max-width:360px){.card .tab-nav .tab-btn{font-size:11px!important;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}}
+@container (max-width:180px){
+  .card:has(.vwm-compact:not(.vwm-tile)){padding:8px}
+  .vwm-compact:not(.vwm-tile){gap:8px}
+  .vwm-compact-heading{gap:6px}
+  .vwm-compact-heading .vwm-icon{width:24px;height:24px;flex-basis:24px}
+  .vwm-heading-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vwm-value-row{display:grid;gap:2px}
+  .vwm-value-row small{max-width:none;text-align:left;overflow-wrap:normal}
+  .card .vwm-main-value{font-size:22px!important}
+  .vwm-confidence{flex-wrap:wrap;gap:2px 6px}
+  .vwm-compact-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+  .card .vwm-compact-actions button{width:100%;padding:8px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
 @media (prefers-reduced-motion:reduce){.card *{animation-duration:.001ms !important;transition-duration:.001ms !important}}
 </style>
       <ha-card><div class="card">

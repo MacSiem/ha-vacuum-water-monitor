@@ -227,6 +227,12 @@
               "low"
             ]
           },
+          "allow_class_prior": {
+            "type": "boolean"
+          },
+          "allow_inferred_dock_anchor": {
+            "type": "boolean"
+          },
           "verification_status": {
             "enum": [
               "researched",

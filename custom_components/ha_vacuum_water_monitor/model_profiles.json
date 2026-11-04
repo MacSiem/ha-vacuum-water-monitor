@@ -1810,7 +1810,7 @@
       "model": "DEEBOT T90 PRO OMNI",
       "model_ids": ["k2iwaq"],
       "regional_skus": [{"region": "unknown", "sku": null, "equivalence_verified": false}],
-      "observed_ha_identifiers": ["k2iwaq"],
+      "observed_ha_identifiers": [{"kind": "public_issue_report", "values": ["k2iwaq"], "source": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/26", "date": "2026-11-03", "confidence": "medium"}],
       "integration_adapters": ["ecovacs"],
       "available_signals": [],
       "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": 2200, "robot_clean": null, "robot_dirty": null, "detergent": null},
