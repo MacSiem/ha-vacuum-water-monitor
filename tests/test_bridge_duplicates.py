@@ -296,13 +296,14 @@ const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
   subscriber({data:{registry_rename:{old:'vacuum.old',new:id}}});
   subscriber({data:{settings}});await new Promise(r=>setTimeout(r,10));
   release();await new Promise(r=>setTimeout(r,60));
-  assert.equal(reads,3);assert.equal(lists,3);
+  // The authored save needs a fresh projection; its queued event is also drained.
+  assert.equal(reads,4);assert.equal(lists,4);
   assert.deepEqual([...card._serverState.ambiguous_vacuum_ids],[]);
   assert.doesNotMatch(card.shadowRoot.textContent,/Card paused/);
   if(compact){const number=card.shadowRoot.querySelector('.vwm-main-value'),unit=card.shadowRoot.querySelector('.vwm-main-unit');assert(number&&unit);assert.equal(Number(number.textContent.replace(',','.')),3.99);assert.match(unit.textContent,/^\s*\/\s*4\s*L$/);}
   else assert.match(card.shadowRoot.querySelector('#vwm-tab-panel').textContent,/3[.,]99\s*L/);
   assert(card.shadowRoot.querySelector('.refill-btn'));
-  await new Promise(r=>setTimeout(r,40));assert.equal(reads,3);assert.equal(lists,3);
+  await new Promise(r=>setTimeout(r,40));assert.equal(reads,4);assert.equal(lists,4);
   assert.equal(calls.filter(x=>x.endsWith('/set_settings')).length,1);
   assert.equal(calls.filter(x=>x.endsWith('/reset_tank')).length,0);dom.window.close();
  }

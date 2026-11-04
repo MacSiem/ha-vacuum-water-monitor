@@ -21,6 +21,10 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
  const card=w.document.createElement('ha-vacuum-water-monitor');card.setConfig({vacuum_entity:id,water_total_ml:4000,water_used_input:helper,show_support:false});card.hass=hass;w.document.body.append(card);await pause(180);
  const data=()=>card._calcDeviceData(card._getDevices()[0]);assert.equal(data().usedMl,500);assert.equal(data().remainingL,3.5);
  assert.equal(card.shadowRoot.querySelector('.refill-btn'),null); assert.match(card.shadowRoot.textContent,/own automation; VWM does not reset the counter/);
+ for(const [lang,expected] of [['en',/Forecast unavailable for an external water source/],['pl',/Brak prognozy dla zewnętrznego źródła wody/]]){
+  card._lang=lang;const html=card._buildSupplyAnswer(card._getDevices()[0],data());assert.match(html,expected);assert(!html.includes('data-open-confidence'));
+ }
+ card._lang='en';
  used=1500;emit({data:{state_changed:true,authorized_vacuums:[id]}});await pause(180);assert.equal(data().usedMl,1500);assert.equal(data().remainingL,2.5);assert.match(card.shadowRoot.textContent,/2\.50/);
  used=0;emit({data:{state_changed:true,authorized_vacuums:[id]}});await pause(180);assert.equal(data().usedMl,0);assert.equal(data().remainingL,4);
  used=null;emit({data:{state_changed:true,authorized_vacuums:[id]}});await pause(180);assert.equal(data().usedMl,null);assert.equal(data().remainingL,null);assert(!calls.some(x=>x.endsWith('/reset_tank')));
