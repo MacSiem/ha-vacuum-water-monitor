@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+from aiohttp import web
 from homeassistant.components.frontend import add_extra_js_url
-from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import Event, HomeAssistant, ServiceCall, callback
@@ -16,6 +18,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service import async_extract_entity_ids
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
@@ -34,7 +37,6 @@ from .const import (
     SERVICE_MARK_REFILLED,
     DOMAIN,
     EVENT_STATE_CHANGED,
-    event_tank_states,
     VERSION,
     signal_vacuum_water_updated,
 )
@@ -45,7 +47,6 @@ from .robots import (
     async_clear_issues,
     async_mark_refilled,
     async_schedule_issue_sync,
-    resolve_link,
 )
 from .storage import VacuumWaterStorage
 from .tick import async_tick_water_state
@@ -54,6 +55,7 @@ from .websocket_api import _notify_store_updated, async_register_commands
 _LOGGER = logging.getLogger(__name__)
 
 _CARD_URL_PATH = f"/{DOMAIN}/ha-vacuum-water-monitor.js"
+_PANEL_URL_PATH = "vacuum-water-monitor"
 _CARD_FILENAME = "ha-vacuum-water-monitor.js"
 _CARD_PACKAGE_DIR = "www"
 
@@ -74,6 +76,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await storage.async_set_settings(option_patch)
     bucket[DATA_STORAGE] = storage
 
+    await storage.async_reconcile_registry(_vacuum_registry_identities(hass))
+    stop_registry, registry_tasks = _listen_vacuum_registry(hass, storage)
+    bucket["_registry_listener"] = (stop_registry, registry_tasks)
+    entry.async_on_unload(stop_registry)
+
     await _async_prune_ghost_devices(hass, storage)
 
     if not bucket.get(DATA_WS_REGISTERED):
@@ -81,6 +88,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         bucket[DATA_WS_REGISTERED] = True
 
     await _async_register_frontend(hass)
+    await _async_register_standalone_panel(hass)
+    await _async_notify_first_setup(hass, storage)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_start_tick(hass, storage, entry.entry_id)
     _async_register_services(hass)
@@ -94,6 +103,87 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.debug("Vacuum Water Monitor set up (entry_id=%s)", entry.entry_id)
     return True
+
+
+@callback
+def _vacuum_registry_identities(hass: HomeAssistant) -> dict[str, list[str]]:
+    """Snapshot authoritative registry identity, never names or model guesses."""
+    result = {}
+    for entity in er.async_get(hass).entities.values():
+        if (entity.entity_id.startswith("vacuum.") and entity.platform and entity.unique_id):
+            result[entity.entity_id] = [entity.platform, entity.unique_id, entity.config_entry_id or ""]
+    return result
+
+
+@callback
+def _listen_vacuum_registry(hass: HomeAssistant, storage: VacuumWaterStorage):
+    tasks = set()
+    async def process(event: Event) -> None:
+        old = event.data.get("old_entity_id")
+        new = event.data.get("entity_id")
+        if isinstance(old, str) and isinstance(new, str) and old.startswith("vacuum.") and new.startswith("vacuum."):
+            ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+            renamed = (await ticker.run_serialized(lambda: storage.async_rename_vacuum(old, new))
+                       if ticker is not None else await storage.async_rename_vacuum(old, new))
+            if renamed:
+                _notify_store_updated(hass, {"registry_rename": {"old": old, "new": new}})
+                if ticker is not None:
+                    await ticker.run(None)
+        if isinstance(new, str) and new.startswith("vacuum."):
+            ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+            async def reconcile() -> None:
+                await storage.async_reconcile_registry(_vacuum_registry_identities(hass))
+            if ticker is not None:
+                await ticker.run_serialized(reconcile)
+            else:
+                await reconcile()
+            if not old:
+                _notify_store_updated(hass, {"registry_changed": True})
+
+    def source_entities() -> set[str]:
+        registry = er.async_get(hass)
+        devices = {item.device_id for item in registry.entities.values()
+                   if item.domain == "vacuum" and item.device_id and item.platform != DOMAIN}
+        return {item.entity_id for item in registry.entities.values()
+                if item.device_id in devices and item.platform != DOMAIN}
+
+    known_sources = source_entities()
+
+    @callback
+    def on_registry_update(event: Event) -> None:
+        nonlocal known_sources
+        entity_id = str(event.data.get("entity_id") or "")
+        old_sources = known_sources
+        known_sources = source_entities()
+        if not entity_id.startswith("vacuum."):
+            own = er.async_get(hass).async_get(entity_id)
+            if own is not None and own.platform == DOMAIN:
+                # Moving our entities fires registry events synchronously. Their
+                # managers already perform that move; echoing it back here can
+                # recursively reconcile and delete a live fallback mid-move.
+                return
+            if entity_id not in old_sources and entity_id not in known_sources:
+                return
+            _notify_store_updated(hass, {"registry_changed": True})
+            ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+            if ticker is not None:
+                task = hass.async_create_task(ticker.run(None))
+                tasks.add(task)
+                task.add_done_callback(tasks.discard)
+            return
+        task = hass.async_create_task(process(event))
+        tasks.add(task)
+        task.add_done_callback(tasks.discard)
+
+    unsubscribe = hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, on_registry_update)
+    active = True
+    @callback
+    def stop() -> None:
+        nonlocal active
+        if active:
+            active = False
+            unsubscribe()
+    return stop, tasks
 
 
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -123,6 +213,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return False
 
     bucket = hass.data.get(DOMAIN, {})
+    if bucket.pop("_standalone_panel_registered", False):
+        from homeassistant.components import frontend
+        frontend.async_remove_panel(hass, _PANEL_URL_PATH)
+    listener = bucket.pop("_registry_listener", None)
+    if listener:
+        stop, tasks = listener
+        stop()
+        if tasks:
+            await asyncio.gather(*tasks)
     if unsub := bucket.pop(DATA_TICK_UNSUB, None):
         unsub()
     async_clear_issues(hass)
@@ -188,6 +287,17 @@ async def _async_prune_ghost_devices(
                 registry.async_remove_device(device.id)
 
 
+class _LegacyPanelRedirect(HomeAssistantView):
+    """Keep prior panel links usable without shadowing existing static files."""
+
+    url = f"/{DOMAIN}"
+    name = f"{DOMAIN}:legacy-panel"
+    requires_auth = False
+
+    async def get(self, request):
+        raise web.HTTPFound(location=str(request.rel_url.with_path(f"/{_PANEL_URL_PATH}", keep_query=True)))
+
+
 async def _async_register_frontend(hass: HomeAssistant) -> None:
     """Register the bundled Lovelace card."""
     bucket = hass.data.setdefault(DOMAIN, {})
@@ -200,11 +310,16 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         _LOGGER.error("Bundled card file missing at %s", card_path)
         return
 
+    # Register the two shipped files at their existing URLs, not a directory
+    # prefix that captures the panel path itself. The old exact panel link can
+    # then redirect without colliding with a static route.
+    if not bucket.get("_legacy_panel_redirect_registered"):
+        hass.http.register_view(_LegacyPanelRedirect)
+        bucket["_legacy_panel_redirect_registered"] = True
     await hass.http.async_register_static_paths(
         [
-            StaticPathConfig(
-                f"/{DOMAIN}", str(card_dir), cache_headers=False
-            )
+            StaticPathConfig(_CARD_URL_PATH, str(card_path), cache_headers=False),
+            StaticPathConfig(f"/{DOMAIN}/vwm-panel.js", str(card_dir / "vwm-panel.js"), cache_headers=False),
         ]
     )
     card_bytes = await hass.async_add_executor_job(card_path.read_bytes)
@@ -216,6 +331,48 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     _LOGGER.debug("Registered Lovelace card at %s via %s", _CARD_URL_PATH, registration)
 
 
+async def _async_register_standalone_panel(hass: HomeAssistant) -> None:
+    """Register our own on-demand panel independently of other HA Tools."""
+    from homeassistant.components import panel_custom
+    from homeassistant.setup import async_setup_component
+
+    bucket = hass.data.setdefault(DOMAIN, {})
+    if bucket.get("_standalone_panel_registered"):
+        return
+    if not await async_setup_component(hass, "panel_custom", {}):
+        _LOGGER.error("Could not set up the standalone panel")
+        return
+    await panel_custom.async_register_panel(
+        hass, frontend_url_path=_PANEL_URL_PATH, webcomponent_name="vwm-standalone-panel",
+        sidebar_title="Vacuum Water Monitor", sidebar_icon="mdi:water-percent",
+        module_url=f"/{DOMAIN}/vwm-panel.js", require_admin=False,
+    )
+    bucket["_standalone_panel_registered"] = True
+
+
+async def _async_notify_first_setup(hass: HomeAssistant, storage: VacuumWaterStorage) -> None:
+    """Offer the panel once; an explicit dismissal is not undone by reload."""
+    from homeassistant.components import persistent_notification
+    from homeassistant.setup import async_setup_component
+
+    state = await storage.async_get_state()
+    if state.get("settings", {}).get("standalone_intro_shown"):
+        return
+    if not await async_setup_component(hass, "persistent_notification", {}):
+        _LOGGER.warning("Could not start the introduction notification")
+        return
+    persistent_notification.async_create(
+        hass,
+        "Open [Vacuum Water Monitor](/vacuum-water-monitor) to see your robots and add a card. "
+        "Otwórz [Vacuum Water Monitor](/vacuum-water-monitor), aby zobaczyć roboty i dodać kartę.",
+        title="Vacuum Water Monitor", notification_id="ha_vacuum_water_monitor_intro",
+    )
+    try:
+        await storage.async_set_settings({"standalone_intro_shown": True})
+    except OSError:
+        _LOGGER.warning("Could not remember the standalone introduction")
+
+
 def _async_start_tick(
     hass: HomeAssistant, storage: VacuumWaterStorage, entry_id: str
 ) -> None:
@@ -224,6 +381,7 @@ def _async_start_tick(
     if bucket.get(DATA_TICK_UNSUB):
         return
     subscription: dict[str, Any] = {"unsub": None}
+    external_entities: set[str] = set()
 
     def _publish(changed: dict[str, Any]) -> None:
         if changed:
@@ -232,15 +390,22 @@ def _async_start_tick(
                 signal_vacuum_water_updated(entry_id),
                 {"tank_states": changed},
             )
-            hass.bus.async_fire(EVENT_STATE_CHANGED, {"tank_states": event_tank_states(changed), "partial": True})
+            hass.bus.async_fire(EVENT_STATE_CHANGED, {"state_changed": True})
             async_schedule_issue_sync(hass, ISSUE_SYNC_TICK_DELAY_SECONDS)
 
     @callback
     def _on_state_change(event: Event) -> None:
         data = event.data
-        ticker.handle_change(data.get("entity_id"), data.get("old_state"), data.get("new_state"))
+        entity = data.get("entity_id")
+        if entity in external_entities and data.get("old_state") != data.get("new_state"):
+            async_dispatcher_send(hass, signal_vacuum_water_updated(entry_id), {})
+            hass.bus.async_fire(EVENT_STATE_CHANGED, {"state_changed": True})
+        ticker.handle_change(entity, data.get("old_state"), data.get("new_state"))
 
     def _rebind(devices: list[dict[str, Any]]) -> None:
+        from .external_counter import source_entities
+        external_entities.clear()
+        external_entities.update(entity for device in devices for entity in source_entities(device))
         if not ticker.update_bindings(devices) and subscription["unsub"] is not None:
             return
         if subscription["unsub"] is not None:
@@ -251,7 +416,7 @@ def _async_start_tick(
                 hass, sorted(ticker.entities), _on_state_change
             )
 
-    async def _run(vacuums: set[str] | None) -> None:
+    async def _run(vacuums: set[str] | None) -> bool:
         try:
             changed = await async_tick_water_state(
                 hass,
@@ -262,8 +427,9 @@ def _async_start_tick(
             )
         except Exception as err:  # noqa: BLE001
             _LOGGER.exception("Water state tick failed: %s", err)
-            return
+            return False
         _publish(changed)
+        return True
 
     def _schedule(delay: float, action: Any) -> Any:
         # A plain function would run in the executor; the ticker must stay on the loop.
@@ -315,10 +481,22 @@ def _async_register_services(hass: HomeAssistant) -> None:
         entity_ids = sorted(entity_id for entity_id in extracted if entity_id.startswith("vacuum."))
         if not entity_ids:
             raise ServiceValidationError("Select at least one vacuum entity")
-        # A robot the user linked as a duplicate (Matter copy) refills its owner.
-        settings = (await storage.async_get_state()).get("settings") or {}
-        for entity_id in sorted({resolve_link(settings, entity_id) for entity_id in entity_ids}):
-            await async_mark_refilled(hass, entity_id, "service")
+        # Check both requested copies and resolved owners before any side effect.
+        from homeassistant.exceptions import Unauthorized
+        from .feature_access import check_access, reset_write_guard, set_write_guard
+        from .robots import resolve_balance_owner
+        stored = await storage.async_get_state()
+        owners = {resolve_balance_owner(hass, stored, entity_id) for entity_id in entity_ids}
+        resources = set(entity_ids) | owners
+        user_id = call.context.user_id
+        if not await check_access(hass, user_id, "water", "execute", resources):
+            raise Unauthorized()
+        token = set_write_guard(user_id, "water", resources, route_sources=entity_ids)
+        try:
+            for entity_id in sorted(owners):
+                await async_mark_refilled(hass, entity_id, "service")
+        finally:
+            reset_write_guard(token)
 
     hass.services.async_register(
         DOMAIN,

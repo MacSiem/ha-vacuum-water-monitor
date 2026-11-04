@@ -459,6 +459,22 @@
       ]
     },
     {
+      "profile_id": "ecovacs_deebot_t90_pro_omni",
+      "model": "ECOVACS DEEBOT T90 PRO OMNI",
+      "integration_adapters": [
+        "ecovacs"
+      ],
+      "mode_action_inventory_complete": false,
+      "ha_bindings_verified": false,
+      "consumption_model_verified": false,
+      "independent_validation": false,
+      "unknowns": [
+        "Per-mode/action rate or direct measurement",
+        "Firmware/region applicability",
+        "Integration action observation"
+      ]
+    },
+    {
       "profile_id": "ecovacs_deebot_x1_omni",
       "model": "ECOVACS DEEBOT X1 OMNI",
       "integration_adapters": [

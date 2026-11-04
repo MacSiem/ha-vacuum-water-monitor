@@ -17,6 +17,45 @@ MIN_SPAN_DAYS = 7
 MS_PER_DAY = 86_400_000
 
 
+def _stable_observation(value: Any) -> Any:
+    """Compare registry identity and settings, not a renameable ACL locator."""
+    if isinstance(value, list):
+        return [_stable_observation(item) for item in value]
+    if isinstance(value, dict):
+        is_observation = "source_entity" in value and "source" in value and "value" in value
+        return {key: _stable_observation(item) for key, item in value.items()
+                if not (is_observation and key == "source_entity")}
+    return value
+
+
+def _same_forecast_context(current: Any, previous: Any) -> bool:
+    if not isinstance(current, dict) or not current:
+        return True  # Legacy history without a current fingerprint.
+    settings = current.get("settings") if isinstance(current.get("settings"), dict) else {}
+    observed = current.get("observed_settings") if isinstance(current.get("observed_settings"), dict) else {}
+    sources = current.get("field_sources") if isinstance(current.get("field_sources"), dict) else {}
+    if any(value == "unavailable" for value in sources.values()):
+        return False
+    if not isinstance(previous, dict):
+        return False
+    for key in ("model_id", "sku", "dock_variant", "firmware", "integration_id", "integration_version", "reservoir"):
+        if current.get(key) is not None and current.get(key) != previous.get(key):
+            return False
+    old_settings = previous.get("settings") if isinstance(previous.get("settings"), dict) else {}
+    if any(settings.get(key) != old_settings.get(key)
+           for key in settings.keys() | old_settings.keys()):
+        return False
+    old_observed = previous.get("observed_settings") if isinstance(previous.get("observed_settings"), dict) else {}
+    if observed.keys() != old_observed.keys():
+        return False
+    for key, value in observed.items():
+        if not isinstance(value, dict) or value.get("value") is None:
+            return False
+        if _stable_observation(value) != _stable_observation(old_observed.get(key)):
+            return False
+    return True
+
+
 def _runs(tank_state: dict[str, Any]) -> list[dict[str, Any]]:
     runs = []
     for record in tank_state.get("automatic_sessions") or []:
@@ -30,9 +69,21 @@ def _runs(tank_state: dict[str, Any]) -> list[dict[str, Any]]:
 def supply_forecast(tank_state: dict[str, Any] | None, remaining_ml: Any, now_ts: int) -> dict[str, Any]:
     """Cleanings and days left at the robot's usual use; ``None`` until 3 mopping runs."""
     tank_state = tank_state if isinstance(tank_state, dict) else {}
-    runs = _runs(tank_state)
+    all_runs = _runs(tank_state)
+    runs = []
+    context_changed = False
+    current_context = tank_state.get("last_consumption_context")
+    # Forecast only from the newest uninterrupted block of compatible runs.
+    # Past runs remain untouched and cannot silently describe a new setting.
+    for run in all_runs:
+        if not _same_forecast_context(current_context, run.get("context")):
+            context_changed = True
+            break
+        if run.get("accounting_valid") is False or run.get("exposure_complete") is False or (run.get("segments") is not None and run.get("segments") != 1):
+            continue
+        runs.append(run)
     result: dict[str, Any] = {"cleanings_left": None, "days_left": None, "water_per_cleaning_ml": None,
-                              "water_per_day_ml": None, "basis_runs": len(runs)}
+                              "water_per_day_ml": None, "basis_runs": len(runs), "context_changed": context_changed}
     if len(runs) < MIN_RUNS:
         return result
     per_run = median(float(run["water"]) for run in runs[:RUNS_WINDOW])

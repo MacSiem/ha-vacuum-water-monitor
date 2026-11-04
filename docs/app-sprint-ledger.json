@@ -933,11 +933,23 @@
       "evidence": "docs/consumption-coverage.json; docs/consumption-evidence.json; docs/miot-signal-inventory.json — no qualifying evidence for this gate",
       "next_step": "Dataset handoff §2: verify reachable settings/actions and conditional combinations."
     },
+    "ecovacs_deebot_t90_pro_omni:mode_action_inventory_complete": {
+      "status": "blocked_dependency",
+      "owner": "VWM owner; R8 and hypercare",
+      "evidence": "Issue #26; docs/consumption-coverage.json; docs/consumption-evidence.json; no qualifying evidence for this gate",
+      "next_step": "Review existing #26 and docs for reachable ECOVACS T90 PRO OMNI modes/actions and firmware 1.103.0; preserve unknowns."
+    },
     "ecovacs_deebot_t50_pro_omni:ha_bindings_verified": {
       "status": "blocked_dependency",
       "owner": "Codex dataset session; coordinator handles dataset-v2-followup-2026-09-05.md",
       "evidence": "docs/consumption-coverage.json; docs/consumption-evidence.json; docs/miot-signal-inventory.json — no qualifying evidence for this gate",
       "next_step": "Dataset handoff §2: freeze versioned same-device roles, units and enums; app session imports verified contracts."
+    },
+    "ecovacs_deebot_t90_pro_omni:ha_bindings_verified": {
+      "status": "blocked_dependency",
+      "owner": "VWM owner; R8 and hypercare",
+      "evidence": "Issue #26; docs/consumption-coverage.json; docs/consumption-evidence.json; no qualifying evidence for this gate",
+      "next_step": "Verify existing k2iwaq integration signals, units and firmware 1.103.0 against same-device evidence in #26 and docs."
     },
     "ecovacs_deebot_t50_pro_omni:consumption_model_verified": {
       "status": "blocked_dependency",
@@ -945,11 +957,23 @@
       "evidence": "docs/consumption-coverage.json; docs/consumption-evidence.json; docs/miot-signal-inventory.json — no qualifying evidence for this gate",
       "next_step": "Dataset handoff §3–4: establish measured applicable coefficients and review eligibility."
     },
+    "ecovacs_deebot_t90_pro_omni:consumption_model_verified": {
+      "status": "blocked_dependency",
+      "owner": "VWM owner; R8 and hypercare",
+      "evidence": "Issue #26; docs/consumption-coverage.json; docs/consumption-evidence.json; no qualifying evidence for this gate",
+      "next_step": "Establish applicable coefficients from existing evidence or future independent measurements; do not initiate robot cycles."
+    },
     "ecovacs_deebot_t50_pro_omni:independent_validation": {
       "status": "needs_evidence",
       "owner": "Dataset session + independent measurement reviewer",
       "evidence": "docs/consumption-coverage.json; docs/consumption-evidence.json; docs/miot-signal-inventory.json — no qualifying evidence for this gate",
       "next_step": "Dataset handoff §7: collect independent holdout cycles/devices; report errors and measured domain."
+    },
+    "ecovacs_deebot_t90_pro_omni:independent_validation": {
+      "status": "needs_evidence",
+      "owner": "VWM owner; R8 and hypercare",
+      "evidence": "Issue #26; docs/consumption-coverage.json; docs/consumption-evidence.json; no qualifying evidence for this gate",
+      "next_step": "Obtain independently measured holdout cycles/devices when available; do not initiate robot cycles."
     },
     "ecovacs_deebot_x1_omni:mode_action_inventory_complete": {
       "status": "blocked_dependency",
@@ -3638,6 +3662,12 @@
       "owner": "Codex dataset session; coordinator handles dataset-v2-followup-2026-09-05.md",
       "evidence": "docs/consumption-coverage.json; docs/consumption-evidence.json; docs/miot-signal-inventory.json — no qualifying evidence for this gate",
       "next_step": "Dataset handoff §3: verify quantities, firmware, applicability and primary provenance."
+    },
+    "ecovacs_deebot_t90_pro_omni:missing_applicable_consumption_evidence": {
+      "status": "blocked_dependency",
+      "owner": "VWM owner; R8 and hypercare",
+      "evidence": "Issue #26; docs/consumption-coverage.json; docs/consumption-evidence.json; no qualifying evidence for this gate",
+      "next_step": "Review #26 and existing docs for firmware 1.103.0, k2iwaq applicability and primary provenance; retain unknown without evidence."
     },
     "ecovacs_deebot_x1_omni:missing_applicable_consumption_evidence": {
       "status": "blocked_dependency",

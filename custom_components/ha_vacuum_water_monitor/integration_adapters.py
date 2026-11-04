@@ -113,6 +113,7 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
         "dock_error_sensor": ("dock_error",),
     },
     "matter": {
+        "current_phase_sensor": ("current_phase",),
         "status_sensor": ("operational_state",),
         "cleaning_mode_entity": ("clean_mode",),
         "water_error_sensor": ("operational_error",),
@@ -135,6 +136,9 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
         "mop_intensity_entity": ("robot_cleaner_water_spray_level",),
         "cleaning_mode_entity": ("robot_cleaner_cleaning_type",),
     },
+    # TapoVac-ADV publishes counters/settings as vacuum attributes. Its
+    # attachment and water-level settings do not prove active mopping.
+    "tapo_rv30": {},
     "tplink": {
         # Current HA Core exposes run statistics, but not python-kasa's Mop
         # module (mop_attached/mop_waterlevel) as HA entities yet.  Area/time
@@ -246,6 +250,49 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
 }
 
 
+# Exact, simultaneous controls are setting proxies, never water measurements.
+# Each gets its own role so one switch cannot hide a different control.
+CONTEXT_SETTING_DOMAINS = {
+    "wetness_level": "number", "cleaning_route": "select", "custom_mopping_route": "select",
+    "mopping_type": "select", "auto_rewashing": "select", "auto_recleaning": "select",
+    "cleangenius": "select", "cleangenius_mode": "select", "mop_pressure": "select",
+    "mop_temperature": "select", "scraper_frequency": "select", "smart_mop_washing": "switch",
+    "hot_washing": "switch", "ultra_clean_mode": "switch", "auto_water_refilling": "switch",
+    "customized_cleaning": "switch", "tight_mopping": "switch", "auto_add_detergent": "switch",
+    "mop_washing_with_detergent": "switch", "mopping_with_detergent": "switch",
+    "carpet_avoidance": "switch", "auto_mount_mop": "switch",
+}
+CONTEXT_SETTING_ROLES = {f"context_{key}_entity": domain for key, domain in CONTEXT_SETTING_DOMAINS.items()}
+for role in CONTEXT_SETTING_ROLES:
+    ROLE_IDENTIFIERS[role] = set()
+    ADAPTER_ROLE_IDENTIFIERS["dreame_vacuum"][role] = (role.removeprefix("context_").removesuffix("_entity"),)
+# Some Dreame versions expose the same key through either domain; retain both
+# independently if a device actually provides both.
+for domain in ("switch", "select"):
+    role = f"context_wider_corner_coverage_{domain}_entity"
+    CONTEXT_SETTING_ROLES[role] = domain
+    ROLE_IDENTIFIERS[role] = set()
+    ADAPTER_ROLE_IDENTIFIERS["dreame_vacuum"][role] = ("wider_corner_coverage",)
+# Core 2026.11 only exposes these when enabled and supported by the device.
+for adapter, key, domain in (("ecovacs", "mop_wash_interval", "number"),
+                             ("ecovacs", "efficiency_mode", "select"),
+                             ("roborock", "cleaning_cycles", "select")):
+    role = f"context_{key}_entity"
+    CONTEXT_SETTING_ROLES[role] = domain
+    ROLE_IDENTIFIERS[role] = set()
+    ADAPTER_ROLE_IDENTIFIERS[adapter][role] = (key,)
+for key, domain in (("clean_passes", "select"), ("automatic_remopping", "switch"),
+                    ("extended_mopping", "switch"), ("pet_area_deep_clean", "switch")):
+    role = f"context_{key}_entity"
+    CONTEXT_SETTING_ROLES[role] = domain
+    ROLE_IDENTIFIERS[role] = set()
+ROLE_IDENTIFIERS["current_phase_sensor"] = set()
+for key in ("clean_water_tank_status", "dirty_water_tank_status", "low_water_warning", "drainage_status", "station_drainage_status"):
+    role = key + "_sensor"
+    ROLE_IDENTIFIERS[role] = set()
+    ADAPTER_ROLE_IDENTIFIERS["dreame_vacuum"][role] = (key,)
+
+
 # Integrations whose entities carry a canonical MIoT property name rather than
 # a Home Assistant ``translation_key``.
 MIOT_ADAPTERS: frozenset[str] = frozenset({"xiaomi_home", "xiaomi_miot"})
@@ -263,7 +310,7 @@ MIOT_ADAPTERS: frozenset[str] = frozenset({"xiaomi_home", "xiaomi_miot"})
 ADAPTER_DESCRIPTOR_METADATA: dict[str, dict[str, Any]] = {
     adapter: {
         "mop_evidence_required": True,
-        "signal_contract_version": 1,
+        "signal_contract_version": 2 if adapter == "dreame_vacuum" else 1,
         **({"mop_intensity_is_evidence": True} if adapter in MIOT_ADAPTERS else {}),
     }
     for adapter in ADAPTER_ROLE_IDENTIFIERS
@@ -274,6 +321,18 @@ ADAPTER_DESCRIPTOR_METADATA: dict[str, dict[str, Any]] = {
 # vacuum entity instead of separate registry entities.  These bindings remain
 # canonical machine keys; no localized friendly-name matching is involved.
 ADAPTER_ATTRIBUTE_BINDINGS: dict[str, dict[str, Any]] = {
+    "tapo_rv30": {
+        "area_attribute": "clean_area",
+        "area_attribute_unit": "m²",
+        "duration_attribute": "clean_time_min",
+        "duration_attribute_unit": "min",
+        "mop_intensity_attribute": "water_level",
+        "mop_attached_attribute": "mop_attached",
+        "status_attribute": "status_code",
+        "mop_attachment_is_evidence": False,
+        "rate_signal": "mop_intensity",
+        "tank_semantics_confirmed": False,
+    },
     "roomba": {
         "area_attribute": "cleaned_area",
         # Core returns m² for metric HA installations and ft² otherwise.

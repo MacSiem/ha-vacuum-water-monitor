@@ -87,7 +87,10 @@ class SensorAttributeEvidenceTests(unittest.TestCase):
         exec(compile(ast.Module(body=[function],type_ignores=[]),str(path),"exec"),namespace)
         estimate=estimate_water_state({"profile_key":"roborock_s8_maxv_ultra"},{"initialized":True,"used_ml":100},{})
         attributes=namespace["_water_state_attributes"](estimate,{})
-        self.assertEqual(attributes.get("estimate_basis"),"owner_device")
-        self.assertIn("not metered"," ".join(attributes.get("estimate_sources",[])))
+        # HA entities have their own ACL; detailed provenance stays in the
+        # scoped VWM API while shared native attributes expose uncertainty.
+        self.assertNotIn("estimate_basis",attributes)
+        self.assertNotIn("estimate_sources",attributes)
+        self.assertNotIn("calibration_factor",attributes)
         self.assertEqual(attributes.get("uncertainty_kind"),"prior_band")
         self.assertFalse(attributes.get("physical_accuracy_verified",True))

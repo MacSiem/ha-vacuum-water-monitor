@@ -42,8 +42,9 @@ class RefilledButton(RobotEntity, ButtonEntity):
         super().__init__(hass, entry, device, "refilled")
 
     async def async_press(self) -> None:
+        self._require_active()
         try:
-            await async_mark_refilled(self.hass, self.vacuum_entity, "entity")
+            await self._authorized_action("water", async_mark_refilled, self.hass, self.vacuum_entity, "entity")
         except ValueError as err:
             raise ServiceValidationError(str(err)) from err
 
@@ -57,7 +58,8 @@ class TankEmptyButton(RobotEntity, ButtonEntity):
         super().__init__(hass, entry, device, "tank_empty")
 
     async def async_press(self) -> None:
+        self._require_active()
         try:
-            await async_mark_empty(self.hass, self.vacuum_entity)
+            await self._authorized_action("water", async_mark_empty, self.hass, self.vacuum_entity)
         except ValueError as err:
             raise ServiceValidationError(str(err)) from err

@@ -35,9 +35,13 @@ def bound_entities(device: dict[str, Any]) -> set[str]:
     for key, value in device.items():
         if key in _IGNORED_FIELDS:
             continue
-        if key == "vacuum_entity" or key.endswith("_sensor") or key.endswith("_entity"):
+        if key in ("vacuum_entity", "water_used_input") or key.endswith("_sensor") or key.endswith("_entity"):
             if isinstance(value, str) and "." in value:
                 entities.add(value)
+    for key in ("water_used_input", "water_used_sensor", "water_sensor", "last_session_sensor", "last_reset_entity"):
+        value = device.get(key)
+        if isinstance(value, str) and "." in value:
+            entities.add(value)
     signals = device.get("signals")
     if isinstance(signals, dict):
         entities.update(v for v in signals.values() if isinstance(v, str) and "." in v)
@@ -102,6 +106,9 @@ class EventTicker:
                 mapping.setdefault(entity, set()).add(vacuum)
                 # A counter's unit can change while its numeric text is equal.
                 attribute_map.setdefault(entity, set()).add("unit_of_measurement")
+            for key, entity in device.items():
+                if ((key.startswith("context_") and key.endswith("_entity")) or key in {"wash_mode_entity", "wash_frequency_entity", "wash_area_threshold_entity", "wash_time_threshold_entity", "wash_temperature_entity"}) and isinstance(entity, str):
+                    attribute_map.setdefault(entity, set()).update({"min", "max", "unit_of_measurement"})
             # Roomba and other adapters expose accounting inputs as vacuum
             # attributes; do not wake for unrelated battery/maintenance noise.
             attribute_map.setdefault(vacuum, set()).update(
@@ -125,6 +132,11 @@ class EventTicker:
     async def run(self, vacuums: set[str] | None = None) -> Any:
         async with self._lock:
             return await self._run_tick(vacuums)
+
+    async def run_serialized(self, action: Callable[[], Any]) -> Any:
+        """Serialize a registry migration with in-flight accounting ticks."""
+        async with self._lock:
+            return await action()
 
     def cancel(self) -> None:
         if self._cancel is not None:

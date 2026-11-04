@@ -151,7 +151,7 @@ stay **unknown** rather than displaying a fabricated 100% full tank.
 What happens under the hood:
 
 1. **Auto-discovery.** The integration finds every `vacuum.*` entity in your Home Assistant
-   and creates a device with water sensors for each robot. No YAML, no entity picking.
+   and adds water sensors to its uniquely identified device, with a fallback device when necessary. No YAML, no entity picking.
 2. **Water accounting runs server-side when a bound entity changes** (status, cleaned area, dock
    error, mop settings, refill button or lid), with a 60-second heartbeat as a fallback. A gap of
    up to 5 minutes in the robot's signals is bridged from the cumulative area counter when the
@@ -232,6 +232,7 @@ status, entity-key, unit and fail-closed matrix is documented in
 | Xiaomi Miio | current clean area/time, mop/tank attachment and no-water/shortage | HA Core's generic Xiaomi `water_level` sensor is not a vacuum entity and is deliberately excluded. |
 | Xiaomi Home / Xiaomi MIoT (custom) | status, cleaning area/time, mop water-output level, mop status, robot and dock tank status | These integrations name entities after canonical MIoT properties rather than a Home Assistant `translation_key`, so roles are matched on the property and the longest match always wins. H50/H50 Pro have no published consumption rate. A labelled catalog prior can use applicable area/mop/settings signals; a time-only path needs a matching measured time rate. Neither path proves physical accuracy for every firmware or setting. |
 | Ecovacs | stats area/time, water amount, work mode, mop attached and station state | Generic error text is diagnostic only, never a water-volume anchor. |
+| TapoVac-ADV (`tapo_rv30`) | vacuum `clean_area`, `clean_time_min`, `water_level`, `mop_attached`, `status_code`; exact registry-bound area-unit select | After confirming the same robot in the card, automatically uses its Matter programme without YAML. Keep Matter connected. Attachment/settings do not prove mopping. Observed minutes support private full-tank learning; area dosing needs an independently established coefficient. See [setup and limitations](docs/tapovac.md). No confirmed station-volume measurement. |
 | Matter RVC | vacuum activity, clean mode and operational error when Home Assistant exposes them | Bounded active time requires an explicit, measured ml/min calibration and `clean_mode` proving mopping. The current Tapo RV50 Pro Omni profile has no verified time rate; recognizing the model and mode alone cannot calculate water use. Missing or vacuum-only mode fails closed. |
 | iRobot Roomba/Braava | mission area/time attributes, tank-present and spray mode; tank percentages are discovered | Generic tank percentages are not used as clean water until a model profile confirms their semantics. |
 | SmartThings | water-spray level and cleaning type | Spray level is an intensity, not liters or percent. |
@@ -258,7 +259,7 @@ silently.
 
 ## Card display options
 
-The visual editor supports the title, initial tab, visible tabs, help, support footer and compact view. It preserves device bindings and additional YAML keys. Compact view shows remaining water and **Refilled**, with **Open full card** for the other functions. Sections supports narrow tiles and automatic content height; Masonry and Panel remain supported.
+The card picker offers compact and tile views; opening either view shows the full tool. Existing YAML without a variant retains the full card. Set `variant: full`, `variant: compact` or `variant: tile` explicitly if needed. Picker/editor previews cannot refill a tank or change saved data. The visual editor supports the title, initial tab, visible tabs, help, support footer and compact view. It preserves device bindings and additional YAML keys. Compact view shows remaining water and **Refilled**, with **Open full card** for the other functions. Sections supports narrow tiles and automatic content height; Masonry and Panel remain supported.
 
 Help starts collapsed below 500 px. On a wide screen it opens initially and remembers an explicit close. Numbers and times follow the Home Assistant profile. Diagnostic explanations use readable labels; **Details → Diagnostics → For reporting** keeps the technical information in a separate copyable block.
 
@@ -274,13 +275,13 @@ show_support: false
 
 ## Screenshots
 
-Version **5.12.0**, captured **18 October 2026** with synthetic device data. Estimates and nominal tank learning are not independent measurements of physical volume. Unknown water balances keep an explicit unknown state.
+Version **5.13.0-beta.3**, captured with synthetic device data in Home Assistant. Estimates and nominal tank learning are not independent measurements of physical volume. Unknown water balances keep an explicit unknown state.
 
-![Water tab — light](docs/screenshots/5.12/final-light1280.jpg)
+![Water panel — English](docs/screenshots/5.13/water-en.png)
 
-![Water tab — dark](docs/screenshots/5.12/final-dark390.jpg)
+![Water panel — Polish, 320 px](docs/screenshots/5.13/water-pl-mobile.png)
 
-The [eight-view QA gallery](docs/screenshots/5.12/README.md) includes 1280 light/dark, 390 light/dark, 320 dark, native Chrome 200%, Sections at 3 columns and Panel. Additional checks cover Sections at 6/12 columns, the visual editor and Polish/English output.
+The previous [5.12.0 QA gallery](docs/screenshots/5.12/README.md) remains available for historical reference.
 
 ## Installation
 
@@ -295,6 +296,13 @@ The integration registers the bundled Lovelace card automatically — you do not
 a Lovelace resource manually.
 
 ## Quick start
+
+Open **Vacuum Water Monitor** in the Home Assistant sidebar for the full tool without
+editing a dashboard. Administrators can use **Add to dashboard** to choose a dashboard,
+view and, for Sections, a section. Review the preview before adding. YAML dashboards
+provide a configuration to copy instead of an automatic write. A successful placement
+can be undone while its resulting configuration still matches; later dashboard edits
+block restoration so they are preserved.
 
 Add the card to any dashboard:
 
@@ -327,18 +335,28 @@ automatically** entity on its device page.
 Hints that need nothing from you (a manual refill method, a robot that cannot report an empty
 tank) are shown in the panel only.
 
-## Entities for automations
+## Entities and services / Encje i usługi
 
-Each discovered vacuum gets its own device with these sensors:
+When the vacuum has an unambiguous Home Assistant device-registry entry, its water entities appear on that source device. Otherwise the integration creates a separate fallback device. Existing entity IDs, names and disabled settings are retained when the association changes.
+
+Each tracked robot has these sensors:
 
 | Sensor | Unit | Entity category | Meaning |
 |---|---:|---|---|
 | Water remaining | `%` | normal | Estimated water left in the tank |
 | Water used since refill | `mL` | normal | Usage accumulated since the last refill |
-| Last refill | timestamp | diagnostic | When the tank was last refilled; attributes show what reported it and recent refills |
+| Last refill | timestamp | diagnostic | When the tank was last refilled |
 | Next maintenance due | `d` | diagnostic | Days until the next custom maintenance item |
+| Cleanings left | count | normal | Estimated cleanings from the remaining water; `days_left` is an attribute |
 
 Use them like any other sensor — dashboards, template sensors, and automations.
+
+| Service/action | Target | Effect and permission |
+|---|---|---|
+| `ha_vacuum_water_monitor.mark_refilled` | One or more `vacuum.*` entities | Confirms a full tracked reservoir; resolves a linked copy to its balance owner. Requires VWM water execute access and native HA control permission for both references. Calls without a user context work only while no explicit VWM access rules exist. |
+
+Other configuration, history, measurements and dashboard-backup operations are exposed
+through the card and its authenticated WebSocket API, not extra HA services.
 
 **Refill reminder blueprint:** [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FMacSiem%2Fha-vacuum-water-monitor%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fha_vacuum_water_monitor%2Frefill_reminder.yaml)
 pick the robot's *Water remaining* sensor, a threshold (20% by default) and what to do (a phone
@@ -350,9 +368,8 @@ Settings entities on each robot's device:
 |---|---|---|
 | Tank size | number (mL, config) | The usable clean-water tank; setting it overrides the model database |
 | Refill from dock automatically | switch (config) | Only for docks that report their clean tank empty and refilled |
-| Refilled | button | Marks the tracked tank full (a second press within 10 minutes is ignored) |
-| Tank empty | button | Press when the robot ran out of water; the estimate learns from it (for docks that cannot report an empty tank) |
-| Cleanings left | sensor | Cleanings the water left lasts at the robot's usual use; `days_left` attribute |
+| Refilled | button | Confirms a full tracked tank; duplicate healthy refills within 10 minutes are suppressed. An incomplete balance can be rebaselined after a real full refill. |
+| Tank empty | button | Confirms the tracked reservoir is empty when no verified automatic empty signal is available. Learning still requires a qualified complete cycle. |
 
 **Diagnostics:** Settings → Devices & services → Vacuum Water Monitor → ⋮ → *Download
 diagnostics* gives a local file with health, detected signals and recent history. User-assigned
@@ -435,15 +452,76 @@ These optional keys let you wire additional entities into the water accounting
 
 If you already maintain your own water counter (DIY template sensor or automation updating
 an `input_number`), wire it in and the integration will skip its own accounting and only
-display your data:
+display your data. Use separate external sources, not VWM's own entities; the
+counter is in mL by default, the optional remaining template is in L by default,
+and explicit mL/L units are supported. You may supply `water_used_sensor` or
+`water_sensor` without an input helper. When a remaining sensor is supplied, it
+wins and used water is calculated from the matching tank capacity; without a
+known capacity, used water stays unknown. Missing, invalid or over-capacity
+readings show unknown. Manage refills in your own automation: VWM does not reset
+your helper. Old VWM history and calibration remain saved but are not used for
+an external-counter forecast.
 
 ```yaml
 type: custom:ha-vacuum-water-monitor
 vacuum_entity: vacuum.roborock_s8_maxv_ultra
 water_used_input: input_number.roborock_water_used_ml
-water_sensor: sensor.roborock_water_remaining              # optional template
+water_total_ml: 4000  # actual usable capacity of the same tracked reservoir
+water_sensor: sensor.diy_remaining_l                       # optional external template, L or mL
 last_session_sensor: sensor.roborock_water_used_last_session  # optional
 last_reset_entity: input_datetime.roborock_last_water_reset   # optional
+```
+
+## For advanced users / Dla zaawansowanych
+
+Replace the sample entity IDs with your own.
+
+### 1. Confirm a real full refill from a script
+
+Run this only after filling the tracked reservoir. With explicit VWM access rules,
+run it from the script UI as an authorized user so HA passes that user context
+to the action. Unattended calls without a user are denied.
+
+```yaml
+alias: Confirm vacuum water refill
+sequence:
+  - action: ha_vacuum_water_monitor.mark_refilled
+    target:
+      entity_id: vacuum.roborock_s8_maxv_ultra
+```
+
+### 2. Notify when estimated remaining water falls below 15%
+
+Unknown states do not satisfy this numeric threshold. This example reports the
+estimate; it does not measure volume or trigger a physical refill.
+
+```yaml
+alias: Vacuum water reminder
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.roborock_s8_maxv_ultra_water_remaining
+    below: 15
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: Vacuum water estimate is below 15 percent.
+mode: single
+```
+
+### 3. Display an existing water counter
+
+The counter contains used millilitres. This delegates the displayed balance to your
+existing counter; it does not turn that counter into a measured calibration sample.
+The helper must exist and contain a finite nonnegative used-water value in millilitres.
+Set the real usable tank capacity explicitly when it is not known; do not infer it
+from the helper maximum. Your DIY automation remains responsible for updating and
+resetting its counter after a real refill.
+
+```yaml
+type: custom:ha-vacuum-water-monitor
+vacuum_entity: vacuum.roborock_s8_maxv_ultra
+water_used_input: input_number.roborock_water_used_ml
+water_total_ml: 4000  # actual usable capacity of the same tracked reservoir
 ```
 
 ## FAQ
@@ -496,6 +574,14 @@ v4 was a HACS Lovelace plugin. v5 is a HACS integration.
 Browser-only v4 tank counters are not automatically imported. After installing v5, press
 **Refilled** once when the tank is full to establish the server-side baseline.
 
+## User access
+
+An administrator can configure visibility, reading and actions for water, settings and measurements in the card's Settings → User access. Rules can select household members and restrict robot entity IDs. Home Assistant's own read or control permissions remain an upper bound; VWM does not grant access to a resource that Home Assistant denies.
+
+VWM rules control VWM's card, API, subscription data and actions. Native entity states remain visible according to Home Assistant permissions for each entity: denying access to the vacuum does not automatically deny access to a separate water sensor. Private measurement records, calibration banks and their provenance are not broadcast in native entity attributes or VWM change events. Authorized VWM views retain the details. Home Assistant Diagnostics remains administrator-only.
+
+With no explicit VWM rules, existing household behavior and automation calls without a user context are retained. Once an administrator configures any rules, calls without an identifiable user are denied; use an authorized user context for those actions. An unavailable capability keeps its entity ID and customization but cannot be operated until its signal returns.
+
 ## Privacy
 
 - No telemetry, analytics, or tracking. Nothing is sent automatically.
@@ -518,6 +604,12 @@ Browser-only v4 tank counters are not automatically imported. After installing v
   dataset repository; public copies may remain. Contributions require maintainer review
   and cannot activate runtime rates. See [privacy](PRIVACY.md) and
   [measurement instructions](docs/diagnostics-and-calibration.md).
+- Administrator dashboard placement also keeps private local before/after dashboard
+  configurations, the creating HA user ID, dashboard path and timestamp. The sidebar's
+  **Dashboard backups** shows only the active administrator's records. They can contain
+  household entity IDs and card configuration: do not share them as sanitized measurements.
+  These records persist across restarts; this version has no automatic retention limit
+  or backup-delete control.
 - Tank state is stored locally by Home Assistant in its normal storage area and is included
   in Home Assistant backups.
 

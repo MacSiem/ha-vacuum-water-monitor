@@ -32,7 +32,7 @@ from .sensor_calculations import (
     setup_guidance,
     vacuum_slug,
 )
-from .entity import robot_device_info, vacuum_display_name
+from .entity import robot_device_info, sync_entity_device, vacuum_display_name
 from .storage import VacuumWaterStorage
 from .tick import list_vacuums
 
@@ -60,6 +60,7 @@ class VacuumSensorManager:
         self.entry = entry
         self.async_add_entities = async_add_entities
         self._known: set[tuple[str, str]] = set()
+        self._instances: dict[tuple[str, str], VacuumStoreSensor] = {}
 
     async def async_setup(self) -> None:
         """Subscribe to Store updates and add initial entities."""
@@ -98,12 +99,28 @@ class VacuumSensorManager:
             known_entities,
             tank_states,
         )
+        origins = stored.get("entity_origins") or {}
+        unavailable = set(stored.get("identity_unavailable_origins") or [])
+        devices = [device for device in devices
+                   if origins.get(device.get("vacuum_entity"), device.get("vacuum_entity")) not in unavailable]
+        active_origins = {str(origins.get(device.get("vacuum_entity"), device.get("vacuum_entity"))) for device in devices}
+        for (origin, _key), sensor in self._instances.items():
+            active = origin in active_origins
+            if sensor._identity_active != active:
+                sensor._identity_active = active
+                if sensor.entity_id is not None:
+                    if active:
+                        self.hass.async_create_task(sensor.async_refresh())
+                    else:
+                        sensor.async_write_ha_state()
 
         entities: list[VacuumStoreSensor] = []
         for device in devices:
             vacuum_entity = device.get("vacuum_entity")
             if not vacuum_entity:
                 continue
+            origin = str(origins.get(vacuum_entity, vacuum_entity))
+            device["_entity_origin"] = origin
             for sensor_cls in (
                 WaterRemainingSensor,
                 WaterUsedSensor,
@@ -111,25 +128,39 @@ class VacuumSensorManager:
                 NextMaintenanceDueSensor,
                 CleaningsLeftSensor,
             ):
-                sensor_id = (str(vacuum_entity), sensor_cls.sensor_key)
+                sensor_id = (origin, sensor_cls.sensor_key)
                 if sensor_id in self._known:
+                    existing = self._instances.get(sensor_id)
+                    if existing is not None:
+                        changed = existing.vacuum_entity != vacuum_entity
+                        existing.vacuum_entity = str(vacuum_entity)
+                        existing._device = dict(device)
+                        existing._fallback_device = dict(device)
+                        sync_entity_device(self.hass, self.entry, existing, device)
+                        if changed and existing.entity_id is not None:
+                            self.hass.async_create_task(existing.async_refresh())
                     continue
                 self._known.add(sensor_id)
-                entities.append(sensor_cls(self.hass, self.entry, device))
+                sensor = sensor_cls(self.hass, self.entry, device)
+                sync_entity_device(self.hass, self.entry, sensor, device)
+                self._instances[sensor_id] = sensor
+                entities.append(sensor)
 
         if entities:
             self.async_add_entities(entities, True)
         self._rename_raw_id_devices(devices)
-        self._remove_linked_duplicates(settings, devices)
+        self._remove_linked_duplicates(settings, devices, origins)
 
-    def _remove_linked_duplicates(self, settings: dict[str, Any], devices: list[dict[str, Any]]) -> None:
+    def _remove_linked_duplicates(self, settings: dict[str, Any], devices: list[dict[str, Any]], origins: dict[str, str]) -> None:
         """Drop the device (and its sensors) of an entity the user linked to another robot."""
         links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
         tracked = {str(device.get("vacuum_entity")) for device in devices}
         # The robot the engine tracks keeps its device even when a link points
         # away from it (a stale or circular link must never remove live sensors).
+        active_origins = {origins.get(entity, entity) for entity in tracked}
         linked = {str(entity) for entity, target in links.items()
-                  if target and target != "distinct" and str(entity) not in tracked}
+                  if target and target != "distinct" and str(entity) not in tracked
+                  and origins.get(str(entity), str(entity)) not in active_origins}
         if not linked:
             return
         try:
@@ -138,15 +169,28 @@ class VacuumSensorManager:
             registry = dr.async_get(self.hass)
         except Exception:  # noqa: BLE001
             return
-        wanted = {(DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(entity)}"): entity for entity in linked}
+        wanted = {(DOMAIN, f"{self.entry.entry_id}_{vacuum_slug(origins.get(entity, entity))}"): entity for entity in linked}
         for device_entry in list(dr.async_entries_for_config_entry(registry, self.entry.entry_id)):
             match = next((wanted[i] for i in device_entry.identifiers if i in wanted), None)
             if match is None:
                 continue
+            # A source device may also contain a VWM identifier from an older
+            # install. Never remove the source or a user-customized device.
+            if (any(domain != DOMAIN for domain, _ in device_entry.identifiers)
+                    or device_entry.connections or device_entry.name_by_user or device_entry.area_id
+                    or getattr(device_entry, "labels", None) or device_entry.disabled_by):
+                continue
+            from homeassistant.helpers import entity_registry as er
+            members = er.async_entries_for_device(er.async_get(self.hass), device_entry.id, include_disabled_entities=True)
+            if any(item.name or item.icon or item.area_id or item.disabled_by or item.hidden_by
+                   or getattr(item, "labels", None) for item in members):
+                continue
             registry.async_remove_device(device_entry.id)
             for sensor_cls in (WaterRemainingSensor, WaterUsedSensor, LastRefillSensor, NextMaintenanceDueSensor,
                                CleaningsLeftSensor):
-                self._known.discard((match, sensor_cls.sensor_key))
+                key = (origins.get(match, match), sensor_cls.sensor_key)
+                self._known.discard(key)
+                self._instances.pop(key, None)
 
     def _rename_raw_id_devices(self, devices: list[dict[str, Any]]) -> None:
         """Replace a device name that is only the vacuum's entity id.
@@ -186,6 +230,8 @@ class VacuumStoreSensor(SensorEntity):
 
     _attr_has_entity_name = True
     _attr_should_poll = False
+    # Keep bulky diagnostics live, without copying history into Recorder.
+    _unrecorded_attributes = frozenset({"recent_refills", "consumption_resolution", "reservoir_levels", "accounting_v2"})
 
     sensor_key = ""
     sensor_name = ""
@@ -196,17 +242,22 @@ class VacuumStoreSensor(SensorEntity):
         self.hass = hass
         self.entry = entry
         self.vacuum_entity = str(device["vacuum_entity"])
-        self.vacuum_slug = vacuum_slug(self.vacuum_entity)
+        self.vacuum_slug = vacuum_slug(device.get("_entity_origin") or self.vacuum_entity)
         self._device = dict(device)
         self._fallback_device = dict(device)
+        self._identity_active = True
         self._attr_unique_id = f"{entry.entry_id}_{self.vacuum_slug}_{self.sensor_key}"
         if self.sensor_name:
             self._attr_name = self.sensor_name
 
     @property
-    def device_info(self) -> DeviceInfo:
+    def device_info(self) -> DeviceInfo | None:
         """Return a per-vacuum device (shared with the settings entities)."""
         return robot_device_info(self.hass, self.entry, self._device)
+
+    @property
+    def available(self) -> bool:
+        return self._identity_active and super().available
 
     @property
     def _storage(self) -> VacuumWaterStorage:
@@ -214,6 +265,7 @@ class VacuumStoreSensor(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to Store writes."""
+        sync_entity_device(self.hass, self.entry, self, self._device)
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
@@ -229,6 +281,9 @@ class VacuumStoreSensor(SensorEntity):
 
     async def async_refresh(self) -> None:
         """Refresh from Store and write state."""
+        if not self._identity_active:
+            self.async_write_ha_state()
+            return
         await self.async_update()
         self.async_write_ha_state()
 
@@ -247,6 +302,13 @@ class VacuumStoreSensor(SensorEntity):
         stored_tank = tank_states.get(self.vacuum_entity)
         if isinstance(stored_tank, dict):
             tank_state.update(stored_tank)
+        from .external_counter import apply_external_view, project_auxiliary, project_external_counter
+        external = project_external_counter(self.hass, self._device, settings)
+        if external is not None:
+            apply_external_view(tank_state, external)
+        if self._device.get("last_reset_entity") or external is not None:
+            tank_state["last_reset_iso"] = project_auxiliary(self.hass, self._device).get("last_reset")
+            tank_state["last_reset_ts"] = 0
         return settings, tank_state
 
 
@@ -281,6 +343,8 @@ class WaterUsedSensor(VacuumStoreSensor):
 
     sensor_key = "water_used_since_refill"
     sensor_name = "Water used since refill"
+    # A refill resets this live counter. HA's VOLUME device class only allows
+    # total statistics, so retain measurement semantics without that class.
     _attr_native_unit_of_measurement = WATER_VOLUME_UNIT
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -315,10 +379,6 @@ class LastRefillSensor(VacuumStoreSensor):
         self._attr_native_value = refill_at
         self._attr_extra_state_attributes = {
             "vacuum_entity": self.vacuum_entity,
-            "last_reset_iso": tank_state.get("last_reset_iso"),
-            "last_reset_ts": tank_state.get("last_reset_ts"),
-            "refill_source": tank_state.get("last_reset_source"),
-            "recent_refills": list(tank_state.get("refill_history") or [])[:5],
             **setup_guidance(None if refill_at else "awaiting_refill"),
         }
 
@@ -328,6 +388,8 @@ class NextMaintenanceDueSensor(VacuumStoreSensor):
 
     sensor_key = "next_maintenance_due"
     sensor_name = "Next maintenance due"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = DAYS_UNIT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -388,8 +450,11 @@ class CleaningsLeftSensor(VacuumStoreSensor):
 
         settings, tank_state = await self._store_context()
         estimate = estimate_water_state(self._device, tank_state, settings)
-        forecast = supply_forecast(tank_state, estimate.get("remaining_ml"),
-                                   int(datetime.now(timezone.utc).timestamp() * 1000))
+        forecast = (supply_forecast(tank_state, estimate.get("remaining_ml"),
+                                    int(datetime.now(timezone.utc).timestamp() * 1000))
+                    if "external_counter" not in tank_state else
+                    {"cleanings_left": None, "days_left": None, "water_per_cleaning_ml": None,
+                     "water_per_day_ml": None, "basis_runs": 0})
         self._attr_native_value = forecast["cleanings_left"]
         self._attr_extra_state_attributes = {
             "vacuum_entity": self.vacuum_entity,
@@ -397,6 +462,7 @@ class CleaningsLeftSensor(VacuumStoreSensor):
             "water_per_cleaning_ml": forecast["water_per_cleaning_ml"],
             "water_per_day_ml": forecast["water_per_day_ml"],
             "basis_runs": forecast["basis_runs"],
+            "context_changed": bool(forecast.get("context_changed")),
         }
 
 
@@ -410,47 +476,15 @@ _vacuum_display_name = vacuum_display_name
 def _water_state_attributes(
     estimate: dict[str, Any], tank_state: dict[str, Any]
 ) -> dict[str, Any]:
-    """Expose initialization, profile and last-accounting diagnostics."""
+    """Only shared live status; banks and provenance stay in authorized VWM API."""
     return {
-        "initialized": estimate["initialized"],
-        "state_reason": estimate["state_reason"],
-        "capability": estimate["capability"],
-        "profile_key": estimate["profile_key"],
-        "profile_source": estimate["profile_source"],
-        "profile_confidence": estimate["profile_confidence"],
-        "integration_adapter": estimate.get("integration_adapter"),
-        "signal_contract_version": estimate.get("signal_contract_version"),
-        "mop_evidence_required": estimate.get("mop_evidence_required", False),
-        "accounting_evidence": estimate["accounting_evidence"],
-        "estimate_basis": estimate.get("estimate_basis"),
-        "nominal_time_resolution": estimate.get("nominal_time_resolution"),
-        "estimate_sources": estimate.get("estimate_sources", []),
+        "initialized": bool(estimate.get("initialized")),
+        "state_reason": estimate.get("state_reason"),
+        "capability": estimate.get("capability"),
         "uncertainty_kind": estimate.get("uncertainty_kind"),
-        "physical_accuracy_verified": estimate.get("physical_accuracy_verified", False),
         "uncertainty_percent": estimate.get("uncertainty_percent"),
-        "calibration_factor": estimate.get("calibration_factor"),
-        "calibration_samples": estimate.get("calibration_samples"),
+        "physical_accuracy_verified": estimate.get("physical_accuracy_verified", False),
         "water_empty_active": bool(tank_state.get("water_empty_active")),
-        "water_empty_acknowledged": bool(tank_state.get("water_empty_acknowledged")),
-        "calibration_pending": tank_state.get("calibration_pending_log_factor") is not None,
-        "intensity_unmapped": tank_state.get("intensity_unmapped"),
-        "bridged_gaps": tank_state.get("bridged_gaps") or 0,
-        **setup_guidance(estimate.get("state_reason")),
-        "water_anchor_source": tank_state.get("water_anchor_source"),
-        "water_anchor_kind": tank_state.get("water_anchor_kind"),
-        "water_anchor_confidence": tank_state.get("water_anchor_confidence"),
-        "last_low_water_ts": tank_state.get("last_low_water_ts"),
-        "last_calibration_predicted_ml": tank_state.get(
-            "last_calibration_predicted_ml"
-        ),
-        "last_calibration_target_ml": tank_state.get(
-            "last_calibration_target_ml"
-        ),
-        "consumption_resolution": tank_state.get("consumption_resolution"),
-        "reservoir_levels": tank_state.get("reservoir_levels"),
-        "accounting_v2": {k: v for k, v in (tank_state.get("accounting_v2") or {}).items() if k not in {"journal", "events", "device_identity"}},
         "accounting_incomplete": bool(tank_state.get("accounting_incomplete")),
-        "last_accounting_source": tank_state.get("last_accounting_source"),
-        "last_accounting_rate_ml": tank_state.get("last_accounting_rate_ml"),
-        "last_accounting_reason": tank_state.get("last_accounting_reason"),
+        **setup_guidance(estimate.get("state_reason")),
     }

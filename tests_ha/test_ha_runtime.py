@@ -9,6 +9,7 @@ install.
 from __future__ import annotations
 
 from datetime import timedelta
+import time
 
 import pytest
 from homeassistant.core import HomeAssistant
@@ -191,8 +192,8 @@ async def test_unload_removes_the_service_and_listeners(hass: HomeAssistant) -> 
     assert not hass.services.has_service(DOMAIN, "mark_refilled")
 
 
-async def test_state_changed_event_carries_the_balance_not_the_history(hass: HomeAssistant) -> None:
-    """5.7.0-beta.4: events over 32 KB are dropped by the recorder and bloat the database."""
+async def test_state_changed_event_is_an_anonymous_marker_and_store_keeps_balance(hass: HomeAssistant) -> None:
+    """Shared HA events contain no robot data; authorized clients read Store."""
     storage = await _setup(hass)
     await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": VACUUM}, blocking=True)
     sessions = [{"ts": i, "started_ts": i, "water": 10, "context": {"pad": "x" * 400}} for i in range(50)]
@@ -204,18 +205,18 @@ async def test_state_changed_event_carries_the_balance_not_the_history(hass: Hom
     _robot_states(hass, status="cleaning", vacuum="cleaning", area="5")
     await _settle(hass)
     assert events
-    import json
-
     for event in events:
-        tank = event.data["tank_states"][VACUUM]
-        assert "automatic_sessions" not in tank and "used_ml" in tank
-        assert event.data.get("partial") is True
-        assert len(json.dumps(event.data, default=str)) < 16_384
+        assert event.data == {"state_changed": True}
+        assert VACUUM not in repr(event.data) and "automatic_sessions" not in repr(event.data)
+    assert (await _tank(storage))["used_ml"] > 0
     assert len((await _tank(storage))["automatic_sessions"]) >= 50
 
 
 async def test_a_device_named_after_the_entity_id_is_renamed(hass: HomeAssistant) -> None:
     await _setup(hass)
+    # With no authoritative source device, naming applies to our fallback.
+    er.async_get(hass).async_update_entity(VACUUM, device_id=None)
+    await _settle(hass)
     registry = dr.async_get(hass)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     device = next(d for d in dr.async_entries_for_config_entry(registry, entry.entry_id)
@@ -248,21 +249,27 @@ async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     registry = dr.async_get(hass)
 
-    def ours():
-        return {i[1] for d in dr.async_entries_for_config_entry(registry, entry.entry_id) for i in d.identifiers}
+    entities = er.async_get(hass)
+    def balance_entity(origin):
+        uid = f"{entry.entry_id}_{origin}_water_used_since_refill"
+        return next(e for e in er.async_entries_for_config_entry(entities, entry.entry_id) if e.unique_id == uid)
 
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": f"{DOMAIN}/list_vacuums"})
     listed = {v["entity_id"]: v for v in (await client.receive_json())["result"]["vacuums"]}
     assert listed["vacuum.robotic_vacuum_cleaner"]["possible_duplicate_of"] == VACUUM
-    assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" in ours()  # nothing hidden without the user
+    copy = balance_entity("vacuum_robotic_vacuum_cleaner")
+    primary = balance_entity("vacuum_robot")
+    assert copy.device_id == bridged.id and hass.states.get(copy.entity_id).state != "unavailable"
+    assert primary.device_id == entities.async_get(VACUUM).device_id
 
     await client.send_json({"id": 2, "type": f"{DOMAIN}/set_settings",
                             "patch": {"robot_links": {"vacuum.robotic_vacuum_cleaner": VACUUM}}})
     assert (await client.receive_json())["success"]
     await hass.async_block_till_done()
-    assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" not in ours()
-    assert f"{entry.entry_id}_vacuum_robot" in ours()
+    assert hass.states.get(copy.entity_id).state == "unavailable"
+    assert hass.states.get(primary.entity_id).state != "unavailable"
+    assert entities.async_get(copy.entity_id).device_id == bridged.id
     storage = hass.data[DOMAIN]["storage"]
     await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": "vacuum.robotic_vacuum_cleaner"}, blocking=True)
     tanks = (await storage.async_get_state())["tank_states"]
@@ -273,12 +280,146 @@ async def test_matter_duplicate_is_suggested_and_hidden_only_after_confirmation(
                             "patch": {"robot_links": {"vacuum.robotic_vacuum_cleaner": "distinct"}}})
     assert (await client.receive_json())["success"]
     await hass.async_block_till_done()
-    assert f"{entry.entry_id}_vacuum_robotic_vacuum_cleaner" in ours()
+    assert hass.states.get(copy.entity_id).state != "unavailable"
+    assert entities.async_get(copy.entity_id).device_id == bridged.id
+
+
+@pytest.mark.parametrize("target,incomplete", [("linked", False), ("linked", True), ("primary", True), ("distinct", False)])
+async def test_card_refill_uses_confirmed_balance_owner(hass: HomeAssistant, hass_ws_client, target, incomplete):
+    """Card WS must refill the same owner as mark_refilled without merging banks."""
+    matter = MockConfigEntry(domain="matter", title="Synthetic duplicate")
+    matter.add_to_hass(hass)
+    bridge = dr.async_get(hass).async_get_or_create(config_entry_id=matter.entry_id,
+        identifiers={("matter", "r2-copy")}, manufacturer="Roborock", model="Robot")
+    copy = er.async_get(hass).async_get_or_create("vacuum", "matter", "r2-copy",
+        device_id=bridge.id, config_entry=matter, suggested_object_id="r2_copy").entity_id
+    assert copy == "vacuum.r2_copy"
+    hass.states.async_set(copy, "docked")
+    storage = await _setup(hass)
+    client = await hass_ws_client(hass)
+    link = "distinct" if target == "distinct" else VACUUM
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"robot_links": {copy: link}}})
+    assert (await client.receive_json())["success"]
+    await _settle(hass)
+    now = int(time.time() * 1000)
+    original = {"used_ml": 432, "initialized": True, "last_reset_ts": now if incomplete else 0,
+        "accounting_incomplete": incomplete, "calibration_history": [{"sample": "owner"}],
+        "refill_history": [{"source": "earlier", "used_before_ml": 123}],
+        "last_accounting_interruption": {"reason": "gap"} if incomplete else None}
+    other = {"used_ml": 999, "initialized": True, "last_reset_ts": 0,
+        "calibration_history": [{"sample": "copy"}], "refill_history": [{"source": "copy"}]}
+    await storage.async_set_tank_state(VACUUM, original)
+    await storage.async_set_tank_state(copy, other)
+    target_id = VACUUM if target == "primary" else copy
+    owner = copy if target == "distinct" else VACUUM
+    await client.send_json_auto_id({"type": f"{DOMAIN}/list_vacuums"})
+    listing = (await client.receive_json())["result"]
+    assert listing["balance_links"][copy] == link
+    assert next(v for v in listing["vacuums"] if v["entity_id"] == copy)["balance_owner"] == owner
+    expected_other = VACUUM if owner == copy else copy
+    before_other = (await storage.async_get_state())["tank_states"][expected_other]
+    events = []
+    unsub = hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event.data))
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": target_id})
+    result = await client.receive_json()
+    assert result["success"]
+    await _settle(hass)
+    tanks = (await storage.async_get_state())["tank_states"]
+    assert result["result"]["vacuum_entity"] == owner
+    assert result["result"]["state"]["used_ml"] == 0
+    assert tanks[owner]["used_ml"] == 0
+    assert tanks[owner]["last_reset_source"] == "card"
+    assert tanks[owner]["calibration_history"] == (other if owner == copy else original)["calibration_history"]
+    assert tanks[owner]["refill_history"][0]["source"] == "card"
+    assert tanks[expected_other]["used_ml"] == before_other["used_ml"]
+    assert tanks[expected_other]["refill_history"] == before_other["refill_history"]
+    assert any(event.get("state_changed") is True for event in events)
+    assert all(owner not in repr(event) and "refill_history" not in repr(event) for event in events)
+    if incomplete:
+        assert not tanks[owner]["accounting_incomplete"]
+        assert tanks[owner]["last_accounting_interruption"]["reason"] == "gap"
+    if owner == VACUUM:
+        entry = hass.config_entries.async_entries(DOMAIN)[0]
+        sensor = next(item.entity_id for item in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+                      if item.unique_id.endswith("_vacuum_robot_water_used_since_refill"))
+        assert float(hass.states.get(sensor).state) == 0
+    history = list(tanks[owner]["refill_history"])
+    reset_ts = tanks[owner]["last_reset_ts"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reset_tank", "vacuum_entity": target_id})
+    assert (await client.receive_json())["success"]
+    await _settle(hass)
+    repeated = (await storage.async_get_state())["tank_states"]
+    assert repeated[owner]["refill_history"] == history
+    assert repeated[owner]["last_reset_ts"] == reset_ts
+    assert repeated[expected_other]["refill_history"] == before_other["refill_history"]
+    unsub()
+
+
+@pytest.mark.parametrize("route", ["card", "service", "empty", "empty_supported"])
+async def test_registry_duplicate_action_uses_balance_owner(hass: HomeAssistant, hass_ws_client, route):
+    """A registry-proven duplicate shares the displayed owner's tank."""
+    storage = await _setup(hass)
+    registry = er.async_get(hass)
+    primary = registry.async_get(VACUUM)
+    roborock = next(e for e in hass.config_entries.async_entries("roborock"))
+    copy = registry.async_get_or_create("vacuum", "roborock", "r2-registry-copy",
+        device_id=primary.device_id, config_entry=roborock, suggested_object_id="zzz_r2_registry_copy").entity_id
+    assert copy == "vacuum.zzz_r2_registry_copy"
+    hass.states.async_set(copy, "docked")
+    if route == "empty":
+        registry.async_remove("sensor.robot_dock_error")
+        hass.states.async_remove("sensor.robot_dock_error")
+    await _settle(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True,
+        "calibration_history": [{"sample": "owner"}], "refill_history": [{"source": "earlier"}]})
+    await storage.async_set_tank_state(copy, {"used_ml": 999, "initialized": True,
+        "calibration_history": [{"sample": "copy"}], "refill_history": [{"source": "copy"}]})
+    from custom_components.ha_vacuum_water_monitor.robots import async_reports
+    reports = await async_reports(hass)
+    assert any(r["vacuum_entity"] == VACUUM for r in reports)
+    assert not any(r["vacuum_entity"] == copy for r in reports)
+    if route.startswith("empty"):
+        assert next(r for r in reports if r["vacuum_entity"] == VACUUM)["can_calibrate"] == (route == "empty_supported")
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/list_vacuums"})
+    listing = (await client.receive_json())["result"]
+    assert listing["balance_links"].get(copy) is None
+    assert next(v for v in listing["vacuums"] if v["entity_id"] == copy)["balance_owner"] == VACUUM
+    if route == "service":
+        await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": copy}, blocking=True)
+    else:
+        await client.send_json_auto_id({"type": f"{DOMAIN}/" + ("reset_tank" if route == "card" else "mark_empty"),
+                                        "vacuum_entity": copy})
+        result = await client.receive_json()
+        if route == "empty_supported":
+            assert not result["success"]
+            assert "reports an empty tank itself" in result["error"]["message"]
+        else:
+            assert result["success"]
+            assert result["result"]["vacuum_entity"] == VACUUM
+    await _settle(hass)
+    tanks = (await storage.async_get_state())["tank_states"]
+    assert tanks[copy]["used_ml"] == 999
+    assert tanks[copy]["refill_history"] == [{"source": "copy"}]
+    assert tanks[VACUUM]["calibration_history"] == [{"sample": "owner"}]
+    if route == "empty_supported":
+        assert not tanks[VACUUM].get("user_empty_active")
+        assert not tanks[copy].get("user_empty_active")
+        assert tanks[VACUUM]["used_ml"] == 432
+    elif route == "empty":
+        assert tanks[VACUUM]["user_empty_active"]
+        assert not tanks[copy].get("user_empty_active")
+    else:
+        assert tanks[VACUUM]["used_ml"] == 0
+        assert tanks[VACUUM]["last_reset_source"] == route
 
 
 async def test_a_device_with_the_old_placeholder_name_gets_the_robots_name(hass: HomeAssistant) -> None:
     """5.8.0: single-device cards saved "Vacuum" as the robot's name."""
     storage = await _setup(hass)
+    # The integration owns and may rename only its fallback device.
+    er.async_get(hass).async_update_entity(VACUUM, device_id=None)
+    await _settle(hass)
     await storage.async_set_settings({"configured_devices": [{"vacuum_entity": VACUUM, "name": "Vacuum"}]})
     registry = dr.async_get(hass)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
@@ -293,17 +434,21 @@ async def test_a_device_with_the_old_placeholder_name_gets_the_robots_name(hass:
 async def test_household_can_subscribe_to_water_balance_updates(hass: HomeAssistant, hass_ws_client, hass_admin_user) -> None:
     """A normal authenticated account receives compact domain events immediately."""
     await _setup(hass)
-    hass_admin_user.groups = []
+    from homeassistant.auth.const import GROUP_ID_USER
+    hass_admin_user.groups = [await hass.auth.async_get_group(GROUP_ID_USER)]
     assert not hass_admin_user.is_admin
     client = await hass_ws_client(hass)
     await client.send_json_auto_id({"type": f"{DOMAIN}/subscribe"})
     response = await client.receive_json()
     assert response["success"], response
-    payload = {"partial": True, "tank_states": {VACUUM: {"used_ml": 175}}}
-    hass.bus.async_fire(f"{DOMAIN}_state_changed", payload)
+    await hass.services.async_call(DOMAIN, "mark_refilled", {"entity_id": VACUUM}, blocking=True)
     await hass.async_block_till_done()
     event = await client.receive_json()
-    assert event["event"] == {"data": payload}
+    assert event["event"]["data"]["state_changed"] is True
+    assert VACUUM in event["event"]["data"]["authorized_vacuums"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    state = await client.receive_json()
+    assert state["success"] and state["result"]["tank_states"][VACUUM]["initialized"]
     await client.send_json_auto_id({"type": "unsubscribe_events", "subscription": response["id"]})
     assert (await client.receive_json())["success"]
 
@@ -356,8 +501,14 @@ async def test_v8_household_settings_remain_allowed_but_threshold_patch_is_atomi
 ):
     storage = await _setup(hass)
     entry = hass.config_entries.async_entries(DOMAIN)[0]
-    # Fixture user remains authenticated but lacks administrator privileges.
-    hass_admin_user.groups = []
+    # Grant only the normal household settings capability, not admin thresholds.
+    from homeassistant.auth.const import GROUP_ID_USER
+    admin = await hass_ws_client(hass)
+    rule = {"mode": "selected_users", "user_ids": [hass_admin_user.id]}
+    await admin.send_json_auto_id({"type": f"{DOMAIN}/set_feature_access", "policy": {
+        "schema": 1, "features": {"settings": {"execute": rule}}}})
+    assert (await admin.receive_json())["success"]
+    hass_admin_user.groups = [await hass.auth.async_get_group(GROUP_ID_USER)]
     assert not hass_admin_user.is_admin
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": f"{DOMAIN}/set_settings", "patch": {
@@ -466,6 +617,80 @@ async def test_v8_failed_save_does_not_publish_part_of_threshold_patch(hass, mon
     assert await storage.async_get_state() == before
 
 
+@pytest.mark.parametrize("action", ["options", "link", "refill", "plan", "reprofile", "reset", "measurement"])
+async def test_failed_public_save_keeps_memory_store_and_events_consistent(hass, hass_ws_client, monkeypatch, action):
+    """A rejected disk write cannot become a later successful read or event."""
+    from copy import deepcopy
+    from unittest.mock import AsyncMock
+    from custom_components.ha_vacuum_water_monitor.contribution import SETTINGS
+
+    storage = await _setup(hass)
+    await storage.async_set_settings({"configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234,
+        "profile_key": "stale", "config_provenance": {"authored_fields": ["vacuum_entity", "water_total_ml"]}}]})
+    context = {"model_id": "roborock_s8_maxv_ultra", "sku": "EU", "dock_variant": "tank",
+        "firmware": "1.0", "integration_id": "roborock", "integration_version": "1.0",
+        "reservoir": "dock_clean", "action": "floor_mopping", "settings": dict.fromkeys(SETTINGS, "not_applicable")}
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 432,
+        "last_area": 12, "calibration_history": [{"sample": "keep"}], "automatic_sessions": [
+            {"ts": 123, "area": 10, "context": context, "accounting_valid": True, "exposure_complete": True, "segments": 1}]})
+    await _settle(hass)
+    client = await hass_ws_client(hass)
+    before = await storage.async_get_state()
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    public_before = (await client.receive_json())["result"]
+    disk_before = deepcopy(await storage._store.async_load())
+    events = []
+    unsub = hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event.data))
+    original_save = storage._store.async_save
+    monkeypatch.setattr(storage._store, "async_save", AsyncMock(side_effect=OSError("synthetic disk error")))
+    requests = {
+        "options": {"type": f"{DOMAIN}/set_device_options", "vacuum_entity": VACUUM, "options": {"capacity_ml": 3000}},
+        "link": {"type": f"{DOMAIN}/set_robot_link", "vacuum_entity": VACUUM, "target": "distinct"},
+        "refill": {"type": f"{DOMAIN}/set_refill_settings", "vacuum_entity": VACUUM, "auto_refill": False},
+        "plan": {"type": f"{DOMAIN}/set_measurement_plan", "vacuum_entity": VACUUM,
+                 "plan": {"confirmed": True, "settings": {"wash_mode": "standard"}}},
+        "reprofile": {"type": f"{DOMAIN}/reprofile", "vacuum_entity": VACUUM},
+        "reset": {"type": f"{DOMAIN}/reset_tank", "vacuum_entity": VACUUM},
+        "measurement": {"type": f"{DOMAIN}/save_measurement", "vacuum_entity": VACUUM, "session_index": 0,
+            "session_ts": 123, "measurement": {"observed_ml": 100, "resolution_ml": 5, "instrument": "graduated_jug",
+                "boundaries_confirmed": True, "uninterrupted": True, "purpose": "training"}},
+    }
+    await client.send_json_auto_id(requests[action])
+    result = await client.receive_json()
+    assert not result["success"]
+    monkeypatch.setattr(storage._store, "async_save", original_save)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    after = (await client.receive_json())["result"]
+    assert after == public_before
+    assert await storage.async_get_state() == before
+    assert await storage._store.async_load() == disk_before
+    assert not events
+    await storage.async_set_settings({"sharing_intro_choice": "not_now"})
+    persisted = await storage._store.async_load()
+    assert persisted["tank_states"] == disk_before["tank_states"]
+    assert persisted["settings"].get("local_measurements") == disk_before["settings"].get("local_measurements")
+    unsub()
+
+
+async def test_options_flow_save_failure_keeps_options_and_store_consistent(hass, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    storage = await _setup(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    before_options = dict(entry.options)
+    before_state = await storage.async_get_state()
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    assert flow["type"] == "form"
+    monkeypatch.setattr(storage._store, "async_save", AsyncMock(side_effect=OSError("synthetic disk error")))
+    result = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+        "warning_threshold": 40, "critical_threshold": 15})
+    await hass.async_block_till_done()
+    assert result["type"] == "form"
+    assert result["errors"]
+    assert dict(entry.options) == before_options
+    assert await storage.async_get_state() == before_state
+
+
 async def test_repair_keeps_interruption_reason_on_disk(hass: HomeAssistant, hass_storage) -> None:
     from custom_components.ha_vacuum_water_monitor.repairs import ConfirmFullFlow
     storage = await _setup(hass)
@@ -529,3 +754,723 @@ async def test_completed_wash_survives_storage_reload_and_startup_unknown(hass: 
     assert on_disk["used_ml"] == 174
     assert on_disk["automatic_sessions"] == before["automatic_sessions"]
     assert on_disk.get("last_accounting_interruption") is None
+
+
+async def test_actual_registry_separate_dock_discovery_has_no_deprecated_entry_warning(hass, hass_ws_client, caplog):
+    upstream = MockConfigEntry(domain="roborock", title="Synthetic Roborock")
+    other = MockConfigEntry(domain="roborock", title="Other Roborock")
+    upstream.add_to_hass(hass)
+    other.add_to_hass(hass)
+    devices, entities = dr.async_get(hass), er.async_get(hass)
+    robot = devices.async_get_or_create(config_entry_id=upstream.entry_id,
+        identifiers={("roborock", "r1-registry-robot")}, manufacturer="Roborock", model="r1_model")
+    dock = devices.async_get_or_create(config_entry_id=upstream.entry_id,
+        identifiers={("roborock", "r1-registry-dock")}, manufacturer="Roborock", model="r1_model Dock")
+    foreign = devices.async_get_or_create(config_entry_id=other.entry_id,
+        identifiers={("roborock", "r1-registry-foreign")}, manufacturer="Roborock", model="r1_model Dock")
+    entities.async_get_or_create("vacuum", "roborock", "r1-registry-vacuum", device_id=robot.id,
+        config_entry=upstream, suggested_object_id="r1_registry_robot")
+    for dev, owner, name in ((dock, upstream, "r1_clean"), (foreign, other, "r1_foreign")):
+        entities.async_get_or_create("binary_sensor", "roborock", name, device_id=dev.id,
+            config_entry=owner, suggested_object_id=name, translation_key="clean_box_empty")
+        hass.states.async_set(f"binary_sensor.{name}", "off")
+    hass.states.async_set("vacuum.r1_registry_robot", "docked")
+    entry = MockConfigEntry(domain=DOMAIN, title="VWM", data={}, options={})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/list_vacuums"})
+    listed = (await client.receive_json())["result"]["vacuums"]
+    result = next(d for d in listed if d["entity_id"] == "vacuum.r1_registry_robot")
+    assert result["signals"]["dock_clean_water_sensor"] == "binary_sensor.r1_clean"
+    assert "binary_sensor.r1_foreign" not in result["signals"].values()
+    assert not any("config_entries" in rec.message and "deprecated" in rec.message.lower() for rec in caplog.records)
+
+
+async def test_reprofile_rebinds_discovered_area_for_ordinary_events(hass, hass_ws_client):
+    storage = await _setup(hass)
+    registry = er.async_get(hass)
+    old = registry.async_get("sensor.robot_cleaning_area")
+    registry.async_update_entity(old.entity_id, disabled_by=er.RegistryEntryDisabler.USER)
+    upstream = hass.config_entries.async_entries("roborock")[0]
+    registry.async_get_or_create("sensor", "roborock", "r1-replacement-area", device_id=old.device_id,
+        config_entry=upstream, suggested_object_id="r1_new_area", translation_key="cleaning_area")
+    hass.states.async_set("sensor.r1_new_area", "1", {"unit_of_measurement": "m²"})
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/reprofile", "vacuum_entity": VACUUM})
+    assert (await client.receive_json())["success"]
+    await _settle(hass)
+    hass.states.async_set("sensor.r1_new_area", "7", {"unit_of_measurement": "m²"})
+    await _settle(hass)
+    assert (await _tank(storage))["last_area"] == 7
+    hass.states.async_set("sensor.robot_cleaning_area", "20", {"unit_of_measurement": "m²"})
+    await _settle(hass)
+    assert (await _tank(storage))["last_area"] == 7
+
+
+async def test_settings_reports_saved_even_if_refresh_fails(hass, hass_ws_client, monkeypatch):
+    import custom_components.ha_vacuum_water_monitor as integration
+    storage = await _setup(hass)
+    client = await hass_ws_client(hass)
+
+    async def fail_refresh(*args, **kwargs):
+        raise RuntimeError("synthetic refresh failure")
+
+    original_tick = integration.async_tick_water_state
+    hass.states.async_set("sensor.r1_recovery", "1", {"unit_of_measurement": "m²"})
+    monkeypatch.setattr(integration, "async_tick_water_state", fail_refresh)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
+        "robot_links": {"vacuum.example": "distinct"},
+        "configured_devices": [{"vacuum_entity": VACUUM, "area_sensor": "sensor.r1_recovery"}]}})
+    response = await client.receive_json()
+    assert response["success"]
+    assert response["result"]["bindings_refreshed"] is False
+    assert (await storage.async_get_state())["settings"]["robot_links"]["vacuum.example"] == "distinct"
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    assert (await client.receive_json())["result"]["settings"]["robot_links"]["vacuum.example"] == "distinct"
+    monkeypatch.setattr(integration, "async_tick_water_state", original_tick)
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=65))
+    await hass.async_block_till_done()
+    hass.states.async_set("sensor.r1_recovery", "7", {"unit_of_measurement": "m²"})
+    await _settle(hass)
+    assert (await _tank(storage))["last_area"] == 7
+
+
+async def test_registry_vacuum_rename_keeps_its_water_history(hass, hass_ws_client, monkeypatch):
+    import inspect
+    import json
+    import os
+    import traceback
+    from pathlib import Path
+    trace = []
+    path = os.environ.get("VWM_REGISTRY_TRACE")
+    def record(item):
+        trace.append(item)
+        if path:
+            Path(path).write_text(json.dumps(trace, indent=2))
+    original_remove_device = dr.DeviceRegistry.async_remove_device
+    def capture_device(self, device_id):
+        device = self.async_get(device_id)
+        registry = er.async_get(hass)
+        record({"kind": "device_remove", "device_id": device_id,
+                "identifiers": sorted([list(i) for i in (device.identifiers if device else [])]),
+                "entities": [e.entity_id for e in er.async_entries_for_device(registry, device_id, include_disabled_entities=True)],
+                "stack": traceback.format_stack(limit=25)})
+        return original_remove_device(self, device_id)
+    monkeypatch.setattr(dr.DeviceRegistry, "async_remove_device", capture_device)
+    storage = await _setup(hass)
+    vwm_entry = hass.config_entries.async_entries(DOMAIN)[0]
+    registry = er.async_get(hass)
+    before_entities = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, vwm_entry.entry_id)}
+    removals = []
+    original_remove = type(registry).async_remove
+    def capture_remove(self, entity_id):
+        if entity_id in before_entities.values():
+            stack = traceback.format_stack(limit=18)
+            frame = inspect.currentframe().f_back
+            event = frame.f_locals.get("event") if frame else None
+            record({"kind": "entity_remove", "entity_id": entity_id,
+                    "event_device_id": event.data.get("device_id") if event is not None else None,
+                    "stack": stack})
+            removals.append((entity_id, stack))
+        return original_remove(self, entity_id)
+    monkeypatch.setattr(type(registry), "async_remove", capture_remove)
+    sensor = next(item for item in er.async_entries_for_config_entry(registry, vwm_entry.entry_id)
+                  if item.unique_id.endswith("_vacuum_robot_water_remaining"))
+    registry.async_update_entity(sensor.entity_id, name="Custom water name")
+    number = next(item.entity_id for item in er.async_entries_for_config_entry(registry, vwm_entry.entry_id)
+                  if item.unique_id.endswith("_vacuum_robot_tank_capacity"))
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True,
+        "refill_history": [{"used_before_ml": 876}]})
+    registry.async_update_entity(VACUUM, new_entity_id="vacuum.r1_renamed")
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set("vacuum.r1_renamed", "docked")
+    await _settle(hass)
+    state = await storage.async_get_state()
+    assert "registry_identities" not in state
+    assert state["tank_states"]["vacuum.r1_renamed"]["used_ml"] == 432
+    assert state["tank_states"]["vacuum.r1_renamed"]["refill_history"] == [{"used_before_ml": 876}]
+    after_entities = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, vwm_entry.entry_id)}
+    assert after_entities == before_entities, removals
+    source_id = registry.async_get("vacuum.r1_renamed").device_id
+    assert source_id and registry.async_get(sensor.entity_id).device_id == source_id
+    assert not any((DOMAIN, f"{vwm_entry.entry_id}_vacuum_robot") in device.identifiers
+                   for device in dr.async_entries_for_config_entry(dr.async_get(hass), vwm_entry.entry_id))
+    assert registry.async_get(sensor.entity_id).name == "Custom water name"
+    await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 3000}, blocking=True)
+    await hass.async_block_till_done()
+    assert (await storage.async_get_settings())["device_options"]["vacuum.r1_renamed"]["capacity_ml"] == 3000
+    # A stale authored card save must address the renamed registry entity.
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
+        "configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234}]}})
+    assert (await client.receive_json())["success"]
+    settings = (await storage.async_get_state())["settings"]
+    assert settings["configured_devices"][0] == {"vacuum_entity": "vacuum.r1_renamed", "water_total_ml": 1234}
+    # If the old id is reused, it now identifies a different registry entity.
+    upstream = MockConfigEntry(domain="matter", title="Independent")
+    upstream.add_to_hass(hass)
+    er.async_get(hass).async_get_or_create("vacuum", "matter", "r1-new-independent", config_entry=upstream,
+        suggested_object_id="robot")
+    hass.states.async_set(VACUUM, "docked")
+    await hass.async_block_till_done()
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
+        "configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234}]}})
+    assert not (await client.receive_json())["success"]
+    state = await storage.async_get_state()
+    assert state["settings"]["configured_devices"][0]["vacuum_entity"] == "vacuum.r1_renamed"
+    assert state["tank_states"]["vacuum.r1_renamed"]["used_ml"] == 432
+
+
+@pytest.mark.parametrize("operation", ["preview", "holdout"])
+async def test_measurements_follow_registry_identity_after_rename_and_reuse(hass, hass_ws_client, operation):
+    """Old provenance remains historical, but the same robot can still use its measurements."""
+    from custom_components.ha_vacuum_water_monitor.contribution import SETTINGS
+
+    storage = await _setup(hass)
+    context = {"model_id": "roborock_s8_maxv_ultra", "sku": "EU", "dock_variant": "tank",
+        "firmware": "1.0", "integration_id": "roborock", "integration_version": "1.0",
+        "reservoir": "dock_clean", "action": "floor_mopping",
+        "settings": dict.fromkeys(SETTINGS, "not_applicable")}
+    sessions = [{"ts": n, "area": 10, "context": context, "accounting_valid": True,
+                 "exposure_complete": True, "segments": 1} for n in (101, 102, 103, 104)]
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 50,
+                                                 "automatic_sessions": sessions})
+    client = await hass_ws_client(hass)
+    measurement = {"observed_ml": 100, "resolution_ml": 5, "instrument": "graduated_jug",
+                   "boundaries_confirmed": True, "uninterrupted": True, "purpose": "training"}
+    for index in range(3):
+        await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": VACUUM,
+            "session_index": index, "session_ts": sessions[index]["ts"], "measurement": measurement})
+        result = await client.receive_json()
+        assert result["success"]
+    before = (await storage.async_get_state())["settings"]
+    assert before["consumption_calibrations"][VACUUM][0]["coefficient"] == 10
+    await client.send_json_auto_id({"type": f"{DOMAIN}/contribution_preview", "vacuum_entity": VACUUM,
+                                   "sample_ids": ["local.101"]})
+    baseline_preview = await client.receive_json()
+    assert baseline_preview["success"], baseline_preview
+    assert baseline_preview["result"]["samples"][0]["measured_ml"] == 100
+    registry = er.async_get(hass)
+    renamed = "vacuum.r3_renamed"
+    registry.async_update_entity(VACUUM, new_entity_id=renamed)
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set(renamed, "docked")
+    await _settle(hass)
+    matter = MockConfigEntry(domain="matter", title="Independent robot")
+    matter.add_to_hass(hass)
+    replacement = registry.async_get_or_create("vacuum", "matter", "r3-independent", config_entry=matter,
+                                                suggested_object_id="robot")
+    assert replacement.entity_id == VACUUM
+    hass.states.async_set(VACUUM, "docked")
+    await _settle(hass)
+    saved = (await storage.async_get_state())["settings"]
+    assert [s["device_id"] for s in saved["local_measurements"][renamed]] == [VACUUM] * 3
+    assert not saved["local_measurements"].get(VACUUM)
+    if operation == "preview":
+        await client.send_json_auto_id({"type": f"{DOMAIN}/contribution_preview", "vacuum_entity": VACUUM,
+                                       "sample_ids": ["local.101"]})
+        assert not (await client.receive_json())["success"]
+        await client.send_json_auto_id({"type": f"{DOMAIN}/contribution_preview", "vacuum_entity": renamed,
+                                       "sample_ids": ["local.101"]})
+        result = await client.receive_json()
+        assert result["success"]
+        assert result["result"]["samples"][0]["measured_ml"] == 100
+        assert result["result"]["publication_consent"] is False
+    else:
+        await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": renamed,
+            "session_index": 3, "session_ts": 104,
+            "measurement": {**measurement, "purpose": "validation", "observed_ml": 120}})
+        result = await client.receive_json()
+        assert result["success"]
+        assert result["result"]["calibration"]["coefficient"] == 10
+        assert result["result"]["calibration"]["validation"]["validation_ids"] == ["local.104"]
+
+
+@pytest.mark.parametrize("keep_other", [False, True])
+async def test_preupgrade_measurements_after_rename_keep_historical_context(hass, hass_ws_client, keep_other):
+    """Only the same owner's proven legacy identifiers are compared as one identity."""
+    from copy import deepcopy
+    from custom_components.ha_vacuum_water_monitor.calibration import build_local_measurement, fit_local_measurements
+    from custom_components.ha_vacuum_water_monitor.contribution import SETTINGS
+
+    storage = await _setup(hass)
+    registry = er.async_get(hass)
+    renamed = "vacuum.r3_preupgrade"
+    registry.async_update_entity(VACUUM, new_entity_id=renamed)
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set(renamed, "docked")
+    await _settle(hass)
+    context = {"model_id": "roborock_s8_maxv_ultra", "sku": "EU", "dock_variant": "tank",
+        "firmware": "1.0", "integration_id": "roborock", "integration_version": "1.0",
+        "reservoir": "dock_clean", "action": "floor_mopping", "device_id": renamed,
+        "settings": dict.fromkeys(SETTINGS, "not_applicable")}
+    measurement = {"observed_ml": 100, "resolution_ml": 5, "instrument": "graduated_jug",
+                   "boundaries_confirmed": True, "uninterrupted": True, "purpose": "training"}
+    def session(ts, ctx):
+        return {"ts": ts, "area": 10, "context": ctx, "accounting_valid": True,
+                "exposure_complete": True, "segments": 1}
+    legacy = [build_local_measurement(session(n, context), measurement, renamed) for n in (301, 302, 303)]
+    legacy_fit = fit_local_measurements(legacy)
+    assert legacy_fit["coefficient"] == 10
+    other_method = {**deepcopy(legacy_fit), "id": "local.time", "method": "time", "unit": "ml/min"}
+    await storage.async_set_settings({"local_measurements": {renamed: deepcopy(legacy)},
+        "consumption_calibrations": {renamed: [legacy_fit, *([other_method] if keep_other else [])]}})
+    current_context = {**context, "device_id": VACUUM}
+    await storage.async_set_tank_state(renamed, {"initialized": True, "used_ml": 0,
+        "automatic_sessions": [session(304, current_context)]})
+    independent = MockConfigEntry(domain="matter", title="Independent robot")
+    independent.add_to_hass(hass)
+    replacement = registry.async_get_or_create("vacuum", "matter", "r3-upgrade-independent", config_entry=independent,
+                                                suggested_object_id="robot")
+    assert replacement.entity_id == VACUUM
+    hass.states.async_set(VACUUM, "docked")
+    await _settle(hass)
+    client = await hass_ws_client(hass)
+    values = {**measurement, "purpose": "validation", "observed_ml": 120}
+    await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": renamed,
+        "session_index": 0, "session_ts": 304, "measurement": values})
+    result = await client.receive_json()
+    assert result["success"]
+    assert result["result"]["calibration"]["coefficient"] == 10
+    assert result["result"]["calibration"]["validation"]["validation_ids"] == ["local.304"]
+    saved = (await storage.async_get_state())["settings"]
+    assert saved["local_measurements"][renamed][:3] == legacy
+    saved_profiles = saved["consumption_calibrations"][renamed]
+    assert len([p for p in saved_profiles if p["method"] == "area" and p["scope"] == "whole_cycle"]) == 1
+    assert (other_method in saved_profiles) is keep_other
+    assert not saved["local_measurements"].get(VACUUM)
+
+
+async def test_measurement_save_reports_refresh_failure_without_losing_saved_data(hass, hass_ws_client, monkeypatch):
+    import custom_components.ha_vacuum_water_monitor as integration
+    from custom_components.ha_vacuum_water_monitor.contribution import SETTINGS
+
+    storage = await _setup(hass)
+    context = {"model_id": "roborock_s8_maxv_ultra", "sku": "EU", "dock_variant": "tank",
+        "firmware": "1.0", "integration_id": "roborock", "integration_version": "1.0",
+        "reservoir": "dock_clean", "action": "floor_mopping",
+        "settings": dict.fromkeys(SETTINGS, "not_applicable")}
+    sessions = [{"ts": n, "area": 10, "context": context, "accounting_valid": True,
+                 "exposure_complete": True, "segments": 1} for n in (401, 402, 403)]
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 50,
+                                                 "automatic_sessions": sessions})
+    client = await hass_ws_client(hass)
+    measurement = {"observed_ml": 100, "resolution_ml": 5, "instrument": "graduated_jug",
+                   "boundaries_confirmed": True, "uninterrupted": True, "purpose": "training"}
+    original_tick = integration.async_tick_water_state
+    async def broken(*args, **kwargs):
+        raise RuntimeError("synthetic refresh failure")
+    for index in range(3):
+        if index == 2:
+            monkeypatch.setattr(integration, "async_tick_water_state", broken)
+        await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": VACUUM,
+            "session_index": index, "session_ts": sessions[index]["ts"], "measurement": measurement})
+        result = await client.receive_json()
+        assert result["success"]
+    assert result["result"]["saved"] is True
+    assert result["result"]["bindings_refreshed"] is False
+    settings = (await storage.async_get_state())["settings"]
+    assert len(settings["local_measurements"][VACUUM]) == 3
+    assert settings["consumption_calibrations"][VACUUM][0]["coefficient"] == 10
+    monkeypatch.setattr(integration, "async_tick_water_state", original_tick)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/refresh_bindings"})
+    retry = await client.receive_json()
+    assert retry["success"] and retry["result"]["bindings_refreshed"] is True
+    assert len(retry["result"]["settings"]["local_measurements"][VACUUM]) == 3
+    assert len((await storage.async_get_state())["settings"]["local_measurements"][VACUUM]) == 3
+    hass.states.async_set("sensor.robot_cleaning_area", "7", {"unit_of_measurement": "m²"})
+    await _settle(hass)
+    assert (await _tank(storage))["last_area"] == 7
+
+
+async def test_measured_calibration_remains_applicable_after_registry_rename(hass, hass_ws_client):
+    """A producer event uses the same physical calibration after a registry rename."""
+    from custom_components.ha_vacuum_water_monitor.profiles import CONSUMPTION_SETTINGS
+
+    storage = await _setup(hass)
+    registry = er.async_get(hass)
+    client = await hass_ws_client(hass)
+    plan = {"confirmed": True, "sku": "EU", "dock_variant": "tank", "firmware": "1.0",
+            "integration_version": "1.0", "settings": dict.fromkeys(CONSUMPTION_SETTINGS, "not_applicable")}
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_measurement_plan", "vacuum_entity": VACUUM, "plan": plan})
+    assert (await client.receive_json())["success"]
+    hass.states.async_set("select.robot_mop_mode", "deep")
+    await _settle(hass)
+    hass.states.async_set("select.robot_mop_mode", "standard")
+    await _settle(hass)
+    state = (await storage.async_get_state())["tank_states"][VACUUM]
+    context = state["last_consumption_context"]
+    assert context["firmware"] == "1.0"
+    sessions = [{"ts": n, "area": 10, "context": context, "accounting_valid": True,
+                 "exposure_complete": True, "segments": 1} for n in (201, 202, 203)]
+    state.update(initialized=True, used_ml=0, automatic_sessions=sessions)
+    await storage.async_set_tank_state(VACUUM, state)
+    measurement = {"observed_ml": 100, "resolution_ml": 5, "instrument": "graduated_jug",
+                   "boundaries_confirmed": True, "uninterrupted": True, "purpose": "training"}
+    for index in range(3):
+        await client.send_json_auto_id({"type": f"{DOMAIN}/save_measurement", "vacuum_entity": VACUUM,
+            "session_index": index, "session_ts": sessions[index]["ts"], "measurement": measurement})
+        assert (await client.receive_json())["success"]
+    async def ordinary_session(entity):
+        hass.states.async_set(entity, "cleaning", {"status": "cleaning"})
+        hass.states.async_set("sensor.robot_status", "cleaning")
+        hass.states.async_set("sensor.robot_cleaning_area", "0", {"unit_of_measurement": "m²"})
+        await _settle(hass)
+        hass.states.async_set("sensor.robot_cleaning_area", "10", {"unit_of_measurement": "m²"})
+        await _settle(hass)
+        hass.states.async_set(entity, "docked", {"status": "charging"})
+        hass.states.async_set("sensor.robot_status", "charging")
+        await _settle(hass)
+        return (await storage.async_get_state())["tank_states"][entity]
+
+    baseline = await ordinary_session(VACUUM)
+    assert baseline["used_ml"] == 100, (baseline.get("whole_cycle_fallback_reason"),
+        baseline.get("consumption_resolution"), baseline["automatic_sessions"][0].get("exposure_complete"),
+        baseline["automatic_sessions"][0].get("accounting_valid"), baseline["automatic_sessions"][0].get("area"))
+    assert baseline["last_accounting_evidence"] == "device_calibration"
+    baseline["used_ml"] = 0
+    await storage.async_set_tank_state(VACUUM, baseline)
+    renamed = "vacuum.r3_calibrated"
+    registry.async_update_entity(VACUUM, new_entity_id=renamed)
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set(renamed, "docked", {"status": "charging"})
+    await _settle(hass)
+    tank = await ordinary_session(renamed)
+    assert tank["used_ml"] == 100
+    assert tank["last_accounting_evidence"] == "device_calibration"
+    assert tank["automatic_sessions"][0]["water"] == 100
+
+
+async def test_vacuum_rename_while_unloaded_reconciles_registry_identity(hass):
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True})
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    registry = er.async_get(hass)
+    original = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)}
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    er.async_get(hass).async_update_entity(VACUUM, new_entity_id="vacuum.r1_offline_rename")
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set("vacuum.r1_offline_rename", "docked")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    state = await hass.data[DOMAIN]["storage"].async_get_state()
+    assert state["tank_states"]["vacuum.r1_offline_rename"]["used_ml"] == 432
+    assert {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)} == original
+
+
+async def test_vacuum_rename_conflict_does_not_merge_existing_history(hass, caplog):
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True})
+    await storage.async_set_tank_state("vacuum.r1_conflict", {"used_ml": 999, "initialized": True})
+    er.async_get(hass).async_update_entity(VACUUM, new_entity_id="vacuum.r1_conflict")
+    await _settle(hass)
+    states = (await storage.async_get_state())["tank_states"]
+    assert states[VACUUM]["used_ml"] == 432
+    assert states["vacuum.r1_conflict"]["used_ml"] == 999
+    assert any("rename" in r.message.lower() and "conflict" in r.message.lower() for r in caplog.records)
+
+
+async def test_offline_rename_with_reused_old_id_keeps_identity_and_separate_banks(hass):
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True,
+        "refill_history": [{"used_before_ml": 876}]})
+    await storage.async_set_settings({"configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234}]})
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    registry = er.async_get(hass)
+    original = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)}
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    registry.async_update_entity(VACUUM, new_entity_id="vacuum.r1_offline_rename")
+    hass.states.async_remove(VACUUM)
+    independent = MockConfigEntry(domain="matter", title="Independent")
+    independent.add_to_hass(hass)
+    replacement = registry.async_get_or_create("vacuum", "matter", "r1-independent", config_entry=independent,
+        suggested_object_id="robot")
+    assert replacement.entity_id == VACUUM
+    hass.states.async_set(VACUUM, "docked")
+    hass.states.async_set("vacuum.r1_offline_rename", "docked")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    state = await hass.data[DOMAIN]["storage"].async_get_state()
+    assert state["tank_states"]["vacuum.r1_offline_rename"]["used_ml"] == 432
+    assert state["tank_states"]["vacuum.r1_offline_rename"]["refill_history"] == [{"used_before_ml": 876}]
+    assert state["tank_states"].get(VACUUM, {}).get("used_ml", 0) != 432
+    assert state["settings"]["configured_devices"][0]["vacuum_entity"] == "vacuum.r1_offline_rename"
+    after = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)}
+    assert all(after.get(uid) == entity for uid, entity in original.items())
+
+
+async def test_offline_reuse_without_original_holds_history_instead_of_attaching_to_new_robot(hass):
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True})
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    registry = er.async_get(hass)
+    registry.async_remove(VACUUM)
+    hass.states.async_remove(VACUUM)
+    independent = MockConfigEntry(domain="matter", title="Independent")
+    independent.add_to_hass(hass)
+    replacement = registry.async_get_or_create("vacuum", "matter", "r1-other-only", config_entry=independent,
+        suggested_object_id="robot")
+    assert replacement.entity_id == VACUUM
+    hass.states.async_set(VACUUM, "docked")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    state = await hass.data[DOMAIN]["storage"].async_get_state()
+    assert state["tank_states"].get(VACUUM, {}).get("used_ml", 0) != 432
+    assert {item["entity_id"] for item in state["registry_identity_conflicts"]} == {VACUUM}
+
+
+async def test_online_reuse_holds_original_entities_and_recovers_same_id(hass):
+    storage = await _setup(hass)
+    registry = er.async_get(hass)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    original_entries = er.async_entries_for_config_entry(registry, entry.entry_id)
+    sensor = next(item.entity_id for item in original_entries if item.unique_id.endswith('_vacuum_robot_water_used_since_refill'))
+    number = next(item.entity_id for item in original_entries if item.unique_id.endswith('_vacuum_robot_tank_capacity'))
+    original_ids = {item.unique_id: item.entity_id for item in original_entries}
+    await storage.async_set_tank_state(VACUUM, {'used_ml': 432, 'initialized': True})
+    registry.async_remove(VACUUM)
+    hass.states.async_remove(VACUUM)
+    independent = MockConfigEntry(domain='matter', title='Independent')
+    independent.add_to_hass(hass)
+    replacement = registry.async_get_or_create('vacuum', 'matter', 'online-b', config_entry=independent, suggested_object_id='robot')
+    assert replacement.entity_id == VACUUM
+    hass.states.async_set(VACUUM, 'docked')
+    await _settle(hass)
+    await storage.async_set_tank_state(VACUUM, {'used_ml': 999, 'initialized': True})
+    assert hass.states.get(sensor).state == 'unavailable'
+    assert hass.states.get(number).state == 'unavailable'
+    try:
+        await hass.services.async_call('number', 'set_value', {'entity_id': number, 'value': 3000}, blocking=True)
+    except Exception:
+        pass  # HA versions may either reject or skip an unavailable entity.
+    assert (await storage.async_get_state())['tank_states'][VACUUM]['used_ml'] == 999
+    assert VACUUM not in (await storage.async_get_settings()).get('device_options', {})
+    registry.async_remove(VACUUM)
+    hass.states.async_remove(VACUUM)
+    upstream = hass.config_entries.async_entries('roborock')[0]
+    device = next(d for d in dr.async_entries_for_config_entry(dr.async_get(hass), upstream.entry_id)
+                  if ('roborock', 'robot-1') in d.identifiers)
+    returned = registry.async_get_or_create('vacuum', 'roborock', 'robot-1', config_entry=upstream,
+        device_id=device.id, suggested_object_id='robot')
+    assert returned.entity_id == VACUUM
+    _robot_states(hass)
+    await _settle(hass)
+    state = await storage.async_get_state()
+    assert state['tank_states'][VACUUM]['used_ml'] == 432
+    assert hass.states.get(sensor).state != 'unavailable'
+    after = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)}
+    assert all(after.get(uid) == entity for uid, entity in original_ids.items())
+    assert len([item for item in after if item.endswith('_vacuum_robot_water_used_since_refill')]) == 1
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    recovered = await hass.data[DOMAIN]['storage'].async_get_state()
+    assert recovered['tank_states'][VACUUM]['used_ml'] == 432
+    after_reload = {item.unique_id: item.entity_id for item in er.async_entries_for_config_entry(registry, entry.entry_id)}
+    assert all(after_reload.get(uid) == entity for uid, entity in original_ids.items())
+
+
+async def test_existing_robot_rename_into_retired_id_blocks_stale_card(hass, hass_ws_client):
+    storage = await _setup(hass)
+    registry = er.async_get(hass)
+    upstream = MockConfigEntry(domain="matter", title="Existing B")
+    upstream.add_to_hass(hass)
+    b = registry.async_get_or_create("vacuum", "matter", "existing-b", config_entry=upstream,
+        suggested_object_id="existing_b")
+    assert b.entity_id == "vacuum.existing_b"
+    hass.states.async_set(b.entity_id, "docked")
+    await _settle(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True, "history": ["a"]})
+    await storage.async_set_tank_state(b.entity_id, {"used_ml": 999, "initialized": True, "history": ["b"]})
+    registry.async_update_entity(VACUUM, new_entity_id="vacuum.a_new")
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set("vacuum.a_new", "docked")
+    await _settle(hass)
+    registry.async_update_entity("vacuum.existing_b", new_entity_id=VACUUM)
+    hass.states.async_remove("vacuum.existing_b")
+    hass.states.async_set(VACUUM, "docked")
+    await _settle(hass)
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    state = (await client.receive_json())["result"]
+    assert VACUUM in state["ambiguous_vacuum_ids"]
+    assert state["tank_states"]["vacuum.a_new"]["used_ml"] == 432
+    assert state["tank_states"][VACUUM]["used_ml"] == 999
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
+        "configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234}]}})
+    assert not (await client.receive_json())["success"]
+    registry.async_update_entity(VACUUM, new_entity_id="vacuum.existing_b")
+    hass.states.async_remove(VACUUM)
+    hass.states.async_set("vacuum.existing_b", "docked")
+    await _settle(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    assert VACUUM in (await client.receive_json())["result"]["ambiguous_vacuum_ids"]
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {
+        "configured_devices": [{"vacuum_entity": VACUUM, "water_total_ml": 1234}]}})
+    assert not (await client.receive_json())["success"]
+
+
+async def test_partial_settings_from_two_stale_ws_clients_preserve_other_devices(hass, hass_ws_client, hass_storage):
+    """Each public partial update merges against Store, not the client's stale snapshot."""
+    storage = await _setup(hass)
+    a, b = await hass_ws_client(hass), await hass_ws_client(hass)
+    for client in (a, b):
+        await client.send_json({"id": 1, "type": f"{DOMAIN}/get_state"})
+        assert (await client.receive_json())["success"]
+    updates = [
+        (a, {"configured_devices": [{"vacuum_entity": VACUUM, "name": "A", "future_field": {"value": 7}}],
+             "robot_links": {"vacuum.copy_a": "distinct"}, "custom_calibration": {f"entity:{VACUUM}": {"tracked_capacity_ml": 4000}}}),
+        (b, {"configured_devices": [{"vacuum_entity": "vacuum.other", "name": "B"}],
+             "robot_links": {"vacuum.copy_b": "distinct"}, "custom_calibration": {"entity:vacuum.other": {"tracked_capacity_ml": 5000}}}),
+    ]
+    for client, patch in updates:
+        await client.send_json({"id": 2, "type": f"{DOMAIN}/set_settings", "partial": True, "patch": patch})
+        reply = await client.receive_json()
+        assert reply["success"], reply
+    await a.send_json({"id": 3, "type": f"{DOMAIN}/set_settings", "partial": True,
+                       "patch": {"configured_devices": [{"vacuum_entity": VACUUM, "name": "A2"}]}})
+    assert (await a.receive_json())["success"]
+    state = await storage.async_get_state()
+    settings = state["settings"]
+    devices = {d["vacuum_entity"]: d for d in settings["configured_devices"]}
+    assert devices[VACUUM]["name"] == "A2" and devices[VACUUM]["future_field"] == {"value": 7}
+    assert devices["vacuum.other"]["name"] == "B"
+    assert settings["robot_links"]["vacuum.copy_a"] == settings["robot_links"]["vacuum.copy_b"] == "distinct"
+    assert settings["custom_calibration"][f"entity:{VACUUM}"]["tracked_capacity_ml"] == 4000
+    assert settings["custom_calibration"]["entity:vacuum.other"]["tracked_capacity_ml"] == 5000
+    assert hass_storage[DOMAIN]["data"]["settings"] == settings
+
+
+async def test_stale_ws_compare_and_set_refuses_maintenance_overwrite(hass, hass_ws_client):
+    """A stale card cannot silently replace another card's maintenance edit."""
+    storage = await _setup(hass)
+    a, b = await hass_ws_client(hass), await hass_ws_client(hass)
+    for client in (a, b):
+        await client.send_json({"id": 1, "type": f"{DOMAIN}/get_state"})
+        assert (await client.receive_json())["result"]["settings"]["maintenance_items"] == []
+    await a.send_json({"id": 2, "type": f"{DOMAIN}/set_settings", "expected": {"maintenance_items": []},
+                       "patch": {"maintenance_items": [{"name": "A"}]}})
+    assert (await a.receive_json())["success"]
+    await b.send_json({"id": 2, "type": f"{DOMAIN}/set_settings", "expected": {"maintenance_items": []},
+                       "patch": {"maintenance_items": [{"name": "B"}]}})
+    assert not (await b.receive_json())["success"]
+    assert (await storage.async_get_state())["settings"]["maintenance_items"] == [{"name": "A"}]
+
+
+@pytest.mark.parametrize("action", ["ws", "options"])
+async def test_real_store_write_error_preserves_pending_tick_and_rejects_save(hass, hass_ws_client, hass_storage, monkeypatch, action):
+    """HA's actual async_save catches WriteError; no caller may report success."""
+    from copy import deepcopy
+    from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE
+    from homeassistant.helpers.storage import Store
+    from homeassistant.util.file import WriteError
+    from custom_components.ha_vacuum_water_monitor.storage import VacuumWaterStorage
+
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 100,
+        "calibration_history": [{"sample": "keep"}], "automatic_sessions": [{"ts": 123, "area": 10}]})
+    tank = deepcopy((await storage.async_get_state())["tank_states"][VACUUM])
+    tank["used_ml"] = 135
+    await storage.async_set_tank_states({VACUUM: tank}, delay_seconds=300)
+    before = await storage.async_get_state()
+    before_disk = deepcopy(hass_storage[DOMAIN]["data"])
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    before_options = dict(entry.options)
+    events = []
+    unsub = hass.bus.async_listen(f"{DOMAIN}_state_changed", lambda event: events.append(event.data))
+    async def failed_write(*_args, **_kwargs):
+        raise WriteError("synthetic low-level disk error")
+    with monkeypatch.context() as fault:
+        fault.setattr(Store, "_async_write_data", failed_write)
+        if action == "ws":
+            client = await hass_ws_client(hass)
+            await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "patch": {"warning_threshold": 40}})
+            assert not (await client.receive_json())["success"]
+        else:
+            flow = await hass.config_entries.options.async_init(entry.entry_id)
+            result = await hass.config_entries.options.async_configure(flow["flow_id"], user_input={
+                "warning_threshold": 40, "critical_threshold": 15})
+            assert result["type"] == "form" and result["errors"]
+        assert await storage.async_get_state() == before
+        assert hass_storage[DOMAIN]["data"] == before_disk
+        assert dict(entry.options) == before_options
+        assert not events
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+    await hass.async_block_till_done()
+    assert hass_storage[DOMAIN]["data"]["tank_states"][VACUUM] == tank
+    assert hass_storage[DOMAIN]["data"]["settings"] == before_disk["settings"]
+    restored = await VacuumWaterStorage(hass).async_get_state()
+    assert restored["tank_states"][VACUUM] == tank
+    unsub()
+
+
+async def test_fresh_session_cas_ignores_hidden_orphan_without_changing_its_history(hass, hass_ws_client):
+    from copy import deepcopy
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"used_ml": 432, "initialized": True,
+                                               "refill_history": [{"used_before_ml": 876}]})
+    await storage.async_set_settings({"sessions": {VACUUM: [{"ts": 111, "water": 42}]}})
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    registry = er.async_get(hass)
+    registry.async_remove(VACUUM)
+    hass.states.async_remove(VACUUM)
+    independent = MockConfigEntry(domain="matter", title="Independent")
+    independent.add_to_hass(hass)
+    replacement = registry.async_get_or_create("vacuum", "matter", "session-b", config_entry=independent,
+                                                suggested_object_id="robot")
+    assert replacement.entity_id == VACUUM
+    hass.states.async_set(VACUUM, "docked")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    storage = hass.data[DOMAIN]["storage"]
+    raw_before = deepcopy(storage._data)
+    assert raw_before["identity_orphan_sources"]
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id({"type": f"{DOMAIN}/get_state"})
+    public = (await client.receive_json())["result"]["settings"]["sessions"]
+    assert all(key not in public for key in raw_before["identity_orphan_sources"])
+    await client.send_json_auto_id({"type": f"{DOMAIN}/set_settings", "partial": True,
+        "expected": {"sessions": public}, "patch": {"sessions": {VACUUM: [{"ts": 222, "water": 13}]}}})
+    result = await client.receive_json()
+    assert result["success"], result
+    raw_after = storage._data
+    for marker in raw_before["identity_orphan_sources"]:
+        assert raw_after["settings"]["sessions"].get(marker) == raw_before["settings"]["sessions"].get(marker)
+        assert raw_after["tank_states"].get(marker) == raw_before["tank_states"].get(marker)
+    assert raw_after["settings"]["sessions"][VACUUM] == [{"ts": 222, "water": 13}]
+
+
+async def test_delayed_store_write_error_rearms_final_write(hass, hass_storage, monkeypatch):
+    """A failing timer must retain the tick for FINAL_WRITE without another tick."""
+    import asyncio
+    from copy import deepcopy
+    from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE
+    from homeassistant.helpers.storage import Store
+    from homeassistant.util.file import WriteError
+    from custom_components.ha_vacuum_water_monitor.storage import VacuumWaterStorage
+
+    storage = await _setup(hass)
+    await storage.async_set_tank_state(VACUUM, {"initialized": True, "used_ml": 100,
+        "calibration_history": [{"sample": "keep"}], "automatic_sessions": [{"ts": 123, "area": 10}]})
+    before_disk = deepcopy(hass_storage[DOMAIN]["data"])
+    tank = deepcopy((await storage.async_get_state())["tank_states"][VACUUM])
+    tank["used_ml"] = 135
+    calls = []
+    async def failed_write(*_args, **_kwargs):
+        calls.append(True)
+        raise WriteError("synthetic delayed disk error")
+    with monkeypatch.context() as fault:
+        fault.setattr(Store, "_async_write_data", failed_write)
+        await storage.async_set_tank_states({VACUUM: tank}, delay_seconds=0.01)
+        await asyncio.sleep(0.05)  # Real HA call_later timer, not a private callback.
+        await hass.async_block_till_done()
+        assert calls
+        assert hass_storage[DOMAIN]["data"] == before_disk
+        assert (await storage.async_get_state())["tank_states"][VACUUM] == tank
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+    await hass.async_block_till_done()
+    assert hass_storage[DOMAIN]["data"]["tank_states"][VACUUM] == tank
+    assert (await VacuumWaterStorage(hass).async_get_state())["tank_states"][VACUUM] == tank

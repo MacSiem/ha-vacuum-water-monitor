@@ -68,6 +68,72 @@ def vacuum_slug(vacuum_entity: str) -> str:
     return slug or "unknown"
 
 
+def resolve_linked_programs(
+    discovered: list[dict[str, Any]], settings: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Share only the programme of one verified Matter/native robot pair.
+
+    A selected programme is not a measured wet phase. Native raw status,
+    attachment vetoes, water-off and all counter checks still apply. Never
+    infer physical identity from names, model matches or duplicate suggestions.
+    Bindings are recomputed from live discovery, so unlink/removal revokes them.
+    """
+    result = deepcopy(discovered)
+    links = (settings or {}).get("robot_links")
+    links = links if isinstance(links, dict) else {}
+    configured = {}
+    for key in ("configured_devices", "user_devices"):
+        for item in (settings or {}).get(key) or []:
+            if isinstance(item, dict) and item.get("vacuum_entity"):
+                configured[item["vacuum_entity"]] = item
+    for native in result:
+        if native.get("integration_adapter") != "tapo_rv30":
+            continue
+        signals = native.get("signals") or {}
+        if signals.get("cleaning_mode_entity") or signals.get("mop_mode_entity"):
+            continue
+        native_id = native.get("entity_id") or native.get("vacuum_entity")
+        authored = configured.get(native_id) or {}
+        explicit, _ = _configuration_field_provenance(authored)
+        # An authored mop role is an alternative to the programme role, not
+        # another source to combine with it. Explicit signal maps also retain
+        # their replacement semantics, including an intentionally empty map.
+        if "signals" in explicit or any(key in explicit for key in
+                ("cleaning_mode_entity", "mop_mode_entity")):
+            continue
+        candidates = []
+        for matter in result:
+            if matter.get("integration_adapter") != "matter":
+                continue
+            matter_id = matter.get("entity_id") or matter.get("vacuum_entity")
+            confirmed = (links.get(matter_id) == native_id or links.get(native_id) == matter_id)
+            registry_identity = (native.get("identity_confidence") == "registry"
+                                 and matter.get("identity_confidence") == "registry"
+                                 and native.get("identity_group")
+                                 and native.get("identity_group") == matter.get("identity_group"))
+            if links.get(matter_id) == "distinct" or links.get(native_id) == "distinct":
+                continue
+            if confirmed or registry_identity:
+                candidates.append(matter)
+        if len(candidates) != 1:
+            continue
+        matter = candidates[0]
+        mode = (matter.get("signals") or {}).get("cleaning_mode_entity")
+        if not isinstance(mode, str) or not mode.startswith("select."):
+            continue
+        native["signals"] = {**signals, "cleaning_mode_entity": mode}
+        native["linked_mode_source"] = matter.get("entity_id") or matter.get("vacuum_entity")
+        # The chosen control belongs to the confirmed physical robot. Expose
+        # only that sibling; never import another integration's counters/rates.
+        siblings = list(native.get("sibling_entities") or [])
+        sibling = next((item for item in matter.get("sibling_entities") or []
+                        if item.get("entity_id") == mode), None)
+        if sibling and not any(item.get("entity_id") == mode for item in siblings):
+            siblings.append(deepcopy(sibling))
+        native["sibling_entities"] = siblings
+    return result
+
+
 def build_vacuum_devices(
     settings: dict[str, Any] | None,
     tank_states: dict[str, Any] | None,
@@ -77,6 +143,7 @@ def build_vacuum_devices(
     settings = settings if isinstance(settings, dict) else {}
     tank_states = tank_states if isinstance(tank_states, dict) else {}
     discovered_vacuums = discovered_vacuums if isinstance(discovered_vacuums, list) else []
+    discovered_vacuums = resolve_linked_programs(discovered_vacuums, settings)
 
     devices: dict[str, dict[str, Any]] = {}
 
@@ -125,6 +192,10 @@ def build_vacuum_devices(
     # robot as a native one: it joins that robot's identity group, so it gets no
     # second tank, sensors or accounting. "distinct" keeps it separate.
     links = settings.get("robot_links") if isinstance(settings.get("robot_links"), dict) else {}
+    # An explicit distinct decision must override a shared registry identity.
+    for entity, target in links.items():
+        if target == "distinct" and entity in devices:
+            devices[entity]["identity_group"] = "distinct:" + entity
     for entity, target in links.items():
         if target != "distinct" and entity in devices and target in devices and entity != target:
             devices[entity]["identity_group"] = str(devices[target].get("identity_group") or target)
@@ -242,6 +313,22 @@ def estimate_water_state(
         "water_anchor_kind": tank_state.get("water_anchor_kind"),
         "water_anchor_confidence": tank_state.get("water_anchor_confidence"),
     }
+    external = tank_state.get("external_counter")
+    if isinstance(external, dict):
+        used = external.get("used_ml")
+        remaining = external.get("remaining_ml") if external.get("remaining_sensor") else (
+            max(0, total_ml - used) if total_ml is not None and used is not None else None)
+        return {**metadata, "initialized": used is not None or remaining is not None,
+                "source": "external_counter", "state_reason": None if used is not None or remaining is not None else "external_counter_unavailable",
+                "total_ml": _format_number(total_ml) if total_ml is not None else None,
+                "used_ml": _format_number(used) if used is not None else None,
+                "remaining_ml": _format_number(remaining) if remaining is not None else None,
+                "remaining_percent": _format_number(round(_clamp(remaining / total_ml * 100, 0, 100), 1)) if remaining is not None and total_ml else None,
+                "estimate_basis": None, "estimate_sources": [], "uncertainty_kind": None, "uncertainty_percent": None,
+                "nominal_time_resolution": {}, "calibration_history": [], "calibration_factor": None,
+                "calibration_basis": None, "calibration_samples": 0, "accounting_evidence": "external_counter",
+                "water_anchor_kind": None, "water_anchor_confidence": None, "cycle_full_confirmed": False,
+                "cycle_full_confirmation_source": None, "whole_cycle_fallback_reason": None, "cycle_action_totals": {}}
     if device.get("water_volume_sensor") or tank_state.get("last_accounting_source") == "real_sensor":
         measured = tank_state.get("last_water_volume_ml")
         valid = type(measured) in (int, float) and math.isfinite(measured) and measured >= 0
@@ -293,6 +380,17 @@ def estimate_water_state(
     if (metadata.get("estimate_basis") and device.get("mop_evidence_required")
             and not _has_mop_evidence_signal(evidence_device)):
         return {**metadata, "source": "unknown", "state_reason": "mop_signal_unbound",
+                "total_ml": _format_number(total_ml) if total_ml is not None else None,
+                "used_ml": None, "remaining_ml": None, "remaining_percent": None}
+
+    # A lid close or cleared alarm establishes no absolute reservoir volume.
+    # Preserve accounting/history, but require a confirmed full baseline before
+    # presenting a remaining level. This also handles pre-upgrade Store records.
+    refill_unconfirmed = (tank_state.get("refill_full_unconfirmed") is True or
+        (tank_state.get("last_reset_source") in {"lid", "dock_cleared"}
+         and tank_state.get("cycle_full_confirmed") is not True))
+    if refill_unconfirmed and not tank_state.get("water_empty_active"):
+        return {**metadata, "source": "unknown", "state_reason": "accounting_incomplete",
                 "total_ml": _format_number(total_ml) if total_ml is not None else None,
                 "used_ml": None, "remaining_ml": None, "remaining_percent": None}
 
@@ -1009,6 +1107,7 @@ _DIRECT_SIGNAL_FIELDS = {
     "status_sensor",
     "cleaning_active_sensor",
     "area_sensor",
+    "area_unit_entity",
     "duration_sensor",
     "mop_mode_entity",
     "mop_intensity_entity",
@@ -1025,12 +1124,24 @@ _DIRECT_SIGNAL_FIELDS = {
     "tank_level_sensor",
     "dock_tank_level_sensor",
 }
+# When loaded standalone by pure tests, the normal fixed roles remain sufficient.
+try:
+    from .integration_adapters import CONTEXT_SETTING_ROLES
+    _DIRECT_SIGNAL_FIELDS.update(CONTEXT_SETTING_ROLES)
+    _DIRECT_SIGNAL_FIELDS.add("current_phase_sensor")
+    _DIRECT_SIGNAL_FIELDS.update(key + "_sensor" for key in (
+        "clean_water_tank_status", "dirty_water_tank_status", "low_water_warning", "drainage_status", "station_drainage_status"))
+except ImportError:
+    pass
 _BEHAVIOR_BINDING_FIELDS = _DIRECT_SIGNAL_FIELDS | {
     "water_total_ml",
     "tracked_capacity_ml",
     "tank_ml",
     "tracked_reservoir",
     "low_water_anchor_remaining_percent",
+    "mop_attached_attribute",
+    "mop_attachment_is_evidence",
+    "status_attribute",
     "area_attribute",
     "area_attribute_unit",
     "duration_attribute",

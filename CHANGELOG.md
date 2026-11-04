@@ -1,5 +1,33 @@
 # Changelog
 
+## 5.13.0-beta.3 (2026-11-04)
+
+- Track supported current robot settings and upstream status and area units more accurately; keep unavailable signals unknown and preserve calibration history across entity renames.
+- Keep forecasts tied to comparable observed settings and explain when more comparable runs are needed; estimates are not physical volume measurements.
+- Confirm a previously detected refill without erasing water already used, and distinguish a cleared station alarm from a confirmed full tank.
+- Refresh the source-limited consumption dataset and model documentation without treating manufacturer declarations or synthetic simulations as physical measurements.
+- Restore configured external water counters and remaining sensors, including initial YAML setup, unit conversion, unavailable-state recovery and source access checks; preserve existing history without resetting external helpers.
+- Keep save confirmations visible through ordinary updates and make compact cards and narrow-screen tabs readable.
+- Recognize the reported Ecovacs T90 Pro Omni identifier k2iwaq; physical signals, firmware behaviour and water accuracy remain unverified.
+- Keep vacuum identity, calibration history and existing device associations across registry renames and refreshes; route shared tank actions to the selected balance owner.
+- Preserve concurrent settings changes and report storage or binding-refresh failures, with scoped access and revocation for users and robot resources.
+- Add standalone and dashboard views, compact and tile cards, a readonly preview, dashboard placement with undo, and first-use setup improvements.
+- Preserve an unsaved history draft and active input focus during ordinary updates; restore normal interaction after leaving the card editor.
+- TapoVac and model-specific physical measurements remain experimental; estimates and forecasts are not independent measurements of tank volume.
+
+## 5.13.0-beta.2 (2026-10-19)
+
+- After confirming that the TapoVac and Matter entries are the same robot in the card, automatically use its Matter cleaning programme without YAML. Refresh the linked control immediately and revoke it on unlink. Keep one accounting owner and preserve existing calibration banks.
+- Explain the native counters, selected programme and unconfirmed physical wet phase separately. TapoVac alone still lacks a verified programme/phase contract; keep Matter connected. No new water coefficients or physical measurement claims.
+
+## 5.13.0-beta.1 (2026-10-19)
+
+- Read TapoVac-ADV (`tapo_rv30`) cleaning-area and minute counters and water settings directly from vacuum attributes, without implementing another TPAP client.
+- Require an explicit mopping-mode signal; a mounted mop or non-off water level alone cannot start water accounting. Raw mapping and unknown statuses do not consume water.
+- Bind the upstream area-unit select by exact same-device registry identity. Use metric area only. With unverified imperial or missing area units, the observed minute counter and a confirmed current mop mode can still support automatic three-tank nominal learning without a manual rate; independent time calibration remains optional.
+- Preserve automatic full-tank learning using the native minute counter, with three compatible samples and no manual rate entry.
+- Document explicit Matter/native linking, separate floor and station measurements, and the RV50 hardware validation checklist. No new water-use coefficients or measured-volume claims are added.
+
 ## 5.12.0 (2026-10-18)
 
 - Learn a private nominal whole-tank time estimate after three compatible confirmed full-to-empty tanks on supported no-counter mop devices, including Tapo over Matter. Show provisional progress and the residual assumption; physical accuracy remains unestablished. Measured rates and volume sensors retain priority.

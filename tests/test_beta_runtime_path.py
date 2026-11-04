@@ -109,13 +109,16 @@ class RuntimePathTests(unittest.TestCase):
         self.assertEqual(state["used_ml"], 0)
         self.assertEqual(state["last_reset_source"], "lid")
 
-    def test_automatic_refill_clears_an_incomplete_balance_and_calibration_resumes(self):
+    def test_automatic_clear_without_full_confirmation_requires_a_new_full_baseline(self):
         device = effective({}, descriptor())
         state = {**BASE, "used_ml": 3000, "accounting_incomplete": True, "last_dock_err": "ok"}
         state = run(device, state, [dict(dock_err="water_empty"), dict(dock_err="ok")])
         self.assertFalse(state["accounting_incomplete"])
         self.assertEqual(state["used_ml"], 0)
-        state = run(device, {**state, "used_ml": 3500, "cycle_full_confirmed": True}, [dict(dock_err="water_empty"), dict(dock_err="ok")], ts=20_000_000)
+        self.assertIsNone(sc.estimate_water_state(device, state, {})["remaining_ml"])
+        confirmed_device = {**device, "full_refill_practice_confirmed": True}
+        state = run(confirmed_device, {**BASE, "used_ml": 3500, "cycle_full_confirmed": True}, [dict(dock_err="water_empty"), dict(dock_err="ok")], ts=20_000_000)
+        self.assertFalse(state["accounting_incomplete"])
         self.assertEqual(state["calibration_samples"], 1)
 
     def test_session_run_entirely_while_unobserved_is_reported(self):

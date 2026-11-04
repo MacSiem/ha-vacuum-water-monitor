@@ -44,7 +44,9 @@ class AutoRefillSwitch(RobotEntity, SwitchEntity):
         self._attr_available = bool(report.get("auto_refill_supported", True))
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await async_set_auto_refill(self.hass, self.vacuum_entity, True)
+        self._require_active()
+        await self._authorized_action("settings", async_set_auto_refill, self.hass, self.vacuum_entity, True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await async_set_auto_refill(self.hass, self.vacuum_entity, False)
+        self._require_active()
+        await self._authorized_action("settings", async_set_auto_refill, self.hass, self.vacuum_entity, False)
