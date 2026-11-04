@@ -33,3 +33,16 @@ card._lang='pl';x=card._buildSupplyAnswer(d,data);assert.match(x,/Ustawienia si�
 '''
   r=subprocess.run(['node','-e',script],cwd=ROOT,capture_output=True,text=True,timeout=20)
   self.assertEqual(r.returncode,0,r.stderr)
+
+ def test_auto_clear_explains_full_confirmation_in_both_languages(self):
+  script=r'''
+const fs=require('fs'),vm=require('vm'),assert=require('assert'),classes={};
+global.HTMLElement=class{constructor(){this.tagName='HA-VACUUM-WATER-MONITOR'}attachShadow(){this.shadowRoot={querySelector(){return null},querySelectorAll(){return []},getElementById(){return null}}}};
+global.customElements={get(n){return classes[n]},define(n,c){classes[n]=c}};global.localStorage={getItem(){return null},setItem(){},removeItem(){}};global.window=global;global.history={replaceState(){}};global.location={pathname:'/'};global.CustomEvent=class{};
+vm.runInThisContext(fs.readFileSync('ha-vacuum-water-monitor.js','utf8'));const card=new(classes['ha-vacuum-water-monitor'])();
+const key="A cleared empty-tank alarm starts a new balance. Confirm a full refill unless the full-refill practice was already enabled. Disable this option if the alarm can clear without refilling.";
+card._lang='en';assert.match(card._waterText(key),/Confirm a full refill/);assert.match(card._tipHtml(),/confirm a full refill/);assert(!card._tipHtml().includes('is recognised on its own'));
+card._lang='pl';assert.match(card._waterText(key),/potwierdź pełne dolanie/i);assert.match(card._tipHtml(),/potwierdź pełne dolanie/i);assert(!card._tipHtml().includes('jest rozpoznawane samo'));
+'''
+  r=subprocess.run(['node','-e',script],cwd=ROOT,capture_output=True,text=True,timeout=20)
+  self.assertEqual(r.returncode,0,r.stderr)

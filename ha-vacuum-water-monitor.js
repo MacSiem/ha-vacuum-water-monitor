@@ -636,7 +636,7 @@ const VWM_WATER_TEXT_PL = {
   "Dock Brush": "Szczotka stacji",
   "Dock Strainer": "Sitko stacji",
   "After filling the tank, press Refilled in the Water tab. You can also use the other refill methods.": "Po dolaniu do pełna naciśnij Dolane w zakładce Woda. Możesz też używać pozostałych sposobów.",
-  "The tank is marked full when the dock clears its empty-water error. Disable this option if the error can clear without a refill, such as when the tank is re-seated.": "Zbiornik zostaje oznaczony jako pełny, gdy stacja skasuje błąd braku wody. Wyłącz tę opcję, jeśli błąd może zniknąć bez dolania, np. po ponownym osadzeniu zbiornika.",
+  "A cleared empty-tank alarm starts a new balance. Confirm a full refill unless the full-refill practice was already enabled. Disable this option if the alarm can clear without refilling.": "Ustąpienie alarmu pustego zbiornika rozpoczyna nowy bilans. Potwierdź pełne dolanie, chyba że deklaracja pełnego dolewania była już włączona. Wyłącz tę opcję, jeśli alarm może ustąpić bez dolania.",
   "Choose a Home Assistant button. Pressing it confirms a full refill. Add it to a dashboard or connect it to a physical button.": "Wybierz przycisk Home Assistant. Naciśnięcie potwierdza dolanie do pełna. Dodaj go do pulpitu lub połącz z przyciskiem fizycznym.",
   "With supported refill and empty-tank signals, calibration learns during normal cleaning. You do not need to test each mode. The measurements below are optional overrides.": "Kalibracja uczy się podczas zwykłego sprzątania, gdy dostępne są sygnały dolania i pustego zbiornika. Nie musisz mierzyć każdego trybu. Poniższe pomiary są opcjonalnymi własnymi ustawieniami.",
   "Your measurements (optional)": "Własne pomiary (opcjonalnie)",
@@ -13810,13 +13810,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const items = pl ? [
       'Roboty s\u0105 wykrywane automatycznie, bez YAML.',
       'Dla ka\u017Cdego robota odpowiedz na pytanie w zak\u0142adce Woda (zwykle: czy zbiornik jest teraz pe\u0142ny?).',
-      'Dolanie w stacji z samodolewaniem jest rozpoznawane samo; w innym przypadku naci\u015Bnij Dolane (jest te\u017C na stronie urz\u0105dzenia robota).',
+      'Po ustąpieniu alarmu stacji potwierdź pełne dolanie, chyba że deklaracja pełnego dolewania była już włączona.',
       'Szacunek uczy się na pełnych cyklach zbiornika z obsługiwanymi sygnałami dolania i braku wody; wystarczy zwykłe sprzątanie.',
       'To, co wymaga uwagi, pojawia si\u0119 te\u017C w Ustawienia \u2192 Naprawy.',
     ] : [
       'Robots are found automatically, with no YAML.',
       'For each robot, answer the question in the Water tab (usually: is the tank full now?).',
-      'A refill at a self-refilling dock is recognised on its own; otherwise press Refilled (also on the robot\u2019s device page).',
+      'After a dock alarm clears, confirm a full refill unless the full-refill practice was already enabled.',
       'The estimate learns from complete tank cycles with supported refill and empty-tank signals; normal cleaning is enough.',
       'Anything that needs you also appears in Settings \u2192 Repairs.',
     ];
@@ -16947,7 +16947,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
       <div style="${cardSt}">
         <div style="${labelSt}">② ${this._waterText("Automatic from the dock")} ${autoAvailable ? (autoChecked ? statusOn : statusOff) : `<span style="color:var(--vwm-text-muted,#9ca3af);font-size:11px">${this._waterText("not available for this robot")}</span>`}</div>
-        <div style="${descSt}">${this._waterText("The tank is marked full when the dock clears its empty-water error. Disable this option if the error can clear without a refill, such as when the tank is re-seated.")}</div>
+        <div style="${descSt}">${this._waterText("A cleared empty-tank alarm starts a new balance. Confirm a full refill unless the full-refill practice was already enabled. Disable this option if the alarm can clear without refilling.")}</div>
         <label style="display:flex;gap:8px;align-items:center;font-size:12px">
           <input type="checkbox" id="vwm-refill-auto" ${autoChecked ? 'checked' : ''} ${autoAvailable ? '' : 'disabled'}>
           ${this._waterText("Refill automatically when the dock's empty-tank error clears")}
