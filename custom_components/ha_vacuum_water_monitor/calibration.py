@@ -205,7 +205,16 @@ def fit_local_measurements(samples):
     ids = [s.get('id') for s in samples]
     if any(not isinstance(i, str) for i in ids) or len(set(ids)) != len(ids):
         return None
-    if any(s.get('device_id') != first.get('device_id') or s.get('context') != first.get('context')
+    try:
+        from .context_identity import canonical_context
+    except ImportError:  # Direct-file pure tests.
+        import importlib.util
+        from pathlib import Path
+        spec = importlib.util.spec_from_file_location('vwm_context_identity', Path(__file__).with_name('context_identity.py'))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        canonical_context = module.canonical_context
+    if any(s.get('device_id') != first.get('device_id') or canonical_context(s.get('context')) != canonical_context(first.get('context'))
            or s.get('scope') != 'whole_cycle' for s in samples):
         return None
     if any(_number(s.get(k)) is None or s[k] <= 0 for s in samples for k in ('area_m2', 'observed_ml', 'resolution_ml')):

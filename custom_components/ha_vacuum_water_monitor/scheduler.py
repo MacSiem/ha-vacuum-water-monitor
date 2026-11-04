@@ -106,6 +106,9 @@ class EventTicker:
                 mapping.setdefault(entity, set()).add(vacuum)
                 # A counter's unit can change while its numeric text is equal.
                 attribute_map.setdefault(entity, set()).add("unit_of_measurement")
+            for key, entity in device.items():
+                if ((key.startswith("context_") and key.endswith("_entity")) or key in {"wash_mode_entity", "wash_frequency_entity", "wash_area_threshold_entity", "wash_time_threshold_entity", "wash_temperature_entity"}) and isinstance(entity, str):
+                    attribute_map.setdefault(entity, set()).update({"min", "max", "unit_of_measurement"})
             # Roomba and other adapters expose accounting inputs as vacuum
             # attributes; do not wake for unrelated battery/maintenance noise.
             attribute_map.setdefault(vacuum, set()).update(

@@ -14,6 +14,8 @@ import unicodedata
 from homeassistant.core import HomeAssistant
 
 from .sensor_calculations import apply_custom_calibration
+from .integration_adapters import CONTEXT_SETTING_ROLES
+from .context_identity import canonical_context
 from .storage import VacuumWaterStorage
 from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compatible_context, _valid_consumption_record
 from . import profiles as consumption_profiles
@@ -21,6 +23,9 @@ from . import accounting_v2
 from . import estimation
 from . import nominal_time_learning
 from .const import VERSION
+
+_OBSERVED_WASH_ROLES = ("wash_mode_entity", "wash_frequency_entity", "wash_area_threshold_entity",
+                        "wash_time_threshold_entity", "wash_temperature_entity")
 from .refill import USER_REFILL_DEDUPE_SECONDS, apply_refill, confirm_same_refill, FULL_CONFIRMATION_SOURCES, anchor_scope_matches
 
 MOP_WASH_STATES = {
@@ -285,7 +290,7 @@ def _only_tick_timestamp_changed(before: dict[str, Any], after: dict[str, Any]) 
 
 
 def _digest(values: Any) -> str:
-    return hashlib.sha256(json.dumps(values, sort_keys=True, default=str).encode()).hexdigest()
+    return hashlib.sha256(json.dumps(canonical_context(values), sort_keys=True, default=str).encode()).hexdigest()
 
 
 def _physical_profile_identity(record):
@@ -441,9 +446,19 @@ def _tick_device_pass(
         # Upstream labels mapping as cleaning and unknown codes as idle.
         # Neither is a safe accounting state; preserve gaps for unknown codes.
         raw_code = vac.attributes.get("status_code")
-        curr_status_raw = ({0: "idle", 1: "cleaning", 2: "mapping", 4: "returning",
-                            5: "docked", 6: "docked", 7: "paused", 8: "idle", 100: "error"}
-                           .get(raw_code) if type(raw_code) is int else None)
+        if device.get("tapo_status_contract") == 2:
+            label = _normalized_signal(curr_status_raw)
+            curr_status_raw = {"standby": "idle", "cleaning": "cleaning", "mapping": "mapping",
+                "remote_control": "mapping", "returning": "returning", "charging": "docked",
+                "charged": "docked", "paused": "paused", "sleeping": "idle", "emptying_dust": "docked",
+                "mapping_paused": "paused", "going_to_point": "mapping", "going_to_point_paused": "paused",
+                "exploring": "mapping", "exploring_paused": "paused", "washing_mop": "docked",
+                "drying_mop": "docked", "attaching_mop": "docked", "removing_mop": "docked",
+                "cutting_hair": "docked"}.get(label)
+        else:
+            curr_status_raw = ({0: "idle", 1: "cleaning", 2: "mapping", 4: "returning",
+                                5: "docked", 6: "docked", 7: "paused", 8: "idle", 100: "error"}
+                               .get(raw_code) if type(raw_code) is int else None)
     curr_status = _normalized_signal(curr_status_raw)
 
     if (status_sensor or tapovac) and _is_transient_status(curr_status):
@@ -456,17 +471,19 @@ def _tick_device_pass(
         _record_accounting(state, "unknown", None, None, "status_unavailable")
         return state, True
 
-    curr_area = _area_square_meters(hass, device.get("area_sensor"))
-    if curr_area is None and device.get("area_attribute"):
-        curr_area = _area_value_square_meters(
-            vac.attributes.get(device["area_attribute"]),
-            device.get("area_attribute_unit"),
-            hass,
-        )
-    if tapovac and _state_value(hass, device.get("area_unit_entity")) != "m²":
-        # Imperial raw-area semantics are not yet independently verified.
-        # Even the upstream area sensor declares m² unconditionally.
-        curr_area = None
+    if tapovac and device.get("tapo_status_contract") == 2:
+        area_state = hass.states.get(device.get("area_sensor")) if device.get("area_sensor") else None
+        unit = (getattr(area_state, "attributes", {}) or {}).get("unit_of_measurement") if area_state else None
+        # The new sensor owns its unit; raw vacuum.clean_area has none.
+        curr_area = (_area_value_square_meters(area_state.state, unit, hass)
+                     if area_state is not None and unit else None)
+    else:
+        curr_area = _area_square_meters(hass, device.get("area_sensor"))
+        if curr_area is None and device.get("area_attribute"):
+            curr_area = _area_value_square_meters(vac.attributes.get(device["area_attribute"]),
+                                                 device.get("area_attribute_unit"), hass)
+        if tapovac and _state_value(hass, device.get("area_unit_entity")) != "m²":
+            curr_area = None
     # A per-task area counter (Roborock cleaning_area) restarts at zero when the
     # robot starts a new task inside one session, for example after it resumes
     # from an error. Carry the area already covered so the session history
@@ -577,6 +594,24 @@ def _tick_device_pass(
         intensity_factor = None
     if state.get("intensity_unmapped") != unmapped_intensity:
         state["intensity_unmapped"] = unmapped_intensity
+    # An older saved scalar with no context cannot be attributed to the new
+    # independently observed settings. Preserve it in history, not in this bank.
+    has_observed_controls = any(device.get(role) for role in (*CONTEXT_SETTING_ROLES, *_OBSERVED_WASH_ROLES))
+    if has_observed_controls and not state.get("observed_setting_contract"):
+        if not state.get("accounting_calibration_context") and (
+                state.get("calibration_samples") or state.get("calibration_log_factors")
+                or (_positive_number(state.get("calibration_factor")) or 1) != 1):
+            fields = ("calibration_factor", "calibration_samples", "calibration_log_factors",
+                      "calibration_basis", "calibration_pending_log_factor", "calibration_pending_context")
+            old = {key: deepcopy(state.get(key)) for key in fields}
+            existing = state.get("nominal_calibration_contexts")
+            bank = deepcopy(existing) if isinstance(existing, dict) else {}
+            bank["legacy_unsegmented:" + _digest(old)] = old
+            state["nominal_calibration_contexts"] = bank
+            state.update(calibration_factor=1, calibration_samples=0, calibration_log_factors=[],
+                         calibration_basis="nominal_capacity", calibration_pending_log_factor=None,
+                         calibration_pending_context=None)
+        state["observed_setting_contract"] = device.get("signal_contract_version") or 1
     calibration_factor = _clamp(
         _positive_number(state.get("calibration_factor")) or 1,
         MIN_CALIBRATION_FACTOR,
@@ -658,6 +693,47 @@ def _tick_device_pass(
                  "task_scope_entity", "suction_level_entity", "carpet_policy_entity"):
         if device.get(role):
             live_settings[role] = _normalized_signal(_state_value(hass, device[role]))
+    # Capture every bound setting together, once per tick. A numeric control's
+    # range/unit are provenance; it is not itself a volumetric measurement.
+    observed_settings = {}
+    for role in (*CONTEXT_SETTING_ROLES, *_OBSERVED_WASH_ROLES):
+        entity_id = device.get(role)
+        if not entity_id:
+            continue
+        obj = hass.states.get(entity_id)
+        attrs = getattr(obj, "attributes", {}) or {} if obj is not None else {}
+        value = _normalized_signal(getattr(obj, "state", None)) if obj is not None else None
+        def safe_number(key):
+            n = attrs.get(key)
+            return n if type(n) in (int, float) and math.isfinite(n) else None
+        key = role.removeprefix("context_").removesuffix("_entity")
+        registry_id = None
+        try:
+            from homeassistant.helpers import entity_registry as er
+            entry = er.async_get(hass).async_get(entity_id)
+            registry_id = getattr(entry, "id", None) if entry is not None else None
+        except (ImportError, AttributeError, KeyError, TypeError):
+            pass  # Standalone consumers lack the HA registry; never assume a rename.
+        identity = "registry:" + registry_id if isinstance(registry_id, str) and registry_id else "entity:" + entity_id
+        observed_settings[key] = {"value": value, "unit": attrs.get("unit_of_measurement"),
+                                  "min": safe_number("min"), "max": safe_number("max"),
+                                  "source": hashlib.sha256(identity.encode()).hexdigest()[:16],
+                                  "source_registry_id": registry_id, "source_entity": entity_id}
+    # Registry loss must not silently erase a previously observed axis and
+    # requalify the tank under a less-specific context. Keep its slot unknown.
+    previous_keys = set(state.get("observed_setting_keys") or [])
+    current_keys = set(observed_settings)
+    for key in previous_keys - current_keys:
+        observed_settings[key] = {"value": None, "unit": None, "min": None, "max": None, "source": None, "source_registry_id": None, "source_entity": None}
+    if observed_settings:
+        state["observed_setting_keys"] = sorted(previous_keys | current_keys)
+
+        live_settings["observed_settings"] = observed_settings
+        # A bound control that disappears is not the same as "off". Until it
+        # returns, a full-to-empty cycle cannot be used to learn a rate.
+        if any(item["value"] is None for item in observed_settings.values()):
+            state.update(accounting_incomplete=True, session_accounting_valid=False,
+                         session_exposure_complete=False, session_water_broken=True)
     consumption_context = deepcopy(device.get("consumption_context") or {
         "model_id": device.get("profile_key"), "sku": device.get("sku"),
         "dock_variant": device.get("dock_variant"), "firmware": device.get("firmware"),
@@ -666,6 +742,9 @@ def _tick_device_pass(
         "reservoir": device.get("tracked_reservoir"), "action": "floor_mopping",
         "settings": dict.fromkeys(CONSUMPTION_SETTINGS),
     })
+    if isinstance(consumption_context, dict) and observed_settings:
+        consumption_context["observed_settings"] = deepcopy(observed_settings)
+        consumption_context["signal_contract_version"] = device.get("signal_contract_version")
     if isinstance(consumption_context, dict) and device.get("observed_firmware") is not None:
         consumption_context["firmware"] = device["observed_firmware"]
     field_sources = {key: "configured" if consumption_context.get(key) else "not_exposed"
@@ -814,6 +893,8 @@ def _tick_device_pass(
         if tapovac and not device.get("cleaning_mode_entity") and device.get("mop_mode_entity"):
             known_mode = bool(mop_mode and (mop_mode in _MOP_DISABLED_MODES
                 or _is_mop_active(None, mop_mode, None, require_evidence=True)))
+        if observed_settings and any(item["value"] is None for item in observed_settings.values()):
+            known_mode = False
         learning = state.get("nominal_time_learning") or {}
         if state.pop("nominal_time_start_pending", False):
             learning = nominal_time_learning.start_full(learning,
@@ -940,6 +1021,9 @@ def _tick_device_pass(
         calibration_values["unsegmented_settings"] = {key:value for key,value in
             consumption_context.get("settings", {}).items()
             if key not in {"mop_mode", "water_level", "cleaning_mode"}}
+        if observed_settings:
+            calibration_values["observed_settings"] = observed_settings
+            calibration_values["signal_contract_version"] = device.get("signal_contract_version")
     calibration_context = _digest(calibration_values)
     old_interval_context = state.get("accounting_interval_context")
     old_calibration_context = state.get("accounting_calibration_context")
@@ -1002,6 +1086,21 @@ def _tick_device_pass(
                     defaults.update({key: deepcopy(restored[key]) for key in fields if key in restored})
             updates.update(defaults, session_accounting_valid=False, session_exposure_complete=False)
         state.update(updates)
+        # The current counter is now the explicit post-change baseline. Any
+        # unresolved prior gap remains incomplete, but must not discard the
+        # first new interval a second time.
+        if curr_area is not None:
+            state["area_gap"] = False
+        if curr_duration_seconds is not None:
+            state["duration_gap"] = False
+        # If the change was observed at the start of a new cleaning, retain
+        # that exact zero-area timestamp for the next tick's session history.
+        if (curr_area == 0 and not state.get("session_start_ts") and not lost_exposure
+                and not state.get("accounting_incomplete") and mop_active
+                and _is_cleaning(vac_state, curr_status, cleaning_active)):
+            state["session_rebase_start_ts"] = now_ts
+        else:
+            state.pop("session_rebase_start_ts", None)
         if not lost_exposure and curr_area == state.get("session_start_area"):
             state["session_context"] = deepcopy(consumption_context)
             state["session_resolution"] = deepcopy(state.get("consumption_resolution"))
@@ -1057,8 +1156,12 @@ def _tick_device_pass(
         state["session_idle_closed"] = False
     starts_wash = (wash_now and not wash_active and previous_status is not None)
     if (session_running or starts_wash) and not state.get("session_start_ts") and (really_cleaning or starts_wash or not state.get("session_idle_closed")):
+        rebase_start = state.pop("session_rebase_start_ts", None)
+        known_start = bool(really_cleaning and mop_active and isinstance(rebase_start, int)
+                           and last_tick == rebase_start and 0 <= now_ts - rebase_start <= MAX_ACTIVE_INTERVAL_SECONDS * 1000
+                           and _float_or_none(state.get("last_area")) == 0 and curr_area is not None)
         state.update(session_idle_since_ts=None)
-        state.update(session_start_ts=now_ts, session_start_used_ml=_number(state.get("used_ml"),0),
+        state.update(session_start_ts=rebase_start if known_start else now_ts, session_start_used_ml=_number(state.get("used_ml"),0),
                      # Start from the previous observed baseline, matching the
                      # first area dose. A reset to a new task's zero is handled below.
                      session_start_area=(_float_or_none(state.get("last_area"))
@@ -1070,7 +1173,7 @@ def _tick_device_pass(
                      session_action_totals={}, session_exposures={},
                      session_context=deepcopy(consumption_context),
                      session_resolution=deepcopy(state.get("consumption_resolution")),
-                     session_exposure_complete=curr_area == 0 or starts_wash, session_segments=1,
+                     session_exposure_complete=curr_area == 0 or starts_wash or known_start, session_segments=1,
                      session_whole_calibration=deepcopy(whole_cycle_calibration))
         if (really_cleaning and mop_active and curr_area is not None and curr_area > 0
                 and _float_or_none(state.get("last_area")) is None):
@@ -2048,7 +2151,7 @@ def _is_mop_active(
         return True
     # Several MIoT integrations (Xiaomi H50/H50 Pro via xiaomi_home) expose a
     # water-output level but no mop-mode or attachment entity.  A recognized
-    # non-zero level is direct evidence that water is being dispensed, and
+    # non-zero level is a selected-output proxy, not a water-flow measurement, and
     # without it these vacuums fail the evidence gate forever and never accrue
     # usage.  An unrecognized (possibly localized) token proves nothing.
     if water_state is True:

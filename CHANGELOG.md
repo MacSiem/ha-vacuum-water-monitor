@@ -2,6 +2,10 @@
 
 ## 5.13.0-beta.3 (2026-11-04)
 
+- Track supported current robot settings and upstream status and area units more accurately; keep unavailable signals unknown and preserve calibration history across entity renames.
+- Keep forecasts tied to comparable observed settings and explain when more comparable runs are needed; estimates are not physical volume measurements.
+- Confirm a previously detected refill without erasing water already used, and distinguish a cleared station alarm from a confirmed full tank.
+- Refresh the source-limited consumption dataset and model documentation without treating manufacturer declarations or synthetic simulations as physical measurements.
 - Restore configured external water counters and remaining sensors, including initial YAML setup, unit conversion, unavailable-state recovery and source access checks; preserve existing history without resetting external helpers.
 - Keep save confirmations visible through ordinary updates and make compact cards and narrow-screen tabs readable.
 - Recognize the reported Ecovacs T90 Pro Omni identifier k2iwaq; physical signals, firmware behaviour and water accuracy remain unverified.

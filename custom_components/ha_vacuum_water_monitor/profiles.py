@@ -501,10 +501,22 @@ def _known_context(context: Any) -> bool:
             and all(known(v) for v in settings.values()))
 
 
+def _canonical_observed(value: Any) -> Any:
+    # Kept local so direct-file profile import/validation has no package dependency.
+    if isinstance(value, list):
+        return [_canonical_observed(item) for item in value]
+    if isinstance(value, dict):
+        observation = 'source_entity' in value and 'source' in value and 'value' in value
+        return {k: _canonical_observed(v) for k, v in value.items() if not (observation and k == 'source_entity')}
+    return value
+
+
 def _compatible_context(left: dict, right: dict) -> bool:
     return (_known_context(left) and _known_context(right)
             and all(left[k] == right[k] for k in CONSUMPTION_AXES)
-            and left['settings'] == right['settings'])
+            and left['settings'] == right['settings']
+            and _canonical_observed(left.get('observed_settings')) == _canonical_observed(right.get('observed_settings'))
+            and left.get('signal_contract_version') == right.get('signal_contract_version'))
 
 
 def _valid_consumption_record(record: Any, *, personal: bool = False) -> bool:

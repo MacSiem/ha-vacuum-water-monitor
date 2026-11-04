@@ -383,6 +383,17 @@ def estimate_water_state(
                 "total_ml": _format_number(total_ml) if total_ml is not None else None,
                 "used_ml": None, "remaining_ml": None, "remaining_percent": None}
 
+    # A lid close or cleared alarm establishes no absolute reservoir volume.
+    # Preserve accounting/history, but require a confirmed full baseline before
+    # presenting a remaining level. This also handles pre-upgrade Store records.
+    refill_unconfirmed = (tank_state.get("refill_full_unconfirmed") is True or
+        (tank_state.get("last_reset_source") in {"lid", "dock_cleared"}
+         and tank_state.get("cycle_full_confirmed") is not True))
+    if refill_unconfirmed and not tank_state.get("water_empty_active"):
+        return {**metadata, "source": "unknown", "state_reason": "accounting_incomplete",
+                "total_ml": _format_number(total_ml) if total_ml is not None else None,
+                "used_ml": None, "remaining_ml": None, "remaining_percent": None}
+
     if tank_state.get("accounting_incomplete"):
         return {**metadata, "source": "unknown", "state_reason": "accounting_incomplete",
                 "total_ml": _format_number(total_ml) if total_ml is not None else None,
@@ -1113,6 +1124,15 @@ _DIRECT_SIGNAL_FIELDS = {
     "tank_level_sensor",
     "dock_tank_level_sensor",
 }
+# When loaded standalone by pure tests, the normal fixed roles remain sufficient.
+try:
+    from .integration_adapters import CONTEXT_SETTING_ROLES
+    _DIRECT_SIGNAL_FIELDS.update(CONTEXT_SETTING_ROLES)
+    _DIRECT_SIGNAL_FIELDS.add("current_phase_sensor")
+    _DIRECT_SIGNAL_FIELDS.update(key + "_sensor" for key in (
+        "clean_water_tank_status", "dirty_water_tank_status", "low_water_warning", "drainage_status", "station_drainage_status"))
+except ImportError:
+    pass
 _BEHAVIOR_BINDING_FIELDS = _DIRECT_SIGNAL_FIELDS | {
     "water_total_ml",
     "tracked_capacity_ml",

@@ -67,11 +67,57 @@ def _request_source_entities(msg: dict[str, Any]) -> set[str]:
     return result
 
 
+def _observed_source_locator(hass, observation: dict[str, Any]) -> str | None:
+    """Resolve a historical source by immutable registry id, never a reused alias."""
+    from homeassistant.helpers import entity_registry as er
+    import hashlib
+    registry = er.async_get(hass)
+    registry_id = observation.get("source_registry_id")
+    if isinstance(registry_id, str) and registry_id:
+        entry = registry.async_get(registry_id)
+        expected = hashlib.sha256(("registry:" + registry_id).encode()).hexdigest()[:16]
+        if entry is None or getattr(entry, "id", None) != registry_id or observation.get("source") != expected:
+            return None
+        return entry.entity_id
+    entity = observation.get("source_entity")
+    # A previous unregistered locator cannot prove identity after its name is
+    # taken by a registered entity. Never transfer historical permissions.
+    if not isinstance(entity, str) or registry.async_get(entity) is not None:
+        return None
+    return entity
+
+
+def _redact_observed_sources(item: Any, can_read) -> Any:
+    """Re-project stored source settings against the current HA principal."""
+    if isinstance(item, list):
+        return [_redact_observed_sources(child, can_read) for child in item]
+    if not isinstance(item, dict):
+        return item
+    result = {}
+    for key, value in item.items():
+        if key == "observed_settings" and isinstance(value, dict):
+            protected = {}
+            for name, observation in value.items():
+                entity = can_read(observation) if isinstance(observation, dict) else None
+                if not entity:
+                    protected[name] = {"value": None, "unit": None, "min": None, "max": None,
+                                       "source": None, "source_registry_id": None,
+                                       "source_entity": None, "restricted": True}
+                else:
+                    protected[name] = {**_redact_observed_sources(observation, can_read), "source_entity": entity}
+            result[key] = protected
+        else:
+            result[key] = _redact_observed_sources(value, can_read)
+    return result
+
+
 def _shared_tank(state: dict[str, Any]) -> dict[str, Any]:
     """Live balance only, without a measurement bank or origin details."""
     fields = ("initialized", "used_ml", "accounting_incomplete", "water_empty_active", "last_reset_ts",
               "last_reset_iso", "last_water_volume_ml", "last_status", "external_counter", "external_metadata")
     result = {key: state[key] for key in fields if key in state}
+    result["refill_full_unconfirmed"] = (state.get("refill_full_unconfirmed") is True or
+        (state.get("last_reset_source") in {"lid", "dock_cleared"} and state.get("cycle_full_confirmed") is not True))
     if isinstance(result.get("external_counter"), dict):
         result["external_counter"] = {k: v for k, v in result["external_counter"].items() if k != "last_session_ml"}
     if isinstance(result.get("external_metadata"), dict):
@@ -229,6 +275,10 @@ async def _filtered_result(hass, user_id, value):
         if isinstance(item, list):
             return [scrub_sources(child, binding) for child in item]
         return item
+    def permitted_locator(observation):
+        entity = _observed_source_locator(hass, observation)
+        return entity if entity and user is not None and user.permissions.check_entity(entity, POLICY_READ) else None
+    value = _redact_observed_sources(value, permitted_locator)
     return scrub_sources(value)
 
 
@@ -484,6 +534,10 @@ def _authorize(feature: str, operation: str):
                         if isinstance(mapping, dict):
                             settings_result[key] = {entity: data for entity, data in mapping.items()
                                 if can_read("settings", entity if str(entity).startswith("vacuum.") else "vacuum." + str(entity))}
+            def permitted_locator(observation):
+                entity = _observed_source_locator(hass, observation)
+                return entity if entity and user.permissions.check_entity(entity, POLICY_READ) else None
+            result = _redact_observed_sources(result, permitted_locator)
             connection.send_result(buffered.response[1], result)
         return wrapped
     return decorate

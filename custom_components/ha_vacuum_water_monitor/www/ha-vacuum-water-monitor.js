@@ -228,7 +228,7 @@ const VWM_REFILL_SOURCE_LABEL = {
   service: 'automation / script',
   button: 'refill button',
   lid: 'tank lid',
-  dock_cleared: 'dock reported refilled',
+  dock_cleared: 'station alarm cleared',
   legacy: 'earlier version',
   entity: 'Refilled button (device page)',
   repair: 'confirmed in Repairs',
@@ -652,7 +652,7 @@ const VWM_WATER_TEXT_PL = {
   "+ Add": "+ Dodaj",
   "Remove": "Usuń",
   "Tank reset methods": "Rozpoznawanie dolania",
-  "Choose how Home Assistant learns that you refilled the tank. Every option marks the tank full, and you can combine them.": "Wybierz, jak Home Assistant rozpoznaje dolanie do pełna. Możesz łączyć kilka sposobów.",
+  "Choose how Home Assistant detects a possible refill. A lid or cleared alarm needs full-tank confirmation unless you declared a full-refill practice.": "Wybierz, jak Home Assistant wykrywa możliwe dolanie. Pokrywa lub ustąpienie alarmu wymaga potwierdzenia pełnego zbiornika, chyba że zadeklarowano praktykę napełniania do pełna.",
   "On": "Włączone",
   "Off": "Wyłączone",
   "not available for this robot": "niedostępne dla tego robota",
@@ -727,7 +727,13 @@ const VWM_WATER_TEXT_PL = {
   "automation / script": "automatyzacja / skrypt",
   "refill button": "przycisk dolania",
   "tank lid": "pokrywa zbiornika",
-  "dock reported refilled": "stacja potwierdziła dolanie",
+  "station alarm cleared": "alarm stacji ustąpił",
+  "Last tank event": "Ostatnie zdarzenie zbiornika",
+  "Settings changed; forecast resumes after 3 comparable mopping runs — {n} of 3 recorded": "Ustawienia się zmieniły; prognoza wróci po 3 porównywalnych cyklach mopowania — zapisano {n} z 3",
+  "full confirmed by user": "pełność potwierdzona przez użytkownika",
+  "full confirmed by automation": "pełność potwierdzona przez automatyzację",
+  "full-refill practice enabled": "zadeklarowana praktyka pełnego napełniania",
+  "Previous refill confirmed; recorded consumption retained.": "Potwierdzono wcześniejsze dolanie; zachowano naliczone zużycie.",
   "earlier version": "wcześniejsza wersja",
   "Refilled button (device page)": "przycisk Dolane (strona urządzenia)",
   "confirmed in Repairs": "potwierdzono w Naprawach",
@@ -14203,10 +14209,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // Manual reset (called from refill button when helper entities are absent)
   _resetWaterState(device) {
     if (!this._hass || !device?.vacuum_entity) return Promise.reject(new Error('Missing vacuum entity'));
+    const before = this._loadWaterState(device), epoch = this._accessEpoch;
     return this._hass.callWS({ type: `${VWM_DOMAIN}/reset_tank`, vacuum_entity: device.vacuum_entity })
       .then((result) => {
         if (result && result.state) this._saveWaterState(
           { ...device, vacuum_entity: result.vacuum_entity || device.vacuum_entity }, result.state);
+        const wasUnconfirmed = before.refill_full_unconfirmed === true ||
+          (['lid', 'dock_cleared'].includes(before.last_reset_source) && before.cycle_full_confirmed !== true);
+        if (wasUnconfirmed && result?.state?.cycle_full_confirmed === true && Number(result.state.used_ml) > 0 &&
+            epoch === this._accessEpoch && this.isConnected && this._selectedDevice()?.vacuum_entity === device.vacuum_entity) {
+          this._toast(this._waterText('Previous refill confirmed; recorded consumption retained.'));
+        }
         this._lastHtml = '';
         this._render();
         return result;
@@ -14817,7 +14830,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       stateReason = 'mop_signal_unbound';
     }
 
-    if (tankState.accounting_incomplete) {
+    const refillUnconfirmed = tankState.refill_full_unconfirmed === true
+      || (['lid', 'dock_cleared'].includes(tankState.last_reset_source) && tankState.cycle_full_confirmed !== true);
+    if (tankState.accounting_incomplete || (refillUnconfirmed && !tankState.water_empty_active)) {
       remainingL = percentRemaining = usedMl = null;
       stateReason = 'accounting_incomplete';
       // Empty proves remaining usable water; historical consumption stays unknown.
@@ -14868,7 +14883,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const waterEmpty = !externalMode && anchorActive && !waterLow;
     const vacState = this._getStateValue(device.vacuum_entity);
     const isCleaning = device.integration_adapter === 'tapo_rv30'
-      ? this._getAttr(device.vacuum_entity, 'status_code') === 1
+      ? (device.tapo_status_contract === 2 ? this._normaliseModelKey(this._getStateValue(device.status_sensor)) === 'cleaning' : this._getAttr(device.vacuum_entity, 'status_code') === 1)
       : ['cleaning', 'running', 'sweeping', 'mopping', 'vacuuming'].includes(this._normaliseModelKey(vacState));
     const charge = this._getStateValue(device.charge_sensor) ||
       this._getAttr(device.vacuum_entity, 'battery_level');
@@ -14886,8 +14901,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const lastReset = externalMode || device.last_reset_entity ? (auxiliary?.last_reset || null) : this._getEffectiveLastReset(device);
 
     // Cleaning stats
-    const areaCleaned = device.integration_adapter === 'tapo_rv30' && this._getStateValue(device.area_unit_entity) !== 'm²'
-      ? null : this._getStateValue(device.area_sensor) ?? this._getAttr(device.vacuum_entity, device.area_attribute);
+    const tapoModern = device.integration_adapter === 'tapo_rv30' && device.tapo_status_contract === 2;
+    const areaUnit = tapoModern ? this._getAttr(device.area_sensor, 'unit_of_measurement') : this._getStateValue(device.area_unit_entity);
+    const rawArea = tapoModern ? this._getStateValue(device.area_sensor) : (this._getStateValue(device.area_sensor) ?? this._getAttr(device.vacuum_entity, device.area_attribute));
+    const areaCleaned = device.integration_adapter !== 'tapo_rv30' ? rawArea : (areaUnit === 'm²' ? rawArea : (tapoModern && areaUnit === 'ft²' && Number.isFinite(Number(rawArea)) && rawArea !== null ? Number(rawArea) * 0.09290304 : null));
     const durationSensorValue = this._getStateValue(device.duration_sensor);
     let durationSec = durationSensorValue ?? this._getAttr(device.vacuum_entity, device.duration_attribute);
     const durationUnit = durationSensorValue != null
@@ -14960,6 +14977,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           || (Number(tankState.calibration_samples) > 0 && Number(tankState.calibration_factor) > 0 ? [Math.log(Number(tankState.calibration_factor))] : []))
         : (typeof device.uncertainty_percent === 'number' && Number.isFinite(device.uncertainty_percent) ? device.uncertainty_percent : null),
       lastResetSource: externalMode || device.last_reset_entity ? null : (tankState.last_reset_source || null),
+      lastResetConfirmationSource: externalMode || device.last_reset_entity ? null : (tankState.cycle_full_confirmation_source || null),
       refillHistory: Array.isArray(tankState.refill_history) ? tankState.refill_history : [],
       calibrationPending: tankState.calibration_pending_log_factor != null,
       intensityUnmapped: tankState.intensity_unmapped || null,
@@ -15177,7 +15195,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
     let answer = `<p>${this._waterText('Forecast unavailable: tank balance or consumption profile is unknown.')}</p>`;
     if (known) {
       if (data.waterEmpty || data.remainingL === 0) answer = `<p data-refill-needed>${this._waterText('Refill needed — the tracked tank is empty.')}</p>`;
-      else if (!supply || Number(supply.basis_runs || 0) < 3) answer = `<p data-learning>${this._waterText('Forecast after 3 mopping runs — {n} of 3 recorded').replace('{n}', String(Math.max(0, Number(supply?.basis_runs || 0))))}</p>`;
+      else if (!supply || Number(supply.basis_runs || 0) < 3) {
+        const message = supply?.context_changed ? 'Settings changed; forecast resumes after 3 comparable mopping runs — {n} of 3 recorded' : 'Forecast after 3 mopping runs — {n} of 3 recorded';
+        answer = `<p data-learning>${this._waterText(message).replace('{n}', String(Math.max(0, Number(supply?.basis_runs || 0))))}</p>`;
+      }
       else {
         const runs = range(supply.cleanings_left);
         const days = range(supply.days_left);
@@ -15239,8 +15260,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
       extraRows += `<div class="row"><span class="row-label">\uD83D\uDD0D ${this._waterText('Filter life')}</span><span class="row-val" style="color:${filterColor}">${this._formatUi().number(data.filterDays || 0, {maximumFractionDigits:0})} ${this._waterText('days')}</span></div>`;
     }
     if (data.lastReset) {
-      const refillSource = data.lastResetSource && VWM_REFILL_SOURCE_LABEL[data.lastResetSource] ? ` \u00B7 ${this._waterText(VWM_REFILL_SOURCE_LABEL[data.lastResetSource])}` : '';
-      extraRows += `<div class="row"><span class="row-label">\uD83D\uDD04 ${L.lastRefill}</span><span class="row-val">${_esc(this._formatReset(data.lastReset) + refillSource)}</span></div>`;
+      const automaticEvent = ['lid', 'dock_cleared'].includes(data.lastResetSource);
+      const sourceLabel = data.lastResetSource && VWM_REFILL_SOURCE_LABEL[data.lastResetSource] ? this._waterText(VWM_REFILL_SOURCE_LABEL[data.lastResetSource]) : '';
+      const confirmation = data.lastResetConfirmationSource;
+      const confirmedLabel = !automaticEvent || !confirmation ? '' : confirmation === 'declared_full_refill_practice'
+        ? this._waterText('full-refill practice enabled') : confirmation === 'service'
+          ? this._waterText('full confirmed by automation') : this._waterText('full confirmed by user');
+      const refillSource = [sourceLabel, confirmedLabel].filter(Boolean).map(text => ` \u00B7 ${text}`).join('');
+      const refillLabel = automaticEvent ? this._waterText('Last tank event') : L.lastRefill;
+      extraRows += `<div class="row"><span class="row-label">\uD83D\uDD04 ${refillLabel}</span><span class="row-val">${_esc(this._formatReset(data.lastReset) + refillSource)}</span></div>`;
     }
     if (data.charge !== null && data.charge !== undefined) {
       extraRows += this._buildBatteryBar(data.charge);
@@ -16832,7 +16860,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
             \uD83D\uDD04 ${this._waterText("Tank reset methods")}
           </div>
           <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:12px;line-height:1.5">
-            ${this._waterText("Choose how Home Assistant learns that you refilled the tank. Every option marks the tank full, and you can combine them.")}
+            ${this._waterText("Choose how Home Assistant detects a possible refill. A lid or cleared alarm needs full-tank confirmation unless you declared a full-refill practice.")}
           </div>
 
           ${this._buildRefillMethodCard(device, data)}

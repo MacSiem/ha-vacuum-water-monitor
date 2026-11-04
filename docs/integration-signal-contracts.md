@@ -118,3 +118,25 @@ This development snapshot does not certify an installed HA version or every mode
 - Both new roles require the expected entity domain and exact adapter key; changes
   enter the accounting context and rebaseline the crossing interval. Synthetic tests
   cover foreign/disabled/wrong-domain records. No setting is converted to water volume.
+
+## Additional observed settings and current integration versions
+
+The current adapter catalogue contains twelve integration families; the earlier eleven-adapter
+run above retains its original, dated scope. Where a supported integration exposes controls
+on the same robot, VWM keeps their selected values and numeric ranges as context for learning.
+A selected setting is a proxy, not a measured water flow. A changing or unavailable setting
+cannot qualify a continuous full-to-empty learning sample. Previously learned contexts remain
+in history; they are not silently transferred to a newly observed setting contract.
+
+Dreame Vacuum's wetness level, wash controls, route, adaptive options and maintenance controls
+are observed independently when their exact same-device entities exist. Its clean and dirty
+tank status entities are diagnostic: installation, drainage or a cleared status does not prove
+a full tank. Core 2026.11 Ecovacs may expose `mop_wash_interval` and `efficiency_mode`, and
+Roborock may expose `cleaning_cycles`; these settings do not multiply a reported area.
+Matter `current_phase` is diagnostic when present; its labels alone do not prove wet operation.
+
+TapoVac-ADV 7.7 can expose a same-entry `status` and `clean_area` sensor. The status labels
+are classified explicitly; mapping, remote control and travel are not floor-mopping exposure.
+The area sensor must provide a recognized unit, and no raw-area fallback is used when this
+contract is active. Older ADV versions retain the legacy `status_code` and metric-unit gate.
+None of these contracts establishes the presence of an entity on every model or firmware.

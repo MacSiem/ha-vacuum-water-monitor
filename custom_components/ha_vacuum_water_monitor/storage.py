@@ -664,13 +664,14 @@ class VacuumWaterStorage:
             # the same window to lid and button entities.
             previous_reset = int(state.get("last_reset_ts") or 0)
             if (state.get("initialized") and not state.get("water_empty_active")
-                    and not state.get("accounting_incomplete")
                     and 0 <= when_ts - previous_reset <= USER_REFILL_DEDUPE_SECONDS * 1000):
                 if confirm_same_refill(state, source):
                     data["tank_states"][vacuum_entity] = state
                     await self._store.async_save(data)
                     self._data = data
-                return deepcopy(state)
+                    return deepcopy(state)
+                if not state.get("accounting_incomplete"):
+                    return deepcopy(state)
             # A refill starts a new baseline; it is not a signal gap.
             practice = data["settings"].get("refill_settings", {}).get(vacuum_entity, {}).get("full_refill_practice_confirmed") is True
             apply_refill(state, when_ts, source, rebaseline=True, full_practice_confirmed=practice)
@@ -814,7 +815,8 @@ class VacuumWaterStorage:
             projected = [measurement_projection(s, origin, proven) for s in samples
                          if measurement_belongs(s, origin, proven)]
             target_context = measurement_projection(sample, origin, proven)["context"]
-            matching = [s for s in projected if s.get("context") == target_context]
+            from .context_identity import canonical_context
+            matching = [s for s in projected if canonical_context(s.get("context")) == canonical_context(target_context)]
             fitted = fit_local_measurements(matching)
             profiles = deepcopy(data["settings"].get("consumption_calibrations") or {})
             if fitted:

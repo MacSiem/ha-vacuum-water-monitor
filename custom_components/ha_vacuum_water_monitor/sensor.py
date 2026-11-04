@@ -462,6 +462,7 @@ class CleaningsLeftSensor(VacuumStoreSensor):
             "water_per_cleaning_ml": forecast["water_per_cleaning_ml"],
             "water_per_day_ml": forecast["water_per_day_ml"],
             "basis_runs": forecast["basis_runs"],
+            "context_changed": bool(forecast.get("context_changed")),
         }
 
 

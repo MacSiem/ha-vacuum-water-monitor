@@ -89,10 +89,13 @@ def apply_refill(
         state["session_start_used_ml"] = round(start_used - float(used_before), 2)
     if rebaseline:
         state.update(_REBASELINE_FIELDS)
+    full_confirmed = (source in FULL_CONFIRMATION_SOURCES
+                      or (full_practice_confirmed is True and source in {"lid", "dock_cleared"}))
     state.update(
         used_ml=0,
         cycle_action_totals={},
         accounting_incomplete=False,
+        refill_full_unconfirmed=(source in {"lid", "dock_cleared"} and not full_confirmed),
         missing_usage_rate_reason=None,
         session_accounting_valid=False,
         initialized=True,
@@ -101,8 +104,7 @@ def apply_refill(
         last_reset_source=source,
         # Alarm clearing and opening the lid prove a change, not a full tank.
         # A user-facing full confirmation qualifies a relative balance cycle.
-        cycle_full_confirmed=(source in FULL_CONFIRMATION_SOURCES
-            or (full_practice_confirmed is True and source in {"lid", "dock_cleared"})),
+        cycle_full_confirmed=full_confirmed,
         cycle_full_confirmation_source=(source if source in FULL_CONFIRMATION_SOURCES else
             "declared_full_refill_practice" if full_practice_confirmed is True else None),
         water_empty_active=acknowledged,
@@ -125,12 +127,18 @@ def apply_refill(
 
 
 def confirm_same_refill(state: dict[str, Any], source: str) -> bool:
-    """Enrich the same zero-use baseline without inventing a previous full level."""
-    if (source not in FULL_CONFIRMATION_SOURCES or state.get("cycle_full_confirmed")
-            or state.get("used_ml") != 0 or state.get("accounting_incomplete")
-            or state.get("session_start_ts")):
+    """Confirm the existing automatic refill without erasing later usage."""
+    if source not in FULL_CONFIRMATION_SOURCES or state.get("cycle_full_confirmed"):
+        return False
+    automatic = (state.get("refill_full_unconfirmed") is True or
+                 state.get("last_reset_source") in {"lid", "dock_cleared"})
+    if not automatic and (state.get("used_ml") != 0 or state.get("accounting_incomplete")
+                          or state.get("session_start_ts")):
         return False
     state["cycle_full_confirmed"] = True
-    state["nominal_time_start_pending"] = True
+    state["refill_full_unconfirmed"] = False
+    # Time learning cannot reconstruct already elapsed exposure retroactively.
+    state["nominal_time_start_pending"] = (state.get("used_ml") == 0
+        and not state.get("session_start_ts") and not state.get("accounting_incomplete"))
     state["cycle_full_confirmation_source"] = source
     return True

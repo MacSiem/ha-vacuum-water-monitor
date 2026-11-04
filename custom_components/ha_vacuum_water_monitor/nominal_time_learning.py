@@ -75,7 +75,15 @@ def _context_key(context: Any) -> str | None:
     try:
         if not json_values(context):
             return None
-        return json.dumps(context, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        # Preserve the source registry identity, but not its renameable HA locator.
+        def stable(value):
+            if isinstance(value, list):
+                return [stable(item) for item in value]
+            if isinstance(value, dict):
+                observation = "source_entity" in value and "source" in value and "value" in value
+                return {key: stable(item) for key, item in value.items() if not (observation and key == "source_entity")}
+            return value
+        return json.dumps(stable(context), sort_keys=True, separators=(",", ":"), allow_nan=False)
     except (TypeError, ValueError, OverflowError, RecursionError):
         return None
 
