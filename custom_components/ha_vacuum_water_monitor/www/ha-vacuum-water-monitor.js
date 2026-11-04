@@ -13568,9 +13568,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ? savedNavigation._activeDeviceIdx : 0;
     try { localStorage.setItem('ha-tools-vacuum-water-monitor-settings', JSON.stringify({ _activeTab: this._activeTab, _activeDeviceIdx: this._activeDeviceIdx })); } catch(e) { console.debug('[ha-vacuum-water-monitor] caught:', e); }
     this._applyServerSettings();
-    const configuredDevices = this._filterExistingVacuums(this._configuredDevicesFromConfig())
-      .filter(device => this._featureAllowed('settings', 'execute', device));
-    if (this.isConnected && !this.preview && configuredDevices.length) this._saveServerSettings({ configured_devices: configuredDevices }, {partial:true});
+    // Serialize authored configuration with the state refresh. A separate save
+    // can race the initial projection and leave the ready card on stale data.
     if (!this.preview) this._ensureServerState(true);
   }
 
@@ -13634,13 +13633,23 @@ class HAVacuumWaterMonitor extends HTMLElement {
             return JSON.stringify(prior[key]) === JSON.stringify(value);
           });
         });
-        if (!this.preview && configuredDevices.length && !unchanged) {
+        const authoredKey = JSON.stringify([accessEpoch, configuredDevices]);
+        // Suppress only the immediate read after our confirmed write. A user
+        // allowed to execute but not read settings sees a redacted projection;
+        // comparing it repeatedly would otherwise issue writes forever.
+        const justSaved = this._configuredSaveFence === authoredKey;
+        const settingsRedacted = configuredDevices.some(device => !this._featureAllowed('settings', 'read', device));
+        if (!settingsRedacted || !justSaved) this._configuredSaveFence = null;
+        if (!this.preview && configuredDevices.length && !unchanged && !justSaved) {
           const saved = await this._hass.callWS({ type: `${VWM_DOMAIN}/set_settings`, patch: { configured_devices: configuredDevices }, partial: true });
-          if (this._serverRefreshPending) return;
+          if (accessEpoch !== this._accessEpoch || !this.isConnected) return;
           if (saved?.bindings_refreshed === false) this._bindingRefreshState = 'failed';
           if (saved && saved.settings) {
-            this._serverState.settings = saved.settings;
-            this._applyServerSettings();
+            // Initial state predates the write. Read the new projected balance
+            // before showing ready, even when the settings view is redacted.
+            this._configuredSaveFence = authoredKey;
+            this._serverRefreshPending = true;
+            return;
           }
         }
         this._subscribeServerEvents();
@@ -17601,7 +17610,7 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
 .vwm-tile-copy{display:grid;min-width:0}.vwm-tile-copy strong,.vwm-tile-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vwm-tile-copy span{font-size:12px !important}.vwm-tile-short{display:none}
 @container (max-width:279px){.vwm-tile-long{display:none}.vwm-tile-short{display:block}}
 @container (max-width:219px){.vwm-tile-action{display:none}}
-@container (max-width:360px){.card .tab-nav .tab-btn{font-size:11px!important;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}}
+@container (max-width:360px){.card .tab-nav{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @container (max-width:180px){
   .card:has(.vwm-compact:not(.vwm-tile)){padding:8px}
   .vwm-compact:not(.vwm-tile){gap:8px}
