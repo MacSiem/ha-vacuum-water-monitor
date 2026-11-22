@@ -8,8 +8,8 @@ The upstream authors report testing the RV50 Pro Omni (EU). VWM's automated test
 
 TapoVac support ships in the stable **5.13.0** release (it was introduced in the 5.13.0 betas) and remains experimental.
 
-1. In HACS, open Vacuum Water Monitor and update to **5.13.0** (use **Update information** first if the update is not listed).
-2. Restart Home Assistant, then refresh the VWM dashboard. Check that VWM reports **5.13.0**.
+1. In HACS, open Vacuum Water Monitor and update to **5.13.1** or newer (use **Update information** first if the update is not listed).
+2. Restart Home Assistant, then refresh the VWM dashboard. Check that VWM reports **5.13.1** or newer.
 3. If TapoVac-ADV is not installed, follow its [installation guide](https://github.com/jan-tdy/TapoVac-ADV#installation-via-hacs): add its repository to HACS as an Integration, download, restart, then add and configure **TapoVac-ADV** in Settings → Devices & services. Keep credentials in that integration, not in an issue comment.
 4. Keep Matter connected. Open VWM and confirm **Link robot** only if the suggested Matter and TapoVac entries are the same physical robot. VWM selects the Matter programme automatically and keeps one tracking owner. No YAML or manual rate entry is needed. See below before starting a new full-tank cycle.
 

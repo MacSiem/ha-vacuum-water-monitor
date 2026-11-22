@@ -2536,7 +2536,10 @@ def _observe_user_refill_signals(
     pending_close = _positive_number(state.get("pending_lid_close_ts"))
     if pending_close is not None:
         window_start = int(_positive_number(state.get("pending_lid_open_ts")) or pending_close) - _LID_TANK_LEAD_MS
-        clean_seen = (_positive_number(state.get("clean_box_on_ts")) or 0) >= window_start
+        # The clean tank was handled when its box went out during the opening,
+        # or came back (an empty alarm clearing) around it.
+        clean_seen = ((_positive_number(state.get("clean_box_on_ts")) or 0) >= window_start
+                      or (_positive_number(state.get("clean_box_off_ts")) or 0) >= window_start)
         dirty_seen = (_positive_number(state.get("dirty_box_on_ts")) or 0) >= window_start
         clean_now = boxes.get("clean")
         waited = now_ts - pending_close
@@ -2630,6 +2633,7 @@ def _observe_dock_tank_boxes(
         if current and previous is not True:
             state[f"{key}_box_on_ts"] = now_ts
         if key == "clean" and previous is True and current is False:
+            state["clean_box_off_ts"] = now_ts
             on_since = _positive_number(state.get("clean_box_on_ts")) or now_ts
             # A long "on" is an empty-water alarm (handled by the dock-cleared
             # path), not a tank taken out and refilled at the tap.

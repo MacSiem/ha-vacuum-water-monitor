@@ -87,6 +87,21 @@ class DockedLidRefillTests(unittest.TestCase):
         self.assertTrue(state["cycle_full_confirmed"])
         self.assertEqual(state["used_ml"], 0)
 
+    def test_refill_after_a_long_empty_alarm_with_both_tanks_serviced(self):
+        # PROD 22.11.2026: water_empty since 21.11, clean box "on" for a day.
+        empty = dict(dock_err="water_empty")
+        state = run(device(), {**BASE, "used_ml": 3800, "cycle_full_confirmed": True}, [
+            step(clean="on", **empty), step(clean="on", gap=3_600_000, **empty),
+            step(clean="on", dirty="on", gap=3_000, **empty),
+            step(lid="on", clean="on", dirty="on", gap=20_000, **empty),
+            step(lid="on", clean="on", gap=30_000, **empty),
+            step(clean="on", gap=25_000, **empty),
+            step(gap=30_000), step(gap=60_000), step(gap=120_000)])
+        self.assertEqual(state["used_ml"], 0)
+        self.assertTrue(state["cycle_full_confirmed"])
+        self.assertEqual(len(state["refill_history"]), 1)
+        self.assertFalse(state.get("water_empty_active"))
+
     def test_dirty_tank_service_is_not_a_clean_water_refill(self):
         state = run(device(), {**BASE, "used_ml": 475.7, "cycle_full_confirmed": True}, DIRTY_ONLY)
         self.assertEqual(state["used_ml"], 475.7)

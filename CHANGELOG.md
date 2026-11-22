@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.13.1 (2026-11-22)
+
+- Confirm a refill made after a long empty-water alarm as full when the dirty tank is emptied in the same lid opening: the clean-tank signal clearing during the opening now counts as the clean tank handled, instead of the opening being read as dirty-tank service.
+
 ## 5.13.0 (2026-11-22)
 
 - Confirm full refills automatically from physical signals: on docks that report their tank boxes (Roborock) the lid opened with the clean tank taken out is a full refill, a refill gesture while the empty alarm is active is a full refill, and the history and card show the evidence and reason.

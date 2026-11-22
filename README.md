@@ -290,7 +290,7 @@ show_support: false
 
 ## Screenshots
 
-Version **5.13.0** (screens captured on 5.13.0-beta.3) with synthetic device data in Home Assistant. Estimates and nominal tank learning are not independent measurements of physical volume. Unknown water balances keep an explicit unknown state.
+Version **5.13.1** (screens captured on 5.13.0-beta.3) with synthetic device data in Home Assistant. Estimates and nominal tank learning are not independent measurements of physical volume. Unknown water balances keep an explicit unknown state.
 
 ![Water panel — English](docs/screenshots/5.13/water-en.png)
 
