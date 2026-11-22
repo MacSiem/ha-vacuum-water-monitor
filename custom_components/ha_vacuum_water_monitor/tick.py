@@ -61,6 +61,9 @@ _LID_TANK_LEAD_MS = 120_000
 _LID_TANK_SETTLE_MS = 150_000
 # Longer than this "on" is an empty-water alarm rather than a tank refilled at the tap.
 _LID_TANK_OUT_MAX_MS = 30 * 60_000
+# A confirmed cycle watched by refill signals may overshoot nominal capacity by
+# this much before it is treated as an unreported top-up.
+OVER_CAPACITY_OBSERVED_TOLERANCE = 0.15
 _PASS_FIRST_SOURCE_KEY = "_pass_first_source"
 _PASS_AREA_OBSERVATION_KEY = "_pass_area_observation"
 # Reasons that prove water was dispensed without an applicable rate.
@@ -1725,8 +1728,13 @@ def _tick_device_pass(
                     window, calibration_factor * calibration_target / predicted_used,
                     band_fraction=estimation.band_fraction(device.get("estimate_basis"), device.get("uncertainty_percent")),
                     pending=pending)
-                if predicted_used > capacity and reason != "calibration_sample_out_of_range":
+                watched_refills = bool(device.get("reset_door_sensor") or str(
+                    device.get("dock_clean_water_sensor") or "").startswith("binary_sensor."))
+                overshoot_limit = capacity * (1 + OVER_CAPACITY_OBSERVED_TOLERANCE) if watched_refills else capacity
+                if predicted_used > overshoot_limit and reason != "calibration_sample_out_of_range":
                     # Full at the start does not prove no later unreported top-up.
+                    # With a lid or dock tank signal a top-up starts a new cycle,
+                    # so a small overshoot is the estimate's own error to learn.
                     window, learned = estimation.seed_log_factors(state), calibration_factor
                     accepted, reason, pending = False, "calibration_sample_over_capacity", None
                 state.update(calibration_log_factors=[round(value,6) for value in window],
