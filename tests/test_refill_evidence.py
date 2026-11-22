@@ -137,6 +137,33 @@ class TankReinsertedWithoutLidTests(unittest.TestCase):
         self.assertNotEqual(state.get("last_reset_source"), "tank_reinserted")
 
 
+class DocklessRobotTankTests(unittest.TestCase):
+    BOX = "binary_sensor.robot_water_box_attached"
+
+    def _device(self, reservoir):
+        dev = dict(device(lid=False, boxes=False))
+        dev.update(tracked_reservoir=reservoir, water_box_attached_sensor=self.BOX)
+        return dev
+
+    def _steps(self, *values):
+        return [dict(extra={self.BOX: _S(v)}, _gap=30_000) for v in values]
+
+    def test_robot_tank_out_and_back_refills_a_dockless_robot(self):
+        state = run(self._device("robot_clean"), {**BASE, "used_ml": 180}, self._steps("on", "off", "off", "on"))
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(state["last_reset_source"], "tank_reinserted")
+
+    def test_after_the_tank_was_reported_empty_it_confirms_a_full_tank(self):
+        state = run(self._device("robot_clean"), {**BASE, "used_ml": 180, "user_empty_active": True,
+                                                  "water_empty_active": True, "water_anchor_source": "user_empty",
+                                                  "water_anchor_kind": "empty"}, self._steps("on", "off", "on"))
+        self.assertTrue(state["cycle_full_confirmed"])
+
+    def test_dock_robots_ignore_their_onboard_tank(self):
+        state = run(self._device("dock_clean"), {**BASE, "used_ml": 180}, self._steps("on", "off", "on"))
+        self.assertEqual(state["used_ml"], 180)
+
+
 class DecisionTests(unittest.TestCase):
     def test_single_automatic_signal_is_not_full(self):
         for source in ("lid", "dock_cleared", "tank_reinserted"):

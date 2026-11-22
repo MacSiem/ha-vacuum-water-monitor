@@ -2552,6 +2552,10 @@ def _observe_user_refill_signals(
             state.pop("pending_lid_close_ts", None)
             state.pop("pending_lid_open_ts", None)
             state["clean_box_cycled_ts"] = 0
+    elif (_observe_robot_tank_reinserted(hass, device, state, now_ts) and not state.get("session_start_ts")
+          and state.get("last_status") not in MOP_WASH_STATES):
+        # Robots without a dock are refilled by taking their own tank out.
+        source = source or "tank_reinserted"
     elif (boxes.get("clean_cycled") and not state.get("session_start_ts")
           and state.get("last_status") not in MOP_WASH_STATES
           and not (isinstance(lid, str) and lid and state.get("last_door") == "on")):
@@ -2560,6 +2564,39 @@ def _observe_user_refill_signals(
         source = source or "tank_reinserted"
         state["clean_box_cycled_ts"] = 0
     return source, evidence
+
+
+def _observe_robot_tank_reinserted(
+    hass: HomeAssistant, device: dict[str, Any], state: dict[str, Any], now_ts: int
+) -> bool:
+    """Return True when the tracked robot tank went back in after a short absence.
+
+    Only for a tracked ``robot_clean`` reservoir: on a dock robot the small
+    onboard tank is refilled by the dock and its attachment means nothing here.
+    """
+    if device.get("tracked_reservoir") != "robot_clean":
+        return False
+    attached: bool | None = None
+    detached_entity = device.get("water_box_detached_sensor")
+    if isinstance(detached_entity, str) and detached_entity:
+        detached = _binary_active(_state_value(hass, detached_entity))
+        attached = None if detached is None else not detached
+    if attached is None:
+        attached_entity = device.get("water_box_attached_sensor")
+        if isinstance(attached_entity, str) and attached_entity:
+            attached = _attachment_present(_state_value(hass, attached_entity))
+    if attached is None:
+        return False
+    previous = state.get("last_robot_tank_attached")
+    state["last_robot_tank_attached"] = attached
+    if previous is True and attached is False:
+        state["robot_tank_removed_ts"] = now_ts
+        return False
+    removed = _positive_number(state.get("robot_tank_removed_ts"))
+    if previous is False and attached is True and removed is not None:
+        state["robot_tank_removed_ts"] = 0
+        return now_ts - removed <= _LID_TANK_OUT_MAX_MS
+    return False
 
 
 def _observe_dock_tank_boxes(
