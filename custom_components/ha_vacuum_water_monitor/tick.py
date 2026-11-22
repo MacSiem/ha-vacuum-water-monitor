@@ -1076,9 +1076,14 @@ def _tick_device_pass(
             updates.update(session_accounting_valid=False, session_exposure_complete=False)
         elif (state.get("session_start_ts") and previous_area is not None
               and previous_area != state.get("session_start_area")):
-            # A fully counted run may mix settings, but it is not a single
-            # context calibration sample. Its numeric history remains useful.
-            updates["session_accounting_valid"] = False
+            # A fully counted run may mix settings, but then it is not a single
+            # context calibration sample. Docks restore the routine's default
+            # settings when the run ends, before the session closes (often
+            # during the final, already charged wash). Nothing was dispensed
+            # under the new settings yet: invalidate only if exposure follows.
+            updates["session_settled_context_change"] = {
+                "ts": now_ts, "area": previous_area,
+                "washing": bool(curr_status in MOP_WASH_STATES or curr_dock_status in DOCK_WASH_STATES)}
         if old_calibration_context is not None and old_calibration_context != calibration_context:
             # Keep useful nominal learning under its exact rate/settings identity.
             # A different context starts independently; history remains a shared audit.
@@ -1133,6 +1138,20 @@ def _tick_device_pass(
         curr_status in MOP_WASH_STATES
         or curr_dock_status in DOCK_WASH_STATES
     )
+    settled_change = state.get("session_settled_context_change")
+    if isinstance(settled_change, dict):
+        changed_area = _float_or_none(settled_change.get("area"))
+        if not state.get("session_start_ts"):
+            state.pop("session_settled_context_change", None)
+        elif ((wash_now and not settled_change.get("washing"))
+              or (curr_area is not None and changed_area is not None
+                  and curr_area - changed_area > AREA_COUNTER_JITTER_M2)):
+            # Water flowed under the restored settings: a mixed-context run.
+            state["session_accounting_valid"] = False
+            state.pop("session_settled_context_change", None)
+        elif not wash_now and settled_change.get("washing"):
+            # The wash in progress at the change has ended; a later one is new.
+            state["session_settled_context_change"] = {**settled_change, "washing": False}
     if (consumption_context and whole_cycle_calibration is None and wash_volume is None
             and not device.get("water_volume_sensor")
             and (not device.get("tracked_reservoir") or device["tracked_reservoir"] == consumption_context.get("reservoir"))):
@@ -1988,6 +2007,7 @@ def _finish_session(state, running, status, now_ts, area):
               "accounting_version": 3}
     state["automatic_sessions"] = [record, *(state.get("automatic_sessions") or [])][:50]
     state["session_start_ts"] = None
+    state.pop("session_settled_context_change", None)
     state["session_whole_calibration"] = None
 
 

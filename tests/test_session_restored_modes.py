@@ -25,6 +25,54 @@ class RestoredModeSessionTests(unittest.TestCase):
         self.assertIsNotNone(state['automatic_sessions'][0]['water'])
         self.assertEqual(state['automatic_sessions'][0]['context']['settings']['mop_mode'],'deep')
 
+    def _run_steps(self, steps, step_ms=60_000):
+        device=effective({},descriptor())
+        device['cleaning_mode_entity']='select.cleaning_mode'
+        state={**BASE,'last_area':0,'last_status':'charging'}
+        for index,(status,vac,area,mode,intensity,clean_mode) in enumerate(steps):
+            h=hass(status=status,vac=vac,area=str(area),intensity=intensity,
+                   extra={'select.robot_mop_mode':_S(mode),'select.cleaning_mode':_S(clean_mode)})
+            state=tick.tick_device(h,device,state,now_ts=10_060_000+index*step_ms)[0]
+        return state
+
+    # Roborock S8 MaxV Ultra 19.11.2026: the routine restores "standard" when the
+    # robot reaches the dock, a few seconds before the session closes.
+    RUN = [('washing_the_mop','docked',0,'deep_plus','intense','mop'),
+           ('cleaning','cleaning',0,'deep_plus','intense','mop'),
+           ('cleaning','cleaning',12,'deep_plus','intense','mop'),
+           ('washing_the_mop','docked',12,'deep_plus','intense','mop'),
+           ('cleaning','cleaning',20,'deep_plus','intense','mop'),
+           ('washing_the_mop','docked',20,'deep_plus','intense','mop')]
+
+    def test_settings_restored_at_the_dock_keep_a_valid_session(self):
+        state=self._run_steps(self.RUN+[('charging','docked',20,'standard','standard','vac_and_mop'),
+                                        ('charging','docked',20,'standard','standard','vac_and_mop')])
+        session=state['automatic_sessions'][0]
+        self.assertTrue(session['accounting_valid'])
+        self.assertEqual(session['context']['settings']['mop_mode'],'deep_plus')
+        self.assertNotIn('session_settled_context_change',state)
+
+    def test_settings_restored_while_the_dock_still_reports_washing_stay_valid(self):
+        state=self._run_steps(self.RUN+[('washing_the_mop','docked',20,'standard','standard','vac_and_mop'),
+                                        ('charging','docked',20,'standard','standard','vac_and_mop')])
+        # The final wash was charged when it started; nothing was dispensed later.
+        self.assertTrue(state['automatic_sessions'][0]['accounting_valid'])
+
+    def test_a_new_wash_after_the_change_makes_a_mixed_run(self):
+        state=self._run_steps(self.RUN+[('washing_the_mop','docked',20,'standard','standard','mop'),
+                                        ('cleaning','cleaning',20,'standard','standard','mop'),
+                                        ('washing_the_mop','docked',20,'standard','standard','mop')], step_ms=20_000)
+        self.assertFalse(state['session_accounting_valid'])
+
+    def test_resuming_under_the_restored_settings_starts_a_separate_session(self):
+        state=self._run_steps(self.RUN+[('charging','docked',20,'standard','standard','mop'),
+                                        ('cleaning','cleaning',20,'standard','standard','mop'),
+                                        ('cleaning','cleaning',26,'standard','standard','mop')], step_ms=30_000)
+        first=state['automatic_sessions'][0]
+        self.assertTrue(first['accounting_valid'])
+        self.assertEqual(first['context']['settings']['mop_mode'],'deep_plus')
+        self.assertEqual(state['session_context']['settings']['mop_mode'],'standard')
+
     def test_empty_is_visible_even_when_prior_consumption_was_incomplete(self):
         device=effective({},descriptor())
         result=sc.estimate_water_state(device,{**BASE,'accounting_incomplete':True,
