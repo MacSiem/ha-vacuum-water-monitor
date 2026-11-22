@@ -13820,7 +13820,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     ] : [
       'Robots are found automatically, with no YAML.',
       'For each robot, answer the question in the Water tab (usually: is the tank full now?).',
-      'Confirm a full refill with the button unless the lid with a removed tank, a refill after the empty alarm or the full-refill practice already confirmed it.',
+      'Unless the lid with a removed tank, a refill after the empty alarm or the full-refill practice already confirmed it, confirm a full refill with the button.',
       'The estimate learns from complete tank cycles with supported refill and empty-tank signals; normal cleaning is enough.',
       'Anything that needs you also appears in Settings \u2192 Repairs.',
     ];
