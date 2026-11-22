@@ -75,7 +75,6 @@ ROLE_IDENTIFIERS: dict[str, set[str]] = {
     },
     "dock_clean_water_sensor": {
         "clean_box_empty",
-        "clean_fluid_empty",
         "clean_water_box_empty",
         "dock_clean_water_box",
         "water_tank_clean",
@@ -108,7 +107,8 @@ ADAPTER_ROLE_IDENTIFIERS: dict[str, dict[str, tuple[str, ...]]] = {
         "mop_attached_sensor": ("mop_attached",),
         "water_box_attached_sensor": ("water_box_attached",),
         "water_shortage_sensor": ("water_shortage",),
-        "dock_clean_water_sensor": ("clean_box_empty", "clean_fluid_empty"),
+        # ``clean_fluid_empty`` is the detergent cartridge, not clean water.
+        "dock_clean_water_sensor": ("clean_box_empty",),
         "dock_dirty_water_sensor": ("dirty_box_full",),
         "dock_error_sensor": ("dock_error",),
     },

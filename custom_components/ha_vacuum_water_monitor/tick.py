@@ -54,6 +54,13 @@ WASH_SEQUENCE_GAP_SECONDS = 240
 # Area change across an observation gap below this is counter noise, not a session.
 GAP_AREA_TOLERANCE_M2 = 0.5
 _PASS_REASONS_KEY = "_pass_reasons"
+_EVIDENCE_CLEAN_TANK_REMOVED = "clean_tank_removed"
+# Dock tank boxes are polled (about every 30 s) while lid sensors push: a box
+# change can be reported shortly before the lid opens or after it closes.
+_LID_TANK_LEAD_MS = 120_000
+_LID_TANK_SETTLE_MS = 150_000
+# Longer than this "on" is an empty-water alarm rather than a tank refilled at the tap.
+_LID_TANK_OUT_MAX_MS = 30 * 60_000
 _PASS_FIRST_SOURCE_KEY = "_pass_first_source"
 _PASS_AREA_OBSERVATION_KEY = "_pass_area_observation"
 # Reasons that prove water was dispensed without an applicable rate.
@@ -389,7 +396,7 @@ def _tick_device_pass(
     # A refill the user reports through a bound button or tank-lid sensor is
     # independent of the robot being reachable or the dock's own signals.
     user_refill_dirty = False
-    user_refill_source = _observe_user_refill_signals(hass, device, state)
+    user_refill_source, user_refill_evidence = _observe_user_refill_signals(hass, device, state, now_ts)
     if user_refill_source is not None:
         user_refill_dirty = True
         # A report while the dock shows its tank empty again is a new refill even
@@ -397,11 +404,16 @@ def _tick_device_pass(
         if ((now_ts - int(state.get("last_reset_ts") or 0)) / 1000 > USER_REFILL_DEDUPE_SECONDS
                 or state.get("water_empty_active")):
             apply_refill(state, now_ts, user_refill_source, rebaseline=False,
-                full_practice_confirmed=device.get("full_refill_practice_confirmed") is True)
+                full_practice_confirmed=device.get("full_refill_practice_confirmed") is True,
+                evidence=user_refill_evidence)
             _record_accounting(state, "refill", None, None, f"refill_{user_refill_source}")
         else:
-            confirm_same_refill(state, user_refill_source)
+            confirm_same_refill(state, user_refill_source, user_refill_evidence)
             _record_accounting(state, "refill", None, None, "refill_already_recorded")
+    elif state.get("_pass_dirty_tank_serviced"):
+        user_refill_dirty = True
+        _record_accounting(state, "refill", None, None, "dirty_tank_serviced")
+    state.pop("_pass_dirty_tank_serviced", None)
     vacuum_entity = device.get("vacuum_entity")
     vac = hass.states.get(vacuum_entity) if vacuum_entity else None
     event_sensor = device.get("accounting_event_sensor")
@@ -2435,14 +2447,21 @@ def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
 
 
 def _observe_user_refill_signals(
-    hass: HomeAssistant, device: dict[str, Any], state: dict[str, Any]
-) -> str | None:
-    """Return ``button`` or ``lid`` when the user reported a refill this pass.
+    hass: HomeAssistant, device: dict[str, Any], state: dict[str, Any], now_ts: int | None = None,
+) -> tuple[str | None, frozenset[str]]:
+    """Return the refill source and its physical evidence seen this pass.
 
     ``input_button``/``button`` states are the last press time: a press is a
     newer time than the last one seen on the same entity. A lid sensor counts
     when it closes (``on`` → ``off``). Binding another entity, an unavailable
     reading, or a restored older press time never counts as a refill.
+
+    Docks that report their tank boxes (Roborock ``dock_clean_water_box`` /
+    ``dock_dirty_water_box``) tell which tank the user handled. The lid decision
+    then waits briefly for the dock's next poll: the clean tank taken out with
+    the lid open is a refill that proves a full tank; a lid opened only to empty
+    the dirty tank is not a refill. Without a lid sensor, the clean tank taken
+    out and put back while the robot is idle is a refill on its own.
     """
     source = None
     button = device.get("refill_button_entity")
@@ -2459,16 +2478,92 @@ def _observe_user_refill_signals(
                     raw = previous  # keep the newest press seen
             state["last_refill_button_state"] = raw
             state["last_refill_button_entity"] = button
+    if now_ts is None:
+        now_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
+    evidence: frozenset[str] = frozenset()
+    boxes = _observe_dock_tank_boxes(hass, device, state, now_ts)
     lid = device.get("reset_door_sensor")
+    lid_closed = False
     if isinstance(lid, str) and lid:
         current = _normalized_signal(_state_value(hass, lid))
         if current in {"on", "off"}:
             same_lid = state.get("last_door_entity") in {None, lid}
+            if same_lid and state.get("last_door") != "on" and current == "on":
+                state["lid_open_ts"] = now_ts
             if same_lid and state.get("last_door") == "on" and current == "off":
-                source = source or "lid"
+                lid_closed = True
             state["last_door"] = current
             state["last_door_entity"] = lid
-    return source
+    if lid_closed:
+        if boxes:
+            # Decide after the dock reports which tank was handled.
+            opened = _positive_number(state.get("lid_open_ts"))
+            state["pending_lid_open_ts"] = int(opened) if opened and opened <= now_ts else now_ts
+            state["pending_lid_close_ts"] = now_ts
+        else:
+            source = source or "lid"
+    pending_close = _positive_number(state.get("pending_lid_close_ts"))
+    if pending_close is not None:
+        window_start = int(_positive_number(state.get("pending_lid_open_ts")) or pending_close) - _LID_TANK_LEAD_MS
+        clean_seen = (_positive_number(state.get("clean_box_on_ts")) or 0) >= window_start
+        dirty_seen = (_positive_number(state.get("dirty_box_on_ts")) or 0) >= window_start
+        clean_now = boxes.get("clean")
+        waited = now_ts - pending_close
+        decided = False
+        if clean_seen and clean_now is False:
+            source, evidence, decided = source or "lid", frozenset({_EVIDENCE_CLEAN_TANK_REMOVED}), True
+        elif clean_now is True and waited < _LID_TANK_OUT_MAX_MS:
+            pass  # The clean tank is still out (or empty): wait for it to return.
+        elif waited >= _LID_TANK_SETTLE_MS:
+            if dirty_seen and not clean_seen:
+                state["_pass_dirty_tank_serviced"] = True
+            else:
+                source = source or "lid"
+            decided = True
+        if decided:
+            state.pop("pending_lid_close_ts", None)
+            state.pop("pending_lid_open_ts", None)
+            state["clean_box_cycled_ts"] = 0
+    elif (boxes.get("clean_cycled") and not state.get("session_start_ts")
+          and state.get("last_status") not in MOP_WASH_STATES
+          and not (isinstance(lid, str) and lid and state.get("last_door") == "on")):
+        # Without a lid observation, the tank taken out and put back while the
+        # robot is idle is the refill itself.
+        source = source or "tank_reinserted"
+        state["clean_box_cycled_ts"] = 0
+    return source, evidence
+
+
+def _observe_dock_tank_boxes(
+    hass: HomeAssistant, device: dict[str, Any], state: dict[str, Any], now_ts: int
+) -> dict[str, bool | None]:
+    """Track the dock's clean/dirty tank-box binary signals (``on`` = tank out or alarm).
+
+    Returns the current clean/dirty readings and whether the clean tank just
+    went back in after a short absence that was not an empty-water alarm.
+    """
+    result: dict[str, Any] = {}
+    for key, setting in (("clean", "dock_clean_water_sensor"), ("dirty", "dock_dirty_water_sensor")):
+        entity = device.get(setting)
+        if not isinstance(entity, str) or not entity.startswith("binary_sensor."):
+            continue
+        current = _binary_active(_state_value(hass, entity))
+        if current is None:
+            continue
+        result[key] = current
+        previous = state.get(f"last_{key}_box")
+        if current and previous is not True:
+            state[f"{key}_box_on_ts"] = now_ts
+        if key == "clean" and previous is True and current is False:
+            on_since = _positive_number(state.get("clean_box_on_ts")) or now_ts
+            # A long "on" is an empty-water alarm (handled by the dock-cleared
+            # path), not a tank taken out and refilled at the tap.
+            if now_ts - on_since <= _LID_TANK_OUT_MAX_MS:
+                state["clean_box_cycled_ts"] = now_ts
+        state[f"last_{key}_box"] = current
+    if result.get("clean") is False and _positive_number(state.get("clean_box_cycled_ts")):
+        result["clean_cycled"] = True
+    return result
 
 
 def _press_is_newer(raw: str, previous: str) -> bool | None:

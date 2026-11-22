@@ -229,6 +229,7 @@ const VWM_REFILL_SOURCE_LABEL = {
   button: 'refill button',
   lid: 'tank lid',
   dock_cleared: 'station alarm cleared',
+  tank_reinserted: 'clean tank taken out and back',
   legacy: 'earlier version',
   entity: 'Refilled button (device page)',
   repair: 'confirmed in Repairs',
@@ -728,6 +729,7 @@ const VWM_WATER_TEXT_PL = {
   "refill button": "przycisk dolania",
   "tank lid": "pokrywa zbiornika",
   "station alarm cleared": "alarm stacji ustąpił",
+  "clean tank taken out and back": "zbiornik czystej wody wyjęty i włożony",
   "Last tank event": "Ostatnie zdarzenie zbiornika",
   "Settings changed; forecast resumes after 3 comparable mopping runs — {n} of 3 recorded": "Ustawienia się zmieniły; prognoza wróci po 3 porównywalnych cyklach mopowania — zapisano {n} z 3",
   "full confirmed by user": "pełność potwierdzona przez użytkownika",
@@ -14215,7 +14217,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         if (result && result.state) this._saveWaterState(
           { ...device, vacuum_entity: result.vacuum_entity || device.vacuum_entity }, result.state);
         const wasUnconfirmed = before.refill_full_unconfirmed === true ||
-          (['lid', 'dock_cleared'].includes(before.last_reset_source) && before.cycle_full_confirmed !== true);
+          (['lid', 'dock_cleared', 'tank_reinserted'].includes(before.last_reset_source) && before.cycle_full_confirmed !== true);
         if (wasUnconfirmed && result?.state?.cycle_full_confirmed === true && Number(result.state.used_ml) > 0 &&
             epoch === this._accessEpoch && this.isConnected && this._selectedDevice()?.vacuum_entity === device.vacuum_entity) {
           this._toast(this._waterText('Previous refill confirmed; recorded consumption retained.'));
@@ -14831,7 +14833,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
 
     const refillUnconfirmed = tankState.refill_full_unconfirmed === true
-      || (['lid', 'dock_cleared'].includes(tankState.last_reset_source) && tankState.cycle_full_confirmed !== true);
+      || (['lid', 'dock_cleared', 'tank_reinserted'].includes(tankState.last_reset_source) && tankState.cycle_full_confirmed !== true);
     if (tankState.accounting_incomplete || (refillUnconfirmed && !tankState.water_empty_active)) {
       remainingL = percentRemaining = usedMl = null;
       stateReason = 'accounting_incomplete';
@@ -15260,7 +15262,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       extraRows += `<div class="row"><span class="row-label">\uD83D\uDD0D ${this._waterText('Filter life')}</span><span class="row-val" style="color:${filterColor}">${this._formatUi().number(data.filterDays || 0, {maximumFractionDigits:0})} ${this._waterText('days')}</span></div>`;
     }
     if (data.lastReset) {
-      const automaticEvent = ['lid', 'dock_cleared'].includes(data.lastResetSource);
+      const automaticEvent = ['lid', 'dock_cleared', 'tank_reinserted'].includes(data.lastResetSource);
       const sourceLabel = data.lastResetSource && VWM_REFILL_SOURCE_LABEL[data.lastResetSource] ? this._waterText(VWM_REFILL_SOURCE_LABEL[data.lastResetSource]) : '';
       const confirmation = data.lastResetConfirmationSource;
       const confirmedLabel = !automaticEvent || !confirmation ? '' : confirmation === 'declared_full_refill_practice'

@@ -117,7 +117,7 @@ def _shared_tank(state: dict[str, Any]) -> dict[str, Any]:
               "last_reset_iso", "last_water_volume_ml", "last_status", "external_counter", "external_metadata")
     result = {key: state[key] for key in fields if key in state}
     result["refill_full_unconfirmed"] = (state.get("refill_full_unconfirmed") is True or
-        (state.get("last_reset_source") in {"lid", "dock_cleared"} and state.get("cycle_full_confirmed") is not True))
+        (state.get("last_reset_source") in {"lid", "dock_cleared", "tank_reinserted"} and state.get("cycle_full_confirmed") is not True))
     if isinstance(result.get("external_counter"), dict):
         result["external_counter"] = {k: v for k, v in result["external_counter"].items() if k != "last_session_ml"}
     if isinstance(result.get("external_metadata"), dict):

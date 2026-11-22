@@ -387,7 +387,7 @@ def estimate_water_state(
     # Preserve accounting/history, but require a confirmed full baseline before
     # presenting a remaining level. This also handles pre-upgrade Store records.
     refill_unconfirmed = (tank_state.get("refill_full_unconfirmed") is True or
-        (tank_state.get("last_reset_source") in {"lid", "dock_cleared"}
+        (tank_state.get("last_reset_source") in {"lid", "dock_cleared", "tank_reinserted"}
          and tank_state.get("cycle_full_confirmed") is not True))
     if refill_unconfirmed and not tank_state.get("water_empty_active"):
         return {**metadata, "source": "unknown", "state_reason": "accounting_incomplete",

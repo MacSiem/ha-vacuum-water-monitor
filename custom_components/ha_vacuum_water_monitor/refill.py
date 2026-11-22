@@ -16,7 +16,14 @@ REFILL_HISTORY_LIMIT = 20
 USER_REFILL_DEDUPE_SECONDS = 600
 # "entity": the Refilled button entity of the robot; "repair": confirmed in Settings > Repairs.
 FULL_CONFIRMATION_SOURCES = frozenset({"card", "service", "button", "entity", "repair"})
-REFILL_SOURCES = frozenset({"card", "service", "button", "lid", "dock_cleared", "legacy", "entity", "repair"})
+# Refills observed from hardware signals rather than reported by the user.
+# "tank_reinserted": the dock reported its clean-water tank removed and back.
+AUTOMATIC_REFILL_SOURCES = frozenset({"lid", "dock_cleared", "tank_reinserted"})
+REFILL_SOURCES = frozenset({"card", "service", "button", "lid", "dock_cleared", "tank_reinserted",
+                            "legacy", "entity", "repair"})
+# Physical evidence a refill observation can carry (see ``full_refill_decision``).
+EVIDENCE_LID = "lid"
+EVIDENCE_CLEAN_TANK_REMOVED = "clean_tank_removed"
 
 # Only dock-specific signals can inherit a dock reservoir automatically.
 _INFERRED_ANCHOR_SCOPE = {"dock_error": "dock_clean", "dock_clean_water": "dock_clean"}
@@ -49,6 +56,46 @@ _REBASELINE_FIELDS = {
 }
 
 
+def refill_evidence(source: str, evidence: Any = ()) -> frozenset[str]:
+    """Physical evidence implied by the source plus the observed extras."""
+    result = frozenset(evidence or ())
+    if source == "lid":
+        result |= {EVIDENCE_LID}
+    elif source == "tank_reinserted":
+        result |= {EVIDENCE_CLEAN_TANK_REMOVED}
+    return result
+
+
+def full_refill_decision(
+    state: dict[str, Any],
+    source: str,
+    evidence: frozenset[str] | set[str] | tuple[str, ...] = (),
+    *,
+    full_practice_confirmed: bool = False,
+) -> tuple[bool, str | None]:
+    """Decide whether one refill observation proves a full tank.
+
+    A user gesture confirms it directly. Hardware signals confirm it when they
+    show the user physically refilled the tracked tank: the clean-water tank was
+    taken out while the lid was open, or the tank was refilled while its empty
+    alarm was active. A single lid or alarm transition alone stays unconfirmed:
+    it may be a top-up or unrelated maintenance.
+    """
+    if source in FULL_CONFIRMATION_SOURCES:
+        return True, source
+    if source not in AUTOMATIC_REFILL_SOURCES:
+        return False, None
+    if full_practice_confirmed is True:
+        return True, "declared_full_refill_practice"
+    evidence = refill_evidence(source, evidence)
+    if {EVIDENCE_LID, EVIDENCE_CLEAN_TANK_REMOVED} <= evidence:
+        return True, "lid_and_clean_tank_removed"
+    gesture = evidence & {EVIDENCE_LID, EVIDENCE_CLEAN_TANK_REMOVED}
+    if gesture and state.get("water_empty_active") and state.get("water_anchor_kind", "empty") == "empty":
+        return True, "refill_after_empty"
+    return False, None
+
+
 def apply_refill(
     state: dict[str, Any],
     now_ts: int,
@@ -56,6 +103,7 @@ def apply_refill(
     *,
     rebaseline: bool,
     full_practice_confirmed: bool = False,
+    evidence: frozenset[str] | set[str] | tuple[str, ...] = (),
 ) -> dict[str, Any]:
     """Mark the tracked reservoir full and return the history record.
 
@@ -75,6 +123,9 @@ def apply_refill(
     state.pop("nominal_time_cycle_rate", None)
     state.pop("nominal_time_rate_context", None)
     used_before = state.get("used_ml")
+    # Decided before the state below is reset: an active empty alarm is evidence.
+    full_confirmed, full_reason = full_refill_decision(
+        state, source, evidence, full_practice_confirmed=full_practice_confirmed)
     empty_active = bool(state.get("water_empty_active"))
     # A "Tank empty" the user pressed ends with the refill; only a dock error
     # can still be showing afterwards.
@@ -89,13 +140,11 @@ def apply_refill(
         state["session_start_used_ml"] = round(start_used - float(used_before), 2)
     if rebaseline:
         state.update(_REBASELINE_FIELDS)
-    full_confirmed = (source in FULL_CONFIRMATION_SOURCES
-                      or (full_practice_confirmed is True and source in {"lid", "dock_cleared"}))
     state.update(
         used_ml=0,
         cycle_action_totals={},
         accounting_incomplete=False,
-        refill_full_unconfirmed=(source in {"lid", "dock_cleared"} and not full_confirmed),
+        refill_full_unconfirmed=(source in AUTOMATIC_REFILL_SOURCES and not full_confirmed),
         missing_usage_rate_reason=None,
         session_accounting_valid=False,
         initialized=True,
@@ -105,8 +154,7 @@ def apply_refill(
         # Alarm clearing and opening the lid prove a change, not a full tank.
         # A user-facing full confirmation qualifies a relative balance cycle.
         cycle_full_confirmed=full_confirmed,
-        cycle_full_confirmation_source=(source if source in FULL_CONFIRMATION_SOURCES else
-            "declared_full_refill_practice" if full_practice_confirmed is True else None),
+        cycle_full_confirmation_source=full_reason if full_confirmed else None,
         water_empty_active=acknowledged,
         water_empty_acknowledged=acknowledged,
         user_empty_active=False,
@@ -121,17 +169,43 @@ def apply_refill(
         "source": source,
         "used_before_ml": round(float(used_before), 1) if isinstance(used_before, (int, float)) else None,
         "empty_acknowledged": acknowledged,
+        "evidence": sorted(refill_evidence(source, evidence)),
+        "full_confirmed": full_confirmed,
+        "full_reason": full_reason,
     }
     state["refill_history"] = [record, *(state.get("refill_history") or [])][:REFILL_HISTORY_LIMIT]
     return record
 
 
-def confirm_same_refill(state: dict[str, Any], source: str) -> bool:
-    """Confirm the existing automatic refill without erasing later usage."""
-    if source not in FULL_CONFIRMATION_SOURCES or state.get("cycle_full_confirmed"):
+def confirm_same_refill(
+    state: dict[str, Any],
+    source: str,
+    evidence: frozenset[str] | set[str] | tuple[str, ...] = (),
+) -> bool:
+    """Confirm the existing automatic refill without erasing later usage.
+
+    A user gesture confirms it. A second hardware observation of the same
+    physical refill confirms it when, together with the evidence already
+    recorded for that refill, it proves a full tank (lid and tank removal).
+    """
+    if state.get("cycle_full_confirmed"):
         return False
+    history = list(state.get("refill_history") or [])
+    latest = dict(history[0]) if history and isinstance(history[0], dict) else None
+    if source in FULL_CONFIRMATION_SOURCES:
+        reason = source
+    else:
+        if latest is None:
+            return False
+        merged = refill_evidence(latest.get("source", ""), latest.get("evidence")) | refill_evidence(source, evidence)
+        # Records are replaced, never mutated: the previous state may be shared.
+        latest["evidence"] = sorted(merged)
+        state["refill_history"] = [latest, *history[1:]]
+        if not {EVIDENCE_LID, EVIDENCE_CLEAN_TANK_REMOVED} <= merged:
+            return False
+        reason = "lid_and_clean_tank_removed"
     automatic = (state.get("refill_full_unconfirmed") is True or
-                 state.get("last_reset_source") in {"lid", "dock_cleared"})
+                 state.get("last_reset_source") in AUTOMATIC_REFILL_SOURCES)
     if not automatic and (state.get("used_ml") != 0 or state.get("accounting_incomplete")
                           or state.get("session_start_ts")):
         return False
@@ -140,5 +214,7 @@ def confirm_same_refill(state: dict[str, Any], source: str) -> bool:
     # Time learning cannot reconstruct already elapsed exposure retroactively.
     state["nominal_time_start_pending"] = (state.get("used_ml") == 0
         and not state.get("session_start_ts") and not state.get("accounting_incomplete"))
-    state["cycle_full_confirmation_source"] = source
+    state["cycle_full_confirmation_source"] = reason
+    if latest is not None:
+        state["refill_history"] = [{**latest, "full_confirmed": True, "full_reason": reason}, *history[1:]]
     return True

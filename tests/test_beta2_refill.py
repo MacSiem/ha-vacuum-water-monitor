@@ -212,7 +212,9 @@ class StorageRefillTests(unittest.TestCase):
         self.assertEqual(state["used_ml"], 0)
         self.assertEqual(state["last_reset_source"], "service")
         self.assertEqual(state["refill_history"][0], {"ts": 1789545600000, "source": "service",
-                                                      "used_before_ml": 1234.5, "empty_acknowledged": False})
+                                                      "used_before_ml": 1234.5, "empty_acknowledged": False,
+                                                      "evidence": [], "full_confirmed": True,
+                                                      "full_reason": "service"})
 
     def test_refill_settings_are_validated_and_replaced_per_vacuum(self):
         async def scenario():
