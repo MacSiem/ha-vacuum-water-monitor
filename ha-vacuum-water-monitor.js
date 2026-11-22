@@ -13814,13 +13814,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const items = pl ? [
       'Roboty s\u0105 wykrywane automatycznie, bez YAML.',
       'Dla ka\u017Cdego robota odpowiedz na pytanie w zak\u0142adce Woda (zwykle: czy zbiornik jest teraz pe\u0142ny?).',
-      'Po ustąpieniu alarmu stacji potwierdź pełne dolanie, chyba że deklaracja pełnego dolewania była już włączona.',
+      'Potwierdź pełne dolanie przyciskiem, chyba że pokrywa z wyjętym zbiornikiem, dolanie po alarmie braku wody albo deklaracja pełnego dolewania już je potwierdziły.',
       'Szacunek uczy się na pełnych cyklach zbiornika z obsługiwanymi sygnałami dolania i braku wody; wystarczy zwykłe sprzątanie.',
       'To, co wymaga uwagi, pojawia si\u0119 te\u017C w Ustawienia \u2192 Naprawy.',
     ] : [
       'Robots are found automatically, with no YAML.',
       'For each robot, answer the question in the Water tab (usually: is the tank full now?).',
-      'After a dock alarm clears, confirm a full refill unless the full-refill practice was already enabled.',
+      'Confirm a full refill with the button unless the lid with a removed tank, a refill after the empty alarm or the full-refill practice already confirmed it.',
       'The estimate learns from complete tank cycles with supported refill and empty-tank signals; normal cleaning is enough.',
       'Anything that needs you also appears in Settings \u2192 Repairs.',
     ];
