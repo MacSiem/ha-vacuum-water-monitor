@@ -125,7 +125,8 @@ methods*):
 | **Refilled** button | Press it in the Water tab after filling the tank, or use the robot's **Refilled** button entity (device page, dashboard, NFC tag). |
 | Automatic from the dock | On by default when the dock reports an empty clean-water tank: the error clearing counts as a refill. Switch it off (card or the robot's **Refill from dock automatically** switch) if that error sometimes clears without a refill. |
 | Dashboard or physical button | Pick an `input_button` or `button` entity; pressing it marks the tank refilled. |
-| Tank lid or door sensor | Pick a contact sensor; closing it counts as a full refill. |
+| Tank lid or door sensor | Pick a contact sensor; closing it counts as a refill. On a dock that reports its tank boxes (Roborock), the lid opened with the clean tank taken out counts as a **full** refill automatically; a lid opened only to empty the dirty tank is not a refill. |
+| Clean tank taken out | Without a lid sensor, a dock clean tank (or a dockless robot's own tank) taken out and put back while the robot is idle counts as a refill. |
 | Automation or script | Call `ha_vacuum_water_monitor.mark_refilled` with the vacuum as target. |
 
 ```yaml
@@ -133,6 +134,20 @@ action: ha_vacuum_water_monitor.mark_refilled
 target:
   entity_id: vacuum.roborock_s8_maxv_ultra
 ```
+
+#### When an automatic refill counts as full (5.13)
+
+Calibration learns only from cycles that started full. VWM confirms a full tank without a
+button press when the signals show a real refill:
+
+- the lid was opened **and** the dock reported the clean tank taken out (the tank was filled at the tap);
+- the tank was refilled with a lid or tank signal **while** the empty-water alarm was active;
+- you ticked *I always refill to the same full level after these automatic signals* in the card settings.
+
+A single lid closing or a cleared alarm alone may be a top-up, so it still resets the counter
+but stays *full unconfirmed* and is not used for calibration. The card's *Last tank event* row
+shows why a refill counted as full. Roborock's detergent-cartridge signal is never read as
+clean water.
 
 Pressing **Refilled** while the dock still shows its empty-tank error keeps the tank full; the
 error clearing later is not counted a second time. Refill reports within 10 minutes of each
@@ -275,7 +290,7 @@ show_support: false
 
 ## Screenshots
 
-Version **5.13.0-beta.3**, captured with synthetic device data in Home Assistant. Estimates and nominal tank learning are not independent measurements of physical volume. Unknown water balances keep an explicit unknown state.
+Version **5.13.0** (screens captured on 5.13.0-beta.3) with synthetic device data in Home Assistant. Estimates and nominal tank learning are not independent measurements of physical volume. Unknown water balances keep an explicit unknown state.
 
 ![Water panel — English](docs/screenshots/5.13/water-en.png)
 

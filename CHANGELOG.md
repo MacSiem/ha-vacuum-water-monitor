@@ -1,5 +1,14 @@
 # Changelog
 
+## 5.13.0 (2026-11-22)
+
+- Confirm full refills automatically from physical signals: on docks that report their tank boxes (Roborock) the lid opened with the clean tank taken out is a full refill, a refill gesture while the empty alarm is active is a full refill, and the history and card show the evidence and reason.
+- Stop counting a lid opened only to empty the dirty tank as a clean-water refill. Without a lid sensor, a dock clean tank or a dockless robot's own tank taken out and put back while idle is a refill.
+- Keep runs valid as calibration samples when the dock restores the routine's default settings after the run; a settings change makes a mixed run only when water is dispensed afterwards.
+- Learn from confirmed cycles that overshoot the nominal capacity by up to 15% when a lid or dock tank signal watches refills; larger overshoots remain excluded as possible unreported top-ups.
+- No longer read Roborock's detergent-cartridge signal as the clean-water tank.
+- Includes all changes of 5.13.0-beta.1 to beta.3. Estimates remain derived from robot signals, not independent volume measurements.
+
 ## 5.13.0-beta.3 (2026-11-04)
 
 - Track supported current robot settings and upstream status and area units more accurately; keep unavailable signals unknown and preserve calibration history across entity renames.
