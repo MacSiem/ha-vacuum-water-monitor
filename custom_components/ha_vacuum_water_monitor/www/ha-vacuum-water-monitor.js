@@ -730,6 +730,8 @@ const VWM_WATER_TEXT_PL = {
   "tank lid": "pokrywa zbiornika",
   "station alarm cleared": "alarm stacji ustąpił",
   "clean tank taken out and back": "zbiornik czystej wody wyjęty i włożony",
+  "full: lid opened and clean tank taken out": "pełny: otwarta pokrywa i wyjęty zbiornik czystej wody",
+  "full: refilled after the empty alarm": "pełny: dolano po alarmie braku wody",
   "Last tank event": "Ostatnie zdarzenie zbiornika",
   "Settings changed; forecast resumes after 3 comparable mopping runs — {n} of 3 recorded": "Ustawienia się zmieniły; prognoza wróci po 3 porównywalnych cyklach mopowania — zapisano {n} z 3",
   "full confirmed by user": "pełność potwierdzona przez użytkownika",
@@ -15266,7 +15268,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const sourceLabel = data.lastResetSource && VWM_REFILL_SOURCE_LABEL[data.lastResetSource] ? this._waterText(VWM_REFILL_SOURCE_LABEL[data.lastResetSource]) : '';
       const confirmation = data.lastResetConfirmationSource;
       const confirmedLabel = !automaticEvent || !confirmation ? '' : confirmation === 'declared_full_refill_practice'
-        ? this._waterText('full-refill practice enabled') : confirmation === 'service'
+        ? this._waterText('full-refill practice enabled') : confirmation === 'lid_and_clean_tank_removed'
+          ? this._waterText('full: lid opened and clean tank taken out') : confirmation === 'refill_after_empty'
+          ? this._waterText('full: refilled after the empty alarm') : confirmation === 'service'
           ? this._waterText('full confirmed by automation') : this._waterText('full confirmed by user');
       const refillSource = [sourceLabel, confirmedLabel].filter(Boolean).map(text => ` \u00B7 ${text}`).join('');
       const refillLabel = automaticEvent ? this._waterText('Last tank event') : L.lastRefill;
