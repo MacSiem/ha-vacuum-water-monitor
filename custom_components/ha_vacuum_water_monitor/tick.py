@@ -1729,7 +1729,8 @@ def _tick_device_pass(
                     band_fraction=estimation.band_fraction(device.get("estimate_basis"), device.get("uncertainty_percent")),
                     pending=pending)
                 watched_refills = bool(device.get("reset_door_sensor") or str(
-                    device.get("dock_clean_water_sensor") or "").startswith("binary_sensor."))
+                    device.get("dock_clean_water_sensor") or "").startswith("binary_sensor.")) and not state.get(
+                    "cycle_unobserved_refill_possible")
                 overshoot_limit = capacity * (1 + OVER_CAPACITY_OBSERVED_TOLERANCE) if watched_refills else capacity
                 if predicted_used > overshoot_limit and reason != "calibration_sample_out_of_range":
                     # Full at the start does not prove no later unreported top-up.
@@ -2526,7 +2527,9 @@ def _observe_user_refill_signals(
         if boxes:
             # Decide after the dock reports which tank was handled.
             opened = _positive_number(state.get("lid_open_ts"))
-            state["pending_lid_open_ts"] = int(opened) if opened and opened <= now_ts else now_ts
+            # An open time from before a sensor outage is not this opening.
+            state["pending_lid_open_ts"] = (int(opened) if opened and now_ts - _LID_TANK_OUT_MAX_MS <= opened <= now_ts
+                                            else now_ts)
             state["pending_lid_close_ts"] = now_ts
         else:
             source = source or "lid"
@@ -2545,6 +2548,9 @@ def _observe_user_refill_signals(
         elif waited >= _LID_TANK_SETTLE_MS:
             if dirty_seen and not clean_seen:
                 state["_pass_dirty_tank_serviced"] = True
+                # A clean tank out for less than one dock poll is invisible:
+                # this cycle can no longer prove the absence of a top-up.
+                state["cycle_unobserved_refill_possible"] = True
             else:
                 source = source or "lid"
             decided = True
@@ -2553,15 +2559,19 @@ def _observe_user_refill_signals(
             state.pop("pending_lid_open_ts", None)
             state["clean_box_cycled_ts"] = 0
     elif (_observe_robot_tank_reinserted(hass, device, state, now_ts) and not state.get("session_start_ts")
-          and state.get("last_status") not in MOP_WASH_STATES):
+          and state.get("last_status") not in MOP_WASH_STATES
+          and state.get("last_dock_status") not in DOCK_WASH_STATES):
         # Robots without a dock are refilled by taking their own tank out.
         source = source or "tank_reinserted"
-    elif (boxes.get("clean_cycled") and not state.get("session_start_ts")
-          and state.get("last_status") not in MOP_WASH_STATES
-          and not (isinstance(lid, str) and lid and state.get("last_door") == "on")):
-        # Without a lid observation, the tank taken out and put back while the
-        # robot is idle is the refill itself.
-        source = source or "tank_reinserted"
+    elif boxes.get("clean_cycled"):
+        busy = (state.get("session_start_ts") or state.get("last_status") in MOP_WASH_STATES
+                or state.get("last_dock_status") in DOCK_WASH_STATES)
+        if not busy and not (isinstance(lid, str) and lid and state.get("last_door") == "on"):
+            # Without a lid observation, the tank taken out and put back while
+            # the robot is idle is the refill itself.
+            source = source or "tank_reinserted"
+        # A pulse while the robot runs or washes is the dock drawing water, not
+        # a refill; it must not be replayed once the robot is idle again.
         state["clean_box_cycled_ts"] = 0
     return source, evidence
 

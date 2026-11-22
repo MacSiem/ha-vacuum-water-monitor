@@ -121,6 +121,20 @@ class DockedLidRefillTests(unittest.TestCase):
         self.assertEqual(state["cycle_full_confirmation_source"], "refill_after_empty")
 
 
+class PollOrderTests(unittest.TestCase):
+    def test_dock_clearing_before_the_lid_still_confirms_the_refill(self):
+        state = {"used_ml": 0, "refill_full_unconfirmed": True, "last_reset_source": "dock_cleared",
+                 "refill_history": [{"ts": 1, "source": "dock_cleared", "evidence": []}]}
+        self.assertTrue(refill.confirm_same_refill(state, "lid"))
+        self.assertEqual(state["cycle_full_confirmation_source"], "refill_after_empty")
+
+    def test_dirty_only_service_disables_the_overshoot_tolerance_for_the_cycle(self):
+        state = run(device(), {**BASE, "used_ml": 475.7, "cycle_full_confirmed": True}, DIRTY_ONLY)
+        self.assertTrue(state["cycle_unobserved_refill_possible"])
+        state = run(device(), state, REFILL_19_11, ts=20_000_000)
+        self.assertFalse(state["cycle_unobserved_refill_possible"])
+
+
 class TankReinsertedWithoutLidTests(unittest.TestCase):
     def test_tank_out_and_back_while_idle_is_a_refill(self):
         state = run(device(lid=False), {**BASE, "used_ml": 1800}, [
@@ -133,8 +147,11 @@ class TankReinsertedWithoutLidTests(unittest.TestCase):
     def test_tank_out_during_a_mop_wash_is_not_a_refill(self):
         washing = dict(status="washing_the_mop", vac="docked")
         state = run(device(lid=False), {**BASE, "used_ml": 1800, "last_status": "washing_the_mop"}, [
-            step(**washing), step(clean="on", gap=20_000, **washing), step(gap=30_000, **washing)])
+            step(**washing), step(clean="on", gap=20_000, **washing), step(gap=30_000, **washing),
+            # Review 22.11: the pulse must not be replayed once the robot is idle.
+            step(gap=60_000), step(gap=60_000)])
         self.assertNotEqual(state.get("last_reset_source"), "tank_reinserted")
+        self.assertEqual(state["used_ml"], 1800)
 
 
 class DocklessRobotTankTests(unittest.TestCase):

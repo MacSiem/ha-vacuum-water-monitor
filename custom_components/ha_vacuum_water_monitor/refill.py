@@ -154,6 +154,7 @@ def apply_refill(
         # Alarm clearing and opening the lid prove a change, not a full tank.
         # A user-facing full confirmation qualifies a relative balance cycle.
         cycle_full_confirmed=full_confirmed,
+        cycle_unobserved_refill_possible=False,
         cycle_full_confirmation_source=full_reason if full_confirmed else None,
         water_empty_active=acknowledged,
         water_empty_acknowledged=acknowledged,
@@ -201,9 +202,15 @@ def confirm_same_refill(
         # Records are replaced, never mutated: the previous state may be shared.
         latest["evidence"] = sorted(merged)
         state["refill_history"] = [latest, *history[1:]]
-        if not {EVIDENCE_LID, EVIDENCE_CLEAN_TANK_REMOVED} <= merged:
+        gesture = merged & {EVIDENCE_LID, EVIDENCE_CLEAN_TANK_REMOVED}
+        if {EVIDENCE_LID, EVIDENCE_CLEAN_TANK_REMOVED} <= merged:
+            reason = "lid_and_clean_tank_removed"
+        elif latest.get("source") == "dock_cleared" and gesture:
+            # The dock cleared its empty alarm first; the user's gesture for the
+            # same refill arrives a poll later. Same as a refill after empty.
+            reason = "refill_after_empty"
+        else:
             return False
-        reason = "lid_and_clean_tank_removed"
     automatic = (state.get("refill_full_unconfirmed") is True or
                  state.get("last_reset_source") in AUTOMATIC_REFILL_SOURCES)
     if not automatic and (state.get("used_ml") != 0 or state.get("accounting_incomplete")
