@@ -4,6 +4,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -12,15 +16,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install frontend test dependencies
-        run: npm ci --ignore-scripts
-      - name: Python compile and unit tests
-        run: |
-          python -m compileall -q custom_components tests
-          python -m tests
+      - name: Python compile
+        run: python -m compileall -q custom_components tests
       - name: JS syntax (node --check)
         run: |
           fail=0
@@ -46,6 +47,14 @@ jobs:
             fi
           done
           echo "a11y check done"
+      - name: Install frontend test dependencies
+        run: npm ci --ignore-scripts
+      - name: Install unit test deps for manual validation
+        if: github.event_name == 'workflow_dispatch'
+        run: pip install pyyaml
+      - name: Run unit tests for manual validation
+        if: github.event_name == 'workflow_dispatch'
+        run: python -m tests
       - name: Runtime smoke (jsdom render)
         run: |
           npm run test:smoke

@@ -39,3 +39,23 @@ revoke a published CC BY 4.0 licence or erase copies held elsewhere.
 
 Integration Diagnostics are a separate local troubleshooting download and may contain
 household information. Follow the sanitization instructions before sharing any report.
+
+## Local dashboard backups and browser preferences
+
+Administrator dashboard placement stores complete before/after dashboard configurations,
+the dashboard path, creating Home Assistant user ID and an absolute creation timestamp
+in Home Assistant Store (`ha_vacuum_water_monitor.dashboard_backups`). These snapshots
+can include household entity IDs, names and arbitrary card configuration. They stay
+local, are included in Home Assistant backups and are separate from the minimized
+measurement-contribution packet. They are not sanitized for public sharing.
+
+Only an active administrator can create or read dashboard backups, and the list and
+content are limited to the administrator who created them. The sidebar's Dashboard
+backups view allows review and restoration only when the current configuration still
+matches the saved result. This version retains records across restarts without an
+automatic retention limit or a backup-delete control. Uninstalling files alone does
+not promise removal of Home Assistant storage or older backups.
+
+The browser also stores local display preferences: active tab/device, help expansion
+and dismissal of the optional support link. These preferences are not telemetry and
+are not included in a measurement-contribution packet.

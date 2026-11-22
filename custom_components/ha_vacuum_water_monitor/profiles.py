@@ -189,6 +189,10 @@ def load_catalog(path: Path | str = _CATALOG_PATH) -> dict[str, dict[str, Any]]:
             raise CatalogValidationError(f"Profile {key!r} has invalid rate_signal")
         if record.get("mop_system") is not None and record["mop_system"] not in estimation.MOP_SYSTEMS | {"none"}:
             raise CatalogValidationError(f"Profile {key!r} has invalid mop_system")
+        if not isinstance(record.get("allow_class_prior", True), bool):
+            raise CatalogValidationError(f"Profile {key!r} has invalid allow_class_prior")
+        if not isinstance(record.get("allow_inferred_dock_anchor", True), bool):
+            raise CatalogValidationError(f"Profile {key!r} has invalid allow_inferred_dock_anchor")
         if "estimate" in record:
             error = estimation.validate_estimate(key, record["estimate"])
             if error:
@@ -275,7 +279,7 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
         device.get("brand_profile") if device.get("profile_locked") else None,
     ) if device.get("profile_locked") else None
     if locked:
-        return _resolved(catalog[locked], locked, "locked_override", "high")
+        return _adapter_estimate_policy(device, _resolved(catalog[locked], locked, "locked_override", "high"))
 
     stated = normalize_identifier(device.get("manufacturer"))
     if stated:
@@ -303,7 +307,7 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
     ):
         profile_key = _first_profile(indexes, *values)
         if profile_key:
-            return _resolved(catalog[profile_key], profile_key, source, confidence)
+            return _adapter_estimate_policy(device, _resolved(catalog[profile_key], profile_key, source, confidence))
     return {
         "profile_key": None,
         "profile_source": "unknown",
@@ -321,6 +325,18 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
         "accounting_evidence": None,
         "uncertainty_percent": None,
     }
+
+
+def _adapter_estimate_policy(device: dict[str, Any], resolved: dict[str, Any]) -> dict[str, Any]:
+    """Native Tapo telemetry must not turn a class prior into a water dose."""
+    if device.get("integration_adapter") == "tapo_rv30" and resolved.get("estimate_basis"):
+        resolved.update(usage_ml_per_m2={}, usage_ml_per_active_minute={}, wash_volume_ml=None,
+                        estimate_basis=None, estimate_sources=[],
+                        accounting_evidence="not_published", evidence="not_published",
+                        capability="calibration_required", uncertainty_percent=None,
+                        rate_signal="mop_intensity")
+        resolved.pop("intensity_factor", None)
+    return resolved
 
 
 def _identifier_values(device: dict[str, Any]) -> tuple[Any, ...]:
@@ -376,7 +392,7 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
         "mop_system": record.get("mop_system") or "unknown",
         "estimate_basis": None,
     }
-    if tracked_reservoir == "dock_clean":
+    if tracked_reservoir == "dock_clean" and record.get("allow_inferred_dock_anchor", True):
         # The dock's own empty-water state identifies the dock clean tank, and an
         # empty tank cleared to OK is a full refill (partial refills are not a
         # supported usage pattern; the Refilled button remains the override).
@@ -385,7 +401,8 @@ def _resolved(record: dict[str, Any], key: str, source: str, confidence: str) ->
         resolved["refill_on_clear"] = True
         resolved["refill_on_clear_inferred"] = True
     published = bool(area_rates or minute_rates or accounting["wash_volume_ml"] is not None)
-    estimate = None if published else estimation.estimate_for_record(record)
+    allow_estimate = record.get("allow_class_prior", True) or isinstance(record.get("estimate"), dict)
+    estimate = None if published or not allow_estimate else estimation.estimate_for_record(record)
     if estimate:
         resolved.update(
             capability="automatic_estimate",
@@ -484,10 +501,22 @@ def _known_context(context: Any) -> bool:
             and all(known(v) for v in settings.values()))
 
 
+def _canonical_observed(value: Any) -> Any:
+    # Kept local so direct-file profile import/validation has no package dependency.
+    if isinstance(value, list):
+        return [_canonical_observed(item) for item in value]
+    if isinstance(value, dict):
+        observation = 'source_entity' in value and 'source' in value and 'value' in value
+        return {k: _canonical_observed(v) for k, v in value.items() if not (observation and k == 'source_entity')}
+    return value
+
+
 def _compatible_context(left: dict, right: dict) -> bool:
     return (_known_context(left) and _known_context(right)
             and all(left[k] == right[k] for k in CONSUMPTION_AXES)
-            and left['settings'] == right['settings'])
+            and left['settings'] == right['settings']
+            and _canonical_observed(left.get('observed_settings')) == _canonical_observed(right.get('observed_settings'))
+            and left.get('signal_contract_version') == right.get('signal_contract_version'))
 
 
 def _valid_consumption_record(record: Any, *, personal: bool = False) -> bool:

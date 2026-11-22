@@ -24,6 +24,9 @@
           "critical_threshold": "Critical-water threshold"
         }
       }
+    },
+    "error": {
+      "cannot_save": "Could not save settings. Please try again."
     }
   },
   "services": {
@@ -78,7 +81,7 @@
         "step": {
           "confirm": {
             "title": "Is the clean-water tank of {name} full now?",
-            "description": "The tank balance became incomplete while water could have been used. Recorded reason codes: {reason}. A missing signal or a change in accounting settings can cause this; it does not establish that another application controlled the robot. Fill the tank and select Submit only when it is full. Learned calibration is kept, and the recorded interruption remains available in the card Diagnostics after this repair."
+            "description": "The tank balance became incomplete while water could have been used. Recorded reason codes: {reason}. A missing signal or a change in accounting settings can cause this; it does not establish that another application controlled the robot. Fill the tank and select Submit only when it is full. Learned calibration is kept, and the recorded interruption remains available in the card Diagnostics after this repair. Source: {source}; recorded at {occurred_at}."
           }
         },
         "abort": {

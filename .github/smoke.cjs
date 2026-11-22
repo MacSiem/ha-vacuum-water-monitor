@@ -24,7 +24,24 @@ function tagsIn(code) {
   return [...code.matchAll(/customElements\.define\(\s*['"]([a-z0-9-]+)['"]/g)]
     .map(m => m[1]).filter(t => !/editor$/.test(t));
 }
+function mergeSettings(settings, patch) {
+  const next = { ...settings, ...patch };
+  if (patch.custom_calibration) {
+    next.custom_calibration = { ...settings.custom_calibration };
+    for (const [key, value] of Object.entries(patch.custom_calibration)) {
+      if (value === null) delete next.custom_calibration[key];
+      else next.custom_calibration[key] = { ...(next.custom_calibration[key] || {}), ...value };
+    }
+  }
+  return next;
+}
 function mockHass(overrides = {}) {
+  const yes = { visible: true, read: true, execute: true };
+  const features = { water: yes, settings: yes, measurements: yes };
+  const originalCallWS = overrides.callWS || (() => Promise.resolve([]));
+  const callWS = (message) => message.type.endsWith('/get_feature_access')
+    ? Promise.resolve({ capabilities: features, resources: new Proxy({}, { get: () => features }) })
+    : originalCallWS(message);
   return {
     states: {}, themes: { darkMode: false, themes: {} }, language: 'en',
     locale: { language: 'en', number_format: 'language', time_format: '24' },
@@ -39,7 +56,8 @@ function mockHass(overrides = {}) {
       subscribeMessage: () => Promise.resolve(() => {}),
       sendMessagePromise: () => Promise.resolve([]), socket: { readyState: 1 }
     },
-    ...overrides
+    ...overrides,
+    callWS
   };
 }
 function stub(window) {
@@ -170,7 +188,7 @@ async function smokeDraftAndCalibration(target) {
         }
         if (message.type.endsWith('/set_settings')) {
           if (rejectSettingsSave) throw new Error('simulated Store failure');
-          settings = { ...settings, ...(message.patch || {}) };
+          settings = mergeSettings(settings, message.patch || {});
           if (eventHandler) eventHandler({ data: { settings } });
           return { settings };
         }
@@ -404,7 +422,7 @@ async function smokeBackendDescriptorsAndTruthfulAccounting(target) {
         if (message.type.endsWith('/get_state')) return { settings, tank_states: tankStates };
         if (message.type.endsWith('/list_vacuums')) return { vacuums: descriptors };
         if (message.type.endsWith('/set_settings')) {
-          settings = { ...settings, ...(message.patch || {}) };
+          settings = mergeSettings(settings, message.patch || {});
           return { settings };
         }
         return {};
@@ -517,7 +535,7 @@ async function smokeRoundOneDescriptorContracts(target) {
         calls.push(message);
         if (message.type.endsWith('/get_state')) return { settings, tank_states };
         if (message.type.endsWith('/list_vacuums')) return { vacuums: descriptors };
-        if (message.type.endsWith('/set_settings')) { settings = { ...settings, ...(message.patch || {}) }; return { settings }; }
+        if (message.type.endsWith('/set_settings')) { settings = mergeSettings(settings, message.patch || {}); return { settings }; }
         return {};
       }
     });
@@ -573,7 +591,7 @@ async function smokeRoundOneDescriptorContracts(target) {
     if (!await el._saveCustomCalibration()) throw new Error('canonical calibration save failed');
     const patch = calls.filter(call => call.type.endsWith('/set_settings')).at(-1).patch.custom_calibration;
     const saved = patch['entity:vacuum.a170'];
-    if (saved.tracked_capacity_ml !== 4300 || saved.wash_volume_ml !== 220 || saved.usage_ml_per_m2?.measured !== 6 || 'tank_ml' in saved || 'mop_wash_ml' in saved || 'water_per_m2' in saved || saved.preserve_me !== 'keep' || patch['entity:vacuum.other']?.tracked_capacity_ml !== 2222) throw new Error('calibration patch did not use canonical merged selected-record keys');
+    if (saved.tracked_capacity_ml !== 4300 || saved.wash_volume_ml !== 220 || saved.usage_ml_per_m2?.measured !== 6 || 'tank_ml' in saved || 'mop_wash_ml' in saved || 'water_per_m2' in saved || Object.keys(patch).length !== 1 || settings.custom_calibration['entity:vacuum.a170'].preserve_me !== 'keep' || settings.custom_calibration['entity:vacuum.other']?.tracked_capacity_ml !== 2222) throw new Error('scoped calibration patch or server merge is incorrect');
     if (el._calcDeviceData(yaml).totalMl !== 4300 || yaml.signals.status_sensor) throw new Error('explicit YAML capacity or empty signals opt-out lost precedence');
     el._discoveredVacuums = [];
     const calibrationBeforeOldBackend = el._serverState.settings.custom_calibration;
@@ -682,18 +700,13 @@ async function smokeFinalFixContracts(target) {
       throw new Error('authored falsey direct signal opt-out remained in effective signals');
     }
 
-    el._userDevices = [{
-      vacuum_entity: 'vacuum.a170',
-      config_provenance: { authored_fields: ['vacuum_entity'] },
-    }];
-    el._upsertUserDevicePatch(el._userDevices[0], { reset_door_sensor: 'binary_sensor.refill_door' });
-    if (!el._userDevices[0].config_provenance?.authored_fields?.includes('reset_door_sensor')) {
-      throw new Error('user-device patch did not add reset door to authored provenance');
-    }
-    el._upsertUserDevicePatch(el._userDevices[0], { reset_door_sensor: null });
-    if (!el._userDevices[0].config_provenance?.authored_fields?.includes('reset_door_sensor')) {
-      throw new Error('null user-device opt-out lost authored provenance');
-    }
+    let sentDevice;
+    el._saveUserDevices = async changed => { sentDevice = changed; return {ok: true}; };
+    const userDevice = {vacuum_entity: 'vacuum.a170'};
+    await el._upsertUserDevicePatch(userDevice, { reset_door_sensor: 'binary_sensor.refill_door' });
+    if (sentDevice.reset_door_sensor !== 'binary_sensor.refill_door' || !sentDevice.config_provenance?.authored_fields?.includes('reset_door_sensor')) throw new Error('user-device scoped patch lost authored provenance');
+    await el._upsertUserDevicePatch(userDevice, { reset_door_sensor: null });
+    if (sentDevice.reset_door_sensor !== null || !sentDevice.config_provenance?.authored_fields?.includes('reset_door_sensor')) throw new Error('null user-device opt-out lost authored provenance');
 
     for (const entity of ['vacuum.numeric', 'vacuum.object']) {
       const device = el._getDevices().find(d => d.vacuum_entity === entity);
@@ -704,8 +717,8 @@ async function smokeFinalFixContracts(target) {
     }
 
     el._userDevices = [];
-    if (!el._addUserDevice('vacuum.numeric')) throw new Error('manual device add failed');
-    const added = el._userDevices[0];
+    if (!await el._addUserDevice('vacuum.numeric')) throw new Error('manual device add failed');
+    const added = sentDevice;
     if (added.water_total_ml || added.area_sensor || added.dock_error_sensor) throw new Error('manual device add persisted a legacy profile expansion');
     if (!added.config_provenance?.authored_fields?.includes('vacuum_entity')) throw new Error('manual device add omitted provenance');
   } finally { window.close(); }
@@ -722,8 +735,9 @@ async function smokeHistoryAccessibleNames(target) {
       window.eval(fs.readFileSync(target.file, 'utf8'));
       const el = window.document.createElement(target.tag);
       el.setConfig({ type: 'custom:' + target.tag, devices: [{ vacuum_entity: 'vacuum.qa', name: 'QA' }] });
-      el.hass = mockHass({ language, locale: { language } });
+      el.hass = mockHass({ language, locale: { language }, states: {'vacuum.qa': {entity_id:'vacuum.qa',state:'docked',attributes:{friendly_name:'QA'}}} });
       window.document.body.appendChild(el);
+      await el._ensureServerState();
       el._activeTab = 'history';
       el._lastHtml = '';
       el._render();
@@ -739,11 +753,11 @@ async function smokeHistoryAccessibleNames(target) {
           { ts: Date.now() - 1, water: 0.8, area: 2, evidence: 'labeled_estimate' }
         ] } }, tank_states: {}
       };
-      el._render();
-      const recorded = el.shadowRoot.querySelector(`[title="${language === 'pl' ? 'Zapisane' : 'Recorded'}"]`);
+      el._lastHtml = ''; el._render();
+      const recorded = el.shadowRoot.querySelector(`[title="${language === 'pl' ? 'Wpis ręczny' : 'Manual entry'}"]`);
       const estimated = el.shadowRoot.querySelector(`[title="${language === 'pl' ? 'Oznaczony szacunek' : 'Labelled estimate'}"]`);
       if (!recorded?.textContent.includes((language==='pl'?'0,4':'0.4')+' ml') || !estimated?.textContent.includes((language==='pl'?'~0,8':'~0.8')+' ml')) {
-        throw new Error(`${language}: history provenance or fractional volume lost`);
+        throw new Error(`${language}: history provenance or fractional volume lost; recorded=${recorded?.textContent} estimated=${estimated?.textContent}`);
       }
       const holder = window.document.createElement('div');
       holder.innerHTML = el._buildDiagnostics({
@@ -792,7 +806,17 @@ async function smokeHistoryAccessibleNames(target) {
       let asyncErr = null;
       window.addEventListener('error', e => { asyncErr = asyncErr || (e.error && e.error.message) || e.message; });
       window.onerror = (m) => { asyncErr = asyncErr || m; };
-      window.eval(fs.readFileSync(t.file, 'utf8'));
+      let source = fs.readFileSync(t.file, 'utf8');
+      if (t.tag === 'vwm-standalone-panel') {
+        // jsdom does not execute ES modules; load the one static dependency
+        // first, then evaluate the panel body. Native HA tests cover module loading.
+        const statement = "import './ha-vacuum-water-monitor.js';";
+        if (!source.includes(statement) || (source.match(/\bimport\s/g) || []).length !== 1)
+          throw new Error('unexpected standalone panel imports');
+        window.eval(fs.readFileSync(path.join(path.dirname(t.file), 'ha-vacuum-water-monitor.js'), 'utf8'));
+        source = source.replace(statement, '');
+      }
+      window.eval(source);
       const el = window.document.createElement(t.tag);
       if (typeof el.setConfig === 'function') el.setConfig({ type: 'custom:' + t.tag });
       el.hass = mockHass();

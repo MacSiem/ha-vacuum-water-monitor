@@ -48,7 +48,8 @@ class TankCapacityNumber(RobotEntity, NumberEntity):
         }
 
     async def async_set_native_value(self, value: float) -> None:
+        self._require_active()
         try:
-            await async_set_options(self.hass, self.vacuum_entity, {"capacity_ml": value})
+            await self._authorized_action("settings", async_set_options, self.hass, self.vacuum_entity, {"capacity_ml": value})
         except ValueError as err:
             raise ServiceValidationError(str(err)) from err

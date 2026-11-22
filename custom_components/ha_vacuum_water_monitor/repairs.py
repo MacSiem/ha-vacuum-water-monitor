@@ -33,8 +33,17 @@ class _RobotFlow(RepairsFlow):
     async def _placeholders(self) -> dict[str, str]:
         report = await self._report() or {}
         pause = next((c for c in report.get("checks", []) if c.get("id") == "accounting_paused"), {})
+        params = pause.get("params", {})
+        stamp = params.get("occurred_at")
+        from datetime import datetime, timezone
+        try:
+            when = datetime.fromtimestamp(float(stamp) / 1000, timezone.utc).isoformat() if stamp else "unknown"
+        except (ValueError, TypeError, OverflowError, OSError):
+            when = "unknown"
         return {
-            "reason": str(pause.get("params", {}).get("reason") or "reason_unavailable"),
+            "reason": str(params.get("reason") or "reason_unavailable"),
+            "source": str(params.get("source") or "unknown"),
+            "occurred_at": when,
             "name": str(report.get("name") or self._vacuum),
             "target_name": str(self._data.get("target") or ""),
             "model_capacity": str(int(report["model_capacity_ml"])) if report.get("model_capacity_ml") else "",

@@ -11,7 +11,7 @@ from __future__ import annotations
 import importlib
 import unittest
 
-from test_beta_runtime_path import BASE, descriptor, effective, run
+from test_beta_runtime_path import BASE, _S, descriptor, effective, run
 
 estimation = importlib.import_module("vwmruntimepkg.estimation")
 
@@ -89,6 +89,23 @@ class ConfirmationGateTests(unittest.TestCase):
                 self.assertEqual(state.get("calibration_factor", 1), 1)
                 self.assertIsNone(state["calibration_pending_log_factor"])
                 self.assertEqual(state["used_ml"], 0, "refill still applies after excluding the ambiguous tank")
+
+    def test_small_overshoot_is_learned_when_refills_are_watched(self):
+        # 5.13: the S8 dock cycle of 19-21.11.2026 predicted 4093 ml of a 4000 ml
+        # tank. With a lid sensor a top-up would have started a new cycle.
+        watched = {**S8, "reset_door_sensor": "binary_sensor.lid"}
+        state = run(watched, {**BASE, "used_ml": 4093.3, "cycle_full_confirmed": True,
+                              "calibration_log_factors": [0.28, 0.2812], "calibration_samples": 2, "calibration_factor": 1.3236},
+                    [dict(dock_err="water_empty", extra={"binary_sensor.lid": _S("off")})], ts=10_000_000)
+        self.assertTrue(state["calibration_history"][0]["accepted"])
+        unwatched = tank({**BASE, "calibration_log_factors": [0.28, 0.2812], "calibration_samples": 2, "calibration_factor": 1.3236}, 4093.3, 10_000_000)
+        self.assertEqual(unwatched["calibration_history"][0]["reason"], "calibration_sample_over_capacity")
+
+    def test_large_overshoot_stays_a_possible_top_up_even_when_watched(self):
+        watched = {**S8, "reset_door_sensor": "binary_sensor.lid"}
+        state = run(watched, {**BASE, "used_ml": 5800, "cycle_full_confirmed": True},
+                    [dict(dock_err="water_empty", extra={"binary_sensor.lid": _S("off")})], ts=10_000_000)
+        self.assertFalse(state["calibration_history"][0]["accepted"])
 
     def test_a_genuinely_different_robot_is_learned_after_two_consistent_tanks(self):
         state = tank(dict(BASE), 3000, 10_000_000)

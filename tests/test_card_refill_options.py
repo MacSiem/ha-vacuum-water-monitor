@@ -50,7 +50,7 @@ const Card = classes['ha-vacuum-water-monitor'];
   card._refillConfig = { robot: { sensorEntity: 'binary_sensor.dock_lid', sensorAutoId: 'vwm_refill_robot_sensor' } };
   card._userDevices = [{ vacuum_entity: 'vacuum.robot', reset_door_sensor: 'binary_sensor.dock_lid' }];
   card._saveServerSettings = async (patch) => { calls.push({ saveSettings: patch }); return { ok: true }; };
-  card._saveUserDevices = () => calls.push({ saveUserDevices: JSON.parse(JSON.stringify(card._userDevices)) });
+  card._saveUserDevices = async (patch) => { calls.push({ saveUserDevices: patch }); return {ok:true}; };
   card._render = () => {};
   const dock = { vacuum_entity: 'vacuum.robot', dock_error_sensor: 'sensor.robot_dock_error', refill_on_clear: true, refill_on_clear_inferred: true };
   const data = { refillHistory: [{ ts: Date.now() - 2 * 3600000, source: 'dock_cleared', used_before_ml: 3800 }] };
@@ -76,6 +76,37 @@ const Card = classes['ha-vacuum-water-monitor'];
 
 
 class CardRefillOptionTests(unittest.TestCase):
+    def test_refill_click_stores_response_only_for_backend_owner(self):
+        script = r"""
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
+(async()=>{
+ for(const compact of [false,true]) {
+  const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'});
+  dom.window.eval(fs.readFileSync('custom_components/ha_vacuum_water_monitor/www/ha-vacuum-water-monitor.js','utf8'));
+  const card=dom.window.document.createElement('ha-vacuum-water-monitor');
+  card.setConfig({type:'custom:ha-vacuum-water-monitor',compact});
+  const calls=[];
+  card._hass={language:'en',locale:{language:'en'},states:{},user:{is_admin:true},
+    callWS:async msg=>{calls.push(msg);return {vacuum_entity:'vacuum.owner',state:{used_ml:0,initialized:true}}},
+    connection:{subscribeMessage:async()=>()=>{}}};
+  card._serverReady=true; // This fixture supplies the loaded server state directly.
+  card._serverState={settings:{},tank_states:{'vacuum.owner':{used_ml:432},'vacuum.copy':{used_ml:999}}};
+  const device={vacuum_entity:'vacuum.copy',name:'Copy',water_total_ml:4000};
+  card._getDevices=()=>[device];card._calcDeviceData=()=>({totalMl:4000,percentRemaining:70,remainingL:3,usedMl:999,initialized:true,vacState:'docked',calibrationHistory:[],refillHistory:[]});
+  card._healthFor=()=>null;card._ensureServerState=()=>null;card._refreshHealth=()=>null;
+  dom.window.document.body.append(card);card._render();
+  const button=card.shadowRoot.querySelector('.refill-btn');assert(button);button.click();
+  await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal(calls.filter(c=>c.type.endsWith('/reset_tank')).length,1);
+  assert.equal(card._serverState.tank_states['vacuum.owner'].used_ml,0);
+  assert.equal(card._serverState.tank_states['vacuum.copy'].used_ml,999);
+  dom.window.close();
+ }
+})().catch(e=>{console.error(e);process.exit(1)});
+"""
+        result = subprocess.run(["node", "-e", script], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     @classmethod
     def setUpClass(cls):
         result = subprocess.run(["node", "-e", SCRIPT, json.dumps(WINDOW_CASES)], cwd=ROOT, check=True,
@@ -93,7 +124,10 @@ class CardRefillOptionTests(unittest.TestCase):
         self.assertIn("button.zigbee_refill", html, "button entities are offered, not only input_button")
         self.assertIn('value="binary_sensor.dock_lid" selected', html, "a pre-5.7 lid binding is shown")
         self.assertIn("Recent refills", html)
-        self.assertIn("dock reported refilled", html)
+        self.assertIn("Confirm a full refill unless the full-refill practice was already enabled", html)
+        self.assertNotIn("The tank is marked full when the dock clears", html)
+        self.assertIn("station alarm cleared", html)
+        self.assertNotIn("dock reported refilled", html)
         self.assertIn("automation.vwm_refill_robot_sensor", html)
 
     def test_automatic_refill_needs_a_dock_signal(self):
@@ -113,7 +147,7 @@ class CardRefillOptionTests(unittest.TestCase):
                                "auto_refill": False, "button_entity": "input_button.dock_refilled", "lid_entity": None}])
         self.assertNotIn("sensorEntity", self.out["legacyAfterSave"])
         cleared = [c for c in self.out["calls"] if "saveUserDevices" in c]
-        self.assertTrue(cleared and cleared[-1]["saveUserDevices"][0]["reset_door_sensor"] is None)
+        self.assertTrue(cleared and cleared[-1]["saveUserDevices"]["reset_door_sensor"] is None)
 
     def test_old_generated_automation_can_be_removed(self):
         self.assertIn({"method": "DELETE", "path": "config/automation/config/vwm_refill_robot_sensor"}, self.out["calls"])

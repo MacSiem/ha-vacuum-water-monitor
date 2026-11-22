@@ -50,6 +50,51 @@ def tank(state=None, *, context=CONTEXT, now=1_000, minutes=10, capacity=100):
 
 
 class NominalTimeLearningTests(unittest.TestCase):
+    def test_proven_rename_preserves_bank_and_open_cycle_without_rewriting_context(self):
+        old = {**CONTEXT, "device_id": "vacuum.renamed"}
+        stable = {**CONTEXT, "device_id": "vacuum.one"}
+        bank = tank(context=old)
+        bank = tank(bank, context=old, now=2_000_000)
+        bank = tank(bank, context=old, now=4_000_000)
+        bank = full(bank, context=old, now=6_000_000)
+        before = deepcopy(bank)
+        aliases = {"vacuum.one", "vacuum.renamed"}
+        result = learning.resolve(bank, context=stable, capacity_ml=100, identity_aliases=aliases)
+        self.assertEqual(result["status"], "active")
+        continued = learning.observe(bank, context=stable, capacity_ml=100, now_ts=6_060_000,
+                                     active=True, identity_aliases=aliases)
+        self.assertEqual(continued["cycle"]["context"], old)
+        self.assertEqual(continued["contexts"], before["contexts"])
+        self.assertEqual(bank, before)
+        foreign = {**CONTEXT, "device_id": "vacuum.other"}
+        self.assertEqual(learning.resolve(bank, context=foreign, capacity_ml=100,
+                                         identity_aliases=aliases)["status"], "unavailable")
+        self.assertIsNone(learning.observe(bank, context=foreign, capacity_ml=100, now_ts=6_060_000,
+                                           active=True, identity_aliases=aliases)["cycle"])
+
+    def test_empty_updates_same_latest_legacy_bank_that_resolve_uses(self):
+        stable = {**CONTEXT, "device_id": "vacuum.one"}
+        renamed = {**CONTEXT, "device_id": "vacuum.renamed"}
+        bank = tank(context=stable)
+        for n in range(3):
+            bank = tank(bank, context=renamed, now=2_000_000 + n * 1_000_000)
+        aliases = {"vacuum.one", "vacuum.renamed"}
+        self.assertEqual(learning.resolve(bank, context=stable, capacity_ml=100,
+                                          identity_aliases=aliases)["status"], "active")
+        bank = learning.start_full(bank, context=renamed, capacity_ml=100, now_ts=6_000_000)
+        bank = learning.observe(bank, context=renamed, capacity_ml=100, now_ts=6_000_000, active=True)
+        for minute in range(1, 11):
+            bank = learning.observe(bank, context=stable, capacity_ml=100, now_ts=6_000_000 + minute * 60_000,
+                                    active=True, identity_aliases=aliases)
+        bank = learning.finish_empty(bank, context=stable, capacity_ml=100, now_ts=6_600_000,
+                                     identity_aliases=aliases)
+        result = learning.resolve(bank, context=stable, capacity_ml=100, identity_aliases=aliases)
+        self.assertEqual(result["status"], "active")
+        self.assertEqual(result["sample_count"], 4)
+        self.assertEqual([len(entry["samples"]) for entry in bank["contexts"]], [1, 4])
+        self.assertEqual([entry["context"]["device_id"] for entry in bank["contexts"]],
+                         ["vacuum.one", "vacuum.renamed"])
+
     def test_two_cycles_are_provisional_and_three_activate_median(self):
         state = tank(minutes=10)
         self.assertEqual(result(state)["status"], "provisional")
@@ -252,3 +297,27 @@ class NominalTimeLearningTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class CounterTimeLearningTests(unittest.TestCase):
+    def test_counter_minutes_replace_wall_time_and_missing_counter_invalidates(self):
+        state = learning.start_full({}, context=CONTEXT, capacity_ml=100, now_ts=1_000)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=1_000,
+                                 active=True, use_counter=True, counter_minutes=0)
+        # Polls can be 30 seconds apart while the minute counter stays at zero.
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=31_000,
+                                 active=True, use_counter=True, counter_minutes=0)
+        self.assertEqual(state["cycle"]["active_minutes"], 0)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=61_000,
+                                 active=True, use_counter=True, counter_minutes=1)
+        self.assertEqual(state["cycle"]["active_minutes"], 1)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=91_000,
+                                 active=True, use_counter=True, counter_minutes=None)
+        self.assertIsNone(state["cycle"])
+
+    def test_counter_reset_during_active_run_invalidates_sample(self):
+        state = learning.start_full({}, context=CONTEXT, capacity_ml=100, now_ts=1_000)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=1_000,
+                                 active=True, use_counter=True, counter_minutes=10)
+        state = learning.observe(state, context=CONTEXT, capacity_ml=100, now_ts=61_000,
+                                 active=True, use_counter=True, counter_minutes=0)
+        self.assertIsNone(state["cycle"])

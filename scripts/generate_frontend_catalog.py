@@ -66,7 +66,9 @@ def build_client_catalog():
             "source_urls": [s["url"] for s in record["provenance"]],
             "data_quality": record["verification_status"],
             "notes": (BASIS_LABELS.get(basis, "") + ". " if basis else "")
-            + "Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals.",
+            + ("No verified automatic empty-tank signal; confirm refills manually and configure a measured consumption rate."
+               if not record.get("allow_inferred_dock_anchor", True) else
+               "Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."),
         }
     client["generic"] = {
         "label": "Unknown model", "tank_ml": None, "robot_tank_ml": None, "water_per_m2": {},

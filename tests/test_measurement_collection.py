@@ -124,8 +124,12 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(state['last_reset_ts'],1000000)
         self.assertEqual(len(state['refill_history']),1)
         state = asyncio.run(check(50))
-        self.assertFalse(state['cycle_full_confirmed'])
+        self.assertTrue(state['cycle_full_confirmed'])
         self.assertEqual(state['used_ml'],50)
+        self.assertEqual(state['last_reset_ts'],1000000)
+        self.assertEqual(state['cycle_full_confirmation_source'],'card')
+        self.assertFalse(state['nominal_time_start_pending'])
+        self.assertEqual(len(state['refill_history']),1)
 
     def test_migration_only_qualifies_explicit_old_full_confirmations(self):
         for source,expected in [('card',True),('service',True),('button',True),('lid',False),('dock_cleared',False)]:

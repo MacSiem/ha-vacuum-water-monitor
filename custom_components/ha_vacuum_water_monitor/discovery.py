@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from typing import Any, Iterable
+import re
 
 from .integration_adapters import (
     ADAPTER_ATTRIBUTE_BINDINGS,
     ADAPTER_DESCRIPTOR_METADATA,
     ADAPTER_ROLE_IDENTIFIERS,
+    CONTEXT_SETTING_ROLES,
     MIOT_ADAPTERS,
     ROLE_IDENTIFIERS,
     adapter_for,
@@ -33,6 +35,11 @@ def discover_descriptors(
     for descriptor in descriptors:
         record = devices.get(descriptor.get("device_id"))
         keys = {"device:" + str(descriptor["device_id"])} if descriptor.get("device_id") else set()
+        # HA 2026.8+ splits an earlier shared registry device by config entry.
+        # Its preserved composite id carries the original registry identity.
+        composite_id = _value(record, "composite_device_id")
+        if isinstance(composite_id, str) and composite_id:
+            keys.add("device:" + composite_id)
         for connection in _value(record, "connections") or []:
             if len(connection) == 2 and connection[0] == "mac":
                 mac = normalize_identifier(connection[1]).replace("_", "")
@@ -154,11 +161,55 @@ def _descriptor(
     descriptor["related_dock_confidence"] = (
         "high" if related_dock_ids else "none"
     )
+    metadata["integration_adapter"] = integration_adapter
     descriptor.update(resolve_profile(metadata))
+    if integration_adapter == "tapo_rv30":
+        descriptor["rate_signal"] = "mop_intensity"
     signal_device_ids = {device_id, *related_dock_ids} if device_id else set()
     descriptor["signals"], descriptor["ambiguous_roles"] = _signals_for_device(
         signal_device_ids, integration_adapter, entities, states
     )
+    if integration_adapter == "tapo_rv30":
+        # Upstream has no translation keys. Match its entry-id contract, never
+        # user-editable entity names or a suffix shared by another robot.
+        unique = str(_value(vacuum, "unique_id") or "")
+        prefix = unique.removesuffix("_vacuum") if unique.endswith("_vacuum") else ""
+        units = [str(_value(entry, "entity_id")) for entry in entities
+                 if prefix and device_id and _value(entry, "device_id") == device_id
+                 and _value(entry, "platform") == "tapo_rv30"
+                 and not _value(entry, "disabled_by")
+                 and str(_value(entry, "entity_id") or "").startswith("select.")
+                 and _value(entry, "unique_id") == prefix + "_area_unit"]
+        # ADV 7.7 uses exact same-config-entry entities instead of status_code.
+        config_entry = _value(vacuum, "config_entry_id")
+        if prefix and config_entry:
+            def exact_entity(suffix, domain, *, translation=None):
+                matches = [str(_value(entry, "entity_id")) for entry in entities
+                           if _value(entry, "device_id") == device_id
+                           and _value(entry, "config_entry_id") == config_entry
+                           and _value(entry, "platform") == "tapo_rv30"
+                           and not _value(entry, "disabled_by")
+                           and str(_value(entry, "entity_id") or "").startswith(domain + ".")
+                           and _value(entry, "unique_id") == prefix + "_" + suffix
+                           and (translation is None or _value(entry, "translation_key") == translation)]
+                return matches[0] if len(matches) == 1 else None
+            status = exact_entity("status", "sensor", translation="status")
+            if status:
+                descriptor["signals"]["status_sensor"] = status
+                descriptor["tapo_status_contract"] = 2
+                descriptor["signal_contract_version"] = 2
+                area = exact_entity("clean_area", "sensor")
+                if area:
+                    descriptor["signals"]["area_sensor"] = area
+                for key, domain in (("clean_passes", "select"), ("automatic_remopping", "switch"),
+                                    ("extended_mopping", "switch"), ("pet_area_deep_clean", "switch")):
+                    found = exact_entity(key, domain)
+                    if found:
+                        descriptor["signals"][f"context_{key}_entity"] = found
+        if len(units) == 1:
+            descriptor["signals"]["area_unit_entity"] = units[0]
+        elif len(units) > 1:
+            descriptor["ambiguous_roles"].append("area_unit_entity")
     descriptor["sibling_entities"] = _sibling_entities(
         signal_device_ids, entities, states
     )
@@ -339,6 +390,13 @@ def _verified_related_dock_ids(
 
 
 def _config_entries(device: Any) -> set[str]:
+    # HA 2026.10 has one entry per device; its old config_entries property
+    # emits a deprecation warning. HA 2025.1 still exposes the set directly.
+    has_current_id = ("config_entry_id" in device if isinstance(device, dict)
+                      else hasattr(device, "config_entry_id"))
+    if has_current_id:
+        entry_id = _value(device, "config_entry_id")
+        return {entry_id} if isinstance(entry_id, str) and entry_id else set()
     entries = _value(device, "config_entries")
     if isinstance(entries, (set, frozenset, list, tuple)):
         return {str(entry) for entry in entries if entry}
@@ -352,8 +410,16 @@ def _role_score(
                        "wash_mode_entity": "select", "wash_frequency_entity": "select",
                        "wash_temperature_entity": "select",
                        "wash_area_threshold_entity": "number", "wash_time_threshold_entity": "number"}
-    if role in setting_domains and str(_value(record, "entity_id") or "").split(".")[0] != setting_domains[role]:
+    setting_domains.update(CONTEXT_SETTING_ROLES)
+    setting_domains["current_phase_sensor"] = "sensor"
+    setting_domains.update({key + "_sensor": "sensor" for key in ("clean_water_tank_status", "dirty_water_tank_status", "low_water_warning", "drainage_status", "station_drainage_status")})
+    if role in CONTEXT_SETTING_ROLES and re.search(r"(?:^|_)(?:segment|room)_?\d+_", str(_value(record, "unique_id") or "").lower()):
         return 0
+    if role in setting_domains:
+        allowed = setting_domains[role]
+        allowed = allowed if isinstance(allowed, tuple) else (allowed,)
+        if str(_value(record, "entity_id") or "").split(".")[0] not in allowed:
+            return 0
     translation = normalize_identifier(_value(record, "translation_key"))
     platform = normalize_identifier(_value(record, "platform"))
     adapter = normalize_identifier(integration_adapter)

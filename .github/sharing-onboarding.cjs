@@ -24,7 +24,7 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
   const make=(ready=true,devices=true)=>{
    const c=dom.window.document.createElement('ha-vacuum-water-monitor');
    c.setConfig({type:'custom:ha-vacuum-water-monitor',devices:devices?[{vacuum_entity:'vacuum.demo',name:'Demo'}]:[]});
-   c._lang=lang;c._hass=hass;c._serverReady=ready;
+   c._lang=lang;c._hass=hass;c._serverReady=ready;c._ensureServerState=()=>null;
    c._serverState={settings:JSON.parse(JSON.stringify(settings)),tank_states:{}};
    dom.window.document.body.replaceChildren(c);
    c._render();return c;

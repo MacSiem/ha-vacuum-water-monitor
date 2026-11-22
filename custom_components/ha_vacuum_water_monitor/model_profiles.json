@@ -1,7 +1,7 @@
 {
   "schema_version": "1.1.0",
   "dataset_version": "6.2.1",
-  "cutoff_date": "2026-10-05",
+  "cutoff_date": "2026-11-03",
   "profiles": {
     "cecotec_conga_3290": {
       "identifiers": [
@@ -1803,6 +1803,34 @@
         "Unknown detergent capacity"
       ],
       "verification_status": "capacity_verified"
+    },
+    "ecovacs_deebot_t90_pro_omni": {
+      "identifiers": ["ECOVACS DEEBOT T90 PRO OMNI", "DEEBOT T90 PRO OMNI", "k2iwaq"],
+      "manufacturer": "Ecovacs",
+      "model": "DEEBOT T90 PRO OMNI",
+      "model_ids": ["k2iwaq"],
+      "regional_skus": [{"region": "unknown", "sku": null, "equivalence_verified": false}],
+      "observed_ha_identifiers": [{"kind": "public_issue_report", "values": ["k2iwaq"], "source": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/26", "date": "2026-11-03", "confidence": "medium"}],
+      "integration_adapters": ["ecovacs"],
+      "available_signals": [],
+      "reservoirs_ml": {"dock_clean": 4000, "dock_dirty": 2200, "robot_clean": null, "robot_dirty": null, "detergent": null},
+      "tracked_reservoir": "dock_clean",
+      "tracked_capacity_ml": 4000,
+      "capability": "calibration_required",
+      "confidence": "low",
+      "allow_class_prior": false,
+      "allow_inferred_dock_anchor": false,
+      "accounting": {"usage_ml_per_m2": {}, "usage_ml_per_active_minute": {}, "wash_volume_ml": null, "evidence": "not_published", "rate_signal": null},
+      "provenance": [
+        {"source_type": "user_report", "url": "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/26", "claim": "Reported model_id k2iwaq and firmware 1.103.0; no entity inventory or regional SKU supplied.", "last_verified": "2026-11-03", "retrieval_status": "read"},
+        {"source_type": "manufacturer_documentation", "url": "https://www.ecovacs.com/au/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni", "claim": "Manufacturer model page lists station clean water 4 L and dirty water 2.2 L. Exact reported SKU equivalence is unverified.", "last_verified": "2026-11-03", "retrieval_status": "read"},
+        {"source_type": "manufacturer_documentation", "url": "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni", "claim": "Manufacturer describes a roller mop; no measured consumption rate adopted.", "last_verified": "2026-11-03", "retrieval_status": "read"}
+      ],
+      "last_verified": "2026-11-03",
+      "sample_count": 0,
+      "unsupported_unknowns": ["Regional hardware and SKU equivalence unknown", "Firmware-specific HA entities unverified", "Consumption rates and wash volumes unmeasured", "Robot and detergent reservoir capacities unknown"],
+      "verification_status": "capacity_verified",
+      "mop_system": "roller"
     },
     "ecovacs_deebot_t50_pro_omni": {
       "identifiers": [
@@ -7866,7 +7894,8 @@
       "identifiers": [
         "1797",
         "Tapo RV50 Pro Omni",
-        "tapo_rv50_pro"
+        "tapo_rv50_pro",
+        "RV50 Pro Omni"
       ],
       "manufacturer": "Tapo",
       "model": "RV50 Pro Omni",
@@ -7898,7 +7927,8 @@
       ],
       "integration_adapters": [
         "tplink",
-        "matter"
+        "matter",
+        "tapo_rv30"
       ],
       "available_signals": [],
       "reservoirs_ml": {

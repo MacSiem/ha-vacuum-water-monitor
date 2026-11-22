@@ -24,6 +24,9 @@
           "critical_threshold": "Próg krytyczny poziomu wody (%)"
         }
       }
+    },
+    "error": {
+      "cannot_save": "Nie udało się zapisać ustawień. Spróbuj ponownie."
     }
   },
   "services": {
@@ -78,7 +81,7 @@
         "step": {
           "confirm": {
             "title": "Czy zbiornik czystej wody robota {name} jest teraz pełny?",
-            "description": "Bilans zbiornika stał się niepełny w czasie, gdy mogła być zużywana woda. Zapisane kody przyczyn: {reason}. Może to wynikać z braku sygnału lub zmiany ustawień naliczania; nie dowodzi sterowania robotem przez inną aplikację. Napełnij zbiornik i wybierz Prześlij tylko wtedy, gdy jest pełny. Kalibracja zostaje zachowana, a zapis przerwania pozostaje dostępny w Diagnostyce karty po tej naprawie."
+            "description": "Bilans zbiornika stał się niepełny w czasie, gdy mogła być zużywana woda. Zapisane kody przyczyn: {reason}. Może to wynikać z braku sygnału lub zmiany ustawień naliczania; nie dowodzi sterowania robotem przez inną aplikację. Napełnij zbiornik i wybierz Prześlij tylko wtedy, gdy jest pełny. Kalibracja zostaje zachowana, a zapis przerwania pozostaje dostępny w Diagnostyce karty po tej naprawie. Źródło: {source}; zapisano {occurred_at}."
           }
         },
         "abort": {

@@ -18,6 +18,8 @@ class InterruptionEvidenceTests(unittest.TestCase):
   self.assertIsInstance(incident,dict)
   self.assertIn('accounting_context_changed',incident['reasons'])
   self.assertEqual(incident['ts'],10_180_000)
+  self.assertIsInstance(incident.get('source'),str)
+  self.assertTrue(incident['source'])
   later=run(device,state,[dict(status='charging',vac='docked',area='4',intensity='high')],ts=10_180_000)
   self.assertEqual(later['last_accounting_interruption'],incident)
  def test_actual_storage_repair_keeps_original_incident_and_learning(self):
@@ -45,6 +47,8 @@ class InterruptionEvidenceTests(unittest.TestCase):
   health=report(tank=state,desc=descriptor('a27'))
   check=next(c for c in health['checks'] if c['id']=='accounting_paused')
   self.assertIn('accounting_context_changed',check['params']['reason'])
+  self.assertEqual(check['params']['source'],state['last_accounting_interruption']['source'])
+  self.assertEqual(check['params']['occurred_at'],state['last_accounting_interruption']['ts'])
 
  def test_new_full_confirmation_recovers_broken_balance_inside_dedupe_window(self):
   _,state=self.interrupted();state['last_reset_ts']=19_950_000

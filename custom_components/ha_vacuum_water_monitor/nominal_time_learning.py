@@ -75,13 +75,33 @@ def _context_key(context: Any) -> str | None:
     try:
         if not json_values(context):
             return None
-        return json.dumps(context, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        # Preserve the source registry identity, but not its renameable HA locator.
+        def stable(value):
+            if isinstance(value, list):
+                return [stable(item) for item in value]
+            if isinstance(value, dict):
+                observation = "source_entity" in value and "source" in value and "value" in value
+                return {key: stable(item) for key, item in value.items() if not (observation and key == "source_entity")}
+            return value
+        return json.dumps(stable(context), sort_keys=True, separators=(",", ":"), allow_nan=False)
     except (TypeError, ValueError, OverflowError, RecursionError):
         return None
 
 
 def _residual(value: Any) -> bool:
     return _number(value, zero=True) and value < 100
+
+
+def same_context(left: Any, right: Any, identity_aliases: set[str] | None = None) -> bool:
+    """Compare proven identity aliases without rewriting historical contexts."""
+    left_key, right_key = _context_key(left), _context_key(right)
+    if left_key is None or right_key is None:
+        return False
+    if left_key == right_key:
+        return True
+    if not identity_aliases or left.get("device_id") not in identity_aliases or right.get("device_id") not in identity_aliases:
+        return False
+    return _context_key({**left, "device_id": right["device_id"]}) == right_key
 
 
 def _snapshot(state: dict[str, Any]) -> dict[str, Any]:
@@ -124,12 +144,18 @@ def start_full(
 def observe(
     state: dict[str, Any], *, context: dict[str, Any], capacity_ml: float,
     now_ts: int, active: bool, available: bool = True,
+    use_counter: bool = False, counter_minutes: float | None = None,
+    identity_aliases: set[str] | None = None,
 ) -> dict[str, Any]:
     """Accumulate observable floor activity independently of ml/min availability.
 
     Invalidate unavailable/unknown observations, context or capacity changes,
     backward clocks, and gaps over 180 seconds after an active observation.
     Observed idle can last arbitrarily long without ending the full tank.
+    ``use_counter`` replaces wall time with a session minute counter. Missing,
+    decreasing active counters and implausible jumps invalidate the sample;
+    idle resets establish a new baseline. Only intervals mopping at both ends
+    add counter exposure. The caller includes the observation method in context.
     """
     updated = _snapshot(state)
     cycle = updated["cycle"]
@@ -147,8 +173,7 @@ def observe(
     if (not _number(now_ts) or now_ts < cycle["last_ts"]
             or not _number(now_ts - cycle["last_ts"], zero=True)):
         return invalidate(updated, "invalid_observation_time")
-    key = _context_key(context)
-    if key is None or key != _context_key(cycle.get("context")):
+    if not same_context(context, cycle.get("context"), identity_aliases):
         return invalidate(updated, "time_context_changed")
     if not _number(capacity_ml) or capacity_ml != cycle["capacity_ml"]:
         return invalidate(updated, "time_capacity_changed")
@@ -156,15 +181,26 @@ def observe(
     if cycle["last_active"]:
         if elapsed_ms > MAX_ACTIVE_INTERVAL_MS:
             return invalidate(updated, "active_observation_gap")
-        cycle["active_minutes"] += elapsed_ms / 60_000
+        if not use_counter:
+            cycle["active_minutes"] += elapsed_ms / 60_000
+    if use_counter:
+        if not _number(counter_minutes, zero=True):
+            return invalidate(updated, "time_counter_unavailable")
+        previous = cycle.get("counter_minutes")
+        if previous is not None and cycle["last_active"]:
+            delta = counter_minutes - previous
+            if delta < 0 or delta > elapsed_ms / 60_000 + 1:
+                return invalidate(updated, "time_counter_discontinuity")
+            if active:
+                cycle["active_minutes"] += delta
+        cycle["counter_minutes"] = counter_minutes
     cycle.update(last_ts=now_ts, last_active=active)
     return updated
 
 
-def _entry_matches(entry: Any, context: Any, capacity_ml: Any, residual: Any) -> bool:
-    key = _context_key(context)
-    return (isinstance(entry, dict) and key is not None
-            and _context_key(entry.get("context")) == key
+def _entry_matches(entry: Any, context: Any, capacity_ml: Any, residual: Any,
+                   identity_aliases: set[str] | None = None) -> bool:
+    return (isinstance(entry, dict) and same_context(entry.get("context"), context, identity_aliases)
             and _number(capacity_ml) and _number(entry.get("capacity_ml"))
             and entry["capacity_ml"] == capacity_ml
             and _residual(residual) and _residual(entry.get("residual_percent"))
@@ -195,11 +231,14 @@ def _agree(samples: list[dict[str, Any]]) -> bool:
 
 def finish_empty(
     state: dict[str, Any], *, context: dict[str, Any], capacity_ml: float,
-    now_ts: int, available: bool = True,
+    now_ts: int, available: bool = True, identity_aliases: set[str] | None = None,
 ) -> dict[str, Any]:
     """Finish on a valid empty anchor for the same tracked reservoir, once."""
+    cycle_before = state.get("cycle") or {}
     updated = observe(state, context=context, capacity_ml=capacity_ml,
-                      now_ts=now_ts, active=False, available=available)
+                      now_ts=now_ts, active=False, available=available,
+                      use_counter="counter_minutes" in cycle_before,
+                      counter_minutes=cycle_before.get("counter_minutes"), identity_aliases=identity_aliases)
     cycle = updated["cycle"]
     if cycle is None:
         return updated
@@ -210,8 +249,8 @@ def finish_empty(
     if not _number(rate):
         return invalidate(updated, "invalid_time_sample")
     entries = updated["contexts"]
-    entry = next((item for item in entries if _entry_matches(
-        item, context, capacity_ml, cycle["residual_percent"])), None)
+    entry = next((item for item in reversed(entries) if _entry_matches(
+        item, context, capacity_ml, cycle["residual_percent"], identity_aliases)), None)
     if entry is None:
         entry = {"context": deepcopy(context), "capacity_ml": float(capacity_ml),
                  "residual_percent": cycle["residual_percent"], "samples": []}
@@ -235,7 +274,7 @@ def finish_empty(
 
 def resolve(
     state: dict[str, Any], *, context: dict[str, Any], capacity_ml: float,
-    residual_percent: float = DEFAULT_RESIDUAL_PERCENT,
+    residual_percent: float = DEFAULT_RESIDUAL_PERCENT, identity_aliases: set[str] | None = None,
 ) -> dict[str, Any]:
     """Expose a coefficient only after three compatible full nominal tanks.
 
@@ -244,7 +283,7 @@ def resolve(
     """
     updated = _snapshot(state)
     entry = next((item for item in reversed(updated["contexts"]) if _entry_matches(
-        item, context, capacity_ml, residual_percent)), None)
+        item, context, capacity_ml, residual_percent, identity_aliases)), None)
     samples = _samples(entry) if entry is not None else []
     active = _agree(samples)
     return {
