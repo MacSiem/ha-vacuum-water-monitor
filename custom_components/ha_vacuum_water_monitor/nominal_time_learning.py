@@ -22,8 +22,8 @@ volatile reporting metadata before calling; do not remove consumption settings.
 Promotion requires three consecutive compatible tanks, max(rate)/min(rate)
 <=1.25. This organizational repeatability gate reduces promotion on a single
 odd refill; it is a policy, not an empirically established accuracy bound.
-After activation, a sample must agree with the latest accepted pair before it
-can update their median. Outliers do not evict accepted samples.
+After activation, a divergent sample is held aside. Three consecutive agreeing
+divergent samples replace the active window; a lone anomaly cannot change it.
 History is bounded to eight accepted/candidate tanks per context and 32 most
 recently completed contexts. Switching contexts does not erase previous samples;
 only the documented global retention limit may evict an old context.
@@ -259,13 +259,22 @@ def finish_empty(
     samples = _samples(entry)
     sample = {"active_minutes": minutes, "rate_ml_per_minute": rate, "finished_ts": now_ts}
     candidate = [*samples, sample][-SAMPLE_LIMIT:]
+    pending = entry.get("pending_samples")
+    pending = pending if isinstance(pending, list) else []
+    # Revalidate persisted candidates against the same nominal assumptions.
+    pending = _samples({**entry, "samples": pending})
     if _agree(samples) and not _agree(candidate):
-        # Keep the established triple, even after many rejected empty anchors.
-        updated["last_reason"] = "time_sample_outlier"
+        pending = [*pending, sample][-3:]
+        if _agree(pending):
+            samples, pending = pending, []
+            updated["last_reason"] = "time_shift_confirmed"
+        else:
+            updated["last_reason"] = "time_sample_outlier"
     else:
-        samples = candidate
+        samples, pending = candidate, []
         updated["last_reason"] = None
     entry["samples"] = samples
+    entry["pending_samples"] = pending
     entries.append(entry)
     updated["contexts"] = entries[-CONTEXT_LIMIT:]
     updated["cycle"] = None
@@ -291,6 +300,8 @@ def resolve(
         "usage_ml_per_active_minute": median(
             sample["rate_ml_per_minute"] for sample in samples[-3:]) if active else None,
         "sample_count": len(samples), "basis": "nominal_full_to_empty_time",
+        "reason": updated.get("last_reason"),
+        "pending_count": len(_samples({**entry, "samples": entry.get("pending_samples", [])})) if entry else 0,
         "scope": "private_device", "accuracy": "not_established",
         "nominal_capacity_ml": float(capacity_ml) if _number(capacity_ml) else None,
         "residual_assumed_percent": float(residual_percent) if _residual(residual_percent) else None,
