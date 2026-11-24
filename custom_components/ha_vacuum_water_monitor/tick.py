@@ -349,7 +349,7 @@ def tick_device(
     """Run one accounting pass and strip pass-local bookkeeping from the result."""
     # A dock that reported its clean tank empty cannot supply more water until a
     # refill (a user refill during the error sets water_empty_acknowledged).
-    tank_empty = (bool(state.get("water_empty_active")) and state.get("water_anchor_kind") == "empty"
+    tank_empty = (not _plumbed_supply(device) and bool(state.get("water_empty_active")) and state.get("water_anchor_kind") == "empty"
                   and not state.get("water_empty_acknowledged") and not device.get("water_volume_sensor"))
     used_before = _number(state.get("used_ml"), 0)
     reset_before = state.get("last_reset_ts")
@@ -386,6 +386,14 @@ def _tick_device_pass(
 ) -> tuple[dict[str, Any], bool]:
     """Translate one v4 `_tickWaterState` pass into Python."""
     state = dict(state)
+    plumbed_supply = _plumbed_supply(device)
+    if plumbed_supply:
+        # Old finite-tank anchors must not stop a mains-supplied balance or
+        # become new full/empty learning evidence. Keep historical samples.
+        state.update(water_empty_active=False, water_empty_acknowledged=False,
+                     water_anchor_source=None, water_anchor_kind=None,
+                     water_anchor_confidence=None, water_anchor_candidate_source=None,
+                     water_anchor_candidate_since_ts=0)
     state[_PASS_REASONS_KEY] = []
     state.pop(_PASS_FIRST_SOURCE_KEY, None)
     state.pop(_PASS_AREA_OBSERVATION_KEY, None)
@@ -399,7 +407,8 @@ def _tick_device_pass(
     # A refill the user reports through a bound button or tank-lid sensor is
     # independent of the robot being reachable or the dock's own signals.
     user_refill_dirty = False
-    user_refill_source, user_refill_evidence = _observe_user_refill_signals(hass, device, state, now_ts)
+    user_refill_source, user_refill_evidence = ((None, None) if plumbed_supply else
+                                                 _observe_user_refill_signals(hass, device, state, now_ts))
     if user_refill_source is not None:
         user_refill_dirty = True
         # A report while the dock shows its tank empty again is a new refill even
@@ -645,6 +654,8 @@ def _tick_device_pass(
         MIN_CALIBRATION_FACTOR,
         MAX_CALIBRATION_FACTOR,
     )
+    if plumbed_supply:
+        calibration_factor = 1
     usage_per_minute = _mapping_number(
         device.get("usage_ml_per_active_minute"), rate_key
     )
@@ -663,7 +674,7 @@ def _tick_device_pass(
 
     evidence = device.get("accounting_evidence")
     time_evidence = device.get("time_accounting_evidence") or evidence
-    if int(state.get("calibration_samples") or 0) > 0:
+    if not plumbed_supply and int(state.get("calibration_samples") or 0) > 0:
         evidence = "device_calibrated"
         time_evidence = "device_calibrated"
 
@@ -861,7 +872,7 @@ def _tick_device_pass(
             if _compatible_context(restored_context, historical_context):
                 matches = [(pinned, restored_context)]
                 closing_whole_cycle = True
-        if reservoir_matches and len(matches) == 1:
+        if reservoir_matches and len(matches) == 1 and not plumbed_supply:
             whole_cycle_calibration, consumption_context = matches[0]
             # Keep an available labelled predictor while a measured whole-cycle
             # profile is awaiting its complete exposure/domain check.
@@ -1475,10 +1486,7 @@ def _tick_device_pass(
     distance_interval = (now_ts - last_tick) / 1000 if last_tick is not None else None
     use_distance = (distance_sensor and distance_rate is not None and whole_cycle_calibration is None
                     and not nominal_time_applied and not floor_other_reservoir
-                    and (curr_area is None or usage_per_m2 is None)
-                    and not (curr_area is None and usage_per_m2 is not None
-                             and state.get("gap_started_ts") is not None
-                             and now_ts - state["gap_started_ts"] <= BRIDGE_GAP_MAX_SECONDS * 1000))
+                    and (curr_area is None or usage_per_m2 is None or state.get("area_time_fallback")))
     if use_distance and curr_distance_m is not None and previous_distance is not None and distance_wet and state.get("last_distance_wet"):
         delta_m = curr_distance_m - previous_distance
         if distance_interval is not None and 0 < distance_interval <= MAX_ACTIVE_INTERVAL_SECONDS and 0 <= delta_m <= 3 * distance_interval:
@@ -1587,6 +1595,13 @@ def _tick_device_pass(
     elif curr_area is not None:
         state["area_time_fallback"] = False
 
+    if (distance_sensor and curr_area is None and distance_wet and not distance_counted
+            and not time_interval_counted and previous_tick_ts is not None
+            and (curr_distance_m is None or previous_distance is None or distance_rate is None)):
+        state.update(accounting_incomplete=True, session_accounting_valid=False,
+                     session_exposure_complete=False)
+        _record_accounting(state, "unknown", None, None, "wet_exposure_unavailable")
+
     if device.get("duration_sensor") or device.get("duration_attribute"):
         state["duration_gap"] = curr_duration_seconds is None
         if should_use_time and curr_duration_seconds is None:
@@ -1607,13 +1622,14 @@ def _tick_device_pass(
     do_reset = False
     exact_empty_reset = False
     if (
+        not plumbed_supply and
         state.get("last_dock_err") == "water_empty"
         and curr_dock_err in _DOCK_OK_STATES
     ):
         do_reset = True
         exact_empty_reset = True
 
-    water_anchor_states = _water_anchor_states(hass, device, curr_dock_err, state)
+    water_anchor_states = {} if plumbed_supply else _water_anchor_states(hass, device, curr_dock_err, state)
     active_anchors = [
         (source, kind)
         for source, (is_empty, kind) in water_anchor_states.items()
@@ -1957,6 +1973,22 @@ def _tick_device_pass(
             state["session_context"] = deepcopy(consumption_context)
             state["session_resolution"] = deepcopy(state.get("consumption_resolution"))
     _finish_session(state, session_running or wash_now, curr_status, now_ts, curr_area)
+    # These explicit phase labels indicate activity, not a measured volume or
+    # completion. No live source contract currently supplies the quantity.
+    dock_activity = next((name for name in (curr_dock_status, curr_status) if name in {
+        "tray_cleaning", "cleaning_tray", "washing_tray", "cleaning_wash_tray",
+        "refilling_robot_tank", "robot_tank_refilling", "transferring_water_to_robot",
+    }), None)
+    if dock_activity:
+        is_transfer = dock_activity in {"refilling_robot_tank", "robot_tank_refilling", "transferring_water_to_robot"}
+        affected = ({"dock_clean", "robot_clean"} if is_transfer else {"dock_clean", "dock_dirty"})
+        if device.get("tracked_reservoir") in affected | {None}:
+            state["last_unmeasured_dock_activity"] = {"status": dock_activity, "ts": now_ts,
+                                                        "reason": "dock_activity_volume_unmeasured"}
+            if not device.get("water_volume_sensor") and (state.get("accounting_v2") or {}).get("status") != "known":
+                state.update(accounting_incomplete=True, session_accounting_valid=False)
+            _record_accounting(state, "dock_activity", None, None, "dock_activity_volume_unmeasured")
+            dirty = True
     return state, dirty
 
 
@@ -2720,10 +2752,16 @@ def _press_is_newer(raw: str, previous: str) -> bool | None:
 
 
 def _device_capacity_ml(device: dict[str, Any]) -> float | None:
+    if _plumbed_supply(device):
+        return None
     for key in ("tracked_capacity_ml", "water_total_ml", "tank_ml"):
         if (value := _positive_number(device.get(key))) is not None:
             return value
     return None
+
+
+def _plumbed_supply(device: dict[str, Any]) -> bool:
+    return device.get("dock_variant") == "plumbed" and device.get("tracked_reservoir") in (None, "dock_clean")
 
 
 def _clamp(value: float, low: float, high: float) -> float:

@@ -94,6 +94,84 @@ def _run(previous_status: str | None, current_status: str, device=None, used_ml=
 
 
 class WaterAccountingTransitionTests(unittest.TestCase):
+    def test_area_distance_recovery_and_restart_never_repeat_a_delta(self):
+        device = {"vacuum_entity": "vacuum.test", "mop_mode_entity": "select.mode",
+                  "mopped_distance_sensor": "sensor.wet", "usage_ml_per_m": 2,
+                  "area_sensor": "sensor.area", "usage_ml_per_m2": {"standard": 5}}
+        def step(state, ts, area, distance, unit="m"):
+            return tick.tick_device(_Hass({"vacuum.test": _State("cleaning"),
+                "select.mode": _State("standard"), "sensor.area": _State(str(area), {"unit_of_measurement": "m²"}),
+                "sensor.wet": _State(str(distance), {"unit_of_measurement": unit})}), device, state, now_ts=ts)[0]
+        state = step({"used_ml": 0}, 1_000_000, 0, 0)
+        state = step(state, 1_060_000, 2, 10)
+        self.assertEqual(state["used_ml"], 10)
+        state = step(state, 1_120_000, "unavailable", 15)
+        self.assertEqual(state["used_ml"], 20)
+        state = step(dict(state), 1_180_000, 4, 0.020, "km")
+        self.assertEqual(state["used_ml"], 30)
+        state = step(state, 1_240_000, 5, 25)
+        self.assertEqual(state["used_ml"], 35)
+        self.assertEqual([e["source"] for e in state["consumption_events"][:3]],
+                         ["area", "mopped_distance", "mopped_distance"])
+
+    def test_wet_distance_reset_jump_and_missing_both_fail_closed(self):
+        device = {"vacuum_entity": "vacuum.test", "mop_mode_entity": "select.mode",
+                  "mopped_distance_sensor": "sensor.wet", "usage_ml_per_m": 2}
+        def step(state, ts, distance, unit="m"):
+            return tick.tick_device(_Hass({"vacuum.test": _State("cleaning"), "select.mode": _State("standard"),
+                "sensor.wet": _State(str(distance), {"unit_of_measurement": unit})}), device, state, now_ts=ts)[0]
+        state = step({"used_ml": 0}, 1_000_000, 10)
+        state = step(state, 1_060_000, 12)
+        state = step(state, 1_120_000, 0)
+        self.assertEqual(state["used_ml"], 4)
+        self.assertTrue(state["accounting_incomplete"])
+        state = step(state, 1_180_000, 1000)
+        self.assertEqual(state["used_ml"], 4)
+        state = step(state, 1_240_000, "unavailable")
+        state = step(state, 1_300_000, 1001, "")
+        self.assertEqual(state["used_ml"], 4)
+        self.assertEqual(state["last_accounting_reason"], "wet_exposure_unavailable")
+
+    def test_area_and_distance_unavailable_immediately_invalidate_balance(self):
+        device = {"vacuum_entity": "vacuum.test", "mop_mode_entity": "select.mode",
+                  "area_sensor": "sensor.area", "usage_ml_per_m2": {"standard": 5},
+                  "mopped_distance_sensor": "sensor.wet", "usage_ml_per_m": 2}
+        def step(state, ts, value):
+            return tick.tick_device(_Hass({"vacuum.test": _State("cleaning"),
+                "select.mode": _State("standard"), "sensor.area": _State(value, {"unit_of_measurement": "m²"}),
+                "sensor.wet": _State(value, {"unit_of_measurement": "m"})}), device, state, now_ts=ts)[0]
+        state = step({"used_ml": 10, "initialized": True}, 1_000_000, "0")
+        state = step(state, 1_060_000, "unavailable")
+        self.assertEqual(state["used_ml"], 10)
+        self.assertTrue(state["accounting_incomplete"])
+        self.assertEqual(state["last_accounting_reason"], "wet_exposure_unavailable")
+
+    def test_plumbed_supply_does_not_anchor_or_learn_from_empty_dock(self):
+        device = {"vacuum_entity": "vacuum.test", "dock_error_sensor": "sensor.err",
+                  "dock_variant": "plumbed", "tracked_reservoir": "dock_clean",
+                  "tracked_capacity_ml": 4000, "water_anchor_reservoir": "dock_clean",
+                  "cleaning_mode_entity": "select.mode"}
+        state = {"used_ml": 1000, "initialized": True, "cycle_full_confirmed": True,
+                 "calibration_factor": 1.4, "calibration_samples": 3,
+                 "water_empty_active": True, "water_anchor_kind": "empty", "last_status": "docked"}
+        hass = _Hass({"vacuum.test": _State("docked"), "sensor.err": _State("water_empty"),
+                      "select.mode": _State("mopping")})
+        state, _ = tick.tick_device(hass, device, state, now_ts=1_000_000)
+        self.assertFalse(state["water_empty_active"])
+        self.assertEqual(state["used_ml"], 1000)
+        self.assertEqual(state["calibration_samples"], 3)
+        self.assertEqual(state["calibration_factor"], 1.4)
+        self.assertNotEqual((state.get("nominal_time_resolution") or {}).get("status"), "active")
+        self.assertIsNone(state.get("last_calibration_target_ml"))
+
+    def test_unmeasured_dock_activities_are_not_invented_charges(self):
+        for status, reservoir in (("tray_cleaning", "dock_clean"), ("refilling_robot_tank", "robot_clean")):
+            with self.subTest(status=status):
+                state = _run("docked", status, {"tracked_reservoir": reservoir}, used_ml=10)
+                self.assertEqual(state["used_ml"], 10)
+                self.assertEqual(state["last_unmeasured_dock_activity"]["reason"], "dock_activity_volume_unmeasured")
+                self.assertTrue(state["accounting_incomplete"])
+
     def test_explicit_wet_distance_binding_excludes_dry_gaps_and_resets(self):
         device = {"vacuum_entity": "vacuum.test", "mop_mode_entity": "select.mode",
                   "mopped_distance_sensor": "sensor.wet_distance", "usage_ml_per_m": 2}
