@@ -13432,7 +13432,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     let s = '';
     const st = hass.states;
     for (const id in st) {
-      if (id.startsWith('vacuum.')) s += id + '=' + st[id].state + ';';
+      if (id.startsWith('vacuum.')) s += id + '=' + st[id].state + ':' + String(st[id].attributes?.battery_level ?? '') + ';';
+    }
+    // Charge may come from a separate entity selected by discovery or the user.
+    for (const device of (this._config ? this._getDevices() : [])) {
+      const id = device?.charge_sensor;
+      if (id) s += id + '=' + String(st[id]?.state ?? '') + ';';
     }
     return s;
   }
