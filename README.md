@@ -300,9 +300,9 @@ The previous [5.12.0 QA gallery](docs/screenshots/5.12/README.md) remains availa
 
 ## Installation
 
-1. Open HACS → Custom repositories.
-2. Add `https://github.com/MacSiem/ha-vacuum-water-monitor` as category **Integration**.
-3. Install **Vacuum Water Monitor**.
+1. Search for **Vacuum Water Monitor** in HACS and install it.
+2. If it is not listed, add `https://github.com/MacSiem/ha-vacuum-water-monitor` under HACS → Custom repositories as category **Integration**, then install it.
+3. Confirm the installation in HACS.
 4. Restart Home Assistant.
 5. Go to Settings → Devices & services → Add integration, then search for
    **Vacuum Water Monitor**.
@@ -317,7 +317,8 @@ editing a dashboard. Administrators can use **Add to dashboard** to choose a das
 view and, for Sections, a section. Review the preview before adding. YAML dashboards
 provide a configuration to copy instead of an automatic write. A successful placement
 can be undone while its resulting configuration still matches; later dashboard edits
-block restoration so they are preserved.
+block restoration so they are preserved. Concurrent dashboard edits during placement can
+be overwritten; avoid editing the same dashboard until placement finishes.
 
 Add the card to any dashboard:
 
@@ -550,6 +551,14 @@ sensors intentionally stay unknown even when the model and its capacity were det
 If Diagnostics says `unknown_capacity`, set the tank size in ⚙️ Settings → calibration
 (and feel free to open an issue with your model + tank size so we can add it). If it says
 `awaiting_refill`, the model is already recognized and only the baseline is missing.
+
+**Why is the cleaning forecast unknown?**
+It needs three comparable complete wet cleanings with valid accounting. Wash-only,
+dry, interrupted and incomplete runs do not qualify. Returning to a previous mode can
+reuse comparable runs within the same robot, source and reservoir identity. A confirmed
+empty tracked tank reports zero; an external counter does not imply a finite supply.
+The sensor attributes and card show the reason or sample count. The empty-tank error
+compares the estimate with a nominal threshold, not an independently measured volume.
 
 **Why is "Next maintenance due" unknown?**
 That diagnostic sensor has no truthful numeric value until at least one maintenance item

@@ -64,3 +64,29 @@ class ForecastContextTests(unittest.TestCase):
   self.assertTrue(forecast._same_forecast_context(None,previous))
   self.assertFalse(forecast._same_forecast_context(unknown,previous))
   self.assertFalse(forecast._same_forecast_context(unknown,None))
+
+ def test_interleaved_modes_and_identity_boundary(self):
+  records=[session('medium',0),session('high',1),session('medium',2),session('medium',3)]
+  state={'automatic_sessions':records,'last_consumption_context':context('medium')}
+  self.assertEqual(forecast.supply_forecast(state,1000,NOW)['basis_runs'],3)
+  records[1]['context']['reservoir']='robot_clean'
+  self.assertEqual(forecast.supply_forecast(state,1000,NOW)['basis_runs'],1)
+
+ def test_wash_dry_abort_and_legacy(self):
+  records=[session('medium',0,action_totals={'mop_wash':200},area=0),
+           session('medium',1,action_totals={'floor_mopping':40},completed=False),
+           session('medium',2,action_totals={'floor_mopping':30},area=10),
+           session('medium',3),session('medium',4)]
+  state={'automatic_sessions':records,'last_consumption_context':context('medium')}
+  self.assertEqual(forecast.supply_forecast(state,1000,NOW)['basis_runs'],3)
+  records[2]['action_totals']={'mop_wash':200}
+  self.assertEqual(forecast.supply_forecast(state,1000,NOW)['basis_runs'],2)
+
+ def test_empty_external_and_missing_balance(self):
+  state={'water_empty_active':True}
+  self.assertEqual(forecast.supply_forecast(state,0,NOW)['cleanings_left'],0)
+  self.assertIsNone(forecast.supply_forecast({},0,NOW)['cleanings_left'])
+  self.assertEqual(forecast.supply_forecast({},None,NOW)['reason'],'remaining_unknown')
+  state['external_counter']={}
+  result=forecast.supply_forecast(state,0,NOW)
+  self.assertIsNone(result['cleanings_left']);self.assertEqual(result['reason'],'external_counter')

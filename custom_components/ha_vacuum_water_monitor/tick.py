@@ -2013,7 +2013,8 @@ def _finish_session(state, running, status, now_ts, area):
               "segments": state.get("session_segments", 1),
               "action_totals": deepcopy(state.get("session_action_totals") or {}),
               "exposures": deepcopy(state.get("session_exposures") or {}),
-              "accounting_version": 3}
+              "accounting_version": 3,
+              "completed": status not in {"idle", "standby", "sleeping"} and not state.get("water_empty_active")}
     state["automatic_sessions"] = [record, *(state.get("automatic_sessions") or [])][:50]
     state["session_start_ts"] = None
     state.pop("session_settled_context_change", None)
