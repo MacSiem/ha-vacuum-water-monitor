@@ -123,7 +123,10 @@ def robot_health(
     tracked = tracks_water(device, effective, estimate, mop_attribute_present)
     method = refill_method(effective)
     samples = int(estimate.get("calibration_samples") or 0)
-    can_calibrate = has_empty_signal(effective)
+    plumbed_supply = effective.get("dock_variant") == "plumbed" and effective.get("tracked_reservoir") in (None, "dock_clean")
+    if plumbed_supply:
+        method = "none"
+    can_calibrate = not plumbed_supply and has_empty_signal(effective)
     checks: list[dict[str, Any]] = []
 
     def add(check_id: str, severity: str, fix: str | None = None, **params: Any) -> None:
@@ -142,7 +145,7 @@ def robot_health(
         # Until the user decides, a suspected copy raises only that question.
         pass
     elif tracked:
-        if estimate.get("total_ml") is None and estimate.get("source") != "physical_event_stream":
+        if estimate.get("total_ml") is None and estimate.get("source") != "physical_event_stream" and not plumbed_supply:
             add("unknown_capacity", "error", FIX_SET_CAPACITY)
         if reason == "mop_signal_unbound":
             add("mop_signal_unbound", "warning", FIX_MAP_SIGNAL)
@@ -162,9 +165,9 @@ def robot_health(
         elif reason in {"vacuum_unavailable", "status_unavailable", "area_unavailable", "duration_unavailable",
                         "real_sensor_unavailable"}:
             add("signal_unavailable", "info", None, reason=reason)
-        if method == "manual":
+        if method == "manual" and not plumbed_supply:
             add("manual_refill", "info", None)
-        if not can_calibrate and not missing_rate:
+        if not can_calibrate and not missing_rate and not plumbed_supply:
             add("no_empty_signal", "info", None)
     else:
         add("not_tracked", "info", FIX_SET_CAPACITY)
@@ -188,10 +191,10 @@ def robot_health(
         "calibration_factor": estimate.get("calibration_factor"),
         "can_calibrate": can_calibrate,
         "refill_method": method,
-        "auto_refill_supported": supports_auto_refill(effective),
+        "auto_refill_supported": not plumbed_supply and supports_auto_refill(effective),
         "auto_refill": method == "dock_auto",
         "initialized": bool(estimate.get("initialized")),
-        "tank_empty": bool(tank_state.get("water_empty_active")),
+        "tank_empty": bool(tank_state.get("water_empty_active")) and not plumbed_supply,
         "remaining_percent": estimate.get("remaining_percent"),
         "supply": supply_forecast(tank_state, estimate.get("remaining_ml"),
                                   now_ts if now_ts is not None else int(time.time() * 1000)),

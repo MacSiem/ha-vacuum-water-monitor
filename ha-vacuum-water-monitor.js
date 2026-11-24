@@ -14974,6 +14974,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       evidence: device.evidence || null,
       accountingEvidence: tankState.last_accounting_evidence || ((customCalib.usage_ml_per_m2 || customCalib.wash_volume_ml) ? 'user_calibration' : device.accounting_evidence || null),
       lastAccountingInterruption: tankState.last_accounting_interruption || null,
+      lastUnmeasuredDockActivity: tankState.last_unmeasured_dock_activity || null,
       accountingSource: tankState.last_accounting_source || null,
       accountingRate: tankState.last_accounting_rate_ml ?? null,
       consumptionResolution: tankState.consumption_resolution || null,
@@ -15403,7 +15404,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.stateReason === 'mop_signal_unbound') {
       return box('Mop signal needed.', 'This robot does not expose a signal that shows when it mops (mop attached, mop mode or water level). Map one in Settings \u2192 Signal mapping so water use can be estimated.', '#f59e0b');
     }
+    if (data.stateReason === 'plumbed_supply_unmeasured') {
+      return box('Water balance incomplete.', this._lang === 'pl' ? 'Zasilanie wodociągowe nie ma skończonego poziomu zbiornika. Podłącz licznik poboru, aby pokazać zmierzone zużycie.' : 'A mains supply has no finite tank level. Connect a supply meter to show measured consumption.');
+    }
     if (data.stateReason === 'accounting_incomplete') {
+      if (data.lastUnmeasuredDockActivity && data.lastAccountingInterruption && data.lastUnmeasuredDockActivity.ts >= data.lastAccountingInterruption.ts) return box('Water balance incomplete.', this._lang === 'pl' ? 'Wykryto sygnał czynności stacji, ale brak pomiaru jej objętości. Bilans może być niepełny.' : 'A dock activity signal was observed, but its volume was not measured. The balance may be incomplete.', '#f59e0b');
+      if ((data.lastAccountingInterruption?.reasons || []).includes('wet_exposure_unavailable')) return box('Water balance incomplete.', this._lang === 'pl' ? 'Brak wiarygodnej powierzchni, mokrego dystansu lub czasu dla tego odcinka.' : 'No reliable area, wet distance or time was available for this interval.', '#f59e0b');
       return box(this._waterText('Water balance incomplete.'), this._waterText('Consumption from available signals is still recorded. The recorded estimate may omit earlier usage, so remaining water is unknown. Refill the tracked tank to full and confirm to restore the balance.'), '#f59e0b');
     }
     if (!data.initialized && !['missing_area_rate','missing_time_rate','missing_wash_rate'].includes(data.stateReason)) {

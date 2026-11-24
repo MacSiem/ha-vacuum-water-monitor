@@ -323,7 +323,10 @@ def estimate_water_state(
         return {**metadata, "source": "external_counter" if used is not None else "plumbed_supply",
                 "initialized": used is not None, "state_reason": None if used is not None else "plumbed_supply_unmeasured",
                 "total_ml": None, "used_ml": _format_number(used) if used is not None else None,
-                "remaining_ml": None, "remaining_percent": None}
+                "remaining_ml": None, "remaining_percent": None, "calibration_factor": None,
+                "calibration_samples": 0, "calibration_basis": None, "calibration_history": [],
+                "nominal_time_resolution": {}, "cycle_full_confirmed": False,
+                "water_anchor_kind": None, "water_anchor_confidence": None}
     if isinstance(external, dict):
         used = external.get("used_ml")
         remaining = external.get("remaining_ml") if external.get("remaining_sensor") else (
