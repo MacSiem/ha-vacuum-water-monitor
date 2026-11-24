@@ -14052,9 +14052,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'last_reset_entity','main_brush_sensor','side_brush_sensor','filter_time_sensor',
       'sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor',
-      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','area_unit_entity','cleaning_active_sensor',
+      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','mopped_distance_sensor','duration_sensor','area_unit_entity','cleaning_active_sensor',
       'last_clean_start','last_clean_end','charge_sensor','status_sensor',
-      'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope',
+      'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','usage_ml_per_m2','usage_ml_per_m','usage_ml_per_active_minute','rate_signal','calibration_scope','dock_variant',
       'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
       'brand_profile','tracked_capacity_ml','tank_ml','tracked_reservoir','signals',
       'accounting_evidence','evidence','uncertainty_percent','profile_locked','profile_override','locked_profile',
@@ -14454,7 +14454,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'status_sensor','cleaning_active_sensor','area_sensor','duration_sensor',
       'mop_attached_attribute','mop_attachment_is_evidence','status_attribute','area_unit_entity','area_attribute','area_attribute_unit','duration_attribute','duration_attribute_unit','mop_intensity_attribute','water_box_attached_attribute','tank_semantics_confirmed','mop_evidence_required','signal_contract_version',
       'mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','mop_attached_sensor','water_box_attached_sensor','water_box_detached_sensor',
-      'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml',
+      'usage_ml_per_m2','usage_ml_per_m','usage_ml_per_active_minute','rate_signal','calibration_scope','dock_variant','water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml',
       'accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','evidence','profile_locked','profile_override','locked_profile','brand_profile',
       'dock_error_sensor','water_sensor','water_used_sensor','water_used_input',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor','dock_status_sensor','tank_level_sensor','dock_tank_level_sensor','reset_door_sensor',
@@ -14485,7 +14485,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       merged.signals = effectiveSignals;
     }
     const locked = Boolean(merged.profile_locked) && explicit.has('profile_locked');
-    const profileFields = new Set(['profile_key','profile_source','profile_confidence','capability','evidence','tracked_reservoir','tracked_capacity_ml','reservoirs_ml','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','wash_volume_ml','accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','uncertainty_percent','low_water_anchor_remaining_percent',
+    const profileFields = new Set(['profile_key','profile_source','profile_confidence','capability','evidence','tracked_reservoir','tracked_capacity_ml','reservoirs_ml','usage_ml_per_m2','usage_ml_per_m','usage_ml_per_active_minute','rate_signal','calibration_scope','dock_variant','wash_volume_ml','accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','uncertainty_percent','low_water_anchor_remaining_percent',
       'estimate_basis','estimate_sources','mop_system','intensity_factor','sources','provenance','water_anchor_reservoir','water_anchor_reservoir_inferred','refill_on_clear','refill_on_clear_inferred']);
     for (const [key, value] of Object.entries(descriptor)) {
       if (key === 'entity_id' || key === 'vacuum_entity' || key === 'signals' || key === 'name') continue;
@@ -14711,10 +14711,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'last_reset_entity','main_brush_sensor','side_brush_sensor','filter_time_sensor',
       'sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor',
-      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','cleaning_active_sensor',
+      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','mopped_distance_sensor','duration_sensor','cleaning_active_sensor',
       'last_clean_start','last_clean_end','charge_sensor','status_sensor',
       'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity',
-      'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope',
+      'usage_ml_per_m2','usage_ml_per_m','usage_ml_per_active_minute','rate_signal','calibration_scope','dock_variant',
       'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
       'brand_profile','tracked_capacity_ml','tank_ml','tracked_reservoir','signals',
       'accounting_evidence','evidence','uncertainty_percent','profile_locked','profile_override','locked_profile',
@@ -14792,7 +14792,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       .find(entry => entry.vacuum_entity === device.vacuum_entity);
     const serverCapacity = ['water_total_ml', 'tracked_capacity_ml', 'tank_ml']
       .map(key => Number(serverDevice?.[key])).find(value => Number.isFinite(value) && value > 0);
-    const totalMl = (Number.isFinite(optionCapacity) && optionCapacity > 0 ? optionCapacity : 0) || serverCapacity || configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
+    const isPlumbed = device.dock_variant === 'plumbed' && (!device.tracked_reservoir || device.tracked_reservoir === 'dock_clean');
+    const totalMl = isPlumbed ? 0 : (Number.isFinite(optionCapacity) && optionCapacity > 0 ? optionCapacity : 0) || serverCapacity || configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
     const measuredVolume = Boolean(device.water_volume_sensor || tankState.last_accounting_source === 'real_sensor');
@@ -14825,7 +14826,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
 
     const userRate = Boolean(customCalib.usage_ml_per_m2 || customCalib.water_per_m2 || customCalib.usage_ml_per_active_minute || customCalib.wash_volume_ml || customCalib.mop_wash_ml)
-      || ['usage_ml_per_m2', 'usage_ml_per_active_minute', 'wash_volume_ml'].some(key => explicit.has(key))
+      || ['usage_ml_per_m2', 'usage_ml_per_m', 'usage_ml_per_active_minute', 'wash_volume_ml'].some(key => explicit.has(key))
       || Boolean(device.consumption_calibration);
     const hasMopSignal = ['mop_attached_sensor', 'mop_mode_entity', 'cleaning_mode_entity', 'water_box_attached_sensor', 'water_box_attached_attribute', 'water_box_detached_sensor'].some(key => device[key])
       || Boolean(device.mop_intensity_entity && device.mop_intensity_is_evidence);
@@ -14880,11 +14881,18 @@ class HAVacuumWaterMonitor extends HTMLElement {
       stateReason = initialized ? null : 'external_counter_unavailable';
     }
 
+    if (isPlumbed) {
+      remainingL = percentRemaining = null;
+      if (!externalMode) usedMl = null;
+      initialized = externalMode && usedMl !== null;
+      stateReason = initialized ? null : 'plumbed_supply_unmeasured';
+    }
+
     const dockErr = this._getStateValue(device.dock_error_sensor);
     const waterAnchorKind = tankState.water_anchor_kind || null;
     const anchorActive = Boolean(tankState.water_empty_active);
-    const waterLow = !externalMode && anchorActive && waterAnchorKind === 'shortage';
-    const waterEmpty = !externalMode && anchorActive && !waterLow;
+    const waterLow = !isPlumbed && !externalMode && anchorActive && waterAnchorKind === 'shortage';
+    const waterEmpty = !isPlumbed && !externalMode && anchorActive && !waterLow;
     const vacState = this._getStateValue(device.vacuum_entity);
     const isCleaning = device.integration_adapter === 'tapo_rv30'
       ? (device.tapo_status_contract === 2 ? this._normaliseModelKey(this._getStateValue(device.status_sensor)) === 'cleaning' : this._getAttr(device.vacuum_entity, 'status_code') === 1)
