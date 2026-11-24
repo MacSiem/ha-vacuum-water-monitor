@@ -43,3 +43,16 @@ class Issue26Tests(unittest.TestCase):
             [{"entity_id": "vacuum.other", "platform": "ecovacs", "device_id": "other"}],
             [{"id": "other", "manufacturer": "Unrelated vendor", "model_id": "k2iwaq"}], {})[0]
         self.assertIsNone(d["profile_key"])
+
+    def test_regional_claims_do_not_become_unscoped_robot_capacities(self):
+        import importlib
+        profiles = importlib.import_module("vwmruntimepkg.profiles")
+        catalog = profiles.CATALOG
+        for key in ('ecovacs_deebot_t90_pro_omni', 'roborock_qrevo_curv_2_flow'):
+            record = catalog[key]
+            self.assertIsNone(record['reservoirs_ml']['robot_clean'])
+            self.assertIsNone(record['reservoirs_ml']['robot_dirty'])
+            self.assertTrue(any('ca/' in item['url'] for item in record['provenance']))
+        qrevo = profiles.resolve_profile({'manufacturer': 'Roborock', 'model_id': 'roborock.vacuum.a245'})
+        self.assertEqual(qrevo['tracked_reservoir'], 'dock_clean')
+        self.assertEqual(qrevo['tracked_capacity_ml'], 4000)
