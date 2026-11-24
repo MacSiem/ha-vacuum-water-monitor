@@ -1945,6 +1945,13 @@ def _tick_device_pass(
         if cleared and anchor_scope_matches(device, previous_anchor_source):
             do_reset = True
             exact_empty_reset = exact_empty_reset or state.get("water_anchor_kind") == "empty"
+        elif cleared and not do_reset:
+            # Retire a legacy or foreign alarm when its own source clears, but
+            # never infer a refill without a matching reservoir contract.
+            state["water_empty_active"] = False
+            state["water_empty_acknowledged"] = False
+            dirty = True
+            dirty |= _record_accounting(state, "refill", None, evidence, "refill_volume_unmeasured")
 
     # Clearing an empty/shortage alarm does not by itself prove a full refill.
     # An exact empty that clears is a refill when the user keeps automatic

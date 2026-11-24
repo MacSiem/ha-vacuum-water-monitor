@@ -100,6 +100,12 @@ class SprintAccountingTests(unittest.TestCase):
         s,_=tick.tick_device(_Hass({'vacuum.test':_State('docked'),'binary_sensor.shortage':_State('off')}),{'vacuum_entity':'vacuum.test','water_shortage_sensor':'binary_sensor.shortage','tracked_capacity_ml':4000},{'used_ml':3500,'water_empty_active':True,'water_anchor_source':'water_shortage'},now_ts=2000000)
         self.assertEqual(s['used_ml'],3500)
         self.assertEqual(s['last_accounting_reason'],'refill_volume_unmeasured')
+        self.assertFalse(s['water_empty_active'])
+        self.assertFalse(s.get('water_empty_acknowledged'))
+        self.assertNotIn('refill_history', s)
+        s,_=tick.tick_device(_Hass({'vacuum.test':_State('docked'),'binary_sensor.shortage':_State('off')}),{'vacuum_entity':'vacuum.test','water_shortage_sensor':'binary_sensor.shortage','tracked_capacity_ml':4000},s,now_ts=2060000)
+        self.assertEqual(s['used_ml'],3500)
+        self.assertNotIn('refill_history', s)
 
     def test_measured_remaining_does_not_require_full_refill(self):
         from test_sensor_calculations import estimate_water_state
