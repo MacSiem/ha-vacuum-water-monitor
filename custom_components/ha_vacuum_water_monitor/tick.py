@@ -954,10 +954,11 @@ def _tick_device_pass(
     nominal_identity_aliases = set(device.get("measurement_identity_aliases") or [])
     nominal_capacity = _device_capacity_ml(device)
     nominal_eligible = bool(
-        consumption_context and nominal_capacity
+        consumption_context and nominal_capacity and reservoir_matches
+        and device.get("tracked_reservoir") not in {"robot_dirty", "dock_dirty", "detergent"}
         and (device.get("cleaning_mode_entity") or (tapovac and device.get("mop_mode_entity")))
         and not device.get("water_volume_sensor")
-        and (tapovac or not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute", "mopped_distance_sensor")))
+        and (tapovac or not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute")))
         and not (distance_sensor and distance_rate is not None)
         and (not tapovac or usage_per_m2 is None)
         and usage_per_minute is None and whole_cycle_calibration is None)
