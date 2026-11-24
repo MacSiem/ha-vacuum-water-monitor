@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "ha_vacuum_water_monitor"
-VERSION = "5.13.1"
+VERSION = "5.14.0"
 MANUFACTURER = "HA Tools"
 MODEL = "Vacuum Water Monitor"
 
@@ -15,7 +15,7 @@ EVENT_HEAVY_TANK_FIELDS = frozenset({
     "automatic_sessions", "refill_history", "calibration_history", "calibration_log_factors",
     "session_context", "session_resolution", "consumption_resolution", "reservoir_levels",
     "accounting_context", "accounting_interval_context", "accounting_calibration_context",
-    "accounting_v2", "wash_resolution", "nominal_calibration_contexts", "nominal_time_learning", "consumption_events",
+    "accounting_v2", "wash_resolution", "nominal_calibration_contexts", "nominal_time_learning", "physical_learning", "consumption_events",
 })
 
 

@@ -109,6 +109,77 @@ class DockedLidRefillTests(unittest.TestCase):
         self.assertNotIn("refill_history", state)
         self.assertNotIn("pending_lid_close_ts", state)
 
+    def test_long_dirty_alarm_clearing_during_lid_open_is_not_refill(self):
+        state = run(device(), {**BASE, "used_ml": 475.7}, [
+            step(dirty="on"), step(dirty="on", gap=3_600_000),
+            step(lid="on", dirty="on", gap=20_000), step(lid="on", gap=30_000),
+            step(gap=20_000), step(gap=180_000)])
+        self.assertEqual(state["used_ml"], 475.7)
+        self.assertNotIn("refill_history", state)
+
+    def test_dock_gestures_do_not_reset_robot_reservoir(self):
+        dev = dict(device(), tracked_reservoir="robot_clean")
+        state = run(dev, {**BASE, "used_ml": 100}, REFILL_19_11)
+        self.assertEqual(state["used_ml"], 100)
+        self.assertNotIn("refill_history", state)
+
+    def test_changed_clean_box_binding_does_not_replay_old_removal(self):
+        dev = device(lid=False)
+        state = run(dev, {**BASE, "used_ml": 400}, [step(), step(clean="on", gap=30_000)])
+        dev = dict(dev, dock_clean_water_sensor="binary_sensor.replacement")
+        state = run(dev, state, [
+            dict(extra={"binary_sensor.replacement": _S("off")}, _gap=30_000)], ts=10_120_000)
+        self.assertEqual(state["used_ml"], 400)
+        self.assertNotIn("refill_history", state)
+
+    def test_old_dock_anchor_cannot_clear_robot_balance_after_rebinding(self):
+        dev = dict(device(), tracked_reservoir="robot_clean")
+        state = run(dev, {**BASE, "used_ml": 100, "water_empty_active": True,
+                          "water_anchor_source": "dock_error", "water_anchor_kind": "empty"},
+                    [step(dock_err="ok")])
+        self.assertEqual(state["used_ml"], 100)
+        self.assertNotIn("refill_history", state)
+
+    def test_dock_error_clear_respects_reservoir_for_both_auto_settings(self):
+        for preference in ("refill_on_dock_clear", "refill_on_clear"):
+            for reservoir in ("robot_clean", "dock_clean"):
+                with self.subTest(preference=preference, reservoir=reservoir):
+                    dev = dict(device(boxes=False), tracked_reservoir=reservoir,
+                               water_anchor_reservoir="dock_clean",
+                               water_anchor_reservoir_inferred=True,
+                               refill_on_dock_clear=None, refill_on_clear=False,
+                               refill_on_clear_inferred=False)
+                    dev[preference] = True
+                    state = run(dev, {**BASE, "used_ml": 100},
+                                [step(dock_err="water_empty"), step(dock_err="ok")])
+                    if reservoir == "robot_clean":
+                        self.assertEqual(state["used_ml"], 100)
+                        self.assertNotIn("refill_history", state)
+                    else:
+                        self.assertEqual(state["used_ml"], 0)
+                        self.assertEqual(len(state["refill_history"]), 1)
+                        self.assertEqual(state["refill_history"][0]["source"], "dock_cleared")
+
+    def test_legacy_anchor_without_source_uses_sole_matching_scope(self):
+        state = run(device(boxes=False), {**BASE, "used_ml": 100, "water_empty_active": True,
+                               "water_anchor_kind": "empty"}, [step(dock_err="ok")])
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(len(state["refill_history"]), 1)
+
+    def test_legacy_anchor_without_source_does_not_clear_other_reservoir(self):
+        dev = dict(device(boxes=False), tracked_reservoir="robot_clean")
+        state = run(dev, {**BASE, "used_ml": 100, "water_empty_active": True,
+                          "water_anchor_kind": "empty"}, [step(dock_err="ok")])
+        self.assertEqual(state["used_ml"], 100)
+        self.assertNotIn("refill_history", state)
+
+    def test_robot_lid_without_dock_boxes_still_refills(self):
+        dev = dict(device(boxes=False), tracked_reservoir="robot_clean")
+        state = run(dev, {**BASE, "used_ml": 100},
+                    [step(), step(lid="on", gap=20_000), step(gap=20_000)])
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(state["refill_history"][0]["source"], "lid")
+
     def test_lid_without_any_tank_signal_stays_an_unconfirmed_refill(self):
         state = run(device(), {**BASE, "used_ml": 900},
                     [step(), step(lid="on", gap=10_000), step(gap=20_000), step(gap=60_000), step(gap=60_000),

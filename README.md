@@ -300,11 +300,10 @@ The previous [5.12.0 QA gallery](docs/screenshots/5.12/README.md) remains availa
 
 ## Installation
 
-1. Open HACS → Custom repositories.
-2. Add `https://github.com/MacSiem/ha-vacuum-water-monitor` as category **Integration**.
-3. Install **Vacuum Water Monitor**.
-4. Restart Home Assistant.
-5. Go to Settings → Devices & services → Add integration, then search for
+1. In Home Assistant 2026.11 and later, open [Marketplace](https://www.home-assistant.io/integrations/marketplace/) and search for **Vacuum Water Monitor**. On earlier supported versions, use HACS.
+2. Install the integration. If it is not listed, add `https://github.com/MacSiem/ha-vacuum-water-monitor` as a custom repository in the **Integration** category.
+3. Restart Home Assistant.
+4. Go to Settings → Devices & services → Add integration, then search for
    **Vacuum Water Monitor**.
 
 The integration registers the bundled Lovelace card automatically — you do not need to add
@@ -317,7 +316,8 @@ editing a dashboard. Administrators can use **Add to dashboard** to choose a das
 view and, for Sections, a section. Review the preview before adding. YAML dashboards
 provide a configuration to copy instead of an automatic write. A successful placement
 can be undone while its resulting configuration still matches; later dashboard edits
-block restoration so they are preserved.
+block restoration so they are preserved. Concurrent dashboard edits during placement can
+be overwritten; avoid editing the same dashboard until placement finishes.
 
 Add the card to any dashboard:
 
@@ -452,6 +452,7 @@ These optional keys let you wire additional entities into the water accounting
 | `status_sensor` | `sensor.roborock_..._status` | Dedicated status entity used instead of the vacuum's `status` attribute (or its state). Drives mop-wash detection only when the resolved model or user calibration provides a wash volume, and the "cleaning" check for area-based dosing. |
 | `cleaning_active_sensor` | `binary_sensor.robot_..._in_cleaning` | Canonical activity flag used when the vacuum state lags. |
 | `area_sensor` | `sensor.robot_..._cleaning_area` | Cumulative current-session area. Resets and implausible jumps are rejected. |
+| `mopped_distance_sensor` + `usage_ml_per_m` | `sensor.robot_wet_distance` + `0.5` | Manually bind a cumulative counter that measures **only active wet floor travel**, with a positive user-supplied floor rate in mL/m. The sensor must report `m`, `km`, `ft` or `mi`; ordinary total travel is not suitable. Area with a valid rate takes precedence, then wet distance, then active time. The integration does not infer this binding from a manufacturer. |
 | `duration_sensor` | `sensor.robot_..._cleaning_time` | Cumulative session duration used only when area is unavailable. Units from Home Assistant are normalized. |
 | `mop_mode_entity` | `select.roborock_..._mop_mode` | Current mop mode (`fast` / `standard` / `deep`). Selects a resolved per-m² model/user calibration rate. Mode `off` disables area-based dosing entirely; an unavailable mode cannot manufacture a rate. |
 | `mop_intensity_entity` | `select.roborock_..._mop_intensity` | Current mop intensity / water level. Documented three- and five-level option tokens are mapped to/interpolated between the profile's low/medium/high bands. Ranged number entities use their own HA min/max, so model-specific scales are not guessed. Unknown options use only an explicit profile default. |
@@ -462,6 +463,11 @@ These optional keys let you wire additional entities into the water accounting
 | `dock_status_sensor` | `sensor.robot_..._station_state` | Detects one dock mop-wash cycle without confusing robot cleaning with dock cleaning. |
 | `water_error_sensor` | `sensor.robot_..._operational_error` | Accepts only exact machine-readable clean-water-empty states. |
 | `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. Closing it counts as a full refill (the same choice as the card's lid option). |
+
+Set `dock_variant: plumbed` when the tracked clean dock supply is connected to
+the mains. Its finite capacity and percentage are then unknown. An explicitly
+bound `water_used_sensor` can still show measured supply consumption. This does
+not change a separately tracked finite `robot_clean` tank.
 
 ### Advanced — bring your own counter
 
@@ -550,6 +556,14 @@ sensors intentionally stay unknown even when the model and its capacity were det
 If Diagnostics says `unknown_capacity`, set the tank size in ⚙️ Settings → calibration
 (and feel free to open an issue with your model + tank size so we can add it). If it says
 `awaiting_refill`, the model is already recognized and only the baseline is missing.
+
+**Why is the cleaning forecast unknown?**
+It needs three comparable complete wet cleanings with valid accounting. Wash-only,
+dry, interrupted and incomplete runs do not qualify. Returning to a previous mode can
+reuse comparable runs within the same robot, source and reservoir identity. A confirmed
+empty tracked tank reports zero; an external counter does not imply a finite supply.
+The sensor attributes and card show the reason or sample count. The empty-tank error
+compares the estimate with a nominal threshold, not an independently measured volume.
 
 **Why is "Next maintenance due" unknown?**
 That diagnostic sensor has no truthful numeric value until at least one maintenance item

@@ -116,6 +116,10 @@ def apply_refill(
         state["last_accounting_interruption"] = {
             **interruption, "resolved_ts": now_ts, "refill_source": source,
         }
+    physical = state.get("physical_learning")
+    if isinstance(physical, dict) and physical.get("cycle"):
+        state["physical_learning"] = {**physical, "cycle": None, "blocked_session_id": state.get("session_start_ts"),
+                                      "reason": "physical_refill_during_session"}
     learning = state.get("nominal_time_learning")
     if isinstance(learning, dict):
         state["nominal_time_learning"] = {**learning, "cycle": None,

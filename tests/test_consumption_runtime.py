@@ -44,6 +44,16 @@ class RuntimeConsumptionTests(unittest.TestCase):
         self.assertEqual(s['session_context']['firmware'],'1')
         self.assertEqual(s['session_context']['settings']['mop_mode'],'confirmed')
 
+    def test_explicit_interruption_is_remembered_until_docking(self):
+        d={'vacuum_entity':'vacuum.test','area_sensor':'sensor.area','usage_ml_per_m2':{'default':10}}
+        for interruption in ('error', 'cancelled', 'stopped'):
+            with self.subTest(interruption=interruption):
+                state={'used_ml':0,'last_status':'docked'}
+                for i, (status, area) in enumerate((('cleaning',0),('cleaning',10),(interruption,10),('docked',10)),1):
+                    h=_Hass({'vacuum.test':_State(status),'sensor.area':_State(str(area),{'unit_of_measurement':'m²'})})
+                    state=tick.tick_device(h,d,state,now_ts=i*60000)[0]
+                self.assertFalse(state['automatic_sessions'][0]['completed'])
+
     def test_completed_history_retains_context_and_resolution(self):
         ctx=context()
         device={'vacuum_entity':'vacuum.test','area_sensor':'sensor.area','consumption_context':ctx}

@@ -292,6 +292,7 @@ def estimate_water_state(
         "uncertainty_kind": ("calibration_spread" if len(log_factors) >= 3 else "prior_band") if estimate_basis else None,
         "physical_accuracy_verified": False,
         "nominal_time_resolution": deepcopy(nominal),
+        "physical_learning_resolution": deepcopy(tank_state.get("physical_learning_resolution") or {}),
         "mop_system": device.get("mop_system") or profile.get("mop_system"),
         "uncertainty_percent": estimation.uncertainty_percent(
             estimate_basis,
@@ -314,6 +315,18 @@ def estimate_water_state(
         "water_anchor_confidence": tank_state.get("water_anchor_confidence"),
     }
     external = tank_state.get("external_counter")
+    if (effective_device.get("dock_variant") == "plumbed"
+            and effective_device.get("tracked_reservoir") in (None, "dock_clean")):
+        # The mains supply has no finite clean reservoir. A separately bound
+        # external usage counter can still report an observed draw.
+        used = external.get("used_ml") if isinstance(external, dict) else None
+        return {**metadata, "source": "external_counter" if used is not None else "plumbed_supply",
+                "initialized": used is not None, "state_reason": None if used is not None else "plumbed_supply_unmeasured",
+                "total_ml": None, "used_ml": _format_number(used) if used is not None else None,
+                "remaining_ml": None, "remaining_percent": None, "calibration_factor": None,
+                "calibration_samples": 0, "calibration_basis": None, "calibration_history": [],
+                "nominal_time_resolution": {}, "cycle_full_confirmed": False,
+                "water_anchor_kind": None, "water_anchor_confidence": None}
     if isinstance(external, dict):
         used = external.get("used_ml")
         remaining = external.get("remaining_ml") if external.get("remaining_sensor") else (
@@ -785,6 +798,8 @@ def water_capacity(
     """
     device = device if isinstance(device, dict) else {}
     settings = settings if isinstance(settings, dict) else {}
+    if device.get("dock_variant") == "plumbed" and device.get("tracked_reservoir") in (None, "dock_clean"):
+        return None, None
     direct = _optional_number(device.get("water_total_ml"))
     # A generated legacy default must not outrank the tank the engine anchors to.
     if direct and direct > 0 and (
@@ -1107,6 +1122,7 @@ _DIRECT_SIGNAL_FIELDS = {
     "status_sensor",
     "cleaning_active_sensor",
     "area_sensor",
+    "mopped_distance_sensor",
     "area_unit_entity",
     "duration_sensor",
     "mop_mode_entity",
@@ -1135,6 +1151,7 @@ except ImportError:
     pass
 _BEHAVIOR_BINDING_FIELDS = _DIRECT_SIGNAL_FIELDS | {
     "water_total_ml",
+    "physical_learning_source_sensor",
     "tracked_capacity_ml",
     "tank_ml",
     "tracked_reservoir",
@@ -1153,6 +1170,8 @@ _BEHAVIOR_BINDING_FIELDS = _DIRECT_SIGNAL_FIELDS | {
     "signal_contract_version",
     "signals",
     "usage_ml_per_m2",
+    "usage_ml_per_m",
+    "dock_variant",
     "usage_ml_per_active_minute",
     "rate_signal",
     "water_per_m2",

@@ -126,14 +126,43 @@ device identity. Both live registries remain empty. Full hashes, compatibility
 rules and remaining evidence blockers are recorded in
 `dataset-v3-integration-2026-09-05.md`.
 
+### Automatic physical observation
+
+An explicitly bound `water_volume_sensor` with matching `water_volume_reservoir` and `tracked_reservoir` can pair measured volume decrease with an explicitly unit-bearing area counter during a completely observed session starting at zero area. The bank is local, keyed by full context, reservoir and both source bindings. It fits **whole-session** reservoir draw per session area; a level difference cannot isolate a floor, transfer or wash dose. Three compatible observations qualify a median, and three compatible divergent observations are required to replace it. Refill or rising level, missing/invalid units, binding or context changes, counter reset/anomaly, an observation gap or a missing start boundary discard the open observation. Existing nominal and manually measured records remain separate.
+
+`physical_learning_resolution` exposes status, measured basis, scope, reason, sample count, pending count and coefficient. The physical level remains authoritative for the live balance, including when it is unavailable. To use the fit after intentionally removing that binding, set `physical_learning_source_sensor` in the configured device to the exact former sensor entity, observe the binding removal, then confirm a full refill. Only a fully known matching context, same reservoir and area binding, and a completed session within the three-sample area domain qualify. The ordinary whole-cycle consumer charges the total once; it never treats the coefficient as an interval or individual-action dose. Existing personal and compatible approved public profiles take precedence. No configuration transition or refill is inferred from a sensor becoming unavailable. DIY external counters are projections and do not yet establish the required continuous same-reservoir observation contract. A measured source and repetition alone do not establish an independent physical error bound.
+
 ### Private nominal time learning (5.12)
 
 For a robot such as Tapo over Matter that exposes a recognized mop-cleaning mode but no usable area/duration counter or calibrated time rate, a confirmed full tank starts private observation. An exact empty indication for the tracked reservoir, or the existing Tank empty action, completes the sample. Only observed active floor-mopping minutes contribute exposure; idle, vacuum-only and dock washing do not. Dock water nevertheless belongs to total tank depletion, so the result is a whole-cycle tank-depletion estimate per active mopping minute, not a measured floor flow.
 
-Three consecutive compatible full-to-empty samples are needed before use, with maximum/minimum nominal rate no greater than 1.25. This repeatability policy is not a physical error bound. Before qualification the coefficient and remaining estimate stay unknown, while progress is visible in Diagnostics. The nominal rate uses the configured tank capacity and an explicit 5% assumed residual at empty; that residual is not a measured level. Independent physical accuracy is not established. A qualified rate is applied only from the next confirmed full tank, avoiding retroactive changes to recorded usage.
+Three consecutive compatible full-to-empty samples are needed before use, with maximum/minimum nominal rate no greater than 1.25. After activation, three consecutive mutually compatible divergent samples are required to replace the last accepted rate; a single outlier leaves it intact. The existing `nominal_time_resolution` diagnostic includes `reason` and `pending_count`, and candidates remain local across restarts. The replacement applies at the next confirmed full tank. This repeatability policy is not a physical error bound. Before qualification the coefficient and remaining estimate stay unknown, while progress is visible in Diagnostics. The nominal rate uses the configured tank capacity and an explicit 5% assumed residual at empty; that residual is not a measured level. Independent physical accuracy is not established. A qualified rate is applied only from the next confirmed full tank, avoiding retroactive changes to recorded usage.
 
 An unavailable signal, unsupported mode, active observation gap over 180 seconds, setting/capacity change or partial refill rejects the open sample. Completed compatible samples stay local and survive supported Home Assistant backups/restarts/upgrades. Data is never automatically uploaded or promoted into a community physical profile. Authored measured profiles and direct volume measurements retain priority. A full refill alone supplies no consumption rate. Matter labels are supplied by the device: unsupported/localized labels and a vacuum-then-mop plan do not prove the current mop phase.
 
 Dreame exact controls use washing_mode/mop_wash_level, self_clean_frequency/mop_clean_frequency, water_temperature and separate self_clean_area/self_clean_time thresholds. Type and thresholds are preserved together for calibration applicability, without inventing water volumes. A return-to-wash state is transit: only observed washing starts a wash estimate. Existing class-prior wash quantities remain labelled estimates; this change does not establish separate physical pre-, mid-, final- or manual-wash doses.
 
 Raw nominal sample banks are excluded from recorded live events. The bounded resolution summary remains available to the card and sensors; the full bank is local authenticated household state. Unexposed context fields stay unknown and repeatability does not establish physical accuracy or stability of hidden settings.
+
+### Exposure replay limitation (24 November 2026)
+
+The recorded 22–24 November replay reproduces refill, empty anchor and nominal
+calibration, but one session's `exposure_complete` differs from the HA Store.
+The replay applies recorded REST state events directly and a 60-second heartbeat;
+HA subscribes to bound state changes through `EventTicker` and also schedules a
+heartbeat. Session initialization depends on the observed area and event order,
+and subsequent gaps can clear the flag. The available record does not establish
+which HA callback order or intermediate states produced that session: attributing
+this discrepancy to scheduling alone would be speculation. Reproduction requires
+the ordered HA callback/state snapshots around the start and gaps of that session,
+or an equivalent HA event-loop replay with those snapshots. The historical Core
+log is not available, so the existing replay is not proof of exposure parity.
+
+Forecast completion follows the explicit statuses available in the runtime: a
+recorded error, stop or cancellation during a session excludes it even if the
+robot subsequently docks; an idle timeout and an active empty alarm also exclude
+it. `completed` is affirmative when reported. A plain dock/charging state does
+not distinguish a completed task from a cancelled return on every integration;
+when no explicit interruption was observed the current compatibility behavior
+accepts it, so that case is not proof of full completion. Historical entries
+without a completion flag retain their legacy interpretation.

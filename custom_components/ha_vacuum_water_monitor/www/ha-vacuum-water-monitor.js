@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.13.1 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.14.0 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -179,7 +179,7 @@ const supportDismissed = () => { try { return localStorage.getItem(SUPPORT_DISMI
 const ownDonateFooter = (lang = "en") => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">${lang === "pl" ? "Opcjonalne wsparcie HA Tools" : "Optional support for HA Tools"}</a><button type="button" class="support-dismiss" aria-label="${lang === "pl" ? "Ukryj odnośnik wsparcia" : "Dismiss support link"}">×</button></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.13.1';
+const VWM_VERSION = '5.14.0';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -13432,7 +13432,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     let s = '';
     const st = hass.states;
     for (const id in st) {
-      if (id.startsWith('vacuum.')) s += id + '=' + st[id].state + ';';
+      if (id.startsWith('vacuum.')) s += id + '=' + st[id].state + ':' + String(st[id].attributes?.battery_level ?? '') + ';';
+    }
+    // Charge may come from a separate entity selected by discovery or the user.
+    for (const device of (this._config ? this._getDevices() : [])) {
+      const id = device?.charge_sensor;
+      if (id) s += id + '=' + String(st[id]?.state ?? '') + ';';
     }
     return s;
   }
@@ -14052,9 +14057,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'last_reset_entity','main_brush_sensor','side_brush_sensor','filter_time_sensor',
       'sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor',
-      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','area_unit_entity','cleaning_active_sensor',
+      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','mopped_distance_sensor','duration_sensor','area_unit_entity','cleaning_active_sensor',
       'last_clean_start','last_clean_end','charge_sensor','status_sensor',
-      'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope',
+      'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','usage_ml_per_m2','usage_ml_per_m','usage_ml_per_active_minute','rate_signal','calibration_scope','dock_variant',
       'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
       'brand_profile','tracked_capacity_ml','tank_ml','tracked_reservoir','signals',
       'accounting_evidence','evidence','uncertainty_percent','profile_locked','profile_override','locked_profile',
@@ -14454,7 +14459,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'status_sensor','cleaning_active_sensor','area_sensor','duration_sensor',
       'mop_attached_attribute','mop_attachment_is_evidence','status_attribute','area_unit_entity','area_attribute','area_attribute_unit','duration_attribute','duration_attribute_unit','mop_intensity_attribute','water_box_attached_attribute','tank_semantics_confirmed','mop_evidence_required','signal_contract_version',
       'mop_mode_entity','mop_intensity_entity','cleaning_mode_entity','mop_attached_sensor','water_box_attached_sensor','water_box_detached_sensor',
-      'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml',
+      'usage_ml_per_m2','usage_ml_per_m','usage_ml_per_active_minute','rate_signal','calibration_scope','dock_variant','water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml',
       'accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','evidence','profile_locked','profile_override','locked_profile','brand_profile',
       'dock_error_sensor','water_sensor','water_used_sensor','water_used_input',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor','dock_status_sensor','tank_level_sensor','dock_tank_level_sensor','reset_door_sensor',
@@ -14485,7 +14490,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       merged.signals = effectiveSignals;
     }
     const locked = Boolean(merged.profile_locked) && explicit.has('profile_locked');
-    const profileFields = new Set(['profile_key','profile_source','profile_confidence','capability','evidence','tracked_reservoir','tracked_capacity_ml','reservoirs_ml','usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope','wash_volume_ml','accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','uncertainty_percent','low_water_anchor_remaining_percent',
+    const profileFields = new Set(['profile_key','profile_source','profile_confidence','capability','evidence','tracked_reservoir','tracked_capacity_ml','reservoirs_ml','usage_ml_per_m2','usage_ml_per_m','usage_ml_per_active_minute','rate_signal','calibration_scope','dock_variant','wash_volume_ml','accounting_evidence','time_accounting_evidence','estimated_m2_per_active_minute','uncertainty_percent','low_water_anchor_remaining_percent',
       'estimate_basis','estimate_sources','mop_system','intensity_factor','sources','provenance','water_anchor_reservoir','water_anchor_reservoir_inferred','refill_on_clear','refill_on_clear_inferred']);
     for (const [key, value] of Object.entries(descriptor)) {
       if (key === 'entity_id' || key === 'vacuum_entity' || key === 'signals' || key === 'name') continue;
@@ -14711,10 +14716,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
       'last_reset_entity','main_brush_sensor','side_brush_sensor','filter_time_sensor',
       'sensor_dirty_sensor','dock_brush_sensor','dock_strainer_sensor',
       'dock_clean_water_sensor','dock_dirty_water_sensor','water_shortage_sensor','water_error_sensor',
-      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','duration_sensor','cleaning_active_sensor',
+      'mop_attached_sensor','water_box_attached_sensor','mop_drying_sensor','area_sensor','mopped_distance_sensor','duration_sensor','cleaning_active_sensor',
       'last_clean_start','last_clean_end','charge_sensor','status_sensor',
       'reset_door_sensor','mop_mode_entity','mop_intensity_entity','cleaning_mode_entity',
-      'usage_ml_per_m2','usage_ml_per_active_minute','rate_signal','calibration_scope',
+      'usage_ml_per_m2','usage_ml_per_m','usage_ml_per_active_minute','rate_signal','calibration_scope','dock_variant',
       'water_per_m2','intensity_factor','wash_volume_ml','mop_wash_ml','icon',
       'brand_profile','tracked_capacity_ml','tank_ml','tracked_reservoir','signals',
       'accounting_evidence','evidence','uncertainty_percent','profile_locked','profile_override','locked_profile',
@@ -14792,7 +14797,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
       .find(entry => entry.vacuum_entity === device.vacuum_entity);
     const serverCapacity = ['water_total_ml', 'tracked_capacity_ml', 'tank_ml']
       .map(key => Number(serverDevice?.[key])).find(value => Number.isFinite(value) && value > 0);
-    const totalMl = (Number.isFinite(optionCapacity) && optionCapacity > 0 ? optionCapacity : 0) || serverCapacity || configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
+    const supplySensor = Object.values(this._hass?.states || {}).find(item =>
+      item?.entity_id?.startsWith('sensor.') && item.attributes?.vacuum_entity === device.vacuum_entity &&
+      (item.attributes?.source === 'plumbed_supply' || item.attributes?.state_reason === 'plumbed_supply_unmeasured'));
+    const isPlumbed = (!device.tracked_reservoir || device.tracked_reservoir === 'dock_clean') &&
+      (device.dock_variant === 'plumbed' || Boolean(supplySensor));
+    const totalMl = isPlumbed ? 0 : (Number.isFinite(optionCapacity) && optionCapacity > 0 ? optionCapacity : 0) || serverCapacity || configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
     const measuredVolume = Boolean(device.water_volume_sensor || tankState.last_accounting_source === 'real_sensor');
@@ -14825,7 +14835,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     }
 
     const userRate = Boolean(customCalib.usage_ml_per_m2 || customCalib.water_per_m2 || customCalib.usage_ml_per_active_minute || customCalib.wash_volume_ml || customCalib.mop_wash_ml)
-      || ['usage_ml_per_m2', 'usage_ml_per_active_minute', 'wash_volume_ml'].some(key => explicit.has(key))
+      || ['usage_ml_per_m2', 'usage_ml_per_m', 'usage_ml_per_active_minute', 'wash_volume_ml'].some(key => explicit.has(key))
       || Boolean(device.consumption_calibration);
     const hasMopSignal = ['mop_attached_sensor', 'mop_mode_entity', 'cleaning_mode_entity', 'water_box_attached_sensor', 'water_box_attached_attribute', 'water_box_detached_sensor'].some(key => device[key])
       || Boolean(device.mop_intensity_entity && device.mop_intensity_is_evidence);
@@ -14880,11 +14890,18 @@ class HAVacuumWaterMonitor extends HTMLElement {
       stateReason = initialized ? null : 'external_counter_unavailable';
     }
 
+    if (isPlumbed) {
+      remainingL = percentRemaining = null;
+      if (!externalMode) usedMl = null;
+      initialized = externalMode && usedMl !== null;
+      stateReason = initialized ? null : 'plumbed_supply_unmeasured';
+    }
+
     const dockErr = this._getStateValue(device.dock_error_sensor);
     const waterAnchorKind = tankState.water_anchor_kind || null;
     const anchorActive = Boolean(tankState.water_empty_active);
-    const waterLow = !externalMode && anchorActive && waterAnchorKind === 'shortage';
-    const waterEmpty = !externalMode && anchorActive && !waterLow;
+    const waterLow = !isPlumbed && !externalMode && anchorActive && waterAnchorKind === 'shortage';
+    const waterEmpty = !isPlumbed && !externalMode && anchorActive && !waterLow;
     const vacState = this._getStateValue(device.vacuum_entity);
     const isCleaning = device.integration_adapter === 'tapo_rv30'
       ? (device.tapo_status_contract === 2 ? this._normaliseModelKey(this._getStateValue(device.status_sensor)) === 'cleaning' : this._getAttr(device.vacuum_entity, 'status_code') === 1)
@@ -14946,7 +14963,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const nominalActive = tankState.nominal_time_resolution?.status === 'active' && tankState.last_accounting_evidence === 'nominal_full_to_empty_time';
     const physicalWhole = tankState.last_accounting_source === 'whole_cycle' && tankState.consumption_resolution?.source === 'device_calibration' && !tankState.last_accounting_reason;
     return {
-      totalMl, remainingL, percentRemaining, usedMl,
+      totalMl: isPlumbed ? null : totalMl, remainingL, percentRemaining, usedMl,
       partialUsedMl: stateReason === 'accounting_incomplete' && initialized
         && typeof tankState.used_ml === 'number' && Number.isFinite(tankState.used_ml)
         && tankState.used_ml >= 0 ? tankState.used_ml : null,
@@ -14962,6 +14979,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       evidence: device.evidence || null,
       accountingEvidence: tankState.last_accounting_evidence || ((customCalib.usage_ml_per_m2 || customCalib.wash_volume_ml) ? 'user_calibration' : device.accounting_evidence || null),
       lastAccountingInterruption: tankState.last_accounting_interruption || null,
+      lastUnmeasuredDockActivity: tankState.last_unmeasured_dock_activity || null,
       accountingSource: tankState.last_accounting_source || null,
       accountingRate: tankState.last_accounting_rate_ml ?? null,
       consumptionResolution: tankState.consumption_resolution || null,
@@ -15187,10 +15205,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _buildSupplyAnswer(device, data) {
+    if (data.stateReason === 'plumbed_supply_unmeasured') {
+      const explanation = this._lang === 'pl' ? 'Stacja jest podłączona do wody; brak pomiaru poboru i prognozy pozostałych sprzątań.' : 'The dock uses a plumbed supply; water draw and remaining cleanings are not measured.';
+      return `<section class="supply-answer"><h3>${this._waterText('Will the water last?')}</h3><p>${explanation}</p></section>`;
+    }
     if (data.externalMode) {
-      const explanation = this._lang === 'pl'
-        ? 'Brak prognozy dla zewnętrznego źródła wody. Bilans pochodzi ze skonfigurowanego źródła zewnętrznego.'
-        : 'Forecast unavailable for an external water source. The balance comes from the configured external source.';
+      const isCounter = this._healthFor(device)?.supply?.reason === 'external_counter';
+      const explanation = isCounter
+        ? (this._lang === 'pl' ? 'Brak prognozy: bilans pochodzi z licznika zewnętrznego, który nie określa liczby pozostałych sprzątań.' : 'Forecast unavailable: the balance comes from an external counter, which does not establish remaining cleanings.')
+        : (this._lang === 'pl' ? 'Brak prognozy dla zewnętrznego źródła wody. Bilans pochodzi ze skonfigurowanego źródła zewnętrznego.' : 'Forecast unavailable for an external water source. The balance comes from the configured external source.');
       return `<section class="supply-answer"><h3>${this._waterText('Will the water last?')}</h3><p>${explanation}</p></section>`;
     }
     const {report, known, band, range} = this._supplyPresentation(device, data);
@@ -15199,6 +15222,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     let answer = `<p>${this._waterText('Forecast unavailable: tank balance or consumption profile is unknown.')}</p>`;
     if (known) {
       if (data.waterEmpty || data.remainingL === 0) answer = `<p data-refill-needed>${this._waterText('Refill needed — the tracked tank is empty.')}</p>`;
+      else if (supply?.reason === 'remaining_unknown') answer = `<p>${this._waterText('Forecast unavailable: tank balance or consumption profile is unknown.')}</p>`;
       else if (!supply || Number(supply.basis_runs || 0) < 3) {
         const message = supply?.context_changed ? 'Settings changed; forecast resumes after 3 comparable mopping runs — {n} of 3 recorded' : 'Forecast after 3 mopping runs — {n} of 3 recorded';
         answer = `<p data-learning>${this._waterText(message).replace('{n}', String(Math.max(0, Number(supply?.basis_runs || 0))))}</p>`;
@@ -15272,7 +15296,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           ? this._waterText('full: lid opened and clean tank taken out') : confirmation === 'refill_after_empty'
           ? this._waterText('full: refilled after the empty alarm') : confirmation === 'service'
           ? this._waterText('full confirmed by automation') : this._waterText('full confirmed by user');
-      const refillSource = [sourceLabel, confirmedLabel].filter(Boolean).map(text => ` \u00B7 ${text}`).join('');
+      const refillSource = [sourceLabel, confirmedLabel, this._refillEvidence((data.refillHistory || [])[0])].filter(Boolean).map(text => ` \u00B7 ${text}`).join('');
       const refillLabel = automaticEvent ? this._waterText('Last tank event') : L.lastRefill;
       extraRows += `<div class="row"><span class="row-label">\uD83D\uDD04 ${refillLabel}</span><span class="row-val">${_esc(this._formatReset(data.lastReset) + refillSource)}</span></div>`;
     }
@@ -15300,13 +15324,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       : '';
 
     const healthReport = data.externalMode ? null : this._healthFor(device);
-    const setupHtml = this._buildSetupPanel(device, healthReport);
+    const setupHtml = data.stateReason === 'plumbed_supply_unmeasured' ? '' : this._buildSetupPanel(device, healthReport);
     const setupBlocking = Boolean(healthReport && healthReport.status === 'action_needed');
     // The setup panel asks the question the guidance box would only describe.
-    const accountingHtml = data.externalMode ? `<div role="status">${this._lang === 'pl' ? 'Stan pochodzi z zewnętrznego licznika i odświeża się po jego zmianie. Dolanie obsłuż we własnej automatyzacji; VWM nie resetuje licznika.' : 'Water state follows your external counter. Handle refills in your own automation; VWM does not reset the counter.'}</div>` : setupBlocking && ['awaiting_refill', 'accounting_incomplete', 'mop_signal_unbound'].includes(data.stateReason)
+    const accountingHtml = data.stateReason === 'plumbed_supply_unmeasured' ? '' : data.externalMode ? `<div role="status">${this._lang === 'pl' ? 'Stan pochodzi z zewnętrznego licznika i odświeża się po jego zmianie. Dolanie obsłuż we własnej automatyzacji; VWM nie resetuje licznika.' : 'Water state follows your external counter. Handle refills in your own automation; VWM does not reset the counter.'}</div>` : setupBlocking && ['awaiting_refill', 'accounting_incomplete', 'mop_signal_unbound'].includes(data.stateReason)
       ? '' : this._buildAccountingGuidance(data);
     const nominal = this._serverState?.tank_states?.[device.vacuum_entity]?.nominal_time_resolution;
-    const diagnosticsHtml = data.externalMode ? '' : this._buildDiagnostics({...data, nominalTimeResolution: nominal});
+    const learning = healthReport?.physical_learning_resolution || this._serverState?.tank_states?.[device.vacuum_entity]?.physical_learning_resolution;
+    const diagnosticsHtml = data.externalMode ? '' : this._buildDiagnostics({...data, nominalTimeResolution: nominal, physicalLearningResolution: learning});
 
     const dockHtml = (cfg.show_dock_status !== false) ? this._buildDockSection(device, data) : '';
     // A mop-capable robot still needs water setup when its tank size is unknown.
@@ -15318,7 +15343,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (cfg.compact && !this._compactExpanded) {
       const tile = this._variant() === 'tile';
       const runEstimate=presentation.report?.supply?.cleanings_left;
-      const forecast = presentation.known && Number(presentation.report?.supply?.basis_runs || 0) >= 3 && typeof runEstimate==='number' && Number.isFinite(runEstimate) && runEstimate>=0
+      const forecast = presentation.known && (presentation.report?.supply?.reason === 'empty' || Number(presentation.report?.supply?.basis_runs || 0) >= 3) && typeof runEstimate==='number' && Number.isFinite(runEstimate) && runEstimate>=0
         ? (presentation.range(runEstimate) || this._formatUi().number(runEstimate,{maximumFractionDigits:1})) : null;
       const percent = data.percentRemaining != null && Number.isFinite(Number(data.percentRemaining))
         ? Math.max(0, Math.min(100, Number(data.percentRemaining))) : null;
@@ -15384,7 +15409,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (data.stateReason === 'mop_signal_unbound') {
       return box('Mop signal needed.', 'This robot does not expose a signal that shows when it mops (mop attached, mop mode or water level). Map one in Settings \u2192 Signal mapping so water use can be estimated.', '#f59e0b');
     }
+    if (data.stateReason === 'plumbed_supply_unmeasured') {
+      return box('Water balance incomplete.', this._lang === 'pl' ? 'Zasilanie wodociągowe nie ma skończonego poziomu zbiornika. Podłącz licznik poboru, aby pokazać zmierzone zużycie.' : 'A mains supply has no finite tank level. Connect a supply meter to show measured consumption.');
+    }
     if (data.stateReason === 'accounting_incomplete') {
+      if (data.lastUnmeasuredDockActivity && data.lastAccountingInterruption && data.lastUnmeasuredDockActivity.ts >= data.lastAccountingInterruption.ts) return box('Water balance incomplete.', this._lang === 'pl' ? 'Wykryto sygnał czynności stacji, ale brak pomiaru jej objętości. Bilans może być niepełny.' : 'A dock activity signal was observed, but its volume was not measured. The balance may be incomplete.', '#f59e0b');
+      if ((data.lastAccountingInterruption?.reasons || []).includes('wet_exposure_unavailable')) return box('Water balance incomplete.', this._lang === 'pl' ? 'Brak wiarygodnej powierzchni, mokrego dystansu lub czasu dla tego odcinka.' : 'No reliable area, wet distance or time was available for this interval.', '#f59e0b');
       return box(this._waterText('Water balance incomplete.'), this._waterText('Consumption from available signals is still recorded. The recorded estimate may omit earlier usage, so remaining water is unknown. Refill the tracked tank to full and confirm to restore the balance.'), '#f59e0b');
     }
     if (!data.initialized && !['missing_area_rate','missing_time_rate','missing_wash_rate'].includes(data.stateReason)) {
@@ -15455,6 +15485,37 @@ class HAVacuumWaterMonitor extends HTMLElement {
           : (this._lang === 'pl' ? `Rozliczanie rozpocznie się po rozpoznaniu obsługiwanego stanu mopowania.${uncertainty}` : `Accounting will begin when a supported mopping status is observed.${uncertainty}`), '#22c55e');
     }
     return box('Accounting status unknown.', 'No authoritative usage capability was supplied by the integration.', '#64748b');
+  }
+
+  _physicalLearningRows(learning) {
+    if (!learning || typeof learning !== 'object' || !learning.status) return [];
+    const pl = this._lang === 'pl';
+    const labels = {
+      active:['Aktywna','Active'], provisional:['Wstępna','Provisional'], unavailable:['Niedostępna','Unavailable'],
+      bound_reservoir_volume_sensor:['Czujnik objętości zbiornika','Reservoir volume sensor'], whole_session:['Cała sesja','Whole session'],
+      physical_model_selected:['Wybrano wyuczony model','Learned model selected'], physical_binding_removed_or_anchor_required:['Brak dawnego czujnika lub wymaganej kotwicy','Former sensor or required anchor missing'],
+      physical_binding_removed:['Usunięto przypisanie czujnika','Sensor binding removed'], physical_observation_in_progress:['Trwa obserwacja','Observation in progress'],
+      physical_start_boundary_unobserved:['Nie zaobserwowano początku sesji','Session start was not observed'], physical_session_incomplete:['Niepełna sesja','Incomplete session'],
+      physical_observation_gap:['Przerwa w obserwacji','Observation gap'], physical_exposure_incomplete:['Niepełna ekspozycja','Incomplete exposure'],
+      physical_exposure_unavailable:['Brak ekspozycji lub pomiaru','Exposure or measurement unavailable'], physical_context_or_binding_changed:['Zmienił się kontekst lub czujnik','Context or sensor changed'],
+      physical_exposure_reset:['Zresetowano powierzchnię','Area counter reset'], physical_exposure_anomaly:['Nietypowy przyrost powierzchni','Anomalous area change'],
+      physical_refill_or_level_increase:['Dolanie lub wzrost poziomu','Refill or level increase'], physical_no_observed_draw_or_exposure:['Brak poboru lub powierzchni','No draw or area observed'],
+      physical_invalid_saved_observation:['Nieprawidłowy zapis obserwacji','Invalid saved observation'], physical_outlier_pending:['Odchylenie oczekuje potwierdzenia','Outlier awaiting confirmation'],
+      physical_shift_confirmed:['Potwierdzono zmianę zużycia','Consumption change confirmed'], physical_sample_accepted:['Przyjęto próbkę','Sample accepted'],
+      vacuum_unavailable:['Robot niedostępny','Robot unavailable'], real_sensor_unavailable:['Czujnik niedostępny','Sensor unavailable'],
+      real_sensor_reservoir_unverified:['Niepotwierdzony zbiornik czujnika','Sensor reservoir not confirmed'], real_sensor_unit_unknown:['Nieznana jednostka czujnika','Sensor unit unknown'],
+      real_sensor_out_of_range:['Odczyt poza zakresem','Sensor value out of range'], real_sensor_baseline:['Oczekiwanie na kolejny odczyt','Waiting for another reading'],
+      real_sensor_refill_observed:['Wykryto dolanie','Refill detected']
+    };
+    const label = code => labels[code]?.[pl ? 0 : 1] || String(code || '');
+    const rows = [[pl ? 'Nauka z pomiaru' : 'Learning from measurement', label(learning.status)]];
+    for (const [key, title] of [['source',pl?'Źródło':'Source'], ['scope',pl?'Zakres':'Scope'], ['reason',pl?'Przyczyna':'Reason']])
+      if (learning[key]) rows.push([title, label(learning[key])]);
+    for (const [key, title] of [['sample_count',pl?'Próbki':'Samples'], ['pending_count',pl?'Oczekujące próbki':'Pending samples']])
+      if (typeof learning[key] === 'number' && Number.isFinite(learning[key])) rows.push([title, String(learning[key])]);
+    const rate = learning.coefficient_ml_per_m2 ?? learning.coefficient;
+    if (typeof rate === 'number' && Number.isFinite(rate)) rows.push([pl?'Zużycie na sesję':'Session consumption', `${this._formatUi().number(rate, {maximumFractionDigits:3})} ml/m²`]);
+    return rows;
   }
 
   _buildDiagnostics(data) {
@@ -15557,10 +15618,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if ((data.tankLevel != null || data.dockTankLevel != null) && !data.tankSemanticsConfirmed) {
       rows.push(['Tank percentages', `available (${[data.tankLevel, data.dockTankLevel].filter(value => value != null).join(' / ')}), not used automatically until the model confirms clean/dirty semantics`]);
     }
-    if (!rows.length && !data.nominalTimeResolution) return '';
+    if (!rows.length && !data.nominalTimeResolution && !data.physicalLearningResolution?.status) return '';
     const reportRows = rows.map(row => [...row]);
     const pl = this._lang === 'pl';
     const humanRows = rows.map(([label, value]) => this._humanDiagnosticRow(label, value, data));
+    humanRows.push(...this._physicalLearningRows(data.physicalLearningResolution));
+    if (data.physicalLearningResolution?.status) reportRows.push(['physical_learning_resolution', JSON.stringify(data.physicalLearningResolution)]);
     const nominal = data.nominalTimeResolution;
     if (nominal && typeof nominal === 'object') {
       const count = Number.isFinite(Number(nominal.sample_count)) ? Math.max(0, Number(nominal.sample_count)) : 0;
@@ -16911,6 +16974,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return choices;
   }
 
+  _refillEvidence(record) {
+    if (!record || typeof record.full_confirmed !== 'boolean') return this._lang === 'pl' ? 'Starszy wpis — brak informacji o potwierdzeniu' : 'Older entry — confirmation unavailable';
+    const status = record.full_confirmed ? (this._lang === 'pl' ? 'Pełne potwierdzone' : 'Full confirmed') : (this._lang === 'pl' ? 'Pełne niepotwierdzone' : 'Full unconfirmed');
+    const names = this._lang === 'pl'
+      ? {lid:'otwarcie pokrywy', clean_tank_removed:'wyjęcie czystego zbiornika', lid_and_clean_tank_removed:'pokrywa i czysty zbiornik', refill_after_empty:'dolanie po alarmie pustego zbiornika', declared_full_refill_practice:'zadeklarowane pełne dolanie', card:'potwierdzenie na karcie', button:'potwierdzenie przyciskiem', service:'potwierdzenie przez usługę'}
+      : {lid:'lid opened', clean_tank_removed:'clean tank removed', lid_and_clean_tank_removed:'lid and clean tank', refill_after_empty:'refill after empty alarm', declared_full_refill_practice:'declared full refill practice', card:'confirmed on card', button:'confirmed by button', service:'confirmed by service'};
+    const label = value => names[value] || value;
+    const evidence = Array.isArray(record.evidence) ? record.evidence.map(label).join(', ') : '';
+    return [status, record.full_reason && label(record.full_reason), evidence].filter(Boolean).join(' · ');
+  }
+
   _buildRefillMethodCard(device, data = {}) {
     const vacuum = (device && device.vacuum_entity) || '';
     const choices = this._refillChoices(device);
@@ -16943,7 +17017,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <button id="vwm-refill-legacy-remove" style="${btnSt};background:rgba(239,68,68,0.08);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">Remove old automation</button>
       </div>` : '';
     const refills = (data.refillHistory || []).slice(0, 5);
-    const history = refills.length ? `<div style="font-size:11px;color:var(--vwm-text-secondary,#6b7280);margin-top:8px">${this._waterText('Recent refills')}: ${refills.map(r => `${_esc(this._formatReset(r.ts))} (${_esc(this._waterText(VWM_REFILL_SOURCE_LABEL[r.source] || r.source))})`).join(', ')}</div>` : '';
+    const history = refills.length ? `<div style="font-size:11px;color:var(--vwm-text-secondary,#6b7280);margin-top:8px">${this._waterText('Recent refills')}: ${refills.map(r => `${_esc(this._formatReset(r.ts))} (${_esc(this._waterText(VWM_REFILL_SOURCE_LABEL[r.source] || r.source))} · ${_esc(this._refillEvidence(r))})`).join(', ')}</div>` : '';
 
     return `
       <div style="${cardSt}">
@@ -17192,6 +17266,12 @@ target:
         ${header}
         ${noSiblings}
         ${rows}
+        <div style="${rowSt}">
+          <label for="vwm-former-volume-sensor" style="${labelSt}">${this._lang === 'pl' ? 'Dawny czujnik objętości dla wyuczonego modelu' : 'Former volume sensor for the learned model'}</label>
+          <p>${this._lang === 'pl' ? 'Podaj identyfikator wcześniej używanego czujnika, aby korzystać z jego modelu po odłączeniu i kolejnym potwierdzonym pełnym dolaniu.' : 'Enter the previously used sensor entity to use its learned model after disconnecting it and confirming a new full refill.'}</p>
+          <input id="vwm-former-volume-sensor" type="text" placeholder="sensor.example" value="${_esc((this._serverState?.settings?.configured_devices || []).find(item => item.vacuum_entity === vacId)?.physical_learning_source_sensor ?? device?.physical_learning_source_sensor ?? '')}" style="${selectSt}">
+          <button type="button" id="vwm-former-volume-save">${this._waterText('Save')}</button><span id="vwm-former-volume-status" role="status" aria-live="polite"></span>
+        </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
           <button id="vwm-signal-save" style="padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:#fff;font-weight:600;font-size:12px;cursor:pointer;font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui))">\uD83D\uDCBE ${this._waterText("Save signal mapping")}</button>
           <span id="vwm-signal-status" role="status" aria-live="polite" style="font-size:11px;color:var(--bento-text-secondary)"></span>
@@ -18086,6 +18166,23 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
 
     // Signal mapping: manual entity assignment for roles auto-discovery could
     // not resolve (or resolved ambiguously). Stored per vacuum in the HA Store.
+    const formerVolumeSave = sr.querySelector('#vwm-former-volume-save');
+    if (formerVolumeSave) formerVolumeSave.addEventListener('click', async () => {
+      const status = sr.querySelector('#vwm-former-volume-status');
+      const value = String(sr.querySelector('#vwm-former-volume-sensor')?.value || '').trim();
+      if (value && !/^sensor\.[a-z0-9_]+$/.test(value)) {
+        if (status) status.textContent = this._lang === 'pl' ? 'Podaj identyfikator sensor.*.' : 'Enter a sensor.* entity ID.';
+        return;
+      }
+      if (!device?.vacuum_entity) return;
+      formerVolumeSave.disabled = true;
+      const result = await this._saveServerSettings({configured_devices:[{vacuum_entity:device.vacuum_entity, physical_learning_source_sensor:value || null, config_provenance:{authored_fields:['physical_learning_source_sensor']}}]}, {partial:true});
+      const current = sr.querySelector('#vwm-former-volume-status');
+      if (current) current.textContent = result.ok ? (this._lang === 'pl' ? 'Zapisano.' : 'Saved.') : (this._lang === 'pl' ? 'Nie zapisano. Spróbuj ponownie.' : 'Could not save. Try again.');
+      const button = sr.querySelector('#vwm-former-volume-save');
+      if (button) button.disabled = false;
+    });
+
     const signalSave = sr.querySelector('#vwm-signal-save');
     if (signalSave) {
       signalSave.addEventListener('click', async () => {

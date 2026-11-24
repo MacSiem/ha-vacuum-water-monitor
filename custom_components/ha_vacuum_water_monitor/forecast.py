@@ -28,6 +28,34 @@ def _stable_observation(value: Any) -> Any:
     return value
 
 
+IDENTITY_KEYS = ("device_id", "model_id", "sku", "dock_variant", "firmware", "integration_id", "integration_version", "reservoir")
+
+
+def _same_identity(current: Any, previous: Any) -> bool:
+    if not isinstance(current, dict) or not current:
+        return True
+    if not isinstance(previous, dict):
+        return False
+    if not all(current.get(key) == previous.get(key) for key in IDENTITY_KEYS
+               if current.get(key) is not None or previous.get(key) is not None):
+        return False
+    # Missing source metadata in older Store records is not evidence of a change.
+    sources, old_sources = current.get("field_sources"), previous.get("field_sources")
+    if isinstance(sources, dict) and isinstance(old_sources, dict):
+        if any(sources[key] != old_sources[key] for key in sources.keys() & old_sources.keys()
+               if sources[key] != "unavailable" and old_sources[key] != "unavailable"):
+            return False
+    observed, old_observed = current.get("observed_settings"), previous.get("observed_settings")
+    if isinstance(observed, dict) and isinstance(old_observed, dict):
+        for key in observed.keys() & old_observed.keys():
+            new, old = observed[key], old_observed[key]
+            if isinstance(new, dict) and isinstance(old, dict):
+                for identifier in ("source_registry_id", "source"):
+                    if new.get(identifier) is not None and old.get(identifier) is not None and new[identifier] != old[identifier]:
+                        return False
+    return True
+
+
 def _same_forecast_context(current: Any, previous: Any) -> bool:
     if not isinstance(current, dict) or not current:
         return True  # Legacy history without a current fingerprint.
@@ -38,9 +66,8 @@ def _same_forecast_context(current: Any, previous: Any) -> bool:
         return False
     if not isinstance(previous, dict):
         return False
-    for key in ("model_id", "sku", "dock_variant", "firmware", "integration_id", "integration_version", "reservoir"):
-        if current.get(key) is not None and current.get(key) != previous.get(key):
-            return False
+    if not _same_identity(current, previous):
+        return False
     old_settings = previous.get("settings") if isinstance(previous.get("settings"), dict) else {}
     if any(settings.get(key) != old_settings.get(key)
            for key in settings.keys() | old_settings.keys()):
@@ -62,6 +89,17 @@ def _runs(tank_state: dict[str, Any]) -> list[dict[str, Any]]:
         water = record.get("water") if isinstance(record, dict) else None
         if isinstance(water, (int, float)) and not isinstance(water, bool) and math.isfinite(water) \
                 and water >= MIN_RUN_WATER_ML and isinstance(record.get("ts"), (int, float)):
+            actions = record.get("action_totals")
+            # Older records lack action totals. Preserve their historical interpretation,
+            # but do not treat an explicitly zero-area wash as a floor cleaning.
+            if record.get("completed") is False:
+                continue
+            if isinstance(actions, dict):
+                if not any(isinstance(actions.get(k), (int, float)) and actions[k] > 0
+                           for k in ("floor_mopping", "whole_cycle")):
+                    continue
+            elif record.get("area") == 0:
+                continue
             runs.append(record)
     return runs
 
@@ -69,21 +107,36 @@ def _runs(tank_state: dict[str, Any]) -> list[dict[str, Any]]:
 def supply_forecast(tank_state: dict[str, Any] | None, remaining_ml: Any, now_ts: int) -> dict[str, Any]:
     """Cleanings and days left at the robot's usual use; ``None`` until 3 mopping runs."""
     tank_state = tank_state if isinstance(tank_state, dict) else {}
-    all_runs = _runs(tank_state)
+    candidates = {id(run) for run in _runs(tank_state)}
     runs = []
     context_changed = False
     current_context = tank_state.get("last_consumption_context")
-    # Forecast only from the newest uninterrupted block of compatible runs.
-    # Past runs remain untouched and cannot silently describe a new setting.
-    for run in all_runs:
-        if not _same_forecast_context(current_context, run.get("context")):
+    # Modes may alternate; never cross a robot, source or reservoir identity change.
+    for run in tank_state.get("automatic_sessions") or []:
+        if not isinstance(run, dict):
+            continue
+        if not _same_identity(current_context, run.get("context")):
             context_changed = True
             break
+        if id(run) not in candidates:
+            continue
+        if not _same_forecast_context(current_context, run.get("context")):
+            context_changed = True
+            continue
         if run.get("accounting_valid") is False or run.get("exposure_complete") is False or (run.get("segments") is not None and run.get("segments") != 1):
             continue
         runs.append(run)
     result: dict[str, Any] = {"cleanings_left": None, "days_left": None, "water_per_cleaning_ml": None,
-                              "water_per_day_ml": None, "basis_runs": len(runs), "context_changed": context_changed}
+                              "water_per_day_ml": None, "basis_runs": len(runs), "context_changed": context_changed,
+                              "reason": "insufficient_comparable_runs"}
+    if "external_counter" in tank_state:
+        result.update(basis_runs=0, reason="external_counter")
+        return result
+    valid_remaining = isinstance(remaining_ml, (int, float)) and not isinstance(remaining_ml, bool) and math.isfinite(remaining_ml) and remaining_ml >= 0
+    if valid_remaining and remaining_ml == 0 and tank_state.get("water_empty_active"):
+        result.update(cleanings_left=0, reason="empty")
+    elif not valid_remaining:
+        result["reason"] = "remaining_unknown"
     if len(runs) < MIN_RUNS:
         return result
     per_run = median(float(run["water"]) for run in runs[:RUNS_WINDOW])
@@ -95,8 +148,10 @@ def supply_forecast(tank_state: dict[str, Any] | None, remaining_ml: Any, now_ts
         # Daily use needs a week of history; a first busy week would mislead.
         if span_days >= MIN_SPAN_DAYS:
             result["water_per_day_ml"] = round(sum(float(run["water"]) for run in recent) / span_days, 1)
-    if not isinstance(remaining_ml, (int, float)) or isinstance(remaining_ml, bool) or remaining_ml < 0:
+    if not valid_remaining:
+        result["reason"] = "remaining_unknown"
         return result
+    result["reason"] = "ok" if remaining_ml else "empty"
     result["cleanings_left"] = int(remaining_ml // per_run) if per_run > 0 else None
     if result["water_per_day_ml"]:
         result["days_left"] = round(remaining_ml / result["water_per_day_ml"], 1)

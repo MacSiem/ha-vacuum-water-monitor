@@ -35,6 +35,20 @@ def ids(result):
 
 
 class TankSizeOptionTests(unittest.TestCase):
+    def test_plumbed_supply_health_does_not_offer_finite_tank_calibration(self):
+        card = {"vacuum_entity": S8, "dock_variant": "plumbed", "tracked_reservoir": "dock_clean",
+                "water_total_ml": 4000}
+        result = report({"configured_devices": [card]},
+            {"initialized": True, "water_empty_active": True, "water_anchor_kind": "empty",
+             "calibration_samples": 3, "calibration_factor": 1.4}, descriptor())
+        self.assertFalse(result["can_calibrate"])
+        self.assertFalse(result["tank_empty"])
+        self.assertFalse(result["auto_refill_supported"])
+        self.assertNotIn("unknown_capacity", ids(result))
+        self.assertNotIn("no_empty_signal", ids(result))
+        self.assertIsNone(result["remaining_percent"])
+        self.assertIsNone(result["supply"]["cleanings_left"])
+
     def test_option_wins_over_card_and_model_and_drives_the_engine(self):
         card = {"vacuum_entity": S8, "water_total_ml": 4000,
                 "config_provenance": {"authored_fields": ["vacuum_entity", "water_total_ml"]}}
