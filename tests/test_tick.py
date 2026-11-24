@@ -885,6 +885,21 @@ class WaterAccountingTransitionTests(unittest.TestCase):
         self.assertEqual(result["used_ml"], 10)
         self.assertEqual(result["last_accounting_reason"], "missing_wash_rate")
 
+    def test_dock_wash_does_not_debit_another_reservoir(self):
+        for reservoir in ("robot_clean", "robot_dirty", "dock_dirty", "detergent"):
+            with self.subTest(reservoir=reservoir):
+                result = _run("docked", "washing_the_mop", {
+                    "wash_volume_ml": 150, "tracked_reservoir": reservoir,
+                }, used_ml=10)
+                self.assertEqual(result["used_ml"], 10)
+                self.assertFalse(result.get("cycle_action_totals", {}).get("mop_wash"))
+                self.assertEqual(result["last_accounting_reason"], "wash_other_reservoir")
+
+        result = _run("docked", "washing_the_mop", {
+            "wash_volume_ml": 150, "tracked_reservoir": "dock_clean",
+        }, used_ml=10)
+        self.assertEqual(result["used_ml"], 160)
+
     def test_explicit_wash_rate_is_accounted_once_and_restart_while_washing_is_deduplicated(self):
         rate = {"wash_volume_ml": 123, "accounting_evidence": "user_calibration"}
         first = _run("docked", "washing_the_mop", rate, used_ml=10)
@@ -1066,6 +1081,27 @@ class WaterAccountingTransitionTests(unittest.TestCase):
 
         self.assertEqual(result["used_ml"], 10)
         self.assertEqual(result["last_accounting_reason"], "missing_area_rate")
+
+    def test_floor_area_and_time_do_not_debit_dirty_or_detergent_reservoirs(self):
+        hass = _Hass({"vacuum.test": _State("cleaning"),
+                      "sensor.area": _State("12"),
+                      "select.mode": _State("moderate")})
+        for reservoir in ("dock_dirty", "robot_dirty", "detergent"):
+            for axis in ("area", "time"):
+                with self.subTest(reservoir=reservoir, axis=axis):
+                    device = {"vacuum_entity": "vacuum.test", "mop_mode_entity": "select.mode",
+                              "tracked_reservoir": reservoir}
+                    if axis == "area":
+                        device.update(area_sensor="sensor.area", usage_ml_per_m2={"moderate": 5})
+                    else:
+                        device["usage_ml_per_active_minute"] = {"moderate": 5}
+                    result, _ = tick.tick_device(hass, device, {
+                        "used_ml": 10, "last_area": 10, "last_status": "cleaning",
+                        "last_tick_ts": 1_000_000,
+                    }, now_ts=1_060_000)
+                    self.assertEqual(result["used_ml"], 10)
+                    self.assertFalse(result.get("cycle_action_totals", {}).get("floor_mopping"))
+                    self.assertEqual(result["last_accounting_reason"], "floor_other_reservoir")
 
     def test_area_valid_delta_uses_explicit_mode_rate(self):
         hass = _Hass(
