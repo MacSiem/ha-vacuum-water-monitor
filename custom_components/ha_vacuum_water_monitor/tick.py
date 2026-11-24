@@ -21,7 +21,7 @@ from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compat
 from . import profiles as consumption_profiles
 from . import accounting_v2
 from . import estimation
-from . import nominal_time_learning
+from . import nominal_time_learning, physical_learning
 from .const import VERSION
 
 _OBSERVED_WASH_ROLES = ("wash_mode_entity", "wash_frequency_entity", "wash_area_threshold_entity",
@@ -1047,6 +1047,10 @@ def _tick_device_pass(
     state["accounting_calibration_context"] = calibration_context
     # 5.6 state has only the legacy hash; the first 5.7 pass adopts it silently.
     if old_interval_context is not None and old_interval_context not in (context, legacy_context) and not closing_floor and not closing_whole_cycle:
+        if isinstance(state.get("physical_learning"), dict) and state["physical_learning"].get("cycle"):
+            state["physical_learning"] = {**state["physical_learning"], "cycle": None,
+                                          "blocked_session_id": state.get("session_start_ts"),
+                                          "reason": "physical_context_or_binding_changed"}
         # Rebaselining discards a setting-crossing interval. If that interval
         # could have used water, the tank is no longer a complete learning
         # sample, even though later intervals can continue to be recorded.
@@ -1263,6 +1267,13 @@ def _tick_device_pass(
     # A configured real volume sensor is authoritative only for the explicitly
     # declared reservoir. Its missing samples never silently become estimates.
     real_sensor = bool(device.get("water_volume_sensor"))
+    if not real_sensor and state.get("physical_learning"):
+        physical = state["physical_learning"]
+        if isinstance(physical, dict) and physical.get("cycle"):
+            state["physical_learning"] = {**physical, "cycle": None,
+                "blocked_session_id": state.get("session_start_ts"), "reason": "physical_binding_removed"}
+        state["physical_learning_resolution"] = {"status": "unavailable", "source": "bound_reservoir_volume_sensor",
+            "scope": "whole_session", "reason": "physical_binding_removed"}
     if real_sensor:
         volume_state = hass.states.get(device["water_volume_sensor"])
         volume = _float_or_none(volume_state.state) if volume_state else None
@@ -1303,6 +1314,31 @@ def _tick_device_pass(
             else:
                 _charge_consumption(state, previous_volume - volume, "reservoir_draw",
                                     "real_sensor", "measured_volume", now_ts)
+        area_binding = device.get("area_sensor")
+        area_sample = hass.states.get(area_binding) if area_binding else None
+        area_unit = ((getattr(area_sample, "attributes", {}) or {}).get("unit_of_measurement")
+                     if area_sample is not None else device.get("area_attribute_unit"))
+        physical_context = deepcopy(consumption_context)
+        binding = {"volume": device.get("water_volume_sensor"), "area": area_binding or device.get("area_attribute"),
+                   "area_kind": "sensor" if area_binding else "attribute"}
+        physical_reason = reason
+        if (state.get("session_start_ts") == now_ts and previous_volume is not None
+                and volume is not None and volume != previous_volume):
+            physical_reason = physical_reason or "physical_start_draw_unobserved"
+        if not area_unit:
+            physical_reason = physical_reason or "physical_area_unit_unknown"
+        learning = physical_learning.observe(state.get("physical_learning"),
+            context=physical_context, binding=binding, reservoir=device.get("tracked_reservoir"),
+            area=curr_area, volume=volume if physical_reason is None else None, now=now_ts,
+            session_id=state.get("session_start_ts"),
+            running=session_running or wash_now or curr_status not in _SESSION_END_STATES,
+            complete=bool(state.get("session_exposure_complete")),
+            valid=bool(device.get("tracked_reservoir") and state.get("session_accounting_valid")),
+            reason=physical_reason,
+            max_area_delta=_positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2)
+        state["physical_learning"] = learning
+        state["physical_learning_resolution"] = physical_learning.resolution(learning,
+            context=physical_context, binding=binding, reservoir=device.get("tracked_reservoir"))
         state["consumption_resolution"] = {"source": "real_sensor", "method": "volume", "reason": reason, "profile_id": None}
         _record_accounting(state, "real_sensor", None, "measured_volume", reason)
         state.update(last_area=curr_area, last_duration_seconds=curr_duration_seconds,
@@ -2455,6 +2491,10 @@ def _water_anchor_states(
 
 def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
+    if isinstance(state.get("physical_learning"), dict) and state["physical_learning"].get("cycle"):
+        state["physical_learning"] = {**state["physical_learning"], "cycle": None,
+                                      "blocked_session_id": state.get("session_start_ts"),
+                                      "reason": "physical_observation_gap"}
     if state.get("nominal_time_learning") or state.get("nominal_time_start_pending"):
         state["nominal_time_start_pending"] = False
         state["nominal_time_learning"] = nominal_time_learning.invalidate(

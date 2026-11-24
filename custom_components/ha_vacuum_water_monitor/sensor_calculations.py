@@ -292,6 +292,7 @@ def estimate_water_state(
         "uncertainty_kind": ("calibration_spread" if len(log_factors) >= 3 else "prior_band") if estimate_basis else None,
         "physical_accuracy_verified": False,
         "nominal_time_resolution": deepcopy(nominal),
+        "physical_learning_resolution": deepcopy(tank_state.get("physical_learning_resolution") or {}),
         "mop_system": device.get("mop_system") or profile.get("mop_system"),
         "uncertainty_percent": estimation.uncertainty_percent(
             estimate_basis,

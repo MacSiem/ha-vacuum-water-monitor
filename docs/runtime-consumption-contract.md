@@ -126,6 +126,12 @@ device identity. Both live registries remain empty. Full hashes, compatibility
 rules and remaining evidence blockers are recorded in
 `dataset-v3-integration-2026-09-05.md`.
 
+### Automatic physical observation
+
+An explicitly bound `water_volume_sensor` with matching `water_volume_reservoir` and `tracked_reservoir` can pair measured volume decrease with an explicitly unit-bearing area counter during a completely observed session starting at zero area. The bank is local, keyed by full context, reservoir and both source bindings. It fits **whole-session** reservoir draw per session area; a level difference cannot isolate a floor, transfer or wash dose. Three compatible observations qualify a median, and three compatible divergent observations are required to replace it. Refill or rising level, missing/invalid units, binding or context changes, counter reset/anomaly, an observation gap or a missing start boundary discard the open observation. Existing nominal and manually measured records remain separate.
+
+`physical_learning_resolution` exposes status, measured basis, scope, reason, sample count, pending count and coefficient. The physical level remains authoritative for the live balance, including when it is unavailable; this fit is currently diagnostic and is not substituted for a missing measurement or applied as an interval or individual-action dose. DIY external counters are projections and do not yet establish the required continuous same-reservoir observation contract. A measured source and repetition alone do not establish an independent physical error bound.
+
 ### Private nominal time learning (5.12)
 
 For a robot such as Tapo over Matter that exposes a recognized mop-cleaning mode but no usable area/duration counter or calibrated time rate, a confirmed full tank starts private observation. An exact empty indication for the tracked reservoir, or the existing Tank empty action, completes the sample. Only observed active floor-mopping minutes contribute exposure; idle, vacuum-only and dock washing do not. Dock water nevertheless belongs to total tank depletion, so the result is a whole-cycle tank-depletion estimate per active mopping minute, not a measured floor flow.
