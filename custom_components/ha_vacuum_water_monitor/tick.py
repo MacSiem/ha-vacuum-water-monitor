@@ -396,6 +396,22 @@ def _tick_device_pass(
             and state.get("last_reset_ts") and state.get("last_reset_source") in FULL_CONFIRMATION_SOURCES)
     if now_ts is None:
         now_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
+    # Removing a physical source is an explicit configuration transition. A
+    # subsequent confirmed full refill is required to establish a new balance.
+    configured_volume = device.get("water_volume_sensor")
+    last_bound = state.get("physical_sensor_last_bound")
+    if configured_volume:
+        if configured_volume != last_bound or state.get("physical_sensor_removed_ts"):
+            if last_bound or state.get("physical_sensor_removed_ts"):
+                state["last_water_volume_ml"] = None
+            state["physical_sensor_last_bound"] = configured_volume
+            state.pop("physical_sensor_removed_ts", None)
+    elif last_bound and not state.get("physical_sensor_removed_ts"):
+        state["physical_sensor_removed_ts"] = now_ts
+        state["last_water_volume_ml"] = None
+        state["physical_learning_resolution"] = {"status": "unavailable",
+            "source": "bound_reservoir_volume_sensor", "scope": "whole_session",
+            "reason": "physical_binding_removed_or_anchor_required"}
     # A refill the user reports through a bound button or tank-lid sensor is
     # independent of the robot being reachable or the dock's own signals.
     user_refill_dirty = False
@@ -780,6 +796,7 @@ def _tick_device_pass(
                 consumption_context["settings"][key] = value
                 field_sources[key] = "declared"
     whole_cycle_calibration = None
+    auto_profile = None
     closing_whole_cycle = False
     whole_cycle_fallback = False
     if isinstance(consumption_context, dict) and consumption_context:
@@ -816,7 +833,30 @@ def _tick_device_pass(
         previous_duration = _float_or_none(state.get("last_duration_seconds"))
         reservoir_matches = not device.get("tracked_reservoir") or device["tracked_reservoir"] == consumption_context.get("reservoir")
         personal = device.get("consumption_calibration")
-        records = personal if isinstance(personal, list) else [personal]
+        records = list(personal) if isinstance(personal, list) else [personal]
+        # Explicitly opting in to a named former sensor is distinct from a
+        # temporary missing sample. The next full refill supplies the anchor.
+        former_sensor = device.get("physical_learning_source_sensor")
+        removed_ts = state.get("physical_sensor_removed_ts")
+        binding = {"volume": former_sensor, "area": device.get("area_sensor") or device.get("area_attribute"),
+                   "area_kind": "sensor" if device.get("area_sensor") else "attribute"}
+        auto_profile = None
+        if (not device.get("water_volume_sensor") and isinstance(former_sensor, str)
+                and former_sensor == state.get("physical_sensor_last_bound")
+                and _positive_number(removed_ts) and state.get("cycle_full_confirmed") is True
+                and _number(state.get("last_reset_ts"), 0) > removed_ts
+                and reservoir_matches):
+            auto_profile = physical_learning.profile(state.get("physical_learning") or {},
+                context=consumption_context, binding=binding, reservoir=device.get("tracked_reservoir"))
+        # Existing personal records and approved public profiles take priority.
+        verified = consumption_profiles.CONSUMPTION_SNAPSHOT.get("profiles") or []
+        has_verified = any(consumption_profiles._valid_consumption_record(r)
+            and _compatible_context(consumption_context, r["context"]) for r in verified)
+        has_personal = any(_valid_consumption_record(r, personal=True)
+            and r.get("device_id") == consumption_context["device_id"]
+            and _compatible_context(consumption_context, r["context"]) for r in records)
+        if auto_profile and not has_personal and not has_verified:
+            records.append(auto_profile)
         matches = []
         for record in records:
             if (not _valid_consumption_record(record, personal=True)
@@ -860,7 +900,7 @@ def _tick_device_pass(
             {"area_m2": curr_area - previous_area if curr_area is not None and previous_area is not None else None,
              "time_minutes": (curr_duration_seconds - previous_duration) / 60
                  if curr_duration_seconds is not None and previous_duration is not None else None},
-            device.get("consumption_calibration"),
+            records,
         )
         if not reservoir_matches:
             resolution = {**resolution, "source": "unknown", "method": None, "coefficient": None,
@@ -1159,6 +1199,15 @@ def _tick_device_pass(
         elif not wash_now and settled_change.get("washing"):
             # The wash in progress at the change has ended; a later one is new.
             state["session_settled_context_change"] = {**settled_change, "washing": False}
+    if auto_profile is not None and whole_cycle_calibration is auto_profile:
+        area_entity = device.get("area_sensor")
+        area_sample = hass.states.get(area_entity) if area_entity else None
+        observed_unit = ((getattr(area_sample, "attributes", {}) or {}).get("unit_of_measurement")
+                         if area_entity else device.get("area_attribute_unit"))
+        if not observed_unit or curr_area is None:
+            state.update(session_accounting_valid=False, session_exposure_complete=False,
+                         session_water_broken=True, accounting_incomplete=True)
+            _record_accounting(state, "unknown", None, None, "physical_area_unit_or_exposure_unavailable")
     if (consumption_context and whole_cycle_calibration is None and wash_volume is None
             and not device.get("water_volume_sensor")
             and (not device.get("tracked_reservoir") or device["tracked_reservoir"] == consumption_context.get("reservoir"))):
@@ -1272,8 +1321,9 @@ def _tick_device_pass(
         if isinstance(physical, dict) and physical.get("cycle"):
             state["physical_learning"] = {**physical, "cycle": None,
                 "blocked_session_id": state.get("session_start_ts"), "reason": "physical_binding_removed"}
-        state["physical_learning_resolution"] = {"status": "unavailable", "source": "bound_reservoir_volume_sensor",
-            "scope": "whole_session", "reason": "physical_binding_removed"}
+        state["physical_learning_resolution"] = {"status": "active" if auto_profile and whole_cycle_calibration is auto_profile else "unavailable",
+            "source": "bound_reservoir_volume_sensor", "scope": "whole_session",
+            "reason": "physical_model_selected" if auto_profile and whole_cycle_calibration is auto_profile else "physical_binding_removed_or_anchor_required"}
     if real_sensor:
         volume_state = hass.states.get(device["water_volume_sensor"])
         volume = _float_or_none(volume_state.state) if volume_state else None
@@ -1888,6 +1938,12 @@ def _tick_device_pass(
                     _replace_session_consumption(state, exposure * resolution["coefficient"], now_ts, exposure)
                 state["session_resolution"] = deepcopy(resolution)
                 _record_accounting(state, "whole_cycle", resolution["coefficient"], "device_calibration", None)
+            elif auto_profile is not None and whole_cycle_calibration is auto_profile and (
+                    not state.get("session_exposure_complete") or not state.get("session_accounting_valid")):
+                state.update(session_accounting_valid=False, session_water_broken=True, accounting_incomplete=True)
+                state["consumption_resolution"] = {**resolution, "source": "unknown", "profile_id": None,
+                                                   "coefficient": None, "reason": "physical_exposure_incomplete"}
+                _record_accounting(state, "unknown", None, None, "physical_exposure_incomplete")
             elif whole_cycle_fallback:
                 # A predictor's domain failure is not missing physical exposure.
                 # Keep the recorded automatic estimate and allow new measurements

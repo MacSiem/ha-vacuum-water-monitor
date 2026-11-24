@@ -1136,6 +1136,7 @@ except ImportError:
     pass
 _BEHAVIOR_BINDING_FIELDS = _DIRECT_SIGNAL_FIELDS | {
     "water_total_ml",
+    "physical_learning_source_sensor",
     "tracked_capacity_ml",
     "tank_ml",
     "tracked_reservoir",
