@@ -492,12 +492,12 @@ def _tick_device_pass(
                 "remote_control": "mapping", "returning": "returning", "charging": "docked",
                 "charged": "docked", "paused": "paused", "sleeping": "idle", "emptying_dust": "docked",
                 "mapping_paused": "paused", "going_to_point": "mapping", "going_to_point_paused": "paused",
-                "exploring": "mapping", "exploring_paused": "paused", "washing_mop": "docked",
+                "exploring": "mapping", "exploring_paused": "paused", "washing_mop": "washing_mop",
                 "drying_mop": "docked", "attaching_mop": "docked", "removing_mop": "docked",
                 "cutting_hair": "docked"}.get(label)
         else:
             curr_status_raw = ({0: "idle", 1: "cleaning", 2: "mapping", 4: "returning",
-                                5: "docked", 6: "docked", 7: "paused", 8: "idle", 100: "error"}
+                                5: "docked", 6: "docked", 7: "paused", 8: "idle", 15: "washing_mop", 100: "error"}
                                .get(raw_code) if type(raw_code) is int else None)
     curr_status = _normalized_signal(curr_status_raw)
 

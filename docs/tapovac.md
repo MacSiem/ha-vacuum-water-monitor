@@ -23,7 +23,7 @@ To return to stable, use HACS Redownload, explicitly select **v5.12.0**, restart
 | `clean_time_min` | Observed session minutes, converted to seconds internally |
 | `water_level` | Setting off/low/medium/high; off vetoes dosing; does not show remaining water |
 | `mop_attached` | False vetoes mopping; true alone never proves active mopping |
-| `status_code` | 1 permits cleaning; 2 means mapping and cannot consume water; missing/unknown raw codes open a telemetry gap |
+| `status_code` / Status sensor | 1 permits cleaning; 2 means mapping; 15 or `Washing Mop` identifies a dock wash attempt; missing/unknown states open a telemetry gap |
 
 Area and time counters are used as alternatives, never added together for one floor interval. No inferred ft² conversion is enabled: upstream's imperial mapping has not been independently verified, and its area sensor always labels values m². With missing or imperial area units, area accounting is disabled. The observed `clean_time_min` counter and an explicitly confirmed current mop mode can still support automatic nominal learning after three compatible full tanks, without a manually entered rate. An independently established time calibration remains an optional alternative. Missing counters do not authorize a wall-clock guess.
 
@@ -61,7 +61,7 @@ RV50 observations show mop removal/attachment during sequential tasks, but [the 
 
 No confirmed consumed-water volume, tank-volume reading or completed-wash counter was found in the inspected API. `getVolume` controls speaker volume. Dock probes such as `getBackWashMode` and `getDryMopMode` confirm features/settings, not actual washes or their water use. Other getters in [cavefire/tapo-vacuum-ha](https://github.com/cavefire/tapo-vacuum-ha) expose additional settings, without a verified water dose.
 
-Use floor-only rates only with measurements that exclude station washes. A whole-dock-tank calibration includes station consumption and must not be labelled as physical floor flow. Do not add a guessed wash dose or count a wash because a dock control exists. Automatic separate station accounting remains unavailable until a real event/measurement contract is verified.
+Use floor-only rates only with measurements that exclude station washes. A whole-dock-tank calibration includes station consumption and must not be labelled as physical floor flow. Do not add a guessed wash dose or count a wash because a dock control exists. A detected actual wash attempt can use a separately configured, independently established wash dose for the dock clean reservoir. Repeated observations count once; a whole-cycle rate already includes washes. Without a known dose VWM does not invent one. A wash status alone does not prove completion or measured volume.
 
 ## Hardware test checklist for issue #10
 
@@ -73,3 +73,9 @@ Use floor-only rates only with measurements that exclude station washes. A whole
 6. With Matter and TapoVac enabled, confirm the duplicate link and one accounting owner. Check that history/settings survive restart and that no second tank is accumulating usage.
 
 Source inspection pinned on 19 October 2026: opentapovac `b53d2cc3d73d57164e54bfee2ae16c23e74108da`, TapoVac-ADV `887050da97aa63db1ca0fd39b7d61aa97a9bf796`, cavefire `265a24f9f17536a646d18efaa57bdcbd428d9009`. Latest stable HA was 2026.10.2; the latest published beta 2026.10.0b7 predates it. Source/CI inspection is not a robot test or proof that TapoVac works on every HA beta.
+
+## Tagged upstream station signals
+
+[TP-Link specifications](https://www.tapo.com/en/product/tapo-rv50-pro-omni-robot-vacuum/specs/) list 95 ml in the robot, 5 L clean and 4 L dirty in the dock; these capacities are not consumption rates.
+
+[TapoVac-ADV v7.11.1](https://github.com/jan-tdy/TapoVac-ADV/tree/fc7c6e82e3d8b3b5185d07188fa68481fe6cbc65) maps status 15 to `Washing Mop` and reports the label through a same-entry Status sensor; its vacuum attributes no longer include the raw status code. The Error sensor labels code 26 `Clean Water Tank Empty Or Missing` and code 27 `Dirty Water Tank Full Or Missing`, reporting only the first error. VWM does not bind these error labels as water anchors: empty versus missing and full versus missing are unresolved, and dirty water is not clean-water evidence. A separately scoped alarm/quality integration would require explicit device binding, ambiguity and transition handling; these labels do not establish volume or a refill. Hardware behavior remains unverified.
