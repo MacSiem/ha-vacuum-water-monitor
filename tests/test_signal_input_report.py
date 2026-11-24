@@ -23,9 +23,10 @@ def test_every_live_adapter_and_binding_is_in_report():
 
 def test_catalog_and_inventory_are_distinct_and_fail_closed():
     data = mod.report()
-    assert data['gaps']['model_topic_unknown'] == len(data['models']) * len(mod.TOPICS)
+    assert data['gaps']['model_topic_unknown'] == sum(v['classification'] == 'unknown' for m in data['models'] for v in m['topics'].values())
     assert all(set(m['topics']) == set(mod.TOPICS) for m in data['models'])
-    assert all(v['classification'] == 'unknown' and v['reason'] for m in data['models'] for v in m['topics'].values())
+    assert all(v['reason'] for m in data['models'] for v in m['topics'].values())
+    assert len({v['reason'] for v in data['models'][0]['topics'].values()}) == len(mod.TOPICS)
     assert all(m['firmware'].startswith('unknown') and m['dock_variant'].startswith('unknown') for m in data['models'])
     audit = data['miot_inventory_audit']
     assert audit['model_count'] == len(audit['entries'])
@@ -43,3 +44,25 @@ def test_distinct_contracts_do_not_confuse_reservoirs_or_dose():
     assert next(r for r in c['dreame_vacuum']['bindings'] if r['role'] == 'wash_temperature_entity')['topic'] == 'wash_temperature'
     assert next(r for r in c['tapo_rv30']['bindings'] if r['role'] == 'area_attribute')['unit'] == 'm²'
     assert next(r for r in c['roomba']['bindings'] if r['role'] == 'area_attribute')['unit'] == 'ha_unit_system'
+
+
+def test_specific_evidence_does_not_become_a_live_measurement():
+    data = mod.report()
+    models = {m['id']: m for m in data['models']}
+    s8 = models['roborock_s8_maxv_ultra']
+    spec = s8['documented_specifications'][0]
+    assert spec['values_ml']['dock_clean'] == 4000
+    assert spec['values_ml']['robot_clean'] == 100
+    assert spec['source'][0]['url'] and spec['source'][0]['last_verified']
+    assert s8['topics']['level_volume_counter']['classification'] == 'unknown'
+    assert s8['topics']['mop_system']['classification'] == 'capability'
+    assert s8['topics']['wash_start_end']['classification'] == 'context'
+    assert s8['topics']['wash_start_end']['evidence'][0]['source'].endswith('.py')
+    assert s8['topics']['empty_threshold']['classification'] == 'unknown'
+    xiaomi = models['xiaomi_h50_pro']
+    assert xiaomi['observed_ha_identifiers'][0]['source']
+    action = xiaomi['topics']['wash_start_end']['evidence']
+    assert {e['quantity']['value'] for e in action} >= {120, 180}
+    assert xiaomi['topics']['wash_start_end']['classification'] == 'unknown'
+    assert {'wet_distance', 'level_volume_counter', 'plumbed'} <= set(data['manual_configuration_paths'])
+    assert 'not an automatic' in data['manual_configuration_paths']['wet_distance']['runtime']
