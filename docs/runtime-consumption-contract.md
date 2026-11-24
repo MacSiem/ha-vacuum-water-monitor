@@ -151,3 +151,12 @@ this discrepancy to scheduling alone would be speculation. Reproduction requires
 the ordered HA callback/state snapshots around the start and gaps of that session,
 or an equivalent HA event-loop replay with those snapshots. The historical Core
 log is not available, so the existing replay is not proof of exposure parity.
+
+Forecast completion follows the explicit statuses available in the runtime: a
+recorded error, stop or cancellation during a session excludes it even if the
+robot subsequently docks; an idle timeout and an active empty alarm also exclude
+it. `completed` is affirmative when reported. A plain dock/charging state does
+not distinguish a completed task from a cancelled return on every integration;
+when no explicit interruption was observed the current compatibility behavior
+accepts it, so that case is not proof of full completion. Historical entries
+without a completion flag retain their legacy interpretation.

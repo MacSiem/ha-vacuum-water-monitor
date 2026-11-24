@@ -36,8 +36,24 @@ def _same_identity(current: Any, previous: Any) -> bool:
         return True
     if not isinstance(previous, dict):
         return False
-    return all(current.get(key) == previous.get(key) for key in IDENTITY_KEYS
-               if current.get(key) is not None or previous.get(key) is not None)
+    if not all(current.get(key) == previous.get(key) for key in IDENTITY_KEYS
+               if current.get(key) is not None or previous.get(key) is not None):
+        return False
+    # Missing source metadata in older Store records is not evidence of a change.
+    sources, old_sources = current.get("field_sources"), previous.get("field_sources")
+    if isinstance(sources, dict) and isinstance(old_sources, dict):
+        if any(sources[key] != old_sources[key] for key in sources.keys() & old_sources.keys()
+               if sources[key] != "unavailable" and old_sources[key] != "unavailable"):
+            return False
+    observed, old_observed = current.get("observed_settings"), previous.get("observed_settings")
+    if isinstance(observed, dict) and isinstance(old_observed, dict):
+        for key in observed.keys() & old_observed.keys():
+            new, old = observed[key], old_observed[key]
+            if isinstance(new, dict) and isinstance(old, dict):
+                for identifier in ("source_registry_id", "source"):
+                    if new.get(identifier) is not None and old.get(identifier) is not None and new[identifier] != old[identifier]:
+                        return False
+    return True
 
 
 def _same_forecast_context(current: Any, previous: Any) -> bool:
@@ -76,12 +92,14 @@ def _runs(tank_state: dict[str, Any]) -> list[dict[str, Any]]:
             actions = record.get("action_totals")
             # Older records lack action totals. Preserve their historical interpretation,
             # but do not treat an explicitly zero-area wash as a floor cleaning.
-            if record.get("completed") is False or record.get("area") == 0:
+            if record.get("completed") is False:
                 continue
             if isinstance(actions, dict):
                 if not any(isinstance(actions.get(k), (int, float)) and actions[k] > 0
                            for k in ("floor_mopping", "whole_cycle")):
                     continue
+            elif record.get("area") == 0:
+                continue
             runs.append(record)
     return runs
 
