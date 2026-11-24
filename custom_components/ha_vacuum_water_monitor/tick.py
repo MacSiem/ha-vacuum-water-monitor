@@ -1768,10 +1768,11 @@ def _tick_device_pass(
         cleared = False
         if previous_anchor_source in water_anchor_states:
             cleared = water_anchor_states[previous_anchor_source][0] is False
-        elif len(water_anchor_states) == 1:
-            # Additive migration for v5.2 records written before anchor source
-            # was persisted.  Unknown/unavailable never counts as a refill.
-            cleared = next(iter(water_anchor_states.values()))[0] is False
+        elif previous_anchor_source is None and len(water_anchor_states) == 1:
+            # Older records lack a source. The sole observed source supplies
+            # both the clear signal and the reservoir scope for migration.
+            previous_anchor_source, (is_empty, _) = next(iter(water_anchor_states.items()))
+            cleared = is_empty is False
         if cleared and anchor_scope_matches(device, previous_anchor_source):
             do_reset = True
             exact_empty_reset = exact_empty_reset or state.get("water_anchor_kind") == "empty"
