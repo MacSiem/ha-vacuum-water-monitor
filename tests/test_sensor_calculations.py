@@ -30,6 +30,31 @@ vacuum_slug = sensor_calculations.vacuum_slug
 class VacuumSensorCalculationTests(unittest.TestCase):
     """Verify Store-derived sensor helper behavior."""
 
+    def test_configured_distance_binding_survives_device_resolution(self):
+        device = {"vacuum_entity": "vacuum.test", "mopped_distance_sensor": "sensor.wet",
+                  "usage_ml_per_m": 2, "dock_variant": "plumbed"}
+        resolved = build_vacuum_devices({"configured_devices": [device]}, {}, [])[0]
+        effective = apply_custom_calibration(resolved, {})
+        for key in ("mopped_distance_sensor", "usage_ml_per_m", "dock_variant"):
+            self.assertEqual(effective[key], device[key])
+
+    def test_plumbed_supply_never_invents_a_finite_level(self):
+        device = {"vacuum_entity": "vacuum.test", "dock_variant": "plumbed",
+                  "tracked_reservoir": "dock_clean", "water_total_ml": 4000}
+        for state in ({"initialized": True, "used_ml": 120, "water_empty_active": True,
+                       "water_anchor_kind": "empty", "accounting_incomplete": True},
+                      {"external_counter": {"used_ml": 123, "remaining_ml": 2000,
+                                            "remaining_sensor": "sensor.remaining"}}):
+            with self.subTest(state=state):
+                result = estimate_water_state(device, state)
+                self.assertIsNone(result["total_ml"])
+                self.assertIsNone(result["remaining_ml"])
+                self.assertIsNone(result["remaining_percent"])
+        self.assertEqual(result["used_ml"], 123)
+        robot = estimate_water_state({**device, "tracked_reservoir": "robot_clean"},
+                                     {"initialized": True, "used_ml": 100})
+        self.assertEqual(robot["remaining_percent"], 97.5)
+
     def test_nonfinite_calibration_does_not_supply_rates(self):
         for value in (float("inf"), float("nan"), True):
             with self.subTest(value=value):

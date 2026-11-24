@@ -436,7 +436,7 @@ def _tick_device_pass(
         _open_observation_gap(state, int(_positive_number(state.get("last_tick_ts")) or now_ts))
         # The last area is kept so that a change observed after the gap proves
         # unobserved exposure (or bridges it) instead of silently starting a new baseline.
-        state.update(last_duration_seconds=None, last_tick_ts=0,
+        state.update(last_duration_seconds=None, last_mopped_distance_m=None, last_distance_wet=False, last_tick_ts=0,
                      area_gap=True, duration_gap=True, last_water_volume_ml=None, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
         state["reservoir_levels"] = {key: {"volume_ml": None, "source": "unknown", "reason": "vacuum_unavailable"}
@@ -478,7 +478,7 @@ def _tick_device_pass(
 
     if (status_sensor or tapovac) and _is_transient_status(curr_status):
         _open_observation_gap(state, int(_positive_number(state.get("last_tick_ts")) or now_ts))
-        state.update(last_duration_seconds=None, area_gap=True,
+        state.update(last_duration_seconds=None, last_mopped_distance_m=None, last_distance_wet=False, area_gap=True,
                      duration_gap=True, last_tick_ts=0, last_water_volume_ml=None, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
         if tapovac:
@@ -564,6 +564,10 @@ def _tick_device_pass(
     if tapovac and curr_status != "cleaning":
         # A retained mode/counter cannot turn mapping or docking into mopping.
         mop_active = False
+    observed_distance_wet = bool(_is_cleaning(None, curr_status, None)
+        and _is_mop_active(cleaning_mode, mop_mode, None, None, mop_intensity=mop_intensity,
+            intensity_is_evidence=bool(device.get("mop_intensity_is_evidence")),
+            require_evidence=True, attachment_is_evidence=False) and mop_active)
     cleaning_active = _binary_active(
         _state_value(hass, device.get("cleaning_active_sensor"))
     )
@@ -575,6 +579,15 @@ def _tick_device_pass(
             vac.attributes.get(device["duration_attribute"]),
             device.get("duration_attribute_unit"),
         )
+    distance_sensor = device.get("mopped_distance_sensor")
+    distance_state = hass.states.get(distance_sensor) if distance_sensor else None
+    distance_unit = (getattr(distance_state, "attributes", {}) or {}).get("unit_of_measurement") if distance_state else None
+    distance_raw = _float_or_none(distance_state.state) if distance_state else None
+    distance_factor = {"m": 1, "km": 1000, "ft": 0.3048, "mi": 1609.344}.get(distance_unit)
+    curr_distance_m = (distance_raw * distance_factor if distance_raw is not None
+                       and distance_raw >= 0 and distance_factor is not None else None)
+    distance_rate = (_positive_number(device.get("usage_ml_per_m"))
+                     if not isinstance(device.get("usage_ml_per_m"), bool) else None)
     rate_signal = str(device.get("rate_signal") or "mop_mode")
     rate_key = mop_intensity if rate_signal == "mop_intensity" else mop_mode
     if rate_signal == "mop_intensity":
@@ -657,7 +670,7 @@ def _tick_device_pass(
     last_tick = _positive_number(state.get("last_tick_ts"))
     if last_tick is not None and (now_ts < last_tick or now_ts - last_tick > MAX_ACTIVE_INTERVAL_SECONDS * 1000):
         _open_observation_gap(state, min(last_tick, now_ts))
-        state.update(last_duration_seconds=None, area_gap=True,
+        state.update(last_duration_seconds=None, last_mopped_distance_m=None, last_distance_wet=False, area_gap=True,
                      duration_gap=True, last_water_volume_ml=None, session_exposure_complete=False,
                      verified_wash_active=False, last_completed_wash_count=None)
     if curr_area is None and (device.get("area_sensor") or device.get("area_attribute")):
@@ -893,7 +906,8 @@ def _tick_device_pass(
         consumption_context and nominal_capacity
         and (device.get("cleaning_mode_entity") or (tapovac and device.get("mop_mode_entity")))
         and not device.get("water_volume_sensor")
-        and (tapovac or not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute")))
+        and (tapovac or not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute", "mopped_distance_sensor")))
+        and not (distance_sensor and distance_rate is not None)
         and (not tapovac or usage_per_m2 is None)
         and usage_per_minute is None and whole_cycle_calibration is None)
     if nominal_eligible:
@@ -967,7 +981,7 @@ def _tick_device_pass(
     context_values = {key: device.get(key) for key in (
         "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",
         "firmware", "sw_version", "sku", "dock_variant", "integration_version",
-        "area_sensor", "duration_sensor", "water_volume_sensor", "rate_signal",
+        "area_sensor", "duration_sensor", "mopped_distance_sensor", "usage_ml_per_m", "water_volume_sensor", "rate_signal",
         "usage_ml_per_m2", "usage_ml_per_active_minute", "wash_volume_ml", "calibration_scope", "water_volume_reservoir"
     )}
     context_values["live_settings"] = live_settings
@@ -1073,6 +1087,7 @@ def _tick_device_pass(
             state.update(accounting_incomplete=True, session_water_broken=True)
         updates: dict[str, Any] = dict(
             last_area=curr_area, last_duration_seconds=curr_duration_seconds,
+            last_mopped_distance_m=curr_distance_m, last_distance_wet=observed_distance_wet,
             last_tick_ts=now_ts, last_water_volume_ml=None,
             verified_wash_active=False, last_completed_wash_count=None)
         if lost_exposure:
@@ -1452,12 +1467,43 @@ def _tick_device_pass(
                 state, "area", effective_area_rate, evidence, None
             )
 
+    # A manually bound counter must measure wet floor travel, not total travel.
+    # Require observed wet activity at both ends and never bridge a gap/reset.
+    distance_counted = False
+    distance_wet = observed_distance_wet and not wash_now
+    previous_distance = _float_or_none(state.get("last_mopped_distance_m"))
+    distance_interval = (now_ts - last_tick) / 1000 if last_tick is not None else None
+    use_distance = (distance_sensor and distance_rate is not None and whole_cycle_calibration is None
+                    and not nominal_time_applied and not floor_other_reservoir
+                    and (curr_area is None or usage_per_m2 is None)
+                    and not (curr_area is None and usage_per_m2 is not None
+                             and state.get("gap_started_ts") is not None
+                             and now_ts - state["gap_started_ts"] <= BRIDGE_GAP_MAX_SECONDS * 1000))
+    if use_distance and curr_distance_m is not None and previous_distance is not None and distance_wet and state.get("last_distance_wet"):
+        delta_m = curr_distance_m - previous_distance
+        if distance_interval is not None and 0 < distance_interval <= MAX_ACTIVE_INTERVAL_SECONDS and 0 <= delta_m <= 3 * distance_interval:
+            amount = delta_m * distance_rate
+            _charge_consumption(state, amount, "floor_mopping", "mopped_distance", "explicit_user_configuration", now_ts, {"mopped_distance_m": delta_m})
+            _record_accounting(state, "mopped_distance", distance_rate, "explicit_user_configuration", None)
+            state["consumption_resolution"] = {"source": "explicit_user_configuration", "method": "distance",
+                                               "coefficient": distance_rate, "unit": "ml/m",
+                                               "scope": "floor_only", "reason": None, "profile_id": None}
+            distance_counted = True
+            dirty = True
+        else:
+            _record_accounting(state, "mopped_distance", None, "explicit_user_configuration", "distance_reset_or_anomaly")
+            state.update(accounting_incomplete=True, session_exposure_complete=False)
+    elif use_distance and curr_distance_m is None:
+        _record_accounting(state, "mopped_distance", None, "explicit_user_configuration", "distance_unavailable_or_unit_unknown")
+    state["last_mopped_distance_m"] = curr_distance_m
+    state["last_distance_wet"] = distance_wet
+
     # Matter and some vendor integrations expose only operational state and
     # cleaning mode.  When no trustworthy area sample is available, estimate
     # consumption from bounded active time instead of leaving the counter stuck.
     previous_tick_ts = _positive_number(state.get("last_tick_ts"))
     last_duration_seconds = _float_or_none(state.get("last_duration_seconds"))
-    should_use_time = (curr_area is None or state.get("area_time_fallback")
+    should_use_time = not distance_counted and (curr_area is None or state.get("area_time_fallback")
                        or (usage_per_m2 is None and usage_per_minute is not None)) and not wash_now
     # Nominal observation measures the preceding interval. Entering a wash
     # closes the last floor interval; it does not make that interval a wash.
@@ -1532,7 +1578,7 @@ def _tick_device_pass(
                 state, "active_time", effective_minute_rate, time_evidence, None
             )
 
-    if time_interval_counted and curr_area is None and (device.get("area_sensor") or device.get("area_attribute")):
+    if (time_interval_counted or distance_counted) and curr_area is None and (device.get("area_sensor") or device.get("area_attribute")):
         # This interval was already charged by time. Drop the stale area
         # baseline so a recovered cumulative counter cannot charge it again.
         # Use time once more when area returns, then adopt that area baseline.
@@ -1883,7 +1929,7 @@ def _tick_device_pass(
     pass_reasons = set(state.get(_PASS_REASONS_KEY) or ())
     # A valid time rate covered this interval; lack of an area coefficient
     # did not lose water exposure. Other gaps and missing rates still apply.
-    if time_interval_counted:
+    if time_interval_counted or distance_counted:
         pass_reasons.discard("missing_area_rate")
     exposure_possible = bool(session_running or wash_now or state.get("session_start_ts")
                              or state.get("verified_wash_active"))

@@ -452,6 +452,7 @@ These optional keys let you wire additional entities into the water accounting
 | `status_sensor` | `sensor.roborock_..._status` | Dedicated status entity used instead of the vacuum's `status` attribute (or its state). Drives mop-wash detection only when the resolved model or user calibration provides a wash volume, and the "cleaning" check for area-based dosing. |
 | `cleaning_active_sensor` | `binary_sensor.robot_..._in_cleaning` | Canonical activity flag used when the vacuum state lags. |
 | `area_sensor` | `sensor.robot_..._cleaning_area` | Cumulative current-session area. Resets and implausible jumps are rejected. |
+| `mopped_distance_sensor` + `usage_ml_per_m` | `sensor.robot_wet_distance` + `0.5` | Manually bind a cumulative counter that measures **only active wet floor travel**, with a positive user-supplied floor rate in mL/m. The sensor must report `m`, `km`, `ft` or `mi`; ordinary total travel is not suitable. Area with a valid rate takes precedence, then wet distance, then active time. The integration does not infer this binding from a manufacturer. |
 | `duration_sensor` | `sensor.robot_..._cleaning_time` | Cumulative session duration used only when area is unavailable. Units from Home Assistant are normalized. |
 | `mop_mode_entity` | `select.roborock_..._mop_mode` | Current mop mode (`fast` / `standard` / `deep`). Selects a resolved per-m² model/user calibration rate. Mode `off` disables area-based dosing entirely; an unavailable mode cannot manufacture a rate. |
 | `mop_intensity_entity` | `select.roborock_..._mop_intensity` | Current mop intensity / water level. Documented three- and five-level option tokens are mapped to/interpolated between the profile's low/medium/high bands. Ranged number entities use their own HA min/max, so model-specific scales are not guessed. Unknown options use only an explicit profile default. |
@@ -462,6 +463,11 @@ These optional keys let you wire additional entities into the water accounting
 | `dock_status_sensor` | `sensor.robot_..._station_state` | Detects one dock mop-wash cycle without confusing robot cleaning with dock cleaning. |
 | `water_error_sensor` | `sensor.robot_..._operational_error` | Accepts only exact machine-readable clean-water-empty states. |
 | `reset_door_sensor` | `binary_sensor.roborock_..._water_tank` | Tank-lid / door binary sensor. Closing it counts as a full refill (the same choice as the card's lid option). |
+
+Set `dock_variant: plumbed` when the tracked clean dock supply is connected to
+the mains. Its finite capacity and percentage are then unknown. An explicitly
+bound `water_used_sensor` can still show measured supply consumption. This does
+not change a separately tracked finite `robot_clean` tank.
 
 ### Advanced — bring your own counter
 
