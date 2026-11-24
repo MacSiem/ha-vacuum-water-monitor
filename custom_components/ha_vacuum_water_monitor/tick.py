@@ -1772,7 +1772,7 @@ def _tick_device_pass(
             # Additive migration for v5.2 records written before anchor source
             # was persisted.  Unknown/unavailable never counts as a refill.
             cleared = next(iter(water_anchor_states.values()))[0] is False
-        if cleared:
+        if cleared and anchor_scope_matches(device, previous_anchor_source):
             do_reset = True
             exact_empty_reset = exact_empty_reset or state.get("water_anchor_kind") == "empty"
 
@@ -2510,8 +2510,15 @@ def _observe_user_refill_signals(
     if now_ts is None:
         now_ts = int(datetime.now(timezone.utc).timestamp() * 1000)
     evidence: frozenset[str] = frozenset()
-    boxes = _observe_dock_tank_boxes(hass, device, state, now_ts)
-    lid = device.get("reset_door_sensor")
+    # Dock box signals and the associated dock lid describe the dock reservoir,
+    # even when this device is configured to track the onboard robot tank.
+    dock_boxes_bound = bool(device.get("dock_clean_water_sensor") or device.get("dock_dirty_water_sensor"))
+    dock_scope = device.get("tracked_reservoir") == "dock_clean"
+    boxes = _observe_dock_tank_boxes(hass, device, state, now_ts) if dock_scope else {}
+    lid = device.get("reset_door_sensor") if dock_scope or not dock_boxes_bound else None
+    if not dock_scope:
+        state.pop("pending_lid_close_ts", None)
+        state.pop("pending_lid_open_ts", None)
     lid_closed = False
     if isinstance(lid, str) and lid:
         current = _normalized_signal(_state_value(hass, lid))
@@ -2540,7 +2547,8 @@ def _observe_user_refill_signals(
         # or came back (an empty alarm clearing) around it.
         clean_seen = ((_positive_number(state.get("clean_box_on_ts")) or 0) >= window_start
                       or (_positive_number(state.get("clean_box_off_ts")) or 0) >= window_start)
-        dirty_seen = (_positive_number(state.get("dirty_box_on_ts")) or 0) >= window_start
+        dirty_seen = ((_positive_number(state.get("dirty_box_on_ts")) or 0) >= window_start
+                      or (_positive_number(state.get("dirty_box_off_ts")) or 0) >= window_start)
         clean_now = boxes.get("clean")
         waited = now_ts - pending_close
         decided = False
@@ -2629,9 +2637,19 @@ def _observe_dock_tank_boxes(
         if current is None:
             continue
         result[key] = current
-        previous = state.get(f"last_{key}_box")
+        entity_key = f"last_{key}_box_entity"
+        changed_binding = state.get(entity_key) not in (None, entity)
+        state[entity_key] = entity
+        if changed_binding:
+            for suffix in ("on_ts", "off_ts", "cycled_ts"):
+                state.pop(f"{key}_box_{suffix}", None)
+            state.pop("pending_lid_close_ts", None)
+            state.pop("pending_lid_open_ts", None)
+        previous = current if changed_binding else state.get(f"last_{key}_box")
         if current and previous is not True:
             state[f"{key}_box_on_ts"] = now_ts
+        if key == "dirty" and previous is True and current is False:
+            state["dirty_box_off_ts"] = now_ts
         if key == "clean" and previous is True and current is False:
             state["clean_box_off_ts"] = now_ts
             on_since = _positive_number(state.get("clean_box_on_ts")) or now_ts
