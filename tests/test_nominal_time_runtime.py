@@ -120,9 +120,10 @@ class NominalTimeRuntimeTests(unittest.TestCase):
         tick._open_observation_gap(state, 1000000)
         self.assertFalse(state.get('nominal_time_start_pending'))
 
-    def test_unrated_area_full_tanks_do_not_automatically_learn(self):
+    def test_unrated_area_full_tanks_learn_and_apply_nominal_time(self):
         dev = device()
         dev['area_sensor'] = 'sensor.area'
+        dev['usage_ml_per_m2'] = {}
         refill = __import__(tick.__package__ + '.refill', fromlist=['apply_refill']).apply_refill
         state = {}
         for cycle in range(3):
@@ -134,12 +135,49 @@ class NominalTimeRuntimeTests(unittest.TestCase):
             state = observe(dev, state, now + 660_000, False, area=10)
             state['user_empty_active'] = True
             state = observe(dev, state, now + 720_000, False, area=10)
-        self.assertFalse((state.get('nominal_time_learning') or {}).get('contexts'))
-        self.assertFalse((state.get('physical_learning') or {}).get('contexts'))
-        self.assertNotEqual((state.get('nominal_time_resolution') or {}).get('status'), 'active')
+        self.assertEqual(state['nominal_time_resolution']['status'], 'active')
+        self.assertEqual(state['nominal_time_resolution']['sample_count'], 3)
+        now += 2_000_000
+        refill(state, now, 'service', rebaseline=True)
+        state = observe(dev, state, now, False, area=0)
+        state = observe(dev, state, now + 60_000, True, area=0)
+        state = observe(dev, state, now + 120_000, True, area=1)
+        self.assertAlmostEqual(state['used_ml'], dev['tracked_capacity_ml'] * .95 / 10, places=2)
+        self.assertEqual(state['last_accounting_evidence'], 'nominal_full_to_empty_time')
+        self.assertEqual(state['consumption_events'][0]['action'], 'whole_cycle')
+        self.assertFalse(state.get('accounting_incomplete'))
+        # The rated area source replaces the learned whole-cycle time rate.
+        dev['usage_ml_per_m2'] = {'default': 5}
+        state = observe(dev, state, now + 180_000, True, area=2)
+        self.assertEqual(state['nominal_time_resolution']['reason'], 'time_method_replaced')
+        state = observe(dev, state, now + 240_000, True, area=3)
+        self.assertAlmostEqual(state['used_ml'], dev['tracked_capacity_ml'] * .95 / 10 + 5, places=2)
+        self.assertEqual(state['consumption_events'][0]['source'], 'area')
+
+    def test_generic_duration_without_verified_wet_semantics_is_explicitly_rejected(self):
+        dev = device()
+        dev['duration_sensor'] = 'sensor.duration'
+        dev['usage_ml_per_active_minute'] = {}
+        state = observe(dev, {'nominal_time_start_pending': True}, 1_000_000, False)
+        self.assertFalse(state.get('nominal_time_start_pending'))
+        self.assertEqual(state['nominal_time_resolution']['reason'], 'duration_counter_semantics_unverified')
+        self.assertFalse((state.get('nominal_time_learning') or {}).get('cycle'))
+
+    def test_unrated_area_gap_invalidates_nominal_learning(self):
+        dev = device()
+        dev.update(area_sensor='sensor.area', usage_ml_per_m2={})
+        refill = __import__(tick.__package__ + '.refill', fromlist=['apply_refill']).apply_refill
+        state = {}
+        refill(state, 1_000_000, 'service', rebaseline=True)
+        state = observe(dev, state, 1_000_000, False)
+        state = observe(dev, state, 1_060_000, True)
+        state = observe(dev, state, 1_120_000, True, area='unavailable')
+        self.assertIsNone(state['nominal_time_learning']['cycle'])
+        self.assertEqual(state['nominal_time_learning']['last_reason'], 'time_observation_unavailable')
 
     def test_area_method_cannot_retain_full_pending_for_later_time_learning(self):
         dev = device()
         dev['area_sensor'] = 'sensor.area'
+        dev['usage_ml_per_m2'] = {'default': 5}
         state = observe(dev, {'nominal_time_start_pending': True}, 1000000, False)
         self.assertFalse(state.get('nominal_time_start_pending'))

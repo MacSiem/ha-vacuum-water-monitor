@@ -946,7 +946,8 @@ def _tick_device_pass(
     else:
         consumption_context = None
     # Missing ml/min must not prevent learning independently observed exposure.
-    # This fallback is for adapters with no area/duration counter. It estimates
+    # An area counter without an applicable dose does not replace this path.
+    # Generic duration counters lack verified wet-only semantics. This estimates
     # whole-reservoir depletion, including unobserved dock water, not floor flow.
     nominal_time_context = None
     nominal_time_elapsed = None
@@ -958,9 +959,9 @@ def _tick_device_pass(
         and device.get("tracked_reservoir") not in {"robot_dirty", "dock_dirty", "detergent"}
         and (device.get("cleaning_mode_entity") or (tapovac and device.get("mop_mode_entity")))
         and not device.get("water_volume_sensor")
-        and (tapovac or not any(device.get(key) for key in ("area_sensor", "area_attribute", "duration_sensor", "duration_attribute")))
+        and (tapovac or not any(device.get(key) for key in ("duration_sensor", "duration_attribute")))
         and not (distance_sensor and distance_rate is not None)
-        and (not tapovac or usage_per_m2 is None)
+        and (usage_per_m2 is None or (not tapovac and not (device.get("area_sensor") or device.get("area_attribute"))))
         and usage_per_minute is None and whole_cycle_calibration is None)
     if nominal_eligible:
         nominal_time_context = deepcopy(consumption_context)
@@ -1022,6 +1023,15 @@ def _tick_device_pass(
             wash_covered_by_cycle_rate = True
             nominal_time_applied = True
         dirty = True
+    elif (not tapovac and (device.get("duration_sensor") or device.get("duration_attribute"))
+          and usage_per_minute is None and not device.get("water_volume_sensor")
+          and not (distance_sensor and distance_rate is not None)
+          and not ((device.get("area_sensor") or device.get("area_attribute")) and usage_per_m2 is not None)):
+        # A generic duration counter may include dry travel or dock activity.
+        if state.get("nominal_time_learning"):
+            state["nominal_time_learning"] = nominal_time_learning.invalidate(
+                state["nominal_time_learning"], "duration_counter_semantics_unverified")
+        state["nominal_time_resolution"] = {"status": "unavailable", "reason": "duration_counter_semantics_unverified"}
     elif state.get("nominal_time_learning"):
         state["nominal_time_learning"] = nominal_time_learning.invalidate(
             state["nominal_time_learning"], "time_method_replaced")
