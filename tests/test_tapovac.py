@@ -28,6 +28,35 @@ def observe(dev, previous=None, *, mode="Vacuum and Mop;Deep Clean", code=1, are
 
 
 class TapoVacTests(unittest.TestCase):
+    def test_actual_washing_mop_status_charges_only_one_known_dock_dose(self):
+        for modern in (False, True):
+            with self.subTest(modern=modern):
+                dev = {**device(), "wash_volume_ml": 150, "tracked_reservoir": "dock_clean"}
+                if modern:
+                    dev.update(status_sensor="sensor.tapo_status", tapo_status_contract=2)
+                def sample(state, code, label, now):
+                    hass = _Hass({"vacuum.test": _State("docked", {"status_code": code, "water_level": "low", "mop_attached": True}),
+                                  "sensor.tapo_status": _State(label), "select.mode": _State("Vacuum and Mop;Deep Clean"),
+                                  "select.area_unit": _State("m²")})
+                    return tick.tick_device(hass, dev, state, now_ts=now)[0]
+                state = sample({"used_ml": 0, "initialized": True}, 5, "Charging", 1_000_000)
+                state = sample(state, 15, "Washing Mop", 1_060_000)
+                self.assertEqual(state["used_ml"], 150)
+                state = sample(state, 15, "Washing Mop", 1_120_000)
+                self.assertEqual(state["used_ml"], 150)
+
+    def test_wash_never_charges_dirty_robot_or_unknown_dose(self):
+        for reservoir in ("robot_clean", "robot_dirty", "dock_dirty", "detergent", "dock_clean"):
+            with self.subTest(reservoir=reservoir):
+                dev = {**device(), "tracked_reservoir": reservoir}
+                if reservoir != "dock_clean":
+                    dev["wash_volume_ml"] = 150
+                state = observe(dev, code=5)
+                state = observe(dev, state, code=15, now=1_060_000)
+                self.assertEqual(state["used_ml"], 0)
+                if reservoir == "dock_clean":
+                    self.assertTrue(state["accounting_incomplete"])
+
     def test_attribute_counters_feed_area_accounting_with_explicit_mop_mode(self):
         dev = device()
         first = observe(dev)
