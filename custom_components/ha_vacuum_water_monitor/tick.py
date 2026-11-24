@@ -1547,6 +1547,7 @@ def _tick_device_pass(
     if (
         state.get("last_dock_err") == "water_empty"
         and curr_dock_err in _DOCK_OK_STATES
+        and anchor_scope_matches(device, "dock_error")
     ):
         do_reset = True
         exact_empty_reset = True

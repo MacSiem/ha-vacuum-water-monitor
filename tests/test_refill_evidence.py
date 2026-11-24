@@ -140,6 +140,26 @@ class DockedLidRefillTests(unittest.TestCase):
         self.assertEqual(state["used_ml"], 100)
         self.assertNotIn("refill_history", state)
 
+    def test_dock_error_clear_respects_reservoir_for_both_auto_settings(self):
+        for preference in ("refill_on_dock_clear", "refill_on_clear"):
+            for reservoir in ("robot_clean", "dock_clean"):
+                with self.subTest(preference=preference, reservoir=reservoir):
+                    dev = dict(device(boxes=False), tracked_reservoir=reservoir,
+                               water_anchor_reservoir="dock_clean",
+                               water_anchor_reservoir_inferred=True,
+                               refill_on_dock_clear=None, refill_on_clear=False,
+                               refill_on_clear_inferred=False)
+                    dev[preference] = True
+                    state = run(dev, {**BASE, "used_ml": 100},
+                                [step(dock_err="water_empty"), step(dock_err="ok")])
+                    if reservoir == "robot_clean":
+                        self.assertEqual(state["used_ml"], 100)
+                        self.assertNotIn("refill_history", state)
+                    else:
+                        self.assertEqual(state["used_ml"], 0)
+                        self.assertEqual(len(state["refill_history"]), 1)
+                        self.assertEqual(state["refill_history"][0]["source"], "dock_cleared")
+
     def test_legacy_anchor_without_source_uses_sole_matching_scope(self):
         state = run(device(boxes=False), {**BASE, "used_ml": 100, "water_empty_active": True,
                                "water_anchor_kind": "empty"}, [step(dock_err="ok")])
