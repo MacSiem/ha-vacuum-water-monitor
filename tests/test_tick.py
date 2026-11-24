@@ -840,6 +840,8 @@ class WaterAccountingTransitionTests(unittest.TestCase):
                 "water_shortage_sensor": "binary_sensor.shortage",
                 "tracked_capacity_ml": 5000,
                 "refill_on_clear": True,
+                "tracked_reservoir": "dock_clean",
+                "water_anchor_reservoir": "dock_clean",
             },
             {
                 "used_ml": 4500,
