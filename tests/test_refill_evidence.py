@@ -109,6 +109,37 @@ class DockedLidRefillTests(unittest.TestCase):
         self.assertNotIn("refill_history", state)
         self.assertNotIn("pending_lid_close_ts", state)
 
+    def test_long_dirty_alarm_clearing_during_lid_open_is_not_refill(self):
+        state = run(device(), {**BASE, "used_ml": 475.7}, [
+            step(dirty="on"), step(dirty="on", gap=3_600_000),
+            step(lid="on", dirty="on", gap=20_000), step(lid="on", gap=30_000),
+            step(gap=20_000), step(gap=180_000)])
+        self.assertEqual(state["used_ml"], 475.7)
+        self.assertNotIn("refill_history", state)
+
+    def test_dock_gestures_do_not_reset_robot_reservoir(self):
+        dev = dict(device(), tracked_reservoir="robot_clean")
+        state = run(dev, {**BASE, "used_ml": 100}, REFILL_19_11)
+        self.assertEqual(state["used_ml"], 100)
+        self.assertNotIn("refill_history", state)
+
+    def test_changed_clean_box_binding_does_not_replay_old_removal(self):
+        dev = device(lid=False)
+        state = run(dev, {**BASE, "used_ml": 400}, [step(), step(clean="on", gap=30_000)])
+        dev = dict(dev, dock_clean_water_sensor="binary_sensor.replacement")
+        state = run(dev, state, [
+            dict(extra={"binary_sensor.replacement": _S("off")}, _gap=30_000)], ts=10_120_000)
+        self.assertEqual(state["used_ml"], 400)
+        self.assertNotIn("refill_history", state)
+
+    def test_old_dock_anchor_cannot_clear_robot_balance_after_rebinding(self):
+        dev = dict(device(), tracked_reservoir="robot_clean")
+        state = run(dev, {**BASE, "used_ml": 100, "water_empty_active": True,
+                          "water_anchor_source": "dock_error", "water_anchor_kind": "empty"},
+                    [step(dock_err="ok")])
+        self.assertEqual(state["used_ml"], 100)
+        self.assertNotIn("refill_history", state)
+
     def test_lid_without_any_tank_signal_stays_an_unconfirmed_refill(self):
         state = run(device(), {**BASE, "used_ml": 900},
                     [step(), step(lid="on", gap=10_000), step(gap=20_000), step(gap=60_000), step(gap=60_000),
