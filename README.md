@@ -300,11 +300,10 @@ The previous [5.12.0 QA gallery](docs/screenshots/5.12/README.md) remains availa
 
 ## Installation
 
-1. Search for **Vacuum Water Monitor** in HACS and install it.
-2. If it is not listed, add `https://github.com/MacSiem/ha-vacuum-water-monitor` under HACS → Custom repositories as category **Integration**, then install it.
-3. Confirm the installation in HACS.
-4. Restart Home Assistant.
-5. Go to Settings → Devices & services → Add integration, then search for
+1. In Home Assistant 2026.11 and later, open [Marketplace](https://www.home-assistant.io/integrations/marketplace/) and search for **Vacuum Water Monitor**. On earlier supported versions, use HACS.
+2. Install the integration. If it is not listed, add `https://github.com/MacSiem/ha-vacuum-water-monitor` as a custom repository in the **Integration** category.
+3. Restart Home Assistant.
+4. Go to Settings → Devices & services → Add integration, then search for
    **Vacuum Water Monitor**.
 
 The integration registers the bundled Lovelace card automatically — you do not need to add

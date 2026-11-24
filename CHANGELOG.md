@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.14.0 (2026-11-24)
+
+- Keep refill evidence scoped to the correct reservoir, distinguish clean-water refills from dirty-water service and show confirmation evidence in history.
+- Qualify forecast sessions consistently across sensors and the card; explain missing comparable data and show zero remaining when the tracked tank is confirmed empty.
+- Improve water balance source selection, supported wet-distance accounting and plumbed-supply handling, while keeping uncertain or missing inputs explicit.
+- Add conservative measurement and whole-session learning with source and quality boundaries, and expose its status and basis in settings.
+- Document installation through Home Assistant Marketplace on 2026.11 and later, and through HACS on earlier supported versions. Physical accuracy still requires independent measurement.
+
 ## 5.13.1 (2026-11-22)
 
 - Confirm a refill made after a long empty-water alarm as full when the dirty tank is emptied in the same lid opening: the clean-tank signal clearing during the opening now counts as the clean tank handled, instead of the opening being read as dirty-tank service.
