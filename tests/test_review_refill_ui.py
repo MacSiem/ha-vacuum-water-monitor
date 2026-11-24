@@ -50,3 +50,20 @@ card._lang='pl';assert.match(card._waterText(key),/potwierdź pełne dolanie/i);
 '''
   r=subprocess.run(['node','-e',script],cwd=ROOT,capture_output=True,text=True,timeout=20)
   self.assertEqual(r.returncode,0,r.stderr)
+
+ def test_learning_and_plumbed_and_form_in_both_languages(self):
+  script=r'''
+const {JSDOM}=require('jsdom'),fs=require('fs'),assert=require('assert/strict');
+(async()=>{for(const lang of ['en','pl']){
+ const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',url:'http://localhost/'}),w=dom.window;
+ w.eval(fs.readFileSync('ha-vacuum-water-monitor.js','utf8'));
+ const id='vacuum.r',calls=[],yes={visible:true,read:true,execute:true},settings={sharing_intro_choice:'not_now'},states={[id]:{entity_id:id,state:'docked',attributes:{friendly_name:'Robot'}},'sensor.r_remaining':{entity_id:'sensor.r_remaining',state:'unknown',attributes:{vacuum_entity:id,source:'plumbed_supply',state_reason:'plumbed_supply_unmeasured'}}};
+ const hass={language:lang,user:{id:'admin',is_admin:true},states,connection:{subscribeMessage:async()=>()=>{}},callWS:async m=>{calls.push(m);if(m.type.endsWith('/get_state'))return {settings,tank_states:{[id]:{initialized:true,used_ml:5,physical_learning_resolution:{status:'provisional',source:'bound_reservoir_volume_sensor',scope:'whole_session',reason:'physical_observation_gap',sample_count:2,pending_count:1}}}};if(m.type.endsWith('/list_vacuums'))return {vacuums:[{entity_id:id,name:'Robot',identity_group:id}]};if(m.type.endsWith('/get_feature_access'))return {capabilities:{water:yes,settings:yes,measurements:yes},resources:{[id]:{water:yes,settings:yes,measurements:yes}}};if(m.type.endsWith('/health'))return {robots:[]};if(m.type.endsWith('/set_settings'))return {settings};throw Error(m.type)}};
+ const c=w.document.createElement('ha-vacuum-water-monitor');c.setConfig({vacuum_entity:id,water_total_ml:4000,default_tab:'settings',show_support:false});c.hass=hass;w.document.body.append(c);await c._ensureServerState(true);await new Promise(r=>setTimeout(r,80));c._render();
+ const rows=c._physicalLearningRows({status:'provisional',source:'bound_reservoir_volume_sensor',scope:'whole_session',reason:'physical_observation_gap',sample_count:2,pending_count:1,coefficient_ml_per_m2:5});assert(rows.some(x=>x[1]===(lang==='pl'?'Przerwa w obserwacji':'Observation gap')));assert(rows.some(x=>x[1]==='5 ml/m²'));
+ const d=c._selectedDevice(),data=c._calcDeviceData(d);assert.equal(data.stateReason,'plumbed_supply_unmeasured');assert.equal(data.percentRemaining,null);assert.equal(data.remainingL,null);assert.match(c._buildSupplyAnswer(d,data),lang==='pl'?/podłączona do wody/:/plumbed supply/);
+ const input=c.shadowRoot.querySelector('#vwm-former-volume-sensor'),button=c.shadowRoot.querySelector('#vwm-former-volume-save');assert(input&&button);input.value='sensor.old_tank';button.click();await new Promise(r=>setTimeout(r,30));assert(calls.some(m=>m.type.endsWith('/set_settings')&&m.patch.configured_devices?.[0]?.physical_learning_source_sensor==='sensor.old_tank'));c.remove();dom.window.close();
+}})().catch(e=>{console.error(e);process.exit(1)});
+'''
+  result=subprocess.run(['node','-e',script],cwd=ROOT,capture_output=True,text=True,timeout=20)
+  self.assertEqual(result.returncode,0,result.stderr)

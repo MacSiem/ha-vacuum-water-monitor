@@ -14792,7 +14792,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
       .find(entry => entry.vacuum_entity === device.vacuum_entity);
     const serverCapacity = ['water_total_ml', 'tracked_capacity_ml', 'tank_ml']
       .map(key => Number(serverDevice?.[key])).find(value => Number.isFinite(value) && value > 0);
-    const isPlumbed = device.dock_variant === 'plumbed' && (!device.tracked_reservoir || device.tracked_reservoir === 'dock_clean');
+    const supplySensor = Object.values(this._hass?.states || {}).find(item =>
+      item?.entity_id?.startsWith('sensor.') && item.attributes?.vacuum_entity === device.vacuum_entity &&
+      (item.attributes?.source === 'plumbed_supply' || item.attributes?.state_reason === 'plumbed_supply_unmeasured'));
+    const isPlumbed = (!device.tracked_reservoir || device.tracked_reservoir === 'dock_clean') &&
+      (device.dock_variant === 'plumbed' || Boolean(supplySensor));
     const totalMl = isPlumbed ? 0 : (Number.isFinite(optionCapacity) && optionCapacity > 0 ? optionCapacity : 0) || serverCapacity || configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
@@ -14954,7 +14958,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const nominalActive = tankState.nominal_time_resolution?.status === 'active' && tankState.last_accounting_evidence === 'nominal_full_to_empty_time';
     const physicalWhole = tankState.last_accounting_source === 'whole_cycle' && tankState.consumption_resolution?.source === 'device_calibration' && !tankState.last_accounting_reason;
     return {
-      totalMl, remainingL, percentRemaining, usedMl,
+      totalMl: isPlumbed ? null : totalMl, remainingL, percentRemaining, usedMl,
       partialUsedMl: stateReason === 'accounting_incomplete' && initialized
         && typeof tankState.used_ml === 'number' && Number.isFinite(tankState.used_ml)
         && tankState.used_ml >= 0 ? tankState.used_ml : null,
@@ -15195,6 +15199,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
   }
 
   _buildSupplyAnswer(device, data) {
+    if (data.stateReason === 'plumbed_supply_unmeasured') {
+      const explanation = this._lang === 'pl' ? 'Stacja jest podłączona do wody; brak pomiaru poboru i prognozy pozostałych sprzątań.' : 'The dock uses a plumbed supply; water draw and remaining cleanings are not measured.';
+      return `<section class="supply-answer"><h3>${this._waterText('Will the water last?')}</h3><p>${explanation}</p></section>`;
+    }
     if (data.externalMode) {
       const isCounter = this._healthFor(device)?.supply?.reason === 'external_counter';
       const explanation = isCounter
@@ -15310,13 +15318,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       : '';
 
     const healthReport = data.externalMode ? null : this._healthFor(device);
-    const setupHtml = this._buildSetupPanel(device, healthReport);
+    const setupHtml = data.stateReason === 'plumbed_supply_unmeasured' ? '' : this._buildSetupPanel(device, healthReport);
     const setupBlocking = Boolean(healthReport && healthReport.status === 'action_needed');
     // The setup panel asks the question the guidance box would only describe.
-    const accountingHtml = data.externalMode ? `<div role="status">${this._lang === 'pl' ? 'Stan pochodzi z zewnętrznego licznika i odświeża się po jego zmianie. Dolanie obsłuż we własnej automatyzacji; VWM nie resetuje licznika.' : 'Water state follows your external counter. Handle refills in your own automation; VWM does not reset the counter.'}</div>` : setupBlocking && ['awaiting_refill', 'accounting_incomplete', 'mop_signal_unbound'].includes(data.stateReason)
+    const accountingHtml = data.stateReason === 'plumbed_supply_unmeasured' ? '' : data.externalMode ? `<div role="status">${this._lang === 'pl' ? 'Stan pochodzi z zewnętrznego licznika i odświeża się po jego zmianie. Dolanie obsłuż we własnej automatyzacji; VWM nie resetuje licznika.' : 'Water state follows your external counter. Handle refills in your own automation; VWM does not reset the counter.'}</div>` : setupBlocking && ['awaiting_refill', 'accounting_incomplete', 'mop_signal_unbound'].includes(data.stateReason)
       ? '' : this._buildAccountingGuidance(data);
     const nominal = this._serverState?.tank_states?.[device.vacuum_entity]?.nominal_time_resolution;
-    const diagnosticsHtml = data.externalMode ? '' : this._buildDiagnostics({...data, nominalTimeResolution: nominal});
+    const learning = healthReport?.physical_learning_resolution || this._serverState?.tank_states?.[device.vacuum_entity]?.physical_learning_resolution;
+    const diagnosticsHtml = data.externalMode ? '' : this._buildDiagnostics({...data, nominalTimeResolution: nominal, physicalLearningResolution: learning});
 
     const dockHtml = (cfg.show_dock_status !== false) ? this._buildDockSection(device, data) : '';
     // A mop-capable robot still needs water setup when its tank size is unknown.
@@ -15467,6 +15476,37 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return box('Accounting status unknown.', 'No authoritative usage capability was supplied by the integration.', '#64748b');
   }
 
+  _physicalLearningRows(learning) {
+    if (!learning || typeof learning !== 'object' || !learning.status) return [];
+    const pl = this._lang === 'pl';
+    const labels = {
+      active:['Aktywna','Active'], provisional:['Wstępna','Provisional'], unavailable:['Niedostępna','Unavailable'],
+      bound_reservoir_volume_sensor:['Czujnik objętości zbiornika','Reservoir volume sensor'], whole_session:['Cała sesja','Whole session'],
+      physical_model_selected:['Wybrano wyuczony model','Learned model selected'], physical_binding_removed_or_anchor_required:['Brak dawnego czujnika lub wymaganej kotwicy','Former sensor or required anchor missing'],
+      physical_binding_removed:['Usunięto przypisanie czujnika','Sensor binding removed'], physical_observation_in_progress:['Trwa obserwacja','Observation in progress'],
+      physical_start_boundary_unobserved:['Nie zaobserwowano początku sesji','Session start was not observed'], physical_session_incomplete:['Niepełna sesja','Incomplete session'],
+      physical_observation_gap:['Przerwa w obserwacji','Observation gap'], physical_exposure_incomplete:['Niepełna ekspozycja','Incomplete exposure'],
+      physical_exposure_unavailable:['Brak ekspozycji lub pomiaru','Exposure or measurement unavailable'], physical_context_or_binding_changed:['Zmienił się kontekst lub czujnik','Context or sensor changed'],
+      physical_exposure_reset:['Zresetowano powierzchnię','Area counter reset'], physical_exposure_anomaly:['Nietypowy przyrost powierzchni','Anomalous area change'],
+      physical_refill_or_level_increase:['Dolanie lub wzrost poziomu','Refill or level increase'], physical_no_observed_draw_or_exposure:['Brak poboru lub powierzchni','No draw or area observed'],
+      physical_invalid_saved_observation:['Nieprawidłowy zapis obserwacji','Invalid saved observation'], physical_outlier_pending:['Odchylenie oczekuje potwierdzenia','Outlier awaiting confirmation'],
+      physical_shift_confirmed:['Potwierdzono zmianę zużycia','Consumption change confirmed'], physical_sample_accepted:['Przyjęto próbkę','Sample accepted'],
+      vacuum_unavailable:['Robot niedostępny','Robot unavailable'], real_sensor_unavailable:['Czujnik niedostępny','Sensor unavailable'],
+      real_sensor_reservoir_unverified:['Niepotwierdzony zbiornik czujnika','Sensor reservoir not confirmed'], real_sensor_unit_unknown:['Nieznana jednostka czujnika','Sensor unit unknown'],
+      real_sensor_out_of_range:['Odczyt poza zakresem','Sensor value out of range'], real_sensor_baseline:['Oczekiwanie na kolejny odczyt','Waiting for another reading'],
+      real_sensor_refill_observed:['Wykryto dolanie','Refill detected']
+    };
+    const label = code => labels[code]?.[pl ? 0 : 1] || String(code || '');
+    const rows = [[pl ? 'Nauka z pomiaru' : 'Learning from measurement', label(learning.status)]];
+    for (const [key, title] of [['source',pl?'Źródło':'Source'], ['scope',pl?'Zakres':'Scope'], ['reason',pl?'Przyczyna':'Reason']])
+      if (learning[key]) rows.push([title, label(learning[key])]);
+    for (const [key, title] of [['sample_count',pl?'Próbki':'Samples'], ['pending_count',pl?'Oczekujące próbki':'Pending samples']])
+      if (typeof learning[key] === 'number' && Number.isFinite(learning[key])) rows.push([title, String(learning[key])]);
+    const rate = learning.coefficient_ml_per_m2 ?? learning.coefficient;
+    if (typeof rate === 'number' && Number.isFinite(rate)) rows.push([pl?'Zużycie na sesję':'Session consumption', `${this._formatUi().number(rate, {maximumFractionDigits:3})} ml/m²`]);
+    return rows;
+  }
+
   _buildDiagnostics(data) {
     const rows = [];
     const interruption = data.lastAccountingInterruption;
@@ -15567,10 +15607,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if ((data.tankLevel != null || data.dockTankLevel != null) && !data.tankSemanticsConfirmed) {
       rows.push(['Tank percentages', `available (${[data.tankLevel, data.dockTankLevel].filter(value => value != null).join(' / ')}), not used automatically until the model confirms clean/dirty semantics`]);
     }
-    if (!rows.length && !data.nominalTimeResolution) return '';
+    if (!rows.length && !data.nominalTimeResolution && !data.physicalLearningResolution?.status) return '';
     const reportRows = rows.map(row => [...row]);
     const pl = this._lang === 'pl';
     const humanRows = rows.map(([label, value]) => this._humanDiagnosticRow(label, value, data));
+    humanRows.push(...this._physicalLearningRows(data.physicalLearningResolution));
+    if (data.physicalLearningResolution?.status) reportRows.push(['physical_learning_resolution', JSON.stringify(data.physicalLearningResolution)]);
     const nominal = data.nominalTimeResolution;
     if (nominal && typeof nominal === 'object') {
       const count = Number.isFinite(Number(nominal.sample_count)) ? Math.max(0, Number(nominal.sample_count)) : 0;
@@ -17213,6 +17255,12 @@ target:
         ${header}
         ${noSiblings}
         ${rows}
+        <div style="${rowSt}">
+          <label for="vwm-former-volume-sensor" style="${labelSt}">${this._lang === 'pl' ? 'Dawny czujnik objętości dla wyuczonego modelu' : 'Former volume sensor for the learned model'}</label>
+          <p>${this._lang === 'pl' ? 'Podaj identyfikator wcześniej używanego czujnika, aby korzystać z jego modelu po odłączeniu i kolejnym potwierdzonym pełnym dolaniu.' : 'Enter the previously used sensor entity to use its learned model after disconnecting it and confirming a new full refill.'}</p>
+          <input id="vwm-former-volume-sensor" type="text" placeholder="sensor.example" value="${_esc((this._serverState?.settings?.configured_devices || []).find(item => item.vacuum_entity === vacId)?.physical_learning_source_sensor ?? device?.physical_learning_source_sensor ?? '')}" style="${selectSt}">
+          <button type="button" id="vwm-former-volume-save">${this._waterText('Save')}</button><span id="vwm-former-volume-status" role="status" aria-live="polite"></span>
+        </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
           <button id="vwm-signal-save" style="padding:8px 16px;border:none;border-radius:8px;background:#3b82f6;color:#fff;font-weight:600;font-size:12px;cursor:pointer;font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui))">\uD83D\uDCBE ${this._waterText("Save signal mapping")}</button>
           <span id="vwm-signal-status" role="status" aria-live="polite" style="font-size:11px;color:var(--bento-text-secondary)"></span>
@@ -18107,6 +18155,23 @@ ha-card:has(.vwm-tile){height:56px;box-sizing:border-box}.card:has(.vwm-tile){he
 
     // Signal mapping: manual entity assignment for roles auto-discovery could
     // not resolve (or resolved ambiguously). Stored per vacuum in the HA Store.
+    const formerVolumeSave = sr.querySelector('#vwm-former-volume-save');
+    if (formerVolumeSave) formerVolumeSave.addEventListener('click', async () => {
+      const status = sr.querySelector('#vwm-former-volume-status');
+      const value = String(sr.querySelector('#vwm-former-volume-sensor')?.value || '').trim();
+      if (value && !/^sensor\.[a-z0-9_]+$/.test(value)) {
+        if (status) status.textContent = this._lang === 'pl' ? 'Podaj identyfikator sensor.*.' : 'Enter a sensor.* entity ID.';
+        return;
+      }
+      if (!device?.vacuum_entity) return;
+      formerVolumeSave.disabled = true;
+      const result = await this._saveServerSettings({configured_devices:[{vacuum_entity:device.vacuum_entity, physical_learning_source_sensor:value || null, config_provenance:{authored_fields:['physical_learning_source_sensor']}}]}, {partial:true});
+      const current = sr.querySelector('#vwm-former-volume-status');
+      if (current) current.textContent = result.ok ? (this._lang === 'pl' ? 'Zapisano.' : 'Saved.') : (this._lang === 'pl' ? 'Nie zapisano. Spróbuj ponownie.' : 'Could not save. Try again.');
+      const button = sr.querySelector('#vwm-former-volume-save');
+      if (button) button.disabled = false;
+    });
+
     const signalSave = sr.querySelector('#vwm-signal-save');
     if (signalSave) {
       signalSave.addEventListener('click', async () => {
