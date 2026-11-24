@@ -140,6 +140,26 @@ class DockedLidRefillTests(unittest.TestCase):
         self.assertEqual(state["used_ml"], 100)
         self.assertNotIn("refill_history", state)
 
+    def test_legacy_anchor_without_source_uses_sole_matching_scope(self):
+        state = run(device(boxes=False), {**BASE, "used_ml": 100, "water_empty_active": True,
+                               "water_anchor_kind": "empty"}, [step(dock_err="ok")])
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(len(state["refill_history"]), 1)
+
+    def test_legacy_anchor_without_source_does_not_clear_other_reservoir(self):
+        dev = dict(device(boxes=False), tracked_reservoir="robot_clean")
+        state = run(dev, {**BASE, "used_ml": 100, "water_empty_active": True,
+                          "water_anchor_kind": "empty"}, [step(dock_err="ok")])
+        self.assertEqual(state["used_ml"], 100)
+        self.assertNotIn("refill_history", state)
+
+    def test_robot_lid_without_dock_boxes_still_refills(self):
+        dev = dict(device(boxes=False), tracked_reservoir="robot_clean")
+        state = run(dev, {**BASE, "used_ml": 100},
+                    [step(), step(lid="on", gap=20_000), step(gap=20_000)])
+        self.assertEqual(state["used_ml"], 0)
+        self.assertEqual(state["refill_history"][0]["source"], "lid")
+
     def test_lid_without_any_tank_signal_stays_an_unconfirmed_refill(self):
         state = run(device(), {**BASE, "used_ml": 900},
                     [step(), step(lid="on", gap=10_000), step(gap=20_000), step(gap=60_000), step(gap=60_000),
