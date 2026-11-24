@@ -197,6 +197,20 @@ class NominalTimeLearningTests(unittest.TestCase):
         self.assertEqual(result(state)["status"], "active")
         self.assertAlmostEqual(result(state)["usage_ml_per_active_minute"], 9.5)
 
+    def test_repeated_shift_promotes_only_after_three_and_survives_restart(self):
+        state = {}
+        for index in range(3):
+            state = tank(state, now=1_000 + index * 2_000_000)
+        for index in range(2):
+            state = tank(state, minutes=5, now=8_000_000 + index * 2_000_000)
+            state = json.loads(json.dumps(state))
+            self.assertAlmostEqual(result(state)["usage_ml_per_active_minute"], 9.5)
+            self.assertEqual(result(state)["pending_count"], index + 1)
+        state = tank(state, minutes=5, now=12_000_000)
+        self.assertAlmostEqual(result(state)["usage_ml_per_active_minute"], 19)
+        self.assertEqual(result(state)["reason"], "time_shift_confirmed")
+        self.assertEqual(result(state)["pending_count"], 0)
+
     def test_contexts_and_robots_remain_independent_and_old_samples_survive(self):
         state = {}
         other = {**CONTEXT, "device_id": "vacuum.two"}
@@ -246,7 +260,8 @@ class NominalTimeLearningTests(unittest.TestCase):
         for index in range(3):
             state = tank(state, now=1_000 + index * 2_000_000)
         for index in range(30):
-            state = tank(state, minutes=1, now=8_000_000 + index * 2_000_000)
+            state = tank(state, minutes=1 if index % 2 == 0 else 2,
+                         now=8_000_000 + index * 2_000_000)
         self.assertLessEqual(len(state["contexts"][0]["samples"]), 8)
         self.assertAlmostEqual(result(state)["usage_ml_per_active_minute"], 9.5)
 
