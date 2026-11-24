@@ -104,3 +104,105 @@ class PhysicalRuntimeTests(unittest.TestCase):
         state = step(dev, state, 10240000, 'cleaning', 10, 3500)
         state = step(dev, state, 10300000, 'charging', 10, 3500)
         self.assertFalse((state.get('physical_learning') or {}).get('contexts'))
+
+class PhysicalModelApplicationTests(unittest.TestCase):
+    def test_explicit_transition_requires_new_anchor_and_applies_session_once(self):
+        from test_profile_selection import context
+        from importlib import import_module
+        refill = import_module(tick.__package__ + '.refill')
+        ctx = context()
+        ctx['settings'].update(mop_mode='standard', water_level='medium')
+        dev = {**device(), 'consumption_context': ctx, 'usage_ml_per_m2': {},
+               'usage_ml_per_active_minute': {}, 'wash_volume_ml': None}
+        state = {}
+        for n in range(3):
+            state = session(dev, state, 10000000+n*600000, 3500-n*100)
+        self.assertEqual(state['physical_learning_resolution']['status'], 'active')
+        # A transient unavailable observation keeps the physical source authoritative.
+        state = step(dev, state, 11900000, 'charging', 0, 'unavailable')
+        self.assertEqual(state['consumption_resolution']['source'], 'real_sensor')
+        self.assertEqual(state['last_accounting_reason'], 'real_sensor_unavailable')
+        fallback = {**dev, 'water_volume_sensor': None,
+                    'physical_learning_source_sensor': 'sensor.volume'}
+        state = step(fallback, state, 12000000, 'charging', 0, 3200)
+        self.assertNotEqual((state.get('physical_learning_resolution') or {}).get('reason'), 'physical_model_selected')
+        refill.apply_refill(state, 12060000, 'service', rebaseline=True)
+        state = json.loads(json.dumps(state))
+        state = step(fallback, state, 12120000, 'charging', 0, 3200)
+        state = step(fallback, state, 12180000, 'cleaning', 0, 3200)
+        state = step(fallback, state, 12240000, 'cleaning', 5, 3150)
+        state = step(fallback, state, 12300000, 'cleaning', 10, 3100)
+        state = step(fallback, state, 12360000, 'charging', 10, 3100)
+        self.assertEqual(state['used_ml'], 100)
+        self.assertEqual(state['cycle_action_totals'], {'whole_cycle': 100})
+        self.assertEqual(state['consumption_resolution']['source'], 'device_calibration')
+        self.assertEqual(state['consumption_resolution']['profile_id'], 'local.automatic_physical')
+        state = step(fallback, state, 12420000, 'charging', 10, 3100)
+        self.assertEqual(state['used_ml'], 100)
+        state = step(dev, state, 12480000, 'charging', 10, 2800)
+        self.assertEqual(state['used_ml'], 100)  # Reconnection is a baseline, not a draw.
+        self.assertIsNone(state.get('physical_sensor_removed_ts'))
+        state = step(fallback, state, 12540000, 'charging', 10, 2800)
+        self.assertEqual(state['physical_sensor_removed_ts'], 12540000)
+        self.assertNotEqual(state.get('physical_learning_resolution', {}).get('reason'), 'physical_model_selected')
+
+    def test_wrong_reservoir_source_and_outside_domain_never_use_model(self):
+        from test_profile_selection import context
+        from importlib import import_module
+        refill = import_module(tick.__package__ + '.refill')
+        ctx = context()
+        ctx['settings'].update(mop_mode='standard', water_level='medium')
+        dev = {**device(), 'consumption_context': ctx, 'usage_ml_per_m2': {},
+               'usage_ml_per_active_minute': {}, 'wash_volume_ml': None}
+        state = {}
+        for n in range(3):
+            state = session(dev, state, 10000000+n*600000, 3500-n*100)
+        baseline = state
+        for setting in ('wrong_source', 'wrong_reservoir', 'outside_domain', 'area_unit'):
+            with self.subTest(setting=setting):
+                fallback = {**dev, 'water_volume_sensor': None,
+                            'physical_learning_source_sensor': 'sensor.other' if setting == 'wrong_source' else 'sensor.volume'}
+                if setting == 'wrong_reservoir': fallback['tracked_reservoir'] = 'robot_clean'
+                state = step(fallback, json.loads(json.dumps(baseline)), 12000000, 'charging', 0, 3200)
+                refill.apply_refill(state, 12060000, 'service', rebaseline=True)
+                state = step(fallback, state, 12120000, 'charging', 0, 3200)
+                state = step(fallback, state, 12180000, 'cleaning', 0, 3200)
+                state = step(fallback, state, 12240000, 'cleaning', 5, 3150,
+                             area_unit='' if setting == 'area_unit' else 'm²')
+                final_area = 20 if setting == 'outside_domain' else 10
+                state = step(fallback, state, 12300000, 'cleaning', final_area, 3100)
+                state = step(fallback, state, 12360000, 'charging', final_area, 3100)
+                if setting != 'area_unit':
+                    self.assertNotEqual((state.get('consumption_resolution') or {}).get('profile_id'), 'local.automatic_physical')
+                self.assertNotEqual((state.get('cycle_action_totals') or {}).get('whole_cycle'), final_area*10)
+
+    def test_configured_device_keeps_explicit_prior_sensor(self):
+        settings = {'configured_devices': [{'vacuum_entity': 'vacuum.robot',
+                     'physical_learning_source_sensor': 'sensor.volume'}]}
+        effective_device = sc.build_vacuum_devices(settings, {}, [descriptor()])[0]
+        self.assertEqual(effective_device['physical_learning_source_sensor'], 'sensor.volume')
+
+    def test_approved_public_profile_precedes_automatic_physical_model(self):
+        from test_profile_selection import context, profile
+        from importlib import import_module
+        from unittest.mock import patch
+        refill = import_module(tick.__package__ + '.refill')
+        ctx = context()
+        ctx['settings'].update(mop_mode='standard', water_level='medium')
+        dev = {**device(), 'consumption_context': ctx, 'usage_ml_per_m2': {},
+               'usage_ml_per_active_minute': {}, 'wash_volume_ml': None}
+        state = {}
+        for n in range(3):
+            state = session(dev, state, 10000000+n*600000, 3500-n*100)
+        fallback = {**dev, 'water_volume_sensor': None, 'physical_learning_source_sensor': 'sensor.volume'}
+        state = step(fallback, state, 12000000, 'charging', 0, 3200)
+        refill.apply_refill(state, 12060000, 'service', rebaseline=True)
+        approved = profile()
+        approved['context'] = ctx
+        with patch(tick.__package__ + '.profiles.CONSUMPTION_SNAPSHOT',
+                   {'schema_version': 2, 'profiles': [approved], 'dataset_version': 'test'}):
+            state = step(fallback, state, 12120000, 'charging', 0, 3200)
+            state = step(fallback, state, 12180000, 'cleaning', 0, 3200)
+            state = step(fallback, state, 12240000, 'cleaning', 5, 3150)
+        self.assertEqual(state['consumption_resolution']['source'], 'verified_model')
+        self.assertEqual(state['consumption_resolution']['profile_id'], 'test.profile')

@@ -99,7 +99,7 @@ def resolution(state, *, context, binding, reservoir):
     entry = next((e for e in reversed(entries) if isinstance(e, dict) and e.get('identity') == identity), {})
     samples = entry.get('samples') if isinstance(entry.get('samples'), list) else []
     samples = [s for s in samples if isinstance(s, dict) and _positive(s.get('rate')) and _positive(s.get('draw'))
-               and _positive(s.get('area')) and math.isclose(s['rate'], s['draw']/s['area'], rel_tol=1e-9)][-8:]
+               and _positive(s.get('area')) and _positive(s.get('finished_ts')) and math.isclose(s['rate'], s['draw']/s['area'], rel_tol=1e-9)][-8:]
     active = len(samples) >= 3 and max(s['rate'] for s in samples[-3:]) / min(s['rate'] for s in samples[-3:]) <= 1.25
     return {'status': 'active' if active else 'provisional' if samples else 'unavailable',
             'source': 'bound_reservoir_volume_sensor', 'scope': 'whole_session',
@@ -107,3 +107,31 @@ def resolution(state, *, context, binding, reservoir):
             'sample_count': len(samples), 'pending_count': len(entry.get('pending') or []),
             'coefficient_ml_per_m2': median(s['rate'] for s in samples[-3:]) if active else None,
             'application': 'physical_sensor_authoritative'}
+
+
+def profile(state, *, context, binding, reservoir):
+    """Return a bounded private whole-session record for the ordinary resolver."""
+    result = resolution(state, context=context, binding=binding, reservoir=reservoir)
+    if result['status'] != 'active' or not isinstance(context, dict):
+        return None
+    identity = {'context': context, 'binding': binding, 'reservoir': reservoir}
+    entry = next((e for e in reversed(state.get('contexts') or [])
+                  if isinstance(e, dict) and e.get('identity') == identity), None)
+    if entry is None:
+        return None
+    samples = entry.get('samples') or []
+    samples = [s for s in samples if isinstance(s, dict) and _positive(s.get('rate'))
+               and _positive(s.get('draw')) and _positive(s.get('area')) and _positive(s.get('finished_ts'))
+               and math.isclose(s['rate'], s['draw']/s['area'], rel_tol=1e-9)][-3:]
+    if len(samples) != 3:
+        return None
+    return {'id': 'local.automatic_physical', 'kind': 'profile',
+            'device_id': context.get('device_id'), 'context': deepcopy(context),
+            'method': 'area', 'coefficient': result['coefficient_ml_per_m2'],
+            'unit': 'ml/m2', 'scope': 'whole_cycle', 'confidence': 'measured',
+            'unknowns': [], 'review': {'status': 'experimental'},
+            'evidence_ids': [f"physical.{sample['finished_ts']}" for sample in samples],
+            'provenance': [{'type': 'automatic_reservoir_sensor',
+                            'claim': 'Private measured whole-session reservoir draw'}],
+            'exposure_domain': {'min': min(s['area'] for s in samples),
+                                'max': max(s['area'] for s in samples)}}
