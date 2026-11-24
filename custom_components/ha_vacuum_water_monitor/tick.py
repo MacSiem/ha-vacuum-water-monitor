@@ -1155,7 +1155,15 @@ def _tick_device_pass(
         elif not wash_now and settled_change.get("washing"):
             # The wash in progress at the change has ended; a later one is new.
             state["session_settled_context_change"] = {**settled_change, "washing": False}
-    if (consumption_context and whole_cycle_calibration is None and wash_volume is None
+    # A dock mop wash draws from the dock clean supply, not the robot's
+    # clean tank. No implicit transfer volume can be inferred from this phase.
+    wash_other_reservoir = device.get("tracked_reservoir") in {
+        "robot_clean", "robot_dirty", "dock_dirty", "detergent"
+    }
+    floor_other_reservoir = device.get("tracked_reservoir") in {
+        "robot_dirty", "dock_dirty", "detergent"
+    }
+    if (not wash_other_reservoir and consumption_context and whole_cycle_calibration is None and wash_volume is None
             and not device.get("water_volume_sensor")
             and (not device.get("tracked_reservoir") or device["tracked_reservoir"] == consumption_context.get("reservoir"))):
         wash_context = deepcopy(consumption_context)
@@ -1216,7 +1224,9 @@ def _tick_device_pass(
                          session_accounting_valid=False)
     if wash_now:
         state["last_wash_seen_ts"] = now_ts
-        if wash_active:
+        if wash_other_reservoir:
+            dirty |= _record_accounting(state, "wash", None, evidence, "wash_other_reservoir")
+        elif wash_active:
             dirty |= _record_accounting(
                 state, "wash", wash_volume, evidence, "wash_already_active"
             )
@@ -1422,6 +1432,8 @@ def _tick_device_pass(
             dirty |= _record_accounting(state, "area", None, evidence, "not_cleaning")
         elif not mop_active:
             dirty |= _record_accounting(state, "area", None, evidence, "mop_off")
+        elif floor_other_reservoir:
+            dirty |= _record_accounting(state, "area", None, evidence, "floor_other_reservoir")
         elif usage_per_m2 is None and whole_cycle_calibration is not None:
             dirty |= _record_accounting(state, "whole_cycle", None, "device_calibration", "whole_cycle_pending")
         elif usage_per_m2 is None:
@@ -1485,6 +1497,10 @@ def _tick_device_pass(
         elif not mop_active:
             dirty |= _record_accounting(
                 state, "active_time", None, time_evidence, "mop_inactive"
+            )
+        elif floor_other_reservoir:
+            dirty |= _record_accounting(
+                state, "active_time", None, time_evidence, "floor_other_reservoir"
             )
         elif isinstance(device.get("intensity_factor"), dict) and intensity_factor is None:
             dirty |= _record_accounting(
