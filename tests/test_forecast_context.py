@@ -90,3 +90,25 @@ class ForecastContextTests(unittest.TestCase):
   state['external_counter']={}
   result=forecast.supply_forecast(state,0,NOW)
   self.assertIsNone(result['cleanings_left']);self.assertEqual(result['reason'],'external_counter')
+
+ def test_floor_action_overrides_missing_area_but_legacy_zero_is_excluded(self):
+  rows=[session('medium',0,area=0,action_totals={'floor_mopping':25}),
+        session('medium',1,area=0,action_totals={'whole_cycle':50}),
+        session('medium',2,area=0,action_totals={'mop_wash':50}),
+        session('medium',3,area=0)]
+  state={'automatic_sessions':rows,'last_consumption_context':context('medium')}
+  self.assertEqual(forecast.supply_forecast(state,1000,NOW)['basis_runs'],2)
+
+ def test_source_boundary_prevents_old_runs_even_after_source_returns(self):
+  old=[session('medium',i) for i in range(2,5)]
+  middle=session('medium',1,action_totals={'mop_wash':50})
+  middle['context']['field_sources']={'water_level':'declared'}
+  current=context('medium');current['field_sources']={'water_level':'observed'}
+  latest=session('medium',0);latest['context']['field_sources']={'water_level':'observed'}
+  state={'automatic_sessions':[latest,middle,*old],'last_consumption_context':current}
+  self.assertEqual(forecast.supply_forecast(state,1000,NOW)['basis_runs'],1)
+  middle['context']['field_sources']={'water_level':'observed'}
+  middle['context']['observed_settings']['wetness']['source_registry_id']='replacement'
+  self.assertEqual(forecast.supply_forecast(state,1000,NOW)['basis_runs'],1)
+  middle['context']=context('medium') # legacy without field_sources
+  self.assertEqual(forecast.supply_forecast(state,1000,NOW)['basis_runs'],4)

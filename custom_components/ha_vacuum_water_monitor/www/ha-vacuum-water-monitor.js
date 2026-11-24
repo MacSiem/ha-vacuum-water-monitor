@@ -15188,9 +15188,10 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _buildSupplyAnswer(device, data) {
     if (data.externalMode) {
-      const explanation = this._lang === 'pl'
-        ? 'Brak prognozy dla zewnętrznego źródła wody. Bilans pochodzi ze skonfigurowanego źródła zewnętrznego.'
-        : 'Forecast unavailable for an external water source. The balance comes from the configured external source.';
+      const isCounter = this._healthFor(device)?.supply?.reason === 'external_counter';
+      const explanation = isCounter
+        ? (this._lang === 'pl' ? 'Brak prognozy: bilans pochodzi z licznika zewnętrznego, który nie określa liczby pozostałych sprzątań.' : 'Forecast unavailable: the balance comes from an external counter, which does not establish remaining cleanings.')
+        : (this._lang === 'pl' ? 'Brak prognozy dla zewnętrznego źródła wody. Bilans pochodzi ze skonfigurowanego źródła zewnętrznego.' : 'Forecast unavailable for an external water source. The balance comes from the configured external source.');
       return `<section class="supply-answer"><h3>${this._waterText('Will the water last?')}</h3><p>${explanation}</p></section>`;
     }
     const {report, known, band, range} = this._supplyPresentation(device, data);

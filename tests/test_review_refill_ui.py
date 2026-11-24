@@ -30,6 +30,8 @@ global.customElements={get(n){return classes[n]},define(n,c){classes[n]=c}};glob
 vm.runInThisContext(fs.readFileSync('ha-vacuum-water-monitor.js','utf8'));const card=new(classes['ha-vacuum-water-monitor'])();
 card._healthFor=()=>({initialized:true,uncertainty_percent:20,supply:{basis_runs:0,cleanings_left:null,days_left:null,context_changed:true}});
 const d={vacuum_entity:'vacuum.r'},data={initialized:true,remainingL:2.5,totalMl:4000,profileKey:'known',externalMode:false};
+card._healthFor=()=>({supply:{reason:'external_counter'}});card._lang='en';assert.match(card._buildSupplyAnswer(d,{externalMode:true}),/external counter/);card._lang='pl';assert.match(card._buildSupplyAnswer(d,{externalMode:true}),/licznika zewnętrznego/);
+card._healthFor=()=>({initialized:true,uncertainty_percent:20,supply:{basis_runs:0,cleanings_left:null,days_left:null,context_changed:true}});
 card._lang='en';let x=card._buildSupplyAnswer(d,data);assert.match(x,/Settings changed/);assert.match(x,/0 of 3/);assert(!x.includes('data-cleanings-range'));
 card._lang='pl';x=card._buildSupplyAnswer(d,data);assert.match(x,/Ustawienia się zmieniły/);assert.match(x,/0 z 3/);
 '''

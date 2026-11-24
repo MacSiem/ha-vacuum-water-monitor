@@ -1204,7 +1204,7 @@ def _tick_device_pass(
                                          else curr_area),
                      session_accounting_valid=True, session_water_broken=False,
                      session_area_carry=0.0,
-                     session_action_totals={}, session_exposures={},
+                     session_action_totals={}, session_exposures={}, session_forecast_interrupted=False,
                      session_context=deepcopy(consumption_context),
                      session_resolution=deepcopy(state.get("consumption_resolution")),
                      session_exposure_complete=curr_area == 0 or starts_wash or known_start, session_segments=1,
@@ -1214,6 +1214,10 @@ def _tick_device_pass(
             # Missing first exposure invalidates the tank as well as the run.
             state.update(accounting_incomplete=True, session_water_broken=True,
                          session_accounting_valid=False)
+    # A dock return alone does not prove a normal finish. Preserve explicit
+    # failures/cancellations seen during the task even if it later docks.
+    if state.get("session_start_ts") and curr_status in {"error", "cancelled", "canceled", "canceling", "cancelling", "aborted", "abort", "stopped"}:
+        state["session_forecast_interrupted"] = True
     if wash_now:
         state["last_wash_seen_ts"] = now_ts
         if wash_active:
@@ -2014,7 +2018,7 @@ def _finish_session(state, running, status, now_ts, area):
               "action_totals": deepcopy(state.get("session_action_totals") or {}),
               "exposures": deepcopy(state.get("session_exposures") or {}),
               "accounting_version": 3,
-              "completed": status not in {"idle", "standby", "sleeping"} and not state.get("water_empty_active")}
+              "completed": status not in {"idle", "standby", "sleeping"} and not state.get("water_empty_active") and not state.get("session_forecast_interrupted")}
     state["automatic_sessions"] = [record, *(state.get("automatic_sessions") or [])][:50]
     state["session_start_ts"] = None
     state.pop("session_settled_context_change", None)
