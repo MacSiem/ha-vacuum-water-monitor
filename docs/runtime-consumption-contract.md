@@ -137,3 +137,17 @@ An unavailable signal, unsupported mode, active observation gap over 180 seconds
 Dreame exact controls use washing_mode/mop_wash_level, self_clean_frequency/mop_clean_frequency, water_temperature and separate self_clean_area/self_clean_time thresholds. Type and thresholds are preserved together for calibration applicability, without inventing water volumes. A return-to-wash state is transit: only observed washing starts a wash estimate. Existing class-prior wash quantities remain labelled estimates; this change does not establish separate physical pre-, mid-, final- or manual-wash doses.
 
 Raw nominal sample banks are excluded from recorded live events. The bounded resolution summary remains available to the card and sensors; the full bank is local authenticated household state. Unexposed context fields stay unknown and repeatability does not establish physical accuracy or stability of hidden settings.
+
+### Exposure replay limitation (24 November 2026)
+
+The recorded 22–24 November replay reproduces refill, empty anchor and nominal
+calibration, but one session's `exposure_complete` differs from the HA Store.
+The replay applies recorded REST state events directly and a 60-second heartbeat;
+HA subscribes to bound state changes through `EventTicker` and also schedules a
+heartbeat. Session initialization depends on the observed area and event order,
+and subsequent gaps can clear the flag. The available record does not establish
+which HA callback order or intermediate states produced that session: attributing
+this discrepancy to scheduling alone would be speculation. Reproduction requires
+the ordered HA callback/state snapshots around the start and gaps of that session,
+or an equivalent HA event-loop replay with those snapshots. The historical Core
+log is not available, so the existing replay is not proof of exposure parity.

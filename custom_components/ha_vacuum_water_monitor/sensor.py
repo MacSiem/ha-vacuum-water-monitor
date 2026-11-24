@@ -450,11 +450,8 @@ class CleaningsLeftSensor(VacuumStoreSensor):
 
         settings, tank_state = await self._store_context()
         estimate = estimate_water_state(self._device, tank_state, settings)
-        forecast = (supply_forecast(tank_state, estimate.get("remaining_ml"),
-                                    int(datetime.now(timezone.utc).timestamp() * 1000))
-                    if "external_counter" not in tank_state else
-                    {"cleanings_left": None, "days_left": None, "water_per_cleaning_ml": None,
-                     "water_per_day_ml": None, "basis_runs": 0})
+        forecast = supply_forecast(tank_state, estimate.get("remaining_ml"),
+                                   int(datetime.now(timezone.utc).timestamp() * 1000))
         self._attr_native_value = forecast["cleanings_left"]
         self._attr_extra_state_attributes = {
             "vacuum_entity": self.vacuum_entity,
@@ -462,6 +459,7 @@ class CleaningsLeftSensor(VacuumStoreSensor):
             "water_per_cleaning_ml": forecast["water_per_cleaning_ml"],
             "water_per_day_ml": forecast["water_per_day_ml"],
             "basis_runs": forecast["basis_runs"],
+            "reason": forecast["reason"],
             "context_changed": bool(forecast.get("context_changed")),
         }
 

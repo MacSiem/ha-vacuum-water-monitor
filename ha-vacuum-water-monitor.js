@@ -15199,6 +15199,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     let answer = `<p>${this._waterText('Forecast unavailable: tank balance or consumption profile is unknown.')}</p>`;
     if (known) {
       if (data.waterEmpty || data.remainingL === 0) answer = `<p data-refill-needed>${this._waterText('Refill needed — the tracked tank is empty.')}</p>`;
+      else if (supply?.reason === 'remaining_unknown') answer = `<p>${this._waterText('Forecast unavailable: tank balance or consumption profile is unknown.')}</p>`;
       else if (!supply || Number(supply.basis_runs || 0) < 3) {
         const message = supply?.context_changed ? 'Settings changed; forecast resumes after 3 comparable mopping runs — {n} of 3 recorded' : 'Forecast after 3 mopping runs — {n} of 3 recorded';
         answer = `<p data-learning>${this._waterText(message).replace('{n}', String(Math.max(0, Number(supply?.basis_runs || 0))))}</p>`;
@@ -15272,7 +15273,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           ? this._waterText('full: lid opened and clean tank taken out') : confirmation === 'refill_after_empty'
           ? this._waterText('full: refilled after the empty alarm') : confirmation === 'service'
           ? this._waterText('full confirmed by automation') : this._waterText('full confirmed by user');
-      const refillSource = [sourceLabel, confirmedLabel].filter(Boolean).map(text => ` \u00B7 ${text}`).join('');
+      const refillSource = [sourceLabel, confirmedLabel, this._refillEvidence((data.refillHistory || [])[0])].filter(Boolean).map(text => ` \u00B7 ${text}`).join('');
       const refillLabel = automaticEvent ? this._waterText('Last tank event') : L.lastRefill;
       extraRows += `<div class="row"><span class="row-label">\uD83D\uDD04 ${refillLabel}</span><span class="row-val">${_esc(this._formatReset(data.lastReset) + refillSource)}</span></div>`;
     }
@@ -15318,7 +15319,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     if (cfg.compact && !this._compactExpanded) {
       const tile = this._variant() === 'tile';
       const runEstimate=presentation.report?.supply?.cleanings_left;
-      const forecast = presentation.known && Number(presentation.report?.supply?.basis_runs || 0) >= 3 && typeof runEstimate==='number' && Number.isFinite(runEstimate) && runEstimate>=0
+      const forecast = presentation.known && (presentation.report?.supply?.reason === 'empty' || Number(presentation.report?.supply?.basis_runs || 0) >= 3) && typeof runEstimate==='number' && Number.isFinite(runEstimate) && runEstimate>=0
         ? (presentation.range(runEstimate) || this._formatUi().number(runEstimate,{maximumFractionDigits:1})) : null;
       const percent = data.percentRemaining != null && Number.isFinite(Number(data.percentRemaining))
         ? Math.max(0, Math.min(100, Number(data.percentRemaining))) : null;
@@ -16911,6 +16912,17 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return choices;
   }
 
+  _refillEvidence(record) {
+    if (!record || typeof record.full_confirmed !== 'boolean') return this._lang === 'pl' ? 'Starszy wpis — brak informacji o potwierdzeniu' : 'Older entry — confirmation unavailable';
+    const status = record.full_confirmed ? (this._lang === 'pl' ? 'Pełne potwierdzone' : 'Full confirmed') : (this._lang === 'pl' ? 'Pełne niepotwierdzone' : 'Full unconfirmed');
+    const names = this._lang === 'pl'
+      ? {lid:'otwarcie pokrywy', clean_tank_removed:'wyjęcie czystego zbiornika', lid_and_clean_tank_removed:'pokrywa i czysty zbiornik', refill_after_empty:'dolanie po alarmie pustego zbiornika', declared_full_refill_practice:'zadeklarowane pełne dolanie', card:'potwierdzenie na karcie', button:'potwierdzenie przyciskiem', service:'potwierdzenie przez usługę'}
+      : {lid:'lid opened', clean_tank_removed:'clean tank removed', lid_and_clean_tank_removed:'lid and clean tank', refill_after_empty:'refill after empty alarm', declared_full_refill_practice:'declared full refill practice', card:'confirmed on card', button:'confirmed by button', service:'confirmed by service'};
+    const label = value => names[value] || value;
+    const evidence = Array.isArray(record.evidence) ? record.evidence.map(label).join(', ') : '';
+    return [status, record.full_reason && label(record.full_reason), evidence].filter(Boolean).join(' · ');
+  }
+
   _buildRefillMethodCard(device, data = {}) {
     const vacuum = (device && device.vacuum_entity) || '';
     const choices = this._refillChoices(device);
@@ -16943,7 +16955,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         <button id="vwm-refill-legacy-remove" style="${btnSt};background:rgba(239,68,68,0.08);color:#ef4444;border:1px solid rgba(239,68,68,0.2)">Remove old automation</button>
       </div>` : '';
     const refills = (data.refillHistory || []).slice(0, 5);
-    const history = refills.length ? `<div style="font-size:11px;color:var(--vwm-text-secondary,#6b7280);margin-top:8px">${this._waterText('Recent refills')}: ${refills.map(r => `${_esc(this._formatReset(r.ts))} (${_esc(this._waterText(VWM_REFILL_SOURCE_LABEL[r.source] || r.source))})`).join(', ')}</div>` : '';
+    const history = refills.length ? `<div style="font-size:11px;color:var(--vwm-text-secondary,#6b7280);margin-top:8px">${this._waterText('Recent refills')}: ${refills.map(r => `${_esc(this._formatReset(r.ts))} (${_esc(this._waterText(VWM_REFILL_SOURCE_LABEL[r.source] || r.source))} · ${_esc(this._refillEvidence(r))})`).join(', ')}</div>` : '';
 
     return `
       <div style="${cardSt}">
