@@ -17,6 +17,18 @@ class QrevoAreaRecoveryTests(unittest.TestCase):
                 dict(status="cleaning", vac="cleaning", area=recovered_area,
                      intensity=recovered_intensity, _gap=gap)]
 
+    def test_both_qrevo_models_keep_refill_baseline_on_idle_and_count_french_wash(self):
+        for model in ("a245", "a170"):
+            with self.subTest(model=model):
+                device = effective({}, descriptor(model))
+                idle = run(device, dict(BASE), [dict(status="charging", area="0"),
+                                                dict(status="charging", area="0")])
+                self.assertFalse(idle.get("accounting_incomplete"))
+                self.assertIsNotNone(sc.estimate_water_state(device, idle, {})["remaining_ml"])
+                washing = run(device, idle, [dict(status="Lavage de la serpillère", area="0")])
+                self.assertTrue(washing["wash_sequence_active"])
+                self.assertGreater(washing["used_ml"], idle["used_ml"])
+
     def test_short_area_only_gap_recovers_without_refill(self):
         state = run(self.device, dict(BASE), self.sequence())
         self.assertEqual(state["bridged_gaps"], 1)

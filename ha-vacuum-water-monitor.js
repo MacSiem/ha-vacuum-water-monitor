@@ -676,6 +676,7 @@ const VWM_WATER_TEXT_PL = {
   "Low": "Mało",
   "Cleaning": "Sprzątanie",
   "Idle": "Bezczynny",
+  "Mop washing": "Mycie mopa",
   "Last session": "Ostatnia sesja",
   "Filter life": "Żywotność filtra",
   "days": "dni",
@@ -14923,6 +14924,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const waterLow = !isPlumbed && !externalMode && anchorActive && waterAnchorKind === 'shortage';
     const waterEmpty = !isPlumbed && !externalMode && anchorActive && !waterLow;
     const vacState = this._getStateValue(device.vacuum_entity);
+    // Match the backend's explicit wash vocabulary and its status-source precedence.
+    const washKey = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const washStates = ['washing', 'washing_the_mop', 'washing_the_mop_2', 'clean_mop_cleaning', 'segment_clean_mop_cleaning', 'zoned_clean_mop_cleaning', 'lavage_de_la_serpillere', 'lavage_des_serpilleres', 'mop_washing', 'washing_mop'];
+    const activity = device.status_sensor ? this._getStateValue(device.status_sensor) : (this._getAttr(device.vacuum_entity, 'status') || vacState);
+    const isMopWashing = washStates.includes(washKey(activity)) || washStates.includes(washKey(this._getStateValue(device.dock_status_sensor))) || (device.integration_adapter === 'tapo_rv30' && device.tapo_status_contract !== 2 && this._getAttr(device.vacuum_entity, 'status_code') === 15);
     const isCleaning = device.integration_adapter === 'tapo_rv30'
       ? (device.tapo_status_contract === 2 ? this._normaliseModelKey(this._getStateValue(device.status_sensor)) === 'cleaning' : this._getAttr(device.vacuum_entity, 'status_code') === 1)
       : ['cleaning', 'running', 'sweeping', 'mopping', 'vacuuming'].includes(this._normaliseModelKey(vacState));
@@ -15035,7 +15041,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       reservoirsMl: device.reservoirs_ml && typeof device.reservoirs_ml === 'object' ? device.reservoirs_ml : {},
       trackedReservoir: device.tracked_reservoir || null,
       signals: device.signals && typeof device.signals === 'object' ? device.signals : {},
-      waterEmpty, waterLow, isCleaning, filterDays, sessionMl, lastReset, vacState, charge,
+      waterEmpty, waterLow, isCleaning, isMopWashing, filterDays, sessionMl, lastReset, vacState, charge,
       mainBrushH, sideBrushH, filterH, sensorH, dockBrushH, dockStrainerH,
       dockCleanWaterState, dockDirtyWaterState, dockCleanWaterProblem, dockDirtyWaterProblem,
       dockCleanWaterFull, dockDirtyWaterFull, waterShortage, mopAttached, mopDrying,
@@ -15296,7 +15302,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ? `<div class="row"><span class="row-label">${this._waterText('Recorded estimate (incomplete)')}</span><span class="row-val">${this._formatUi().number(data.partialUsedMl / 1000, {minimumFractionDigits:2,maximumFractionDigits:2})} L</span></div>` : '';
 
     const vacStateChip = data.vacState
-      ? `<span class="chip ${data.isCleaning ? 'chip-active' : 'chip-idle'}">${data.isCleaning ? '\uD83E\uDDF9 ' + this._waterText('Cleaning') : '\uD83D\uDECC ' + this._waterText('Idle')}</span>`
+      ? `<span class="chip ${data.isCleaning || data.isMopWashing ? 'chip-active' : 'chip-idle'}">${data.isMopWashing ? '\uD83D\uDCA7 ' + this._waterText('Mop washing') : data.isCleaning ? '\uD83E\uDDF9 ' + this._waterText('Cleaning') : '\uD83D\uDECC ' + this._waterText('Idle')}</span>`
       : '';
 
     let extraRows = '';
