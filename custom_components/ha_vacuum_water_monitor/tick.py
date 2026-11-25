@@ -621,6 +621,24 @@ def _tick_device_pass(
     cleaning_active = _binary_active(
         _state_value(hass, device.get("cleaning_active_sensor"))
     )
+    # Only a continuously observed docked interval is safe for ignoring a
+    # missing optional setting in the water balance. In particular, a dock
+    # can wash while the vacuum entity still says "docked" or "charging".
+    docked_states = {"docked", "charging", "charging_complete", "charging_completed"}
+    previous_dock_status = state.get("last_dock_status")
+    previous_observation = _positive_number(state.get("last_tick_ts")) or _positive_number(state.get("last_reset_ts"))
+    settled_dock = bool(
+        state.get("last_status") in docked_states and curr_status in docked_states
+        and vac_state in docked_states and cleaning_active is not True
+        and (not device.get("cleaning_active_sensor") or cleaning_active is False)
+        and not state.get("session_start_ts") and not state.get("verified_wash_active")
+        and not state.get("gap_exposure_possible") and not state.get("gap_started_ts") and not state.get("area_gap")
+        and previous_observation is not None and 0 <= now_ts - previous_observation <= MAX_ACTIVE_INTERVAL_SECONDS * 1000
+        and curr_area is not None
+        and (state.get("last_area") is None or _float_or_none(state.get("last_area")) == curr_area)
+        and previous_dock_status not in DOCK_WASH_STATES and curr_dock_status not in DOCK_WASH_STATES
+        and (not device.get("dock_status_sensor") or (previous_dock_status is not None and curr_dock_status is not None))
+    )
     curr_duration_seconds = _duration_seconds(
         hass, device.get("duration_sensor")
     )
@@ -812,9 +830,15 @@ def _tick_device_pass(
         # A bound control that disappears is not the same as "off". Until it
         # returns, a full-to-empty cycle cannot be used to learn a rate.
         if any(item["value"] is None for item in observed_settings.values()):
-            state.update(accounting_incomplete=True, session_accounting_valid=False,
-                         session_exposure_complete=False, session_water_broken=True)
-            _record_accounting(state, "context", None, None, "observed_setting_unavailable")
+            if settled_dock:
+                # This is not a usable learning context, but no water exposure
+                # was observed in this interval. Do not invalidate the balance.
+                if state.get("nominal_time_start_pending"):
+                    state["nominal_time_waiting_for_settings"] = True
+            else:
+                state.update(accounting_incomplete=True, session_accounting_valid=False,
+                             session_exposure_complete=False, session_water_broken=True)
+                _record_accounting(state, "context", None, None, "observed_setting_unavailable")
     consumption_context = deepcopy(device.get("consumption_context") or {
         "model_id": device.get("profile_key"), "sku": device.get("sku"),
         "dock_variant": device.get("dock_variant"), "firmware": device.get("firmware"),
@@ -1042,7 +1066,13 @@ def _tick_device_pass(
         if observed_settings and any(item["value"] is None for item in observed_settings.values()):
             known_mode = False
         learning = state.get("nominal_time_learning") or {}
-        if state.pop("nominal_time_start_pending", False):
+        waiting = bool(state.get("nominal_time_waiting_for_settings"))
+        defer_start = waiting and settled_dock and not known_mode
+        start_pending = bool(state.get("nominal_time_start_pending")) and not defer_start
+        if start_pending:
+            state.pop("nominal_time_start_pending", None)
+            state.pop("nominal_time_waiting_for_settings", None)
+        if start_pending and (not waiting or (settled_dock and known_mode)):
             learning = nominal_time_learning.start_full(learning,
                 context=nominal_time_context, capacity_ml=nominal_capacity, now_ts=now_ts,
                 residual_percent=_nominal_residual_percent(device))
@@ -1103,6 +1133,7 @@ def _tick_device_pass(
         state["nominal_time_resolution"] = {"status": "unavailable", "reason": "time_method_replaced"}
     if not nominal_eligible:
         state.pop("nominal_time_start_pending", None)
+        state.pop("nominal_time_waiting_for_settings", None)
     state["last_consumption_context"] = deepcopy(consumption_context)
     context_values = {key: device.get(key) for key in (
         "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",

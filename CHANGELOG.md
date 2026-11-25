@@ -2,6 +2,7 @@
 
 ## 5.15.0-beta.3 (Unreleased)
 
+- Preserve a confirmed tank balance when an optional setting is unavailable during an observed, settled dock interval; continue to flag uncertain water use and identify missing settings in interruption diagnostics (#32).
 - Use the automatically discovered Dreame clean-water tank status to show low water or a missing tank without changing the water balance or recording a refill (#32).
 - Show detected bindings in the Automatic option, and distinguish tank status, measured volume and estimates in the water card.
 - Record the Dreame X50 Ultra's rotary mop pads in the model catalog. Consumption rates still require calibration evidence.
