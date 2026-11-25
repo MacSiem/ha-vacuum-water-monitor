@@ -21,7 +21,7 @@ from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compat
 from . import profiles as consumption_profiles
 from . import accounting_v2
 from . import estimation
-from . import nominal_time_learning, physical_learning
+from . import nominal_time_learning, physical_learning, split_observation
 from .const import VERSION
 
 _OBSERVED_WASH_ROLES = ("wash_mode_entity", "wash_frequency_entity", "wash_area_threshold_entity",
@@ -1312,6 +1312,35 @@ def _tick_device_pass(
             # Missing first exposure invalidates the tank as well as the run.
             state.update(accounting_incomplete=True, session_water_broken=True,
                          session_accounting_valid=False)
+    split_volume = split_resolution = None
+    split_sensor = device.get("water_volume_sensor")
+    if split_sensor:
+        sample = hass.states.get(split_sensor)
+        raw_volume = getattr(sample, "state", None)
+        unit = (getattr(sample, "attributes", {}) or {}).get("unit_of_measurement")
+        split_volume = _float_or_none(raw_volume)
+        if split_volume is not None and unit in {"ml", "mL", "l", "L"}:
+            scale = 1000 if unit in {"l", "L"} else 1
+            split_volume *= scale
+            capacity = _positive_number(device.get("tracked_capacity_ml"))
+            if split_volume < 0 or (capacity is not None and split_volume > capacity):
+                split_volume = None
+            try:
+                from decimal import Decimal
+                split_resolution = float(Decimal(10) ** Decimal(str(raw_volume)).as_tuple().exponent) * scale
+            except (ValueError, ArithmeticError):
+                split_volume = split_resolution = None
+        else:
+            split_volume = None
+    split_observation.observe(state, device, consumption_context, live_settings,
+        now=now_ts, area=curr_area, wet=mop_active, cleaning=really_cleaning,
+        washing=wash_now and curr_status != "going_to_wash_the_mop",
+        completed=_float_or_none(_state_value(hass, device.get("wash_completed_sensor"))),
+        volume=split_volume, resolution=split_resolution,
+        volume_binding_ok=bool(split_sensor and device.get("water_volume_reservoir") == device.get("tracked_reservoir")
+                               and device.get("split_no_unmeasured_transfer") is True),
+        max_interval=MAX_ACTIVE_INTERVAL_SECONDS * 1000,
+        max_area=_positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2)
     # A dock return alone does not prove a normal finish. Preserve explicit
     # failures/cancellations seen during the task even if it later docks.
     if state.get("session_start_ts") and curr_status in {"error", "cancelled", "canceled", "canceling", "cancelling", "aborted", "abort", "stopped"}:
@@ -2225,6 +2254,7 @@ def _finish_session(state, running, status, now_ts, area):
               "exposures": deepcopy(state.get("session_exposures") or {}),
               "accounting_version": 3,
               "completed": status not in {"idle", "standby", "sleeping"} and not state.get("water_empty_active") and not state.get("session_forecast_interrupted")}
+    split_observation.finish(state, record, status)
     state["automatic_sessions"] = [record, *(state.get("automatic_sessions") or [])][:50]
     state["session_start_ts"] = None
     state.pop("session_settled_context_change", None)
