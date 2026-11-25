@@ -240,7 +240,7 @@ async def async_tick_water_state(
         return changed
     # A refill recorded by this pass (button, lid, dock) is written at once.
     refilled = any(state.get("last_reset_ts") != expected_reset_ts.get(vacuum) for vacuum, state in changed.items())
-    # An idle heartbeat changes only last_tick_ts: keep it in memory instead of
+    # Keep heartbeat and its process-local split baseline in memory instead of
     # rewriting the whole Store every minute.
     written = await storage.async_set_tank_states(
         changed, expected_reset_ts=expected_reset_ts, delay_seconds=None if refilled else delay_save_seconds,
@@ -295,7 +295,7 @@ def _charge_consumption(state, amount, action, source, evidence, now_ts, exposur
 
 
 def _only_tick_timestamp_changed(before: dict[str, Any], after: dict[str, Any]) -> bool:
-    keys = (set(before) | set(after)) - {"last_tick_ts", _PASS_REASONS_KEY}
+    keys = (set(before) | set(after)) - {"last_tick_ts", "split_idle_baseline", _PASS_REASONS_KEY}
     return all(before.get(key) == after.get(key) for key in keys)
 
 

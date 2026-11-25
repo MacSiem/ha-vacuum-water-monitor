@@ -78,6 +78,14 @@ def test_standalone_wash_requires_direct_idle_and_equal_counter():
     assert 'split_observation' not in s['automatic_sessions'][0]
 
 
+def test_idle_baseline_updates_do_not_schedule_store_writes():
+    before = {'last_tick_ts': 60000, 'split_idle_baseline': {'ts': 60000}, 'used_ml': 1}
+    after = {'last_tick_ts': 120000, 'split_idle_baseline': {'ts': 120000}, 'used_ml': 1}
+    assert tick._only_tick_timestamp_changed(before, after)
+    after['used_ml'] = 2
+    assert not tick._only_tick_timestamp_changed(before, after)
+
+
 def test_sensor_fresh_sessions_survive_old_binding_gap_but_not_new_gaps_or_rises():
     device = {'vacuum_entity':'vacuum.test', 'status_sensor':'sensor.status', 'area_sensor':'sensor.area',
               'cleaning_mode_entity':'select.clean', 'mop_mode_entity':'select.mop',

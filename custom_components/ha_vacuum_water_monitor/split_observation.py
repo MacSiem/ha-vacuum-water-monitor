@@ -48,9 +48,10 @@ def observe(state, device, context, settings, *, now, area, wet, cleaning, washi
             status=None, continuity_ok=True):
     start = state.get("session_start_ts")
     if not start:
-        state["split_idle_baseline"] = {"epoch": _EPOCH, "status": status, "count": completed, "area": area,
-                                        "ts": now, "reset": state.get("last_reset_ts"),
-                                        "continuity_ok": continuity_ok}
+        if device.get("wash_completed_sensor"):
+            state["split_idle_baseline"] = {"epoch": _EPOCH, "status": status, "count": completed, "area": area,
+                                            "ts": now, "reset": state.get("last_reset_ts"),
+                                            "continuity_ok": continuity_ok}
         return
     ident = identity(device, context, settings)
     old = state.get("split_session_observation")
