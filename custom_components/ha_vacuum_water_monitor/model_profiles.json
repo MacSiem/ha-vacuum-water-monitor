@@ -1540,6 +1540,7 @@
       },
       "tracked_reservoir": "dock_clean",
       "tracked_capacity_ml": 4500,
+      "mop_system": "rotating_pads",
       "allow_class_prior": false,
       "capability": "calibration_required",
       "confidence": "high",
@@ -1551,6 +1552,13 @@
         "rate_signal": null
       },
       "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://ae.dreametech.com/products/x40-ultra-rotary-mop-pads",
+          "claim": "Manufacturer lists X50 Ultra for rotary mop pads; no consumption rates inferred.",
+          "last_verified": "2026-11-25",
+          "retrieval_status": "read"
+        },
         {
           "source_type": "integration_documentation",
           "url": "https://dv.tasshack.com/guide/more/supported-devices",
