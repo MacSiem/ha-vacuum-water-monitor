@@ -66,6 +66,9 @@ def test_saved_split_rates_reach_discovered_tick_and_do_not_survive_setting_chan
             values['sensor.status']=_S('docked');values[entity]=_S('docked');values['sensor.completed']=_S('1')
             state=tick.tick_device(h,effective(),state,now_ts=300000)[0]
             assert state['used_ml']==117.5
+            record=state['automatic_sessions'][0]
+            assert record['water']==117.5 and record['resolution']['source']=='split_learning'
+            assert record['exposure_complete'] and record['accounting_valid']
             values['number.water']=_S('99');values['sensor.area']=_S('26',{'unit_of_measurement':'m²'})
             state=tick.tick_device(h,effective(),state,now_ts=360000)[0]
             assert state['used_ml']==117.5
@@ -89,3 +92,33 @@ def test_idle_baseline_rejects_previous_process_epoch():
     state['session_start_ts']=120000
     observe(120000,'washing_the_mop',True)
     assert not state['split_session_observation']['valid']
+
+
+def test_incomplete_split_estimate_is_not_saved_as_water():
+    state={'session_start_ts':1, 'session_start_used_ml':0, 'used_ml':117.5,
+           'last_accounting_evidence':'split_learning', 'session_accounting_valid':True,
+           'session_exposure_complete':False, 'session_resolution':{'source':'split_learning'}}
+    tick._finish_session(state,False,'docked',1000,25)
+    assert state['automatic_sessions'][0]['water'] is None
+
+
+def test_sensor_sample_cannot_be_saved_again_as_manual_measurement():
+    async def run():
+        st=storage.VacuumWaterStorage(None)
+        entity='vacuum.synthetic'
+        identity={'robot':entity, 'station':'dock', 'reservoir':'dock_clean',
+                  'floor_context':{'mode':'wet'}, 'wash_context':{'mode':'normal'}}
+        obs={'id':'same-session', 'identity':identity, 'quality':dict(tick.split_observation.QUALITY),
+             'area_m2':10, 'wash_count':1}
+        sensor={**deepcopy(obs), 'observed_ml':65, 'resolution_ml':1,
+                'source':'bound_reservoir_sensor', 'purpose':'training'}
+        await st.async_set_tank_state(entity,{'automatic_sessions':[{'ts':1,'split_observation':obs}],
+                                             'split_sensor_measurements':[sensor]})
+        import pytest
+        with pytest.raises(ValueError, match='already has a measurement'):
+            await st.async_save_measurement(entity,0,1,{**measurement(), 'observed_ml':65,
+                    'resolution_ml':1, 'purpose':'training'})
+        saved=await st.async_get_state()
+        assert len(saved['tank_states'][entity]['split_sensor_measurements'])==1
+        assert not saved['settings'].get('split_measurements')
+    asyncio.run(run())

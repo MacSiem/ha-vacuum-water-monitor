@@ -840,8 +840,9 @@ class VacuumWaterStorage:
                 banks = deepcopy(data["settings"].get("split_measurements") or {})
                 samples = list(banks.get(vacuum_entity) or [])
                 legacy = (data["settings"].get("local_measurements") or {}).get(vacuum_entity) or []
+                sensor_samples = data["tank_states"].get(vacuum_entity, {}).get("split_sensor_measurements") or []
                 if any(isinstance(s, dict) and (s.get("id") == sample["id"] or s.get("session_ts") == expected_ts
-                       or s.get("id") == "local." + str(expected_ts)) for s in [*samples, *legacy]):
+                       or s.get("id") == "local." + str(expected_ts)) for s in [*samples, *legacy, *sensor_samples]):
                     raise ValueError("This cycle already has a measurement")
                 if len(samples) >= 200:
                     raise ValueError("Measurement history is full; preserve/export it before collecting more")
@@ -850,7 +851,6 @@ class VacuumWaterStorage:
                 projected = [measurement_projection(s, origin, proven) for s in samples
                              if isinstance(s, dict) and measurement_belongs(s, origin, proven)]
                 target = measurement_projection(sample, origin, proven)["identity"]
-                sensor_samples = data["tank_states"].get(vacuum_entity, {}).get("split_sensor_measurements") or []
                 rates = resolve([*projected, *sensor_samples], target)
                 data["settings"]["split_measurements"] = banks
                 await self._store.async_save(data)

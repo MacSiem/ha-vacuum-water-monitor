@@ -2281,13 +2281,17 @@ def _finish_session(state, running, status, now_ts, area):
         state.update(session_accounting_valid=False, session_water_broken=True)
     if running or status not in _SESSION_END_STATES:
         return
-    measured = state.get("last_accounting_evidence") in {"measured_volume", "user_calibration", "explicit_user_configuration", "device_calibrated", "verified_model", "device_calibration", estimation.LABELED_ESTIMATE}
-    measured = measured or (state.get("session_resolution") or {}).get("source") in {"verified_model", "device_calibration"}
+    measured = state.get("last_accounting_evidence") in {"measured_volume", "user_calibration", "explicit_user_configuration", "device_calibrated", "verified_model", "device_calibration", "split_learning", estimation.LABELED_ESTIMATE}
+    measured = measured or (state.get("session_resolution") or {}).get("source") in {"verified_model", "device_calibration", "split_learning"}
     # accounting_valid marks a clean measurement (one context, no refill) for
     # calibration and sharing. The history keeps the water of any run whose
     # counting was never broken, including one that changed settings or was
     # refilled midway.
     counted = state.get("session_accounting_valid") or not state.get("session_water_broken", True)
+    split_estimate = ((state.get("session_resolution") or {}).get("source") == "split_learning"
+                      or state.get("last_accounting_evidence") == "split_learning")
+    if split_estimate and not state.get("session_exposure_complete"):
+        counted = False
     water = max(0, _number(state.get("used_ml"),0)-_number(state.get("session_start_used_ml"),0)) if measured and counted else None
     first_area = _float_or_none(state.get("session_start_area"))
     record = {"ts": now_ts, "started_ts": start, "type": "automatic", "water": water,
