@@ -1,6 +1,13 @@
 # Changelog
 
-## 5.14.1 (Unreleased)
+## 5.15.0-beta.1 (2026-11-25)
+
+- Recognize the Dreame X50 Ultra identifiers reported by Dreame Cloud and Matter. Existing settings and history are preserved when refreshing a detected profile.
+- Show mop washing on the water card, including the French Roborock status. Preserve the water balance across a brief loss of the area reading when the counter resumes with continuous values and unchanged settings.
+- Learn separate estimates for floor mopping and mop washes from compatible measured water use and a completed-wash counter. Keep measurements local and keep unavailable or unverified values explicit, including on Ecovacs T90.
+- Consolidate refreshes when multiple robot entities are registered together.
+
+## 5.14.1 (2026-11-25)
 
 - Recognize TapoVac mop-washing status and count a separately established wash dose once for the dock clean-water reservoir; unknown doses remain unknown. A wash status does not establish completion or measured volume.
 - Clarify regional model and integration evidence for Ecovacs T90 Pro Omni and Roborock Qrevo Curv 2 Flow without treating uncertain reservoir descriptions as measured capacities or consumption.
