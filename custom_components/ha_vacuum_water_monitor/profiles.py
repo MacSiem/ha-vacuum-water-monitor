@@ -234,6 +234,7 @@ def load_catalog(path: Path | str = _CATALOG_PATH) -> dict[str, dict[str, Any]]:
 _MANUFACTURER_EQUIVALENTS = {
     "tp_link": "tapo",
     "tplink": "tapo",
+    "dreametech": "dreame",
     "roborock_technology_co_ltd": "roborock",
 }
 
@@ -264,6 +265,13 @@ def _canonical_manufacturer(normalized: str, known: set[str]) -> str:
         if candidate in known and _token_match(normalized, alias):
             return candidate
     return ""
+
+
+def canonical_manufacturer(value: Any) -> str:
+    """Return the recognized catalog maker for registry comparisons."""
+    known = {normalize_identifier(record.get("manufacturer")) for record in CATALOG.values()}
+    known.discard("")
+    return _canonical_manufacturer(normalize_identifier(value), known)
 
 
 def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:

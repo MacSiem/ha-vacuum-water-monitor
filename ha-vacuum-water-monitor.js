@@ -2989,13 +2989,20 @@ const CALIBRATION_DATA = {
       "profile_key": "dreame_x50_ultra",
       "profile_source": "locked_override",
       "profile_confidence": "high",
-      "capability": "automatic_estimate",
-      "evidence": "labeled_estimate",
+      "capability": "calibration_required",
+      "evidence": "not_published",
       "sources": [
+        "https://dv.tasshack.com/guide/more/supported-devices",
         "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
         "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md"
       ],
       "provenance": [
+        {
+          "source_type": "integration_documentation",
+          "url": "https://dv.tasshack.com/guide/more/supported-devices",
+          "claim": "Upstream lists dreame.vacuum.r2538z as X50 Ultra Complete; R2538Z (98) is the Matter model reported for the same robot in issue 32. Identity evidence only; no hardware or consumption claims.",
+          "last_verified": "2026-11-25"
+        },
         {
           "source_type": "manufacturer_spec",
           "url": "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
@@ -3020,47 +3027,33 @@ const CALIBRATION_DATA = {
         "robot_dirty": null,
         "detergent": null
       },
-      "usage_ml_per_m2": {
-        "default": 7
-      },
+      "usage_ml_per_m2": {},
       "usage_ml_per_active_minute": {},
-      "wash_volume_ml": 120,
-      "accounting_evidence": "labeled_estimate",
-      "uncertainty_percent": 65,
-      "rate_signal": "mop_mode",
+      "wash_volume_ml": null,
+      "accounting_evidence": "not_published",
+      "uncertainty_percent": null,
+      "rate_signal": null,
       "time_accounting_evidence": "not_published",
       "estimated_m2_per_active_minute": null,
       "mop_system": "unknown",
-      "estimate_basis": "generic_prior",
+      "estimate_basis": null,
       "water_anchor_reservoir": "dock_clean",
       "water_anchor_reservoir_inferred": true,
       "refill_on_clear": true,
-      "refill_on_clear_inferred": true,
-      "intensity_factor": {
-        "low": 0.7,
-        "medium": 1.0,
-        "high": 1.3,
-        "extreme": 1.5,
-        "default": 1.0
-      },
-      "calibration_scope": "floor_only",
-      "estimate_sources": [
-        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
-      ]
+      "refill_on_clear_inferred": true
     },
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
-    "water_per_m2": {
-      "any mode": 7
-    },
-    "mop_wash_ml": 120,
+    "estimate_basis": null,
+    "estimate_label": null,
+    "uncertainty_percent": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
     "source_urls": [
+      "https://dv.tasshack.com/guide/more/supported-devices",
       "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
       "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md"
     ],
     "data_quality": "capacity_verified",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "dreame_z10_pro": {
     "label": "Dreame Z10 Pro",
