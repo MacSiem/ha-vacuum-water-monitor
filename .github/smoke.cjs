@@ -557,6 +557,13 @@ async function smokeRoundOneDescriptorContracts(target) {
     const conflict = devices.find(d => d.vacuum_entity === 'vacuum.conflict');
     const hostile = devices.find(d => d.vacuum_entity === 'vacuum.hostile');
     const yaml = devices.find(d => d.vacuum_entity === 'vacuum.yaml_capacity');
+    hass.states['sensor.a245_status'].state = 'Lavage de la serpillère';
+    let washData = el._calcDeviceData(a245);
+    if (!washData.isMopWashing || !el._buildWaterTab(a245, washData).includes('Mop washing')) throw new Error('French mop washing is displayed as idle');
+    hass.states['sensor.a245_status'].state = 'charging';
+    washData = el._calcDeviceData(a245);
+    if (washData.isMopWashing || !el._buildWaterTab(a245, washData).includes('Idle')) throw new Error('charging is not idle');
+    hass.states['sensor.a245_status'].state = 'cleaning';
     const a170Data = el._calcDeviceData(a170);
     if (a170Data.totalMl !== 4200) throw new Error('effective default/profile/entity calibration did not win in rendered capacity');
     el._activeDeviceIdx = devices.indexOf(a170); el._activeTab = 'water'; el._lastHtml = ''; el._render();

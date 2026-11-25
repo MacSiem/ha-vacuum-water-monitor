@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import asyncio
 
 import pytest
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
@@ -275,6 +277,26 @@ async def test_capability_entities_follow_dock_signal_removal_and_return(hass: H
     source_device, source_unique = source.device_id, source.unique_id
     roborock = hass.config_entries.async_entries("roborock")[0]
 
+    async def wait_capabilities(expected_switch: bool, expected_empty: bool) -> None:
+        """Wait for both independently scheduled entity refreshes to finish."""
+        changed = asyncio.Event()
+        @callback
+        def on_change(_event):
+            changed.set()
+        unsubscribe = async_track_state_change_event(hass, [switch, empty], on_change)
+        try:
+            async with asyncio.timeout(10):
+                while True:
+                    changed.clear()
+                    switch_state, empty_state = hass.states.get(switch), hass.states.get(empty)
+                    if (switch_state is not None and empty_state is not None
+                        and (switch_state.state != "unavailable") == expected_switch
+                        and (empty_state.state != "unavailable") == expected_empty):
+                        return
+                    await changed.wait()
+        finally:
+            unsubscribe()
+
     async def report():
         await client.send_json_auto_id({"type": f"{DOMAIN}/health"})
         response = await client.receive_json()
@@ -299,8 +321,7 @@ async def test_capability_entities_follow_dock_signal_removal_and_return(hass: H
     empty = _entity(hass, "button", "tank_empty")
     empty_unique = registry.async_get(empty).unique_id
     registry.async_update_entity(empty, name="My empty report")
-    assert hass.states.get(empty).state != "unavailable"
-    assert hass.states.get(switch).state == "unavailable"
+    await wait_capabilities(False, True)
     restored = registry.async_get_or_create("sensor", "roborock", source_unique, device_id=source_device,
         suggested_object_id="robot_dock_error", translation_key="dock_error", config_entry=roborock)
     assert restored.entity_id == "sensor.robot_dock_error"
@@ -310,8 +331,7 @@ async def test_capability_entities_follow_dock_signal_removal_and_return(hass: H
     assert returned["auto_refill_supported"] is True
     await client.send_json_auto_id({"type": f"{DOMAIN}/mark_empty", "vacuum_entity": VACUUM})
     assert not (await client.receive_json())["success"]
-    assert hass.states.get(switch).state != "unavailable"
-    assert hass.states.get(empty).state == "unavailable"
+    await wait_capabilities(True, False)
     assert registry.async_get(switch).unique_id == switch_unique and registry.async_get(switch).name == "My auto refill"
     assert registry.async_get(empty).unique_id == empty_unique and registry.async_get(empty).name == "My empty report"
 

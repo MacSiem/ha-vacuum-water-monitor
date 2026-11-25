@@ -15,7 +15,7 @@ from .integration_adapters import (
     adapter_for,
     miot_role_rank_for,
 )
-from .profiles import normalize_identifier, resolve_profile
+from .profiles import canonical_manufacturer, normalize_identifier, resolve_profile
 
 
 def discover_descriptors(
@@ -68,7 +68,8 @@ def _suggest_bridge_duplicates(descriptors: list[dict[str, Any]]) -> None:
     suggestion the card asks the user to confirm; nothing is merged here.
     """
     def maker(descriptor: dict[str, Any]) -> str:
-        return normalize_identifier(descriptor.get("manufacturer") or "")
+        return (canonical_manufacturer(descriptor.get("manufacturer"))
+                or normalize_identifier(descriptor.get("manufacturer") or ""))
 
     for descriptor in descriptors:
         if descriptor.get("platform") != "matter" or descriptor.get("duplicate_entities") or not maker(descriptor):
