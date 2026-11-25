@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.15.0-beta.2 (2026-11-25)
+
+- Match Matter devices that expose a robot's identity across separate device entries to the corresponding vacuum profile.
+- Explain when sparse telemetry limits water estimates and which measurements can improve them.
+- Make duplicate-device suggestions more precise for Dreame X50 Ultra (#32).
+
 ## 5.15.0-beta.1 (2026-11-25)
 
 - Recognize the Dreame X50 Ultra identifiers reported by Dreame Cloud and Matter. Existing settings and history are preserved when refreshing a detected profile.
