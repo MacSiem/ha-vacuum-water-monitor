@@ -820,6 +820,7 @@ def _tick_device_pass(
                 consumption_context["settings"][key] = value
                 field_sources[key] = "declared"
     whole_cycle_calibration = None
+    split_rates = None
     auto_profile = None
     closing_whole_cycle = False
     whole_cycle_fallback = False
@@ -943,6 +944,30 @@ def _tick_device_pass(
                 calibration_factor = 1
             elif resolution.get("source") not in {"unknown", "manufacturer_data"} and whole_cycle_calibration is None:
                 state["consumption_resolution"] = {**resolution, "source": "unknown", "reason": "action_accounting_required"}
+        # Resolve against this tick's observed controls, never the previous
+        # observation's cached identity. A configured volume sensor remains
+        # authoritative even while its current reading is unavailable.
+        samples = (device.get("split_measurements") or []) + (state.get("split_sensor_measurements") or [])
+        if (samples and reservoir_matches and not plumbed_supply
+                and not device.get("water_volume_sensor") and whole_cycle_calibration is None
+                and resolution.get("scope") != "whole_cycle"
+                and not wash_covered_by_cycle_rate):
+            from . import split_learning, split_observation
+            split_rates = split_learning.resolve(
+                samples, split_observation.identity(hass, device, consumption_context))
+            if not isinstance(split_rates, dict):
+                split_rates = None
+            floor_rate = _positive_number((split_rates or {}).get("floor_ml_per_m2"))
+            if (floor_rate is not None and usage_per_m2 is None and usage_per_minute is None
+                    and device.get("usage_ml_per_m2") is None
+                    and device.get("usage_ml_per_active_minute") is None
+                    and device.get("wash_volume_ml") is None):
+                usage_per_m2 = floor_rate
+                calibration_factor = intensity_factor = 1
+                evidence = "split_learning"
+                state["consumption_resolution"] = {
+                    "scope": "floor_only", "method": "area", "coefficient": floor_rate,
+                    "source": evidence, "reason": None}
     else:
         consumption_context = None
     # Missing ml/min must not prevent learning independently observed exposure.
@@ -1259,6 +1284,13 @@ def _tick_device_pass(
         wash_context = deepcopy(consumption_context)
         wash_context["action"] = "mop_wash"
         wash_resolution = resolve_consumption_profile(wash_context, {"action_count": 1})
+        if (wash_resolution.get("scope") != "wash_only" or wash_resolution.get("method") != "action"):
+            split_wash = _positive_number((split_rates or {}).get("wash_ml_per_completed_action"))
+            if (split_wash is not None and device.get("wash_volume_ml") is None
+                    and device.get("usage_ml_per_m2") is None
+                    and device.get("usage_ml_per_active_minute") is None):
+                wash_resolution = {"scope": "wash_only", "method": "action",
+                                   "coefficient": split_wash, "source": "split_learning"}
         if wash_resolution.get("scope") == "wash_only" and wash_resolution.get("method") == "action":
             # A phase ending or a command does not prove completion. A bound
             # completed-action counter must advance exactly once without a gap.
