@@ -70,6 +70,19 @@ class DreameMinuteSyncTests(unittest.TestCase):
         self.assertIsNotNone((state.get('nominal_time_learning') or {}).get('cycle'))
         self.assertFalse(state['accounting_incomplete'])
 
+    def test_new_refill_and_observation_gap_clear_old_waiting_marker(self):
+        initial = {**BASE, 'last_status': 'charging', 'nominal_time_waiting_for_settings': True}
+        state = asyncio.run(repair(initial))
+        self.assertNotIn('nominal_time_waiting_for_settings', state)
+        self.assertTrue(state['nominal_time_start_pending'])
+        state['nominal_time_waiting_for_settings'] = True
+        tick._open_observation_gap(state, 20_001_000)
+        self.assertNotIn('nominal_time_waiting_for_settings', state)
+        self.assertFalse(state['nominal_time_start_pending'])
+        state = asyncio.run(repair({**state, 'last_reset_ts': 0}))
+        self.assertNotIn('nominal_time_waiting_for_settings', state)
+        self.assertTrue(state['nominal_time_start_pending'])
+
     def test_missing_control_is_still_an_interruption_when_exposure_is_possible(self):
         device = fixture()
         cases = [
@@ -81,6 +94,8 @@ class DreameMinuteSyncTests(unittest.TestCase):
             ('charging', 'docked', {'last_area': 40}, None),
             ('charging', 'docked', {}, 'washing_mop'),
             ('charging', 'docked', {}, 'unavailable'),
+            ('charging', 'docked', {}, 'unrecognized_station_state'),
+            ('charging', 'docked', {'last_dock_status': 'unrecognized_station_state'}, 'idle'),
             ('charging', 'docked', {'last_dock_status': 'washing_mop'}, 'idle'),
         ]
         for status, vacuum, changes, dock in cases:
@@ -94,6 +109,12 @@ class DreameMinuteSyncTests(unittest.TestCase):
                                              config, state, now_ts=20_018_000)
                 self.assertTrue(result['accounting_incomplete'])
                 self.assertIn('observed_setting_unavailable', result['last_accounting_interruption']['reasons'])
+
+    def test_explicit_idle_station_allows_settled_dock(self):
+        device = {**fixture(), 'dock_status_sensor': 'sensor.dock'}
+        state = asyncio.run(repair({**BASE, 'last_status': 'charging', 'last_dock_status': 'idle'}))
+        result, _ = tick.tick_device(sample(dock='idle'), device, state, now_ts=20_018_000)
+        self.assertFalse(result['accounting_incomplete'])
 
     def test_missing_initial_area_is_attributed_to_missing_exposure(self):
         state = {**BASE, 'last_area': None, 'last_status': 'cleaning', 'last_tick_ts': 0}

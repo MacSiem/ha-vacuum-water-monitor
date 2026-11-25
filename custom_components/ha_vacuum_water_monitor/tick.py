@@ -637,7 +637,9 @@ def _tick_device_pass(
         and curr_area is not None
         and (state.get("last_area") is None or _float_or_none(state.get("last_area")) == curr_area)
         and previous_dock_status not in DOCK_WASH_STATES and curr_dock_status not in DOCK_WASH_STATES
-        and (not device.get("dock_status_sensor") or (previous_dock_status is not None and curr_dock_status is not None))
+        # A bound station must explicitly report an idle state at both ends;
+        # an unfamiliar enum cannot prove that the station is not washing.
+        and (not device.get("dock_status_sensor") or (previous_dock_status == "idle" and curr_dock_status == "idle"))
     )
     curr_duration_seconds = _duration_seconds(
         hass, device.get("duration_sensor")
@@ -2813,6 +2815,7 @@ def _water_anchor_states(
 
 def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
+    state.pop("nominal_time_waiting_for_settings", None)
     if isinstance(state.get("split_session_observation"), dict):
         state["split_session_observation"]["valid"] = False
     if isinstance(state.get("physical_learning"), dict) and state["physical_learning"].get("cycle"):
