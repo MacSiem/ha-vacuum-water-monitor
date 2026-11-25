@@ -3005,7 +3005,7 @@ const CALIBRATION_DATA = {
         {
           "source_type": "integration_documentation",
           "url": "https://dv.tasshack.com/guide/more/supported-devices",
-          "claim": "Upstream lists dreame.vacuum.r2538z as X50 Ultra Complete; R2538Z (98) is the Matter model reported for the same robot in issue 32. Identity evidence only; no hardware or consumption claims.",
+          "claim": "Upstream lists dreame.vacuum.r2538z as X50 Ultra Complete; R2538Z (98), split into registry model R2538Z and model_id 98, is the Matter identity reported for the same robot in issue 32. Identity evidence only; no hardware or consumption claims.",
           "last_verified": "2026-11-25"
         },
         {
