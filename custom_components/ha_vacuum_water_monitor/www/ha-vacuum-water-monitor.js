@@ -15797,7 +15797,6 @@ class HAVacuumWaterMonitor extends HTMLElement {
           </button>
           <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
             ${effectiveCalibration}
-
             <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
               ${this._waterText("With supported refill and empty-tank signals, calibration learns during normal cleaning. You do not need to test each mode. The measurements below are optional overrides.")}
             </div>
@@ -16531,10 +16530,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
 
   _reprofileDevice() {
     if (this._reprofilePromise) return this._reprofilePromise;
-    const promise = this._runReprofileDevice();
-    this._reprofilePromise = promise;
-    promise.finally(() => { if (this._reprofilePromise === promise) this._reprofilePromise = null; });
-    return promise;
+    this._reprofilePromise = this._runReprofileDevice().finally(() => { this._reprofilePromise = null; });
+    return this._reprofilePromise;
   }
 
   async _runReprofileDevice() {
@@ -16549,7 +16546,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       this._discoveredVacuums = result.vacuums || [];
       this._balanceLinks = result.balance_links;
       if (result.bindings_refreshed === false) this._bindingRefreshState = 'failed';
-      this._reprofileStatus = {owner: device.vacuum_entity, text: result.bindings_refreshed === false ? this._bindingRefreshMessage() : ((result.vacuums || []).some(v => v.entity_id === device.vacuum_entity && !v.profile_key)
+      this._reprofileStatus = {owner: device.vacuum_entity, text: result.bindings_refreshed === false ? this._bindingRefreshMessage() : (!(result.vacuums || []).find(v => v.entity_id === device.vacuum_entity)?.profile_key
         ? (this._lang === 'pl' ? 'Odświeżono profil, ale model nadal jest nieznany. Kalibracja i historia zostały zachowane.' : 'Profile refreshed, but the model is still unknown. Calibration and history are preserved.')
         : this._waterText("Profile refreshed. Your calibration and history are preserved."))};
       this._render({preserveDraft:true});
@@ -17391,7 +17388,7 @@ target:
     const badgeTone = status.color === '#ef4444' ? 'crit' : status.color === '#f59e0b' ? 'warn' : status.color === '#22c55e' ? 'ok' : 'unknown';
     const deviceHeader = devices.length > 0 ? `
       <div class="device-header">
-        <div><div class="device-name">${_esc(this._deviceIcon(device.icon))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>${data.profileKey && data.profileKey !== 'generic' && CALIBRATION_DATA[data.profileKey]?.label ? `<div>${this._lang === 'pl' ? 'Model' : 'Model'}: ${_esc(CALIBRATION_DATA[data.profileKey].label)}</div>` : ''}</div>
+        <div><div class="device-name">${_esc(this._deviceIcon(device.icon))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>${data.profileKey && data.profileKey !== 'generic' && CALIBRATION_DATA[data.profileKey]?.label ? `<div>Model: ${_esc(CALIBRATION_DATA[data.profileKey].label)}</div>` : ''}</div>
         ${data.vacState !== undefined ? `<div class="status-badge" style="background:${status.color}20;color:var(--vwm-badge-${badgeTone},${status.color});border:1px solid ${status.color}40">${status.icon} ${status.label}</div>` : ''}
       </div>` : '';
 
