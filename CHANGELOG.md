@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.14.1 (Unreleased)
+
+- Recognize TapoVac mop-washing status and count a separately established wash dose once for the dock clean-water reservoir; unknown doses remain unknown. A wash status does not establish completion or measured volume.
+- Clarify regional model and integration evidence for Ecovacs T90 Pro Omni and Roborock Qrevo Curv 2 Flow without treating uncertain reservoir descriptions as measured capacities or consumption.
+
 ## 5.14.0 (2026-11-24)
 
 - Keep refill evidence scoped to the correct reservoir, distinguish clean-water refills from dirty-water service and show confirmation evidence in history.
