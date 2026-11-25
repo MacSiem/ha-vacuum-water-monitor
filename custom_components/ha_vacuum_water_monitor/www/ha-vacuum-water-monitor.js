@@ -423,6 +423,9 @@ const VWM_WATER_TEXT_PL = {
   "The configured duration signal is unavailable. No elapsed time is inferred.": "Przypisany sygnał czasu jest niedostępny. Czas nie jest zgadywany.",
   "The authoritative volume sensor is unavailable. Estimates will not replace it.": "Czujnik objętości jest niedostępny. Szacunki go nie zastępują.",
   "Confirm which reservoir the volume sensor measures.": "Potwierdź, który zbiornik mierzy czujnik objętości.",
+  "Dock clean-water tank status": "Stan zbiornika czystej wody stacji",
+  "Dock dirty-water tank status": "Stan zbiornika brudnej wody stacji",
+  "Tank status reports conditions such as empty or missing, not the volume in ml. Recognized states depend on the integration. Water remaining may be estimated; a volume sensor measures it.": "Stan zbiornika informuje np. o pustym lub wyjętym zbiorniku, a nie o objętości w ml. Rozpoznawane stany zależą od integracji. Pozostałą ilość wody można oszacować; czujnik objętości ją mierzy.",
   "Volume sensor must publish mL or L.": "Czujnik objętości musi podawać mL lub L.",
   "Typical for this mop system": "Szacunek dla tego systemu mopowania",
   "Generic mopping estimate": "Początkowy szacunek mopowania",
@@ -15707,7 +15710,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const text = value => this._waterText(value);
     // Original translated prefix must also be recognized in PL.
     for (const [name, level] of Object.entries(data.reservoirLevels || {})) {
-      if (label === `${text('Physical')} ${name}`) return [code(name), level?.volume_ml == null ? code(level?.reason || 'unknown') : this._formatMl(level.volume_ml)];
+      if (label === `${text('Physical')} ${name}`) {
+        const title = `${code(name)} · ${pl ? 'zmierzona objętość' : 'measured volume'}`;
+        if (level?.volume_ml != null) return [title, this._formatMl(level.volume_ml)];
+        if (level?.reason === 'volume_sensor_unbound') return [title, pl ? 'Brak pomiaru objętości. Stan zbiornika nie podaje ml; dostępny szacunek poziomu jest pokazywany osobno.' : 'No volume measurement. Tank status does not report ml; an available estimated level is shown separately.'];
+        return [title, code(level?.reason || 'unknown')];
+      }
     }
     if (label.startsWith(text('Balanced') + ' ')) return [code(label.slice((text('Balanced')+' ').length)), value];
     if (label in (data.reservoirsMl || {})) return [code(label), value];
@@ -17203,8 +17211,8 @@ target:
       ['mop_attached_sensor', 'Mop attached'],
       ['water_box_attached_sensor', 'Water tank attached'],
       ['water_shortage_sensor', 'Water shortage'],
-      ['dock_clean_water_sensor', 'Dock clean water'],
-      ['dock_dirty_water_sensor', 'Dock dirty water'],
+      ['dock_clean_water_sensor', 'Dock clean-water tank status'],
+      ['dock_dirty_water_sensor', 'Dock dirty-water tank status'],
     ];
   }
 
@@ -17245,6 +17253,7 @@ target:
       </div>
       <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:12px;line-height:1.5">
         ${this._waterText("Signals are detected automatically. Choose a signal here to replace automatic detection; choose Automatic to restore it.")}
+        <p>${this._waterText("Tank status reports conditions such as empty or missing, not the volume in ml. Recognized states depend on the integration. Water remaining may be estimated; a volume sensor measures it.")}</p>
       </div>`;
 
     const vacId = String(device?.vacuum_entity || '');
@@ -17277,9 +17286,10 @@ target:
     const labelSt = 'font-size:12px;font-weight:700;color:var(--bento-text)';
 
     const rows = this._signalRoleCatalog().map(([role, label]) => {
-      const current = String(overrides[role] ?? signals[role] ?? '');
+      const current = String(overrides[role] || '');
+      const automatic = current ? '' : String(device?.[role] || signals[role] || '');
       const listed = siblings.some(entry => String(entry.entity_id) === current);
-      const options = [`<option value="">${this._waterText("Automatic")}</option>`];
+      const options = [`<option value=""${current ? '' : ' selected'}>${this._waterText("Automatic")}${automatic ? ` — ${_esc(automatic)}` : ''}</option>`];
       if (current && !listed) {
         options.push(`<option value="${_esc(current)}" selected>${_esc(current)} (${this._waterText("currently bound")})</option>`);
       }
