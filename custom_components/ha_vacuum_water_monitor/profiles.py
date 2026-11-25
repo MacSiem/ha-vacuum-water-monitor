@@ -213,6 +213,14 @@ def load_catalog(path: Path | str = _CATALOG_PATH) -> dict[str, dict[str, Any]]:
         for field in ("model_ids", "regional_skus", "observed_ha_identifiers", "integration_adapters", "available_signals", "unsupported_unknowns"):
             if not isinstance(record.get(field), list):
                 raise CatalogValidationError(f"Profile {key!r} requires {field}")
+        for observed in record["observed_ha_identifiers"]:
+            if not isinstance(observed, dict):
+                raise CatalogValidationError(f"Profile {key!r} invalid observed identifier")
+            if observed.get("kind") == "registry_composite" and not all(
+                isinstance(observed.get(field), str) and observed[field].strip()
+                for field in ("manufacturer", "integration_adapter", "model", "model_id")
+            ):
+                raise CatalogValidationError(f"Profile {key!r} invalid registry composite")
         if not isinstance(record.get("sample_count"), int) or isinstance(record["sample_count"], bool) or record["sample_count"] < 0:
             raise CatalogValidationError(f"Profile {key!r} invalid sample_count")
         try:
@@ -305,8 +313,22 @@ def resolve_profile(device: dict[str, Any] | None, catalog: dict[str, dict[str, 
                    if manufacturer and normalize_identifier(r.get("manufacturer")) == manufacturer}
     indexes = _catalog_indexes(catalog)
 
+    # Compound registry facts are scoped to the exact observed maker and adapter.
+    # Check ordinary model IDs first to retain their established precedence.
+    profile_key = _first_profile(indexes, device.get("model_id"))
+    if profile_key:
+        return _adapter_estimate_policy(device, _resolved(catalog[profile_key], profile_key, "model_id", "high"))
+    matches = [key for key, record in catalog.items()
+               for observed in record.get("observed_ha_identifiers", [])
+               if observed.get("kind") == "registry_composite"
+               and all(normalize_identifier(device.get(field)) == normalize_identifier(observed.get(field))
+                       and normalize_identifier(observed.get(field))
+                       for field in ("manufacturer", "integration_adapter", "model", "model_id"))]
+    if len(set(matches)) == 1:
+        key = matches[0]
+        return _adapter_estimate_policy(device, _resolved(catalog[key], key, "registry_composite", "high"))
+
     for source, confidence, values in (
-        ("model_id", "high", (device.get("model_id"),)),
         ("model", "high", (device.get("model"),)),
         ("catalog_identifier", "medium", _identifier_values(device)),
         ("resolved_profile", "high", (device.get("profile_key"),)),

@@ -78,7 +78,13 @@ def _suggest_bridge_duplicates(descriptors: list[dict[str, Any]]) -> None:
                    if other is not descriptor and other.get("platform") not in (None, "matter")
                    and maker(other) == maker(descriptor)]
         if len(natives) == 1:
-            descriptor["possible_duplicate_of"] = natives[0]["entity_id"]
+            native = natives[0]
+            strong_sources = {"model_id", "model", "registry_composite"}
+            if (descriptor.get("profile_source") in strong_sources
+                    and native.get("profile_source") in strong_sources
+                    and descriptor.get("profile_key") != native.get("profile_key")):
+                continue
+            descriptor["possible_duplicate_of"] = native["entity_id"]
 
 
 def descriptors_from_hass(hass: Any) -> list[dict[str, Any]]:
