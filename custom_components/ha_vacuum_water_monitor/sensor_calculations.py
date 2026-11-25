@@ -487,6 +487,7 @@ def apply_custom_calibration(
         from .calibration import validate_measurement_plan
         try:
             effective["measurement_plan"] = validate_measurement_plan(plan)
+            effective["split_no_unmeasured_transfer"] = effective["measurement_plan"].get("split_no_unmeasured_transfer") is True
         except ValueError:
             pass
     explicit_before_merge = _explicit_fields(effective)
@@ -991,6 +992,8 @@ def _apply_signal_overrides(
         if not isinstance(entity_id, str) or not entity_id.strip():
             continue
         entity_id = entity_id.strip()
+        if role == "wash_completed_sensor" and entity_id.split(".", 1)[0] not in {"sensor", "counter"}:
+            continue
         if assignable and entity_id not in assignable:
             continue
         device[role] = entity_id
@@ -1115,6 +1118,7 @@ def _generated_fields(device: dict[str, Any]) -> set[str]:
 
 
 _DIRECT_SIGNAL_FIELDS = {
+    "wash_completed_sensor",
     "route_entity",
     "passes_entity",
     "wash_mode_entity",

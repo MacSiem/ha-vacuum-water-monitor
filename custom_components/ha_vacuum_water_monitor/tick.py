@@ -952,9 +952,9 @@ def _tick_device_pass(
                 and not device.get("water_volume_sensor") and whole_cycle_calibration is None
                 and resolution.get("scope") != "whole_cycle"
                 and not wash_covered_by_cycle_rate):
-            from . import split_learning, split_observation
+            from . import split_learning
             split_rates = split_learning.resolve(
-                samples, split_observation.identity(hass, device, consumption_context))
+                samples, split_observation.identity(device, consumption_context, live_settings))
             if not isinstance(split_rates, dict):
                 split_rates = None
             floor_rate = _positive_number((split_rates or {}).get("floor_ml_per_m2"))
@@ -1368,6 +1368,7 @@ def _tick_device_pass(
         now=now_ts, area=curr_area, wet=mop_active, cleaning=really_cleaning,
         washing=wash_now and curr_status != "going_to_wash_the_mop",
         completed=_float_or_none(_state_value(hass, device.get("wash_completed_sensor"))),
+        status=curr_status, continuity_ok=not bool(state.get("session_forecast_interrupted")) and not bool(state.get("area_gap")),
         volume=split_volume, resolution=split_resolution,
         volume_binding_ok=bool(split_sensor and device.get("water_volume_reservoir") == device.get("tracked_reservoir")
                                and device.get("split_no_unmeasured_transfer") is True),

@@ -53,3 +53,26 @@ def test_sensor_observations_use_a_persistent_fourth_holdout_and_reject_rise():
     assert [s["purpose"] for s in state["split_sensor_measurements"]] == ["training"] * 3 + ["validation"]
     assert "split_observation" not in cycle(60000, increase=True)
     assert len(state["split_sensor_measurements"]) == 4
+
+
+def test_standalone_wash_requires_direct_idle_and_equal_counter():
+    device = {'vacuum_entity':'vacuum.test', 'status_sensor':'sensor.status', 'area_sensor':'sensor.area',
+              'cleaning_mode_entity':'select.clean', 'mop_mode_entity':'select.mop',
+              'mop_intensity_entity':'select.water', 'wash_mode_entity':'select.wash',
+              'wash_completed_sensor':'sensor.completed', 'tracked_reservoir':'dock_clean',
+              'dock_variant':'dock', 'firmware':'1', 'integration_adapter':'test',
+              'integration_version':'1', 'split_no_unmeasured_transfer':True}
+    def step(s, ts, status, count):
+        h = _Hass({'vacuum.test':_State('docked'), 'sensor.status':_State(status),
+                   'sensor.area':_State('7', {'unit_of_measurement':'m²'}),
+                   'sensor.completed':_State(str(count)), 'select.clean':_State('mopping'),
+                   'select.mop':_State('wet'), 'select.water':_State('high'), 'select.wash':_State('normal')})
+        return tick.tick_device(h,device,s,now_ts=ts)[0]
+    s=step({},60000,'docked',0)
+    s=step(s,120000,'washing_the_mop',0)
+    s=step(s,180000,'docked',1)
+    assert s['automatic_sessions'][0]['split_observation']['wash_count'] == 1
+    s=step({},60000,'docked',0)
+    s=step(s,120000,'washing_the_mop',1)
+    s=step(s,180000,'docked',2)
+    assert 'split_observation' not in s['automatic_sessions'][0]

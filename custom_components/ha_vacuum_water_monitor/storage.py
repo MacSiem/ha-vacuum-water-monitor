@@ -850,7 +850,8 @@ class VacuumWaterStorage:
                 projected = [measurement_projection(s, origin, proven) for s in samples
                              if isinstance(s, dict) and measurement_belongs(s, origin, proven)]
                 target = measurement_projection(sample, origin, proven)["identity"]
-                rates = resolve(projected, target)
+                sensor_samples = data["tank_states"].get(vacuum_entity, {}).get("split_sensor_measurements") or []
+                rates = resolve([*projected, *sensor_samples], target)
                 data["settings"]["split_measurements"] = banks
                 await self._store.async_save(data)
                 self._data = data

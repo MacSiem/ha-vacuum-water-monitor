@@ -16281,6 +16281,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return `<details id="cal-plan" class="section-block"><summary>${this._waterText('Prepare optional future measurements')}</summary>
       <p>${this._waterText('Normal tracking continues automatically. Missing wash and device settings can be declared here for future collection. This does not change the robot or old history. Leave unknown values blank; use not_applicable only for settings this device does not have.')}</p>
       ${fields}
+      <label><input type="checkbox" id="cal-plan-no-transfer" ${plan.split_no_unmeasured_transfer === true ? 'checked' : ''} /> ${this._waterText('I confirm there are no unmeasured transfers or other water uses from this tank during a measurement cycle.')}</label>
       <label><input type="checkbox" id="cal-plan-confirm" ${plan.confirmed === true ? 'checked' : ''} /> ${this._waterText('I checked these technical settings for future cycles.')}</label>
       <button type="button" id="cal-plan-save" class="maint-add-btn">${this._waterText('Save collection settings')}</button>
       <p id="cal-plan-status" role="status" aria-live="polite"></p>
@@ -16294,7 +16295,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return false;
     }
     const axes = new Set(['sku','dock_variant','firmware','integration_version']);
-    const plan = {confirmed:true,settings:{}};
+    const plan = {confirmed:true, settings:{}, split_no_unmeasured_transfer: !!sr.getElementById('cal-plan-no-transfer')?.checked};
     sr.querySelectorAll('[data-measurement-field]').forEach(input => {
       if (input.readOnly) return;
       const key = input.dataset.measurementField, value = input.value.trim() || null;
@@ -17178,6 +17179,7 @@ target:
       ['status_sensor', 'Vacuum status'],
       ['area_sensor', 'Cleaned area'],
       ['duration_sensor', 'Cleaning time'],
+      ['wash_completed_sensor', 'Completed mop washes (absolute integer counter)'],
       ['mop_mode_entity', 'Mop mode'],
       ['mop_intensity_entity', 'Water output level'],
       ['cleaning_mode_entity', 'Cleaning mode'],
@@ -17194,7 +17196,7 @@ target:
   // writes a non-signal device field from stored settings.
   _overridableSignalRoles() {
     return new Set([
-      'status_sensor', 'cleaning_active_sensor', 'area_sensor', 'duration_sensor',
+      'status_sensor', 'cleaning_active_sensor', 'area_sensor', 'duration_sensor', 'wash_completed_sensor',
       'mop_mode_entity', 'mop_intensity_entity', 'cleaning_mode_entity',
       'mop_attached_sensor', 'water_box_attached_sensor', 'water_box_detached_sensor',
       'water_shortage_sensor', 'dock_clean_water_sensor', 'dock_dirty_water_sensor',
@@ -17266,6 +17268,7 @@ target:
       }
       for (const entry of siblings) {
         const entityId = String(entry.entity_id);
+        if (role === 'wash_completed_sensor' && !/^(sensor|counter)\./.test(entityId)) continue;
         options.push(`<option value="${_esc(entityId)}"${entityId === current ? ' selected' : ''}>${_esc(optionLabel(entry))}</option>`);
       }
       // Once the user has assigned this role by hand, the backend's ambiguity
