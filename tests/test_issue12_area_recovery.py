@@ -1,7 +1,7 @@
 """Area-only Qrevo estimates must wait for short-gap counter recovery."""
 import unittest
 
-from test_beta_runtime_path import BASE, descriptor, effective, run, sc
+from test_beta_runtime_path import BASE, _S, descriptor, effective, run, sc
 
 
 class QrevoAreaRecoveryTests(unittest.TestCase):
@@ -28,6 +28,45 @@ class QrevoAreaRecoveryTests(unittest.TestCase):
                 washing = run(device, idle, [dict(status="Lavage de la serpillère", area="0")])
                 self.assertTrue(washing["wash_sequence_active"])
                 self.assertGreater(washing["used_ml"], idle["used_ml"])
+
+    def test_bound_unchanged_duration_does_not_poison_recoverable_area_gap(self):
+        for model in ("a245", "a170"):
+            with self.subTest(model=model):
+                device = {**effective({}, descriptor(model)), "duration_sensor": "sensor.duration",
+                          "usage_ml_per_m2": {"standard": 10}, "wash_volume_ml": 45,
+                          "calibration_scope": "floor_only"}
+                duration = {"sensor.duration": _S("1", {"unit_of_measurement": "min"})}
+                def step(status, area, vac="cleaning", gap=2700):
+                    return dict(status=status, vac=vac, area=area, extra=duration, _gap=gap)
+                state = run(device, dict(BASE), [step("charging", "0", "docked"),
+                    step("Lavage de la serpillère", "0", "docked"),
+                    step("cleaning", "0"), step("cleaning", "2")])
+                self.assertEqual(state["used_ml"], 65)
+                state = run(device, state, [step("cleaning", "unknown")], ts=10_010_800)
+                self.assertEqual(state["used_ml"], 65)
+                self.assertFalse(state.get("accounting_incomplete"))
+                state = run(device, state, [step("cleaning", "3")], ts=10_013_500)
+                self.assertEqual(state["used_ml"], 75)
+                self.assertEqual(state["bridged_gaps"], 1)
+                self.assertFalse(state.get("accounting_incomplete"))
+                self.assertEqual(sc.estimate_water_state(device, state, {})["remaining_ml"], 3925)
+
+    def test_bound_duration_preserves_unsafe_and_preexisting_interruptions(self):
+        device = {**self.device, "duration_sensor": "sensor.duration"}
+        duration = {"sensor.duration": _S("1", {"unit_of_measurement": "min"})}
+        for label, gap, area, intensity, incomplete in (
+            ("long", 360000, "3", "medium", False),
+            ("settings", 2700, "3", "high", False),
+            ("counter_reset", 2700, "0", "medium", False),
+            ("prior_interruption", 2700, "3", "medium", True),
+        ):
+            with self.subTest(label=label):
+                steps = self.sequence(gap=gap, recovered_area=area, recovered_intensity=intensity)
+                for step in steps:
+                    step["extra"] = duration
+                state = run(device, {**BASE, "accounting_incomplete": incomplete}, steps)
+                self.assertTrue(state.get("accounting_incomplete"))
+                self.assertIsNone(sc.estimate_water_state(device, state, {})["remaining_ml"])
 
     def test_short_area_only_gap_recovers_without_refill(self):
         state = run(self.device, dict(BASE), self.sequence())

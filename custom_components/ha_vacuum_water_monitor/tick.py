@@ -1695,6 +1695,17 @@ def _tick_device_pass(
     last_duration_seconds = _float_or_none(state.get("last_duration_seconds"))
     should_use_time = not distance_counted and (curr_area is None or state.get("area_time_fallback")
                        or (usage_per_m2 is None and usage_per_minute is not None)) and not wash_now
+    # With only an area rate, duration cannot account for a missing area sample.
+    # Wait for the cumulative counter and its continuity checks instead of
+    # treating a stationary or reset duration counter as lost water. Never
+    # clear an earlier interruption or defer beyond the existing bridge limit.
+    pending_area = (curr_area is None and (device.get("area_sensor") or device.get("area_attribute"))
+                    and usage_per_m2 is not None and usage_per_minute is None
+                    and not nominal_time_applied and last_area is not None
+                    and _positive_number(state.get("gap_started_ts")) is not None
+                    and 0 <= now_ts - state["gap_started_ts"] <= BRIDGE_GAP_MAX_SECONDS * 1000)
+    if pending_area:
+        should_use_time = False
     # Nominal observation measures the preceding interval. Entering a wash
     # closes the last floor interval; it does not make that interval a wash.
     if nominal_time_applied and nominal_time_elapsed and nominal_time_elapsed > 0:
@@ -1743,17 +1754,8 @@ def _tick_device_pass(
                 state, "active_time", None, time_evidence, "missing_intensity_factor"
             )
         elif usage_per_minute is None:
-            pending_area = (curr_area is None and (device.get("area_sensor") or device.get("area_attribute"))
-                            and usage_per_m2 is not None and last_area is not None
-                            and _positive_number(state.get("gap_started_ts")) is not None
-                            and 0 <= now_ts - state["gap_started_ts"] <= BRIDGE_GAP_MAX_SECONDS * 1000)
-            # A cumulative area counter can still cover this short interval.
-            # Its return is checked for continuity, pace and unchanged settings
-            # above. Missing a fallback time coefficient is not yet lost water.
             dirty |= _record_accounting(
-                state, "area" if pending_area else "active_time", None,
-                evidence if pending_area else time_evidence,
-                "area_unavailable" if pending_area else "missing_time_rate"
+                state, "active_time", None, time_evidence, "missing_time_rate"
             )
         else:
             time_interval_counted = True
