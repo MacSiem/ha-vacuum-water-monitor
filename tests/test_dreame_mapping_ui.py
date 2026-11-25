@@ -34,6 +34,32 @@ for (const lang of ['en','pl']) {
  data.reservoirLevels.dock_clean={volume_ml:123};host.innerHTML=card._buildDiagnostics(data);
  assert.match(host.querySelector('.diagnostics-grid').textContent,/123/);
  assert.doesNotMatch(host.querySelector('.diagnostics-grid').textContent,/No volume measurement|Brak pomiaru objętości/);
+
+ // Automatic Dreame status is informational and never becomes an override.
+ const dreame={...device,integration_adapter:'dreame_vacuum',signals:{clean_water_tank_status_sensor:auto,dirty_water_tank_status_sensor:'sensor.dirty_status'},dock_clean_water_sensor:undefined};
+ card._serverState.settings.signal_overrides={};
+ host.innerHTML=card._buildSignalMappingSection(dreame);
+ select=host.querySelector('#vwm-signal-'+role);assert.equal(select.value,'');assert(select.options[0].textContent.includes(auto));
+ assert(host.querySelector('#vwm-signal-dock_dirty_water_sensor').options[0].textContent.includes('sensor.dirty_status'));
+ card._serverState.settings.signal_overrides[id]={[role]:manual};
+ host.innerHTML=card._buildSignalMappingSection(dreame);select=host.querySelector('#vwm-signal-'+role);
+ assert.equal(select.value,manual);assert(!select.options[0].textContent.includes(auto));
+ card.setConfig({vacuum_entity:id,variant:'full'});card._serverState={settings:{},tank_states:{[id]:{clean_tank_advisory:'low_water'}}};
+ card._health={[id]:{clean_tank_advisory:'missing'}};card._discoveredVacuums=[];
+ const robot={vacuum_entity:id,tracked_reservoir:'dock_clean'};
+ for(const variant of ['full','compact','tile']) {
+  card._config.variant=variant;
+  for(const [state,expected] of [['low_water',lang==='pl'?'niski poziom':'low water'],['missing',lang==='pl'?'brak zbiornika':'tank is missing'],['ok',null],['unknown',null],[null,null]]) {
+   card._serverState.tank_states[id].clean_tank_advisory=state;
+   const data=card._calcDeviceData(robot);assert.equal(data.cleanTankAdvisory,expected?state:null);
+   host.innerHTML=card._buildWaterTab(robot,data);
+   if(expected) assert(host.textContent.toLowerCase().includes((variant==='full' ? expected : state==='low_water' ? (lang==='pl'?'mało wody':'low water') : (lang==='pl'?'brak zbiornika':'tank missing')).toLowerCase()));
+   else assert(!/Station reports low water|Station reports the clean-water tank is missing|Stacja zgłasza niski poziom|Stacja zgłasza brak zbiornika|Low water · station|Tank missing · station|Mało wody · stacja|Brak zbiornika · stacja/.test(host.textContent));
+  }
+ }
+ delete card._serverState.tank_states[id].clean_tank_advisory;
+ assert.equal(card._calcDeviceData(robot).cleanTankAdvisory,'missing');
+ assert.equal(card._calcDeviceData({...robot,dock_variant:'plumbed'}).cleanTankAdvisory,null);
  dom.window.close();
 }
 '''

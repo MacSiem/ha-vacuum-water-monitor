@@ -14842,6 +14842,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const totalMl = isPlumbed ? 0 : (Number.isFinite(optionCapacity) && optionCapacity > 0 ? optionCapacity : 0) || serverCapacity || configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
+    // The live tank state takes precedence even when it explicitly clears the advisory.
+    const liveTank = this._serverState?.tank_states?.[device.vacuum_entity];
+    const advisory = liveTank && Object.prototype.hasOwnProperty.call(liveTank, 'clean_tank_advisory')
+      ? liveTank.clean_tank_advisory : this._healthFor(device)?.clean_tank_advisory;
+    const cleanTankAdvisory = !isPlumbed && ['low_water', 'missing'].includes(advisory) ? advisory : null;
     const measuredVolume = Boolean(device.water_volume_sensor || tankState.last_accounting_source === 'real_sensor');
     const calibrationWindow = _vwmStoredWindow(tankState) || [];
     const legacyResetTs = Number(tankState.last_reset_ts);
@@ -15009,7 +15014,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       partialUsedMl: stateReason === 'accounting_incomplete' && initialized
         && typeof tankState.used_ml === 'number' && Number.isFinite(tankState.used_ml)
         && tankState.used_ml >= 0 ? tankState.used_ml : null,
-      initialized, stateReason, externalMode,
+      initialized, stateReason, externalMode, cleanTankAdvisory,
       sessionActive: Boolean(tankState.session_start_ts),
       profileKey: device.profile_key || profileKey || null,
       profileSource: device.profile_source || (device.profile_key ? 'backend' : 'legacy_client_fallback'),
@@ -15353,6 +15358,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ? `<button type="button" class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">${this._lang === 'pl' ? 'Dolano' : 'Refilled'}</button>` : '';
 
     const alertBanner = this._buildWaterAlert(device, data);
+    const tankAdvisory = data.cleanTankAdvisory === 'low_water'
+      ? (this._lang === 'pl' ? 'Stacja zgłasza niski poziom wody w zbiorniku' : 'Station reports low water in the tank')
+      : data.cleanTankAdvisory === 'missing'
+        ? (this._lang === 'pl' ? 'Stacja zgłasza brak zbiornika czystej wody' : 'Station reports the clean-water tank is missing') : '';
+    const shortTankAdvisory = data.cleanTankAdvisory === 'low_water'
+      ? (this._lang === 'pl' ? 'Mało wody · stacja' : 'Low water · station')
+      : data.cleanTankAdvisory === 'missing'
+        ? (this._lang === 'pl' ? 'Brak zbiornika · stacja' : 'Tank missing · station') : '';
 
     const configMissingBanner = data.configMissing
       ? `<div style="padding:12px 16px;background:rgba(245,158,11,0.08);border:1.5px solid #f59e0b;border-radius:8px;margin-bottom:12px;">
@@ -15405,11 +15418,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const settings=this._serverState?.settings||{};
       const authoredPercent=this._authoredConfigKeys?.has('warning_threshold')||this._authoredConfigKeys?.has('critical_threshold') ||
         (settings.warning_threshold != null && Number(settings.warning_threshold)!==20) || (settings.critical_threshold != null && Number(settings.critical_threshold)!==10);
-      const warning = data.waterEmpty || data.waterLow || data.waterShortage ? status.label
+      const warning = shortTankAdvisory || (data.waterEmpty || data.waterLow || data.waterShortage ? status.label
         : authoredPercent && percent!==null && percent<=Number(cfg.critical_threshold||10) ? this._waterText('Critical')
         : authoredPercent && percent!==null && percent<=Number(cfg.warning_threshold||20) ? this._waterText('Low')
         : !authoredPercent && forecast && Number.isFinite(runs) && runs < 1 ? (this._lang==='pl'?'Krytycznie mało wody':'Water critically low')
-        : !authoredPercent && forecast && Number.isFinite(runs) && runs <= 2 ? (this._lang==='pl'?'Mało wody':'Water low') : '';
+        : !authoredPercent && forecast && Number.isFinite(runs) && runs <= 2 ? (this._lang==='pl'?'Mało wody':'Water low') : '');
       const critical = data.waterEmpty || (authoredPercent && percent!==null && percent<=Number(cfg.critical_threshold||10)) || (!authoredPercent && forecast && runs<1);
       const tone = critical ? 'crit' : warning ? 'warn' : 'normal';
       const meter = percent == null ? '' : `<div class="vwm-meter ${tone}" role="progressbar" aria-label="${_esc(L.remaining)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div>`;
@@ -15417,8 +15430,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const shortValue = data.remainingL == null ? unknown : `${this._formatUi().number(data.remainingL,{maximumFractionDigits:2})} L${percent===null?'':' · '+this._formatUi().number(percent,{maximumFractionDigits:0})+'%'}`;
       if (tile) return `<div class="tab-content vwm-compact vwm-tile"><button type="button" class="vwm-tile-surface" id="vwm-expand" data-r6-open>
         <span class="vwm-icon ${tone}"><ha-icon icon="mdi:water-percent" aria-hidden="true"></ha-icon></span><span class="vwm-tile-copy"><strong>${_esc(displayTitle)}</strong>
-        <span class="vwm-tile-long">${_esc(data.remainingL == null ? unknown : shortValue+(forecast?' · '+forecastText:''))}</span>
-        <span class="vwm-tile-short">${_esc(shortValue)}</span></span></button>
+        <span class="vwm-tile-long">${_esc(shortTankAdvisory || (data.remainingL == null ? unknown : shortValue+(forecast?' · '+forecastText:'')))}</span>
+        <span class="vwm-tile-short">${_esc(shortTankAdvisory || shortValue)}</span></span></button>
         <div class="vwm-tile-action">${compactRefill}</div></div>`;
       const name=device.name || device.device_name || device.vacuum_entity || '';
       const subtitle=(data.lastReset?this._formatReset(data.lastReset)+' · ':'')+name;
@@ -15434,6 +15447,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div class="tab-content">
         ${this._buildSupplyAnswer(device, data)}
         ${alertBanner}
+        ${tankAdvisory ? `<section class="water-alert section-block" role="status" aria-live="polite">⚠ ${_esc(tankAdvisory)}</section>` : ''}
         ${noWaterTracking ? `<p class="tank-unknown" role="status">${this._lang === 'pl' ? 'Stan zbiornika nieznany' : 'Tank state unknown'}</p>${refillBtn}` : `
         <div class="device-body">
           <div class="gauge-wrap">
@@ -17296,7 +17310,12 @@ target:
 
     const rows = this._signalRoleCatalog().map(([role, label]) => {
       const current = String(overrides[role] || '');
-      const automatic = current ? '' : String(device?.[role] || signals[role] || '');
+      const descriptor = this._backendDescriptor(device);
+      const dreameRole = {dock_clean_water_sensor:'clean_water_tank_status_sensor', dock_dirty_water_sensor:'dirty_water_tank_status_sensor'}[role];
+      const explicit = this._explicitDeviceKeys(device);
+      const discoveredStatus = device?.integration_adapter === 'dreame_vacuum' && dreameRole && !explicit.has(role) && !explicit.has('signals')
+        ? descriptor?.signals?.[dreameRole] || signals[dreameRole] : '';
+      const automatic = current ? '' : String(device?.[role] || signals[role] || discoveredStatus || '');
       const listed = siblings.some(entry => String(entry.entity_id) === current);
       const options = [`<option value=""${current ? '' : ' selected'}>${this._waterText("Automatic")}${automatic ? ` — ${_esc(automatic)}` : ''}</option>`];
       if (current && !listed) {
