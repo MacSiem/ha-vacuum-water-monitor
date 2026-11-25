@@ -11,7 +11,7 @@ def _number(value, *, positive=False):
             and (value > 0 if positive else value >= 0))
 
 
-def fit(samples):
+def fit(samples, identity=None):
     """Fit floor ml/m² and completed-wash ml for one pair of action contexts.
 
     At least three training cycles, a full-rank well-conditioned design, and a
@@ -29,7 +29,7 @@ def fit(samples):
     ids = [s.get('id') for s in samples]
     if any(not isinstance(i, str) or not i for i in ids) or len(ids) != len(set(ids)):
         return None
-    identity = samples[0].get('identity')
+    identity = identity if identity is not None else samples[0].get('identity')
     if not isinstance(identity, dict) or any(not identity.get(k) for k in
             ('robot', 'station', 'reservoir', 'floor_context', 'wash_context')):
         return None
@@ -78,3 +78,54 @@ def fit(samples):
             'wash_ml_per_completed_action': wash,
             'training_ids': [s['id'] for s in train],
             'validation_ids': [s['id'] for s in holdout]}
+
+
+def resolve(samples, identity):
+    """Resolve private, independently validated rates for the requested contexts.
+
+    Pure actions can qualify without a matching partner action. Mixed cycles
+    qualify only as a full-rank pair. Never merge identities or duplicate IDs.
+    """
+    from statistics import median
+    result = {'floor_ml_per_m2': None, 'wash_ml_per_completed_action': None}
+    if not isinstance(samples, list) or not isinstance(identity, dict):
+        return result
+    ids = [s.get('id') for s in samples if isinstance(s, dict)]
+    duplicate = {i for i in ids if isinstance(i, str) and ids.count(i) > 1}
+    required = {'boundaries_confirmed': True, 'uninterrupted': True,
+                'exposure_complete': True, 'settings_constant': True,
+                'same_reservoir': True, 'intervening_refill': False,
+                'unmeasured_transfer': False}
+    if any(not identity.get(k) for k in ('robot', 'station', 'reservoir', 'floor_context', 'wash_context')):
+        return result
+    eligible = []
+    for s in samples:
+        if not isinstance(s, dict) or not isinstance(s.get('id'), str) or not s['id'] or s['id'] in duplicate:
+            continue
+        other = s.get('identity')
+        if (not isinstance(other, dict) or any(other.get(k) != identity[k] for k in ('robot', 'station', 'reservoir'))
+                or s.get('quality') != required or s.get('source') not in ('measured_refill', 'bound_reservoir_sensor')
+                or s.get('purpose') not in ('training', 'validation')
+                or not _number(s.get('area_m2')) or not _number(s.get('wash_count'))
+                or not float(s['wash_count']).is_integer() or not _number(s.get('observed_ml'), positive=True)
+                or not _number(s.get('resolution_ml'), positive=True) or s['resolution_ml'] >= s['observed_ml']
+                or not (s['area_m2'] or s['wash_count'])
+                or (s['area_m2'] and other.get('floor_context') != identity['floor_context'])
+                or (s['wash_count'] and other.get('wash_context') != identity['wash_context'])):
+            continue
+        eligible.append(s)
+    mixed = fit(eligible, identity)
+    if mixed:
+        result.update({k: mixed[k] for k in result})
+    for key, exposure, inactive in (('floor_ml_per_m2', 'area_m2', 'wash_count'),
+                                     ('wash_ml_per_completed_action', 'wash_count', 'area_m2')):
+        pure = [s for s in eligible if s[inactive] == 0 and s[exposure] > 0]
+        training = [s for s in pure if s['purpose'] == 'training']
+        validation = [s for s in pure if s['purpose'] == 'validation']
+        if len(training) < 3 or not validation:
+            continue
+        rate = median(s['observed_ml'] / s[exposure] for s in training)
+        if all(abs(rate * s[exposure] - s['observed_ml']) <= max(2*s['resolution_ml'], .2*s['observed_ml'])
+               for s in pure):
+            result[key] = rate
+    return result

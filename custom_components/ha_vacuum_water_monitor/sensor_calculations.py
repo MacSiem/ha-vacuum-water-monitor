@@ -573,6 +573,9 @@ def apply_custom_calibration(
     _apply_signal_overrides(effective, settings)
     _apply_refill_settings(effective, settings)
 
+    split = settings.get("split_measurements") or {}
+    if isinstance(split, dict) and isinstance(split.get(effective.get("vacuum_entity")), list):
+        effective["split_measurements"] = deepcopy(split[effective["vacuum_entity"]])
     modern = settings.get("consumption_calibrations") or {}
     if isinstance(modern, dict) and isinstance(modern.get(effective.get("vacuum_entity")), (dict, list)):
         effective["consumption_calibration"] = modern[effective["vacuum_entity"]]

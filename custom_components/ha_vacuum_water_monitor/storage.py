@@ -99,7 +99,7 @@ class _ReportingStore(Store):
 
 THRESHOLD_KEYS = ("warning_threshold", "critical_threshold")
 _VACUUM_KEYED_SETTINGS = ("refill_config", "refill_settings", "device_options", "local_measurements",
-                          "consumption_calibrations", "measurement_plans", "sessions", "intro_dismissed")
+                          "consumption_calibrations", "split_measurements", "measurement_plans", "sessions", "intro_dismissed")
 
 
 def measurement_identity(data: dict[str, Any], vacuum_entity: str) -> tuple[str, set[str]]:
@@ -126,6 +126,9 @@ def measurement_projection(sample: dict[str, Any], origin: str, proven: set[str]
     """Normalize proven identity for comparison only; leave recorded evidence intact."""
     projected = deepcopy(sample)
     projected["device_id"] = origin
+    identity = projected.get("identity")
+    if isinstance(identity, dict) and identity.get("robot") in proven:
+        identity["robot"] = origin
     context = projected.get("context")
     if isinstance(context, dict) and context.get("device_id") in proven:
         context["device_id"] = origin
@@ -417,6 +420,8 @@ class VacuumWaterStorage:
         """
         if not isinstance(patch, dict):
             raise ValueError("settings patch must be an object")
+        if "split_measurements" in patch:
+            raise ValueError("Split measurements can only be recorded from a completed cycle")
 
         async with self._lock:
             data = await self._ensure_loaded_locked()
@@ -800,11 +805,63 @@ class VacuumWaterStorage:
             data = deepcopy(await self._ensure_loaded_locked())
             sessions = data["tank_states"].get(vacuum_entity, {}).get("automatic_sessions", [])
             session = select_recorded_cycle(sessions, index, expected_ts)
-            sample = build_local_measurement(session, values, vacuum_entity)
             origin, proven = measurement_identity(data, vacuum_entity)
+            if "split_observation" in session:
+                from .split_learning import resolve, _number
+                observation = session["split_observation"]
+                if not isinstance(values, dict) or not isinstance(observation, dict):
+                    raise ValueError("Invalid split observation or measurement")
+                volume, precision = values.get("observed_ml"), values.get("resolution_ml")
+                if (values.get("boundaries_confirmed") is not True or values.get("uninterrupted") is not True
+                        or values.get("instrument") not in {"graduated_jug", "scale_water", "flow_meter"}
+                        or values.get("purpose") not in {"training", "validation"}
+                        or not _number(volume, positive=True) or not _number(precision, positive=True)
+                        or precision >= volume):
+                    raise ValueError("Confirm full-to-full boundaries, instrument, purpose and measured volume")
+                required = {"id", "identity", "quality", "area_m2", "wash_count"}
+                if set(observation) != required:
+                    raise ValueError("Incomplete recorded split observation")
+                identity = observation.get("identity")
+                quality = {"boundaries_confirmed": True, "uninterrupted": True,
+                           "exposure_complete": True, "settings_constant": True, "same_reservoir": True,
+                           "intervening_refill": False, "unmeasured_transfer": False}
+                area, washes = observation.get("area_m2"), observation.get("wash_count")
+                if (not isinstance(observation.get("id"), str) or not observation["id"]
+                        or not isinstance(identity, dict) or identity.get("robot") not in proven
+                        or any(not identity.get(k) for k in ("station", "reservoir", "floor_context", "wash_context"))
+                        or observation.get("quality") != quality
+                        or not _number(area) or not _number(washes) or not float(washes).is_integer()
+                        or not (area or washes)):
+                    raise ValueError("Recorded split observation is incomplete or invalid")
+                sample = {**deepcopy(observation), "observed_ml": volume, "resolution_ml": precision,
+                          "source": "measured_refill", "purpose": values["purpose"],
+                          "instrument": values["instrument"], "identity_scope": origin,
+                          "device_id": vacuum_entity, "session_ts": expected_ts}
+                banks = deepcopy(data["settings"].get("split_measurements") or {})
+                samples = list(banks.get(vacuum_entity) or [])
+                legacy = (data["settings"].get("local_measurements") or {}).get(vacuum_entity) or []
+                if any(isinstance(s, dict) and (s.get("id") == sample["id"] or s.get("session_ts") == expected_ts
+                       or s.get("id") == "local." + str(expected_ts)) for s in [*samples, *legacy]):
+                    raise ValueError("This cycle already has a measurement")
+                if len(samples) >= 200:
+                    raise ValueError("Measurement history is full; preserve/export it before collecting more")
+                samples.append(sample)
+                banks[vacuum_entity] = samples
+                projected = [measurement_projection(s, origin, proven) for s in samples
+                             if isinstance(s, dict) and measurement_belongs(s, origin, proven)]
+                target = measurement_projection(sample, origin, proven)["identity"]
+                rates = resolve(projected, target)
+                data["settings"]["split_measurements"] = banks
+                await self._store.async_save(data)
+                self._data = data
+                return {"saved": True, "sample_count": len(projected), "split_calibration": rates}
+            sample = build_local_measurement(session, values, vacuum_entity)
             sample["identity_scope"] = origin
             all_samples = deepcopy(data["settings"].get("local_measurements") or {})
             samples = list(all_samples.get(vacuum_entity) or [])
+            split_samples = (data["settings"].get("split_measurements") or {}).get(vacuum_entity) or []
+            if any(isinstance(s, dict) and s.get("session_ts") == expected_ts for s in split_samples):
+                raise ValueError("This cycle already has a measurement")
             if any(s.get("id") == sample["id"] for s in samples):
                 raise ValueError("This cycle already has a measurement; it cannot be both training and validation")
             if len(samples) >= 200:

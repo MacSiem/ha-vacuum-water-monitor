@@ -54,3 +54,29 @@ def test_pure_actions_ignore_the_other_action_settings():
     assert module.fit(data)['wash_ml_per_completed_action'] == 30
     data[2]['identity']['wash_context'] = 'different'
     assert module.fit(data) is None
+
+
+def test_independent_pure_action_fits_and_context_isolation():
+    identity = sample(1, 10, 0)['identity']
+    floor = [sample(i, i * 5, 0, purpose='validation' if i == 4 else 'training') for i in range(1, 5)]
+    for item in floor:
+        item['identity']['wash_context'] = 'different'
+    result = module.resolve(floor, identity)
+    assert result == {'floor_ml_per_m2': 2, 'wash_ml_per_completed_action': None}
+    wash = [sample(i, 0, i, purpose='validation' if i == 8 else 'training') for i in range(5, 9)]
+    for item in wash:
+        item['identity']['floor_context'] = 'different'
+    assert module.resolve(floor + wash, identity) == {'floor_ml_per_m2': 2, 'wash_ml_per_completed_action': 30}
+    identity['station'] = 'other'
+    assert module.resolve(floor + wash, identity) == {'floor_ml_per_m2': None, 'wash_ml_per_completed_action': None}
+
+
+def test_pure_fit_requires_holdout_and_rejects_duplicate_and_changed_rate():
+    identity = sample(1, 10, 0)['identity']
+    data = [sample(i, i * 5, 0, purpose='validation' if i == 4 else 'training') for i in range(1, 5)]
+    assert module.resolve(data[:3], identity)['floor_ml_per_m2'] is None
+    data[-1]['observed_ml'] = 999
+    assert module.resolve(data, identity)['floor_ml_per_m2'] is None
+    data = [sample(i, i * 5, 0, purpose='validation' if i == 4 else 'training') for i in range(1, 5)]
+    data[1]['id'] = data[0]['id']
+    assert module.resolve(data, identity)['floor_ml_per_m2'] is None
