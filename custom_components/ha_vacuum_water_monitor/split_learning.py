@@ -33,9 +33,8 @@ def fit(samples):
     if not isinstance(identity, dict) or any(not identity.get(k) for k in
             ('robot', 'station', 'reservoir', 'floor_context', 'wash_context')):
         return None
-    if any(s.get('identity') != identity or s.get('source') not in
-           ('measured_refill', 'bound_reservoir_sensor') or s.get('purpose') not in
-           ('training', 'validation') for s in samples):
+    if any(s.get('source') not in ('measured_refill', 'bound_reservoir_sensor')
+           or s.get('purpose') not in ('training', 'validation') for s in samples):
         return None
     for s in samples:
         if (not _number(s.get('area_m2')) or not _number(s.get('wash_count'))
@@ -44,6 +43,12 @@ def fit(samples):
                 or not _number(s.get('resolution_ml'), positive=True)
                 or s['resolution_ml'] >= s['observed_ml']
                 or not (s['area_m2'] or s['wash_count'])):
+            return None
+        other = s.get('identity')
+        if (not isinstance(other, dict)
+                or any(other.get(k) != identity[k] for k in ('robot', 'station', 'reservoir'))
+                or (s['area_m2'] > 0 and other.get('floor_context') != identity['floor_context'])
+                or (s['wash_count'] > 0 and other.get('wash_context') != identity['wash_context'])):
             return None
     train = [s for s in samples if s['purpose'] == 'training']
     holdout = [s for s in samples if s['purpose'] == 'validation']

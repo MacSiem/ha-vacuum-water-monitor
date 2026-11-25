@@ -43,3 +43,14 @@ def test_rejects_transfer_and_fractional_wash():
     assert module.fit(data) is None
     data = examples(); data[1]['wash_count'] = 0.5
     assert module.fit(data) is None
+
+
+def test_pure_actions_ignore_the_other_action_settings():
+    data = examples()
+    data[0]['identity']['wash_context'] = 'different'
+    data[1]['identity']['floor_context'] = 'different'
+    # Choose the mixed cycle as the target pair.
+    data = [data[2], data[0], data[1], data[3]]
+    assert module.fit(data)['wash_ml_per_completed_action'] == 30
+    data[2]['identity']['wash_context'] = 'different'
+    assert module.fit(data) is None
