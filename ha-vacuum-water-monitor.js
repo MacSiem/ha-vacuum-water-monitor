@@ -15418,7 +15418,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const settings=this._serverState?.settings||{};
       const authoredPercent=this._authoredConfigKeys?.has('warning_threshold')||this._authoredConfigKeys?.has('critical_threshold') ||
         (settings.warning_threshold != null && Number(settings.warning_threshold)!==20) || (settings.critical_threshold != null && Number(settings.critical_threshold)!==10);
-      const warning = shortTankAdvisory || (data.waterEmpty || data.waterLow || data.waterShortage ? status.label
+      const warning = data.waterEmpty ? status.label : shortTankAdvisory || (data.waterLow || data.waterShortage ? status.label
         : authoredPercent && percent!==null && percent<=Number(cfg.critical_threshold||10) ? this._waterText('Critical')
         : authoredPercent && percent!==null && percent<=Number(cfg.warning_threshold||20) ? this._waterText('Low')
         : !authoredPercent && forecast && Number.isFinite(runs) && runs < 1 ? (this._lang==='pl'?'Krytycznie mało wody':'Water critically low')
@@ -15430,7 +15430,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const shortValue = data.remainingL == null ? unknown : `${this._formatUi().number(data.remainingL,{maximumFractionDigits:2})} L${percent===null?'':' · '+this._formatUi().number(percent,{maximumFractionDigits:0})+'%'}`;
       if (tile) return `<div class="tab-content vwm-compact vwm-tile"><button type="button" class="vwm-tile-surface" id="vwm-expand" data-r6-open>
         <span class="vwm-icon ${tone}"><ha-icon icon="mdi:water-percent" aria-hidden="true"></ha-icon></span><span class="vwm-tile-copy"><strong>${_esc(displayTitle)}</strong>
-        <span class="vwm-tile-long">${_esc(shortTankAdvisory || (data.remainingL == null ? unknown : shortValue+(forecast?' · '+forecastText:'')))}</span>
+        <span class="vwm-tile-long">${_esc(data.remainingL == null ? shortTankAdvisory || unknown : shortValue + (shortTankAdvisory ? ' · ' + shortTankAdvisory : forecast ? ' · ' + forecastText : ''))}</span>
         <span class="vwm-tile-short">${_esc(shortTankAdvisory || shortValue)}</span></span></button>
         <div class="vwm-tile-action">${compactRefill}</div></div>`;
       const name=device.name || device.device_name || device.vacuum_entity || '';
@@ -17308,11 +17308,15 @@ target:
     const selectSt = 'width:100%;margin-top:6px;padding:7px 10px;border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:12px;background:var(--vwm-bg,#fff);color:var(--vwm-text,#1e293b);font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui))';
     const labelSt = 'font-size:12px;font-weight:700;color:var(--bento-text)';
 
+    const descriptor = this._backendDescriptor(device);
+    const explicit = this._explicitDeviceKeys(device);
+    const dreameTankRoles = {
+      dock_clean_water_sensor: 'clean_water_tank_status_sensor',
+      dock_dirty_water_sensor: 'dirty_water_tank_status_sensor',
+    };
     const rows = this._signalRoleCatalog().map(([role, label]) => {
       const current = String(overrides[role] || '');
-      const descriptor = this._backendDescriptor(device);
-      const dreameRole = {dock_clean_water_sensor:'clean_water_tank_status_sensor', dock_dirty_water_sensor:'dirty_water_tank_status_sensor'}[role];
-      const explicit = this._explicitDeviceKeys(device);
+      const dreameRole = dreameTankRoles[role];
       const discoveredStatus = device?.integration_adapter === 'dreame_vacuum' && dreameRole && !explicit.has(role) && !explicit.has('signals')
         ? descriptor?.signals?.[dreameRole] || signals[dreameRole] : '';
       const automatic = current ? '' : String(device?.[role] || signals[role] || discoveredStatus || '');
