@@ -76,3 +76,56 @@ def test_standalone_wash_requires_direct_idle_and_equal_counter():
     s=step(s,120000,'washing_the_mop',1)
     s=step(s,180000,'docked',2)
     assert 'split_observation' not in s['automatic_sessions'][0]
+
+
+def test_sensor_fresh_sessions_survive_old_binding_gap_but_not_new_gaps_or_rises():
+    device = {'vacuum_entity':'vacuum.test', 'status_sensor':'sensor.status', 'area_sensor':'sensor.area',
+              'cleaning_mode_entity':'select.clean', 'mop_mode_entity':'select.mop',
+              'mop_intensity_entity':'select.water', 'wash_mode_entity':'select.wash',
+              'wash_completed_sensor':'sensor.completed', 'tracked_reservoir':'dock_clean',
+              'water_volume_sensor':'sensor.tank', 'water_volume_reservoir':'dock_clean',
+              'dock_variant':'dock', 'firmware':'1', 'integration_adapter':'test',
+              'integration_version':'1', 'split_no_unmeasured_transfer':True}
+    def step(s, ts, status, area, volume):
+        values={'vacuum.test':_State('docked' if status == 'docked' else 'cleaning'),
+                'sensor.status':_State(status), 'sensor.area':_State(str(area),{'unit_of_measurement':'m²'}),
+                'sensor.new_area':_State(str(area),{'unit_of_measurement':'m²'}),
+                'sensor.tank':_State(str(volume),{'unit_of_measurement':'ml'}),
+                'sensor.completed':_State('0'), 'select.clean':_State('mopping'),
+                'select.mop':_State('wet'), 'select.water':_State('high'), 'select.wash':_State('normal')}
+        return tick.tick_device(_Hass(values),device,s,now_ts=ts)[0]
+    s=step({},60000,'docked',0,3500.0)
+    device['area_sensor']='sensor.new_area'
+    s=step(s,120000,'docked',0,3500.0)
+    s=step(s,150000,'docked',0,3500.0)
+    # An interrupted former context left a persistent area gap before the new run.
+    s['area_gap']=True
+    for i in range(4):
+        ts=180000+i*240000
+        volume=3500.0-i*40
+        s=step(s,ts,'mopping',0,volume)
+        s=step(s,ts+60000,'mopping',10,volume-35)
+        s=step(s,ts+120000,'docked',10,volume-35)
+        s=step(s,ts+180000,'docked',0,volume-40)
+    assert [x['purpose'] for x in s['split_sensor_measurements']]==['training']*3+['validation']
+    assert all(x['area_m2']==10 and x['observed_ml']==35 for x in s['split_sensor_measurements'])
+    before=len(s['split_sensor_measurements'])
+    s=step(s,1200000,'mopping',0,3300.0)
+    s=step(s,1260000,'mopping',5,3290.0)
+    s=step(s,1320000,'mopping','unknown',3280.0)
+    s=step(s,1380000,'mopping',10,3270.0)
+    s=step(s,1440000,'docked',10,3270.0)
+    assert len(s['split_sensor_measurements'])==before
+    s=step(s,1500000,'docked',0,3270.0)
+    s=step(s,1560000,'mopping',0,3270.0)
+    s=step(s,1620000,'mopping',5,3260.0)
+    s=step(s,1680000,'mopping',10,3265.0)
+    s=step(s,1740000,'docked',10,3265.0)
+    assert len(s['split_sensor_measurements'])==before
+    s=step(s,1800000,'docked',0,3265.0)
+    s=step(s,1860000,'mopping',0,3265.0)
+    s=step(s,1920000,'mopping',5,3255.0)
+    s=step(s,1980000,'unavailable',5,3255.0)
+    s=step(s,2040000,'mopping',10,3245.0)
+    s=step(s,2100000,'docked',10,3245.0)
+    assert len(s['split_sensor_measurements'])==before

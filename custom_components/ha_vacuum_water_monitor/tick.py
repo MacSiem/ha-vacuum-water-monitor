@@ -1164,6 +1164,8 @@ def _tick_device_pass(
     state["accounting_calibration_context"] = calibration_context
     # 5.6 state has only the legacy hash; the first 5.7 pass adopts it silently.
     if old_interval_context is not None and old_interval_context not in (context, legacy_context) and not closing_floor and not closing_whole_cycle:
+        if isinstance(state.get("split_session_observation"), dict):
+            state["split_session_observation"]["valid"] = False
         if isinstance(state.get("physical_learning"), dict) and state["physical_learning"].get("cycle"):
             state["physical_learning"] = {**state["physical_learning"], "cycle": None,
                                           "blocked_session_id": state.get("session_start_ts"),
@@ -1384,7 +1386,8 @@ def _tick_device_pass(
         now=now_ts, area=curr_area, wet=mop_active, cleaning=really_cleaning,
         washing=wash_now and curr_status != "going_to_wash_the_mop",
         completed=_float_or_none(_state_value(hass, device.get("wash_completed_sensor"))),
-        status=curr_status, continuity_ok=not bool(state.get("session_forecast_interrupted")) and not bool(state.get("area_gap")),
+        status=curr_status, continuity_ok=not bool(state.get("session_forecast_interrupted")) and (
+            bool(split_sensor) or not bool(state.get("area_gap"))),
         volume=split_volume, resolution=split_resolution,
         volume_binding_ok=bool(split_sensor and device.get("water_volume_reservoir") == device.get("tracked_reservoir")
                                and device.get("split_no_unmeasured_transfer") is True),
@@ -2750,6 +2753,8 @@ def _water_anchor_states(
 
 def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
+    if isinstance(state.get("split_session_observation"), dict):
+        state["split_session_observation"]["valid"] = False
     if isinstance(state.get("physical_learning"), dict) and state["physical_learning"].get("cycle"):
         state["physical_learning"] = {**state["physical_learning"], "cycle": None,
                                       "blocked_session_id": state.get("session_start_ts"),
