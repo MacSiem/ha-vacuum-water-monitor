@@ -821,6 +821,7 @@ def _tick_device_pass(
                 field_sources[key] = "declared"
     whole_cycle_calibration = None
     split_rates = None
+    split_floor_identity = None
     auto_profile = None
     closing_whole_cycle = False
     whole_cycle_fallback = False
@@ -948,19 +949,31 @@ def _tick_device_pass(
         # observation's cached identity. A configured volume sensor remains
         # authoritative even while its current reading is unavailable.
         samples = (device.get("split_measurements") or []) + (state.get("split_sensor_measurements") or [])
-        if (samples and reservoir_matches and not plumbed_supply
+        split_identity = split_observation.identity(device, consumption_context, live_settings)
+        if split_identity is not None:
+            split_floor_identity = _digest({k: split_identity.get(k) for k in
+                                            ("robot", "station", "reservoir", "floor_context")})
+        split_allowed = bool(samples and reservoir_matches and not plumbed_supply
                 and not device.get("water_volume_sensor") and whole_cycle_calibration is None
                 and resolution.get("scope") != "whole_cycle"
-                and not wash_covered_by_cycle_rate):
+                and not wash_covered_by_cycle_rate)
+        state["split_resolution"] = {"sample_count": len(samples),
+            "reason": ("no_samples" if not samples else "context_unavailable" if split_identity is None
+                       else "source_or_scope_precedence" if not split_allowed else "no_compatible_rate")}
+        if split_allowed:
             from . import split_learning
-            split_rates = split_learning.resolve(
-                samples, split_observation.identity(device, consumption_context, live_settings))
+            split_rates = split_learning.resolve(samples, split_identity)
+            if any(_positive_number((split_rates or {}).get(key)) is not None for key in
+                   ("floor_ml_per_m2", "wash_ml_per_completed_action")):
+                state["split_resolution"] = {"sample_count": len(samples), "reason": "qualified",
+                    "floor_ml_per_m2": split_rates.get("floor_ml_per_m2"),
+                    "wash_ml_per_completed_action": split_rates.get("wash_ml_per_completed_action")}
             if not isinstance(split_rates, dict):
                 split_rates = None
             floor_rate = _positive_number((split_rates or {}).get("floor_ml_per_m2"))
             if (floor_rate is not None and usage_per_m2 is None and usage_per_minute is None
-                    and device.get("usage_ml_per_m2") is None
-                    and device.get("usage_ml_per_active_minute") is None
+                    and not device.get("usage_ml_per_m2")
+                    and not device.get("usage_ml_per_active_minute")
                     and device.get("wash_volume_ml") is None):
                 usage_per_m2 = floor_rate
                 calibration_factor = intensity_factor = 1
@@ -1115,6 +1128,9 @@ def _tick_device_pass(
         and (device.get("integration_adapter") != "tapo_rv30" or mop_active)
         and whole_cycle_calibration is None and not device.get("water_volume_sensor")
         and curr_area is not None and _positive_number(state.get("last_floor_usage_per_m2")) is not None
+        and (state.get("last_floor_evidence") != "split_learning" or
+             (split_floor_identity == state.get("last_floor_split_identity") and
+              _positive_number((split_rates or {}).get("floor_ml_per_m2")) == state.get("last_floor_usage_per_m2")))
     )
     if closing_floor:
         # Reuse the resolved dose, including numeric output ranges and strict
@@ -1287,8 +1303,8 @@ def _tick_device_pass(
         if (wash_resolution.get("scope") != "wash_only" or wash_resolution.get("method") != "action"):
             split_wash = _positive_number((split_rates or {}).get("wash_ml_per_completed_action"))
             if (split_wash is not None and device.get("wash_volume_ml") is None
-                    and device.get("usage_ml_per_m2") is None
-                    and device.get("usage_ml_per_active_minute") is None):
+                    and not device.get("usage_ml_per_m2")
+                    and not device.get("usage_ml_per_active_minute")):
                 wash_resolution = {"scope": "wash_only", "method": "action",
                                    "coefficient": split_wash, "source": "split_learning"}
         if wash_resolution.get("scope") == "wash_only" and wash_resolution.get("method") == "action":
@@ -2146,6 +2162,7 @@ def _tick_device_pass(
         state.update(last_floor_ts=now_ts, last_floor_identity=floor_identity,
                      last_floor_rate_settings=deepcopy(rate_settings),
                      last_floor_usage_per_m2=usage_per_m2,
+                     last_floor_split_identity=split_floor_identity,
                      last_floor_intensity_factor=intensity_factor, last_floor_evidence=evidence)
         if curr_area == state.get("session_start_area"):
             state["session_context"] = deepcopy(consumption_context)

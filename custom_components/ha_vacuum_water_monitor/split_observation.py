@@ -48,7 +48,7 @@ def observe(state, device, context, settings, *, now, area, wet, cleaning, washi
             status=None, continuity_ok=True):
     start = state.get("session_start_ts")
     if not start:
-        state["split_idle_baseline"] = {"status": status, "count": completed, "area": area,
+        state["split_idle_baseline"] = {"epoch": _EPOCH, "status": status, "count": completed, "area": area,
                                         "ts": now, "reset": state.get("last_reset_ts"),
                                         "continuity_ok": continuity_ok}
         return
@@ -56,7 +56,7 @@ def observe(state, device, context, settings, *, now, area, wet, cleaning, washi
     old = state.get("split_session_observation")
     if not isinstance(old, dict) or old.get("start") != start:
         baseline = state.pop("split_idle_baseline", {})
-        direct_wash = bool(washing and baseline.get("status") in {"idle", "docked", "charging"}
+        direct_wash = bool(washing and baseline.get("epoch") == _EPOCH and baseline.get("status") in {"idle", "docked", "charging"}
                            and baseline.get("count") == completed and baseline.get("area") == area
                            and baseline.get("reset") == state.get("last_reset_ts")
                            and baseline.get("continuity_ok") and continuity_ok
