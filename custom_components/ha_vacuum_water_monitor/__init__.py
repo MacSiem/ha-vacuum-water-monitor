@@ -179,7 +179,7 @@ def _listen_vacuum_registry(hass: HomeAssistant, storage: VacuumWaterStorage):
             if entity_id not in old_sources and entity_id not in known_sources:
                 return
             source_dirty = True
-            if source_task is None:
+            if source_task is None or source_task.done():
                 source_task = hass.async_create_task(refresh_sources())
                 tasks.add(source_task)
                 source_task.add_done_callback(tasks.discard)

@@ -63,5 +63,24 @@ def test_registry_burst_is_coalesced_and_discovery_is_preserved():
         await asyncio.gather(*list(tasks))
         assert ticker.calls == 2
         assert len(notifications) == 3
+
+        # HA may eagerly run a task through completion inside async_create_task.
+        # A completed handle assigned after its finally block must not suppress
+        # the next, separate registry event.
+        def eager_create_task(coro):
+            future = asyncio.get_running_loop().create_future()
+            try:
+                coro.send(None)
+            except StopIteration as exc:
+                future.set_result(exc.value)
+            else:
+                coro.close()
+                raise AssertionError("fixture task unexpectedly suspended")
+            return future
+        hass.async_create_task = eager_create_task
+        before = ticker.calls
+        dispatch('sensor.source')
+        dispatch('sensor.source')
+        assert ticker.calls == before + 2
         stop()
     asyncio.run(scenario())
