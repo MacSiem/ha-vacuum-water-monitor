@@ -140,3 +140,9 @@ are classified explicitly; mapping, remote control and travel are not floor-mopp
 The area sensor must provide a recognized unit, and no raw-area fallback is used when this
 contract is active. Older ADV versions retain the legacy `status_code` and metric-unit gate.
 None of these contracts establishes the presence of an entity on every model or firmware.
+
+## T90 Pro Omni k2iwaq evidence boundary — 25 November 2026
+
+[Deebot client issue 2027](https://github.com/DeebotUniverse/client.py/issues/2027) reports firmware 1.103.0 rejecting older clean/state commands; an independent report in that thread describes a mid-job station visit shown as docked despite an ongoing job. It contains raw `onWorkState` examples including station `washing`, but this is not evidence that this model exposes an HA `station_state` entity or that its state survives the client mapping. [Issue 2028](https://github.com/DeebotUniverse/client.py/issues/2028) reports a client parser error for app wash-setting messages without `interval` on the same firmware and client 18.7.0. Neither report is proof that the current installed client is fixed or that raw values map to HA entities.
+
+The existing Core [station sensor](https://github.com/home-assistant/core/blob/2026.11.3/homeassistant/components/ecovacs/sensor.py) and [mop wash interval number](https://github.com/home-assistant/core/blob/2026.11.3/homeassistant/components/ecovacs/number.py) are capability-dependent; their presence, units and semantics on the reporter's unit need a sanitized HA registry/state capture. No new binding or consumption rate follows from the raw protocol observations. A selected wash interval is context, not a measured wash or proof of completion.

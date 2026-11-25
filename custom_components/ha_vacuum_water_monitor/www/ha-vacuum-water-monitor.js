@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.14.0 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.14.1 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -179,7 +179,7 @@ const supportDismissed = () => { try { return localStorage.getItem(SUPPORT_DISMI
 const ownDonateFooter = (lang = "en") => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">${lang === "pl" ? "Opcjonalne wsparcie HA Tools" : "Optional support for HA Tools"}</a><button type="button" class="support-dismiss" aria-label="${lang === "pl" ? "Ukryj odnośnik wsparcia" : "Dismiss support link"}">×</button></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.14.0';
+const VWM_VERSION = '5.14.1';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -3375,7 +3375,8 @@ const CALIBRATION_DATA = {
       "sources": [
         "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/26",
         "https://www.ecovacs.com/au/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
-        "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni"
+        "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
+        "https://www.ecovacs.com/ca/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni"
       ],
       "provenance": [
         {
@@ -3397,6 +3398,13 @@ const CALIBRATION_DATA = {
           "url": "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
           "claim": "Manufacturer describes a roller mop; no measured consumption rate adopted.",
           "last_verified": "2026-11-03",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://www.ecovacs.com/ca/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
+          "claim": "Canadian model page lists station clean 4000 ml, dirty 2200 ml and an unspecified water tank 110 ml. Exact k2iwaq retail SKU equivalence and the 110 ml reservoir semantics are unverified; no robot capacity adopted.",
+          "last_verified": "2026-11-25",
           "retrieval_status": "read"
         }
       ],
@@ -3428,7 +3436,8 @@ const CALIBRATION_DATA = {
     "source_urls": [
       "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/26",
       "https://www.ecovacs.com/au/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
-      "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni"
+      "https://www.ecovacs.com/us/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni",
+      "https://www.ecovacs.com/ca/shop/deebot-robotic-vacuum-cleaner/deebot-t90-pro-omni"
     ],
     "data_quality": "capacity_verified",
     "notes": "No verified automatic empty-tank signal; confirm refills manually and configure a measured consumption rate."
@@ -7048,7 +7057,9 @@ const CALIBRATION_DATA = {
         "https://global.roborock.com/pages/roborock-qrevo-curv-2-flow",
         "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/12",
         "https://www.notebookcheck.net/Roborock-now-also-mops-with-a-roller-Roborock-Qrevo-Curv-2-Flow-review.1234769.0.html",
-        "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq"
+        "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq",
+        "https://help.roborock.com/ca/product/qrevo-curv-2-flow-message?category=troubleshooting-1-1-1",
+        "https://github.com/Python-roborock/local_roborock_server/blob/main/docs/tested_vacuums.md"
       ],
       "provenance": [
         {
@@ -7076,6 +7087,20 @@ const CALIBRATION_DATA = {
           "url": "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq",
           "claim": "Manufacturer FAQ publishes an approximately 4 L clean-water tank (adopted in 5.4.0).",
           "last_verified": "2026-09-15"
+        },
+        {
+          "source_type": "manufacturer_documentation",
+          "url": "https://help.roborock.com/ca/product/qrevo-curv-2-flow-message?category=troubleshooting-1-1-1",
+          "claim": "Canadian Qrevo Curv 2 Flow support page describes an approximately 100 ml on-board dirty water tank. Regional SKU equivalence is unverified; this is not robot clean capacity and is not adopted as an unscoped runtime capacity.",
+          "last_verified": "2026-11-25",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://github.com/Python-roborock/local_roborock_server/blob/main/docs/tested_vacuums.md",
+          "claim": "Community integration test inventory lists QRevo Curv 2 Flow with model ID a245 and firmware 02.35.52; this does not verify regional hardware equivalence.",
+          "last_verified": "2026-11-25",
+          "retrieval_status": "read"
         }
       ],
       "tracked_reservoir": "dock_clean",
@@ -7133,7 +7158,9 @@ const CALIBRATION_DATA = {
       "https://global.roborock.com/pages/roborock-qrevo-curv-2-flow",
       "https://github.com/MacSiem/ha-vacuum-water-monitor/issues/12",
       "https://www.notebookcheck.net/Roborock-now-also-mops-with-a-roller-Roborock-Qrevo-Curv-2-Flow-review.1234769.0.html",
-      "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq"
+      "https://kr.roborock.com/blogs/roborock-kr/qrevo-curv-2-flow-faq",
+      "https://help.roborock.com/ca/product/qrevo-curv-2-flow-message?category=troubleshooting-1-1-1",
+      "https://github.com/Python-roborock/local_roborock_server/blob/main/docs/tested_vacuums.md"
     ],
     "data_quality": "researched",
     "notes": "Typical for this mop system; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
