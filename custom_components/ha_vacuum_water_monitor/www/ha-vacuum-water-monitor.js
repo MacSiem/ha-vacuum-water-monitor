@@ -822,6 +822,8 @@ const VWM_SETUP_TEXT = {
     confirmAgain: 'Tap again to confirm',
     markedEmpty: 'Marked empty; the estimate learns from this tank.',
     info: {
+      split_wash_completion_missing: 'Separate floor and mop-wash learning needs an absolute completed-wash counter. A station state or action button does not confirm completion; basic tracking still runs.',
+      split_water_measurement_missing: 'Separate floor and mop-wash learning needs measured water use: a measured full refill or a clean-tank volume sensor. Area and wash state alone do not provide ml.',
       manual_refill: 'Tip: the robot\u2019s device page has a Refilled button you can put on a dashboard or an NFC tag.',
       no_empty_signal: 'This robot does not report an empty tank. When it runs out of water, press the button below (or the robot\u2019s Tank empty button) so the estimate learns.',
       signal_unavailable: 'A robot signal is unavailable right now; counting resumes when it is back.',
@@ -863,6 +865,8 @@ const VWM_SETUP_TEXT = {
     confirmAgain: 'Naci\u015Bnij ponownie, aby potwierdzi\u0107',
     markedEmpty: 'Oznaczono jako pusty; szacunek uczy si\u0119 z tego zbiornika.',
     info: {
+      split_wash_completion_missing: 'Oddzielne uczenie podłogi i mycia mopa wymaga bezwzględnego licznika ukończonych myć. Stan stacji ani przycisk nie potwierdzają ukończenia; podstawowe śledzenie nadal działa.',
+      split_water_measurement_missing: 'Oddzielne uczenie podłogi i mycia mopa wymaga pomiaru wody: zmierzonego dolania do pełna albo czujnika objętości czystego zbiornika. Powierzchnia i stan mycia nie podają ml.',
       manual_refill: 'Wskaz\u00F3wka: strona urz\u0105dzenia robota ma przycisk Dolane, kt\u00F3ry mo\u017Cesz doda\u0107 do panelu albo tagu NFC.',
       no_empty_signal: 'Ten robot nie zg\u0142asza pustego zbiornika. Gdy sko\u0144czy mu si\u0119 woda, naci\u015Bnij przycisk poni\u017Cej (albo przycisk Zbiornik pusty robota), a szacunek si\u0119 nauczy.',
       signal_unavailable: 'Sygna\u0142 robota jest chwilowo niedost\u0119pny; liczenie wr\u00F3ci, gdy si\u0119 pojawi.',
