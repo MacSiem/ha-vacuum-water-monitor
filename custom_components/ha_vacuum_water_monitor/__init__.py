@@ -148,10 +148,24 @@ def _listen_vacuum_registry(hass: HomeAssistant, storage: VacuumWaterStorage):
                 if item.device_id in devices and item.platform != DOMAIN}
 
     known_sources = source_entities()
+    source_dirty = False
+    source_task = None
+
+    async def refresh_sources() -> None:
+        nonlocal source_dirty, source_task
+        try:
+            while source_dirty:
+                source_dirty = False
+                _notify_store_updated(hass, {"registry_changed": True})
+                ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
+                if ticker is not None:
+                    await ticker.run(None)
+        finally:
+            source_task = None
 
     @callback
     def on_registry_update(event: Event) -> None:
-        nonlocal known_sources
+        nonlocal known_sources, source_dirty, source_task
         entity_id = str(event.data.get("entity_id") or "")
         old_sources = known_sources
         known_sources = source_entities()
@@ -164,12 +178,11 @@ def _listen_vacuum_registry(hass: HomeAssistant, storage: VacuumWaterStorage):
                 return
             if entity_id not in old_sources and entity_id not in known_sources:
                 return
-            _notify_store_updated(hass, {"registry_changed": True})
-            ticker = hass.data.get(DOMAIN, {}).get(DATA_TICKER)
-            if ticker is not None:
-                task = hass.async_create_task(ticker.run(None))
-                tasks.add(task)
-                task.add_done_callback(tasks.discard)
+            source_dirty = True
+            if source_task is None or source_task.done():
+                source_task = hass.async_create_task(refresh_sources())
+                tasks.add(source_task)
+                source_task.add_done_callback(tasks.discard)
             return
         task = hass.async_create_task(process(event))
         tasks.add(task)

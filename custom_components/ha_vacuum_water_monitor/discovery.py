@@ -15,7 +15,7 @@ from .integration_adapters import (
     adapter_for,
     miot_role_rank_for,
 )
-from .profiles import normalize_identifier, resolve_profile
+from .profiles import canonical_manufacturer, normalize_identifier, resolve_profile
 
 
 def discover_descriptors(
@@ -68,7 +68,8 @@ def _suggest_bridge_duplicates(descriptors: list[dict[str, Any]]) -> None:
     suggestion the card asks the user to confirm; nothing is merged here.
     """
     def maker(descriptor: dict[str, Any]) -> str:
-        return normalize_identifier(descriptor.get("manufacturer") or "")
+        return (canonical_manufacturer(descriptor.get("manufacturer"))
+                or normalize_identifier(descriptor.get("manufacturer") or ""))
 
     for descriptor in descriptors:
         if descriptor.get("platform") != "matter" or descriptor.get("duplicate_entities") or not maker(descriptor):
@@ -77,7 +78,13 @@ def _suggest_bridge_duplicates(descriptors: list[dict[str, Any]]) -> None:
                    if other is not descriptor and other.get("platform") not in (None, "matter")
                    and maker(other) == maker(descriptor)]
         if len(natives) == 1:
-            descriptor["possible_duplicate_of"] = natives[0]["entity_id"]
+            native = natives[0]
+            strong_sources = {"model_id", "model", "registry_composite"}
+            if (descriptor.get("profile_source") in strong_sources
+                    and native.get("profile_source") in strong_sources
+                    and descriptor.get("profile_key") != native.get("profile_key")):
+                continue
+            descriptor["possible_duplicate_of"] = native["entity_id"]
 
 
 def descriptors_from_hass(hass: Any) -> list[dict[str, Any]]:

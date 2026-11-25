@@ -23,6 +23,6 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install test deps
-        run: pip install pyyaml
+        run: pip install pyyaml 'pytest>=9,<10'
       - name: Run unit tests
-        run: python -m tests
+        run: python -m pytest tests -q -p no:cacheprovider

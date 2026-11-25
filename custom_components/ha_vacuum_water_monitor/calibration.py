@@ -12,8 +12,10 @@ def validate_measurement_plan(plan):
     from .profiles import CONSUMPTION_SETTINGS
     axes = {'sku', 'dock_variant', 'firmware', 'integration_version'}
     if (not isinstance(plan, dict) or plan.get('confirmed') is not True
-            or set(plan) - axes - {'confirmed', 'settings'}):
+            or set(plan) - axes - {'confirmed', 'settings', 'split_no_unmeasured_transfer'}):
         raise ValueError('Confirm the technical settings for future collection')
+    if 'split_no_unmeasured_transfer' in plan and type(plan['split_no_unmeasured_transfer']) is not bool:
+        raise ValueError('Transfer confirmation must be true or false')
     settings = plan.get('settings', {})
     if not isinstance(settings, dict) or set(settings) - set(CONSUMPTION_SETTINGS):
         raise ValueError('Only known technical setting fields are permitted')
@@ -25,7 +27,7 @@ def validate_measurement_plan(plan):
         if value.lower() in {'unknown', 'unavailable', 'none'}:
             return None
         return value
-    return {'confirmed':True, **{k:checked(plan[k]) for k in axes if k in plan},
+    return {'confirmed':True, **({'split_no_unmeasured_transfer': plan['split_no_unmeasured_transfer']} if 'split_no_unmeasured_transfer' in plan else {}), **{k:checked(plan[k]) for k in axes if k in plan},
             'settings':{k:checked(v) for k,v in settings.items()}}
 
 
