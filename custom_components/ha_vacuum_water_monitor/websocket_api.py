@@ -114,7 +114,8 @@ def _redact_observed_sources(item: Any, can_read) -> Any:
 def _shared_tank(state: dict[str, Any]) -> dict[str, Any]:
     """Live balance only, without a measurement bank or origin details."""
     fields = ("initialized", "used_ml", "accounting_incomplete", "water_empty_active", "last_reset_ts",
-              "last_reset_iso", "last_water_volume_ml", "last_status", "external_counter", "external_metadata")
+              "last_reset_iso", "last_water_volume_ml", "last_status", "external_counter", "external_metadata",
+              "clean_tank_advisory")
     result = {key: state[key] for key in fields if key in state}
     result["refill_full_unconfirmed"] = (state.get("refill_full_unconfirmed") is True or
         (state.get("last_reset_source") in {"lid", "dock_cleared", "tank_reinserted"} and state.get("cycle_full_confirmed") is not True))

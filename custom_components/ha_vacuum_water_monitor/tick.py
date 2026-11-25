@@ -354,6 +354,12 @@ def tick_device(
     used_before = _number(state.get("used_ml"), 0)
     reset_before = state.get("last_reset_ts")
     new_state, dirty = _tick_device_pass(hass, device, state, now_ts=now_ts)
+    # Dreame tank enums are current advisories only, never water quantities or
+    # refill/empty evidence. Recompute even when accounting returns early.
+    advisory = _dreame_clean_tank_advisory(hass, device)
+    if new_state.get("clean_tank_advisory") != advisory:
+        new_state["clean_tank_advisory"] = advisory
+        dirty = True
     if (tank_empty and new_state.get("water_empty_active") and new_state.get("last_reset_ts") == reset_before
             ):
         new_state["used_ml"] = min(used_before, _number(new_state.get("used_ml"), 0))
@@ -375,6 +381,25 @@ def tick_device(
     new_state.pop(_PASS_FIRST_SOURCE_KEY, None)
     new_state.pop(_PASS_AREA_OBSERVATION_KEY, None)
     return new_state, dirty
+
+
+def _dreame_clean_tank_advisory(hass: HomeAssistant, device: dict[str, Any]) -> str | None:
+    """Live Dreame enum status; the legacy dock binding may be an enum alias."""
+    if device.get("integration_adapter") != "dreame_vacuum":
+        return None
+    status_role = "clean_water_tank_status_sensor"
+    legacy_role = "dock_clean_water_sensor"
+    authored = set(device.get("_explicit_fields") or ()) | set(device.get("signal_overrides_applied") or ())
+    status = device.get(status_role)
+    legacy = device.get(legacy_role)
+    if legacy_role in authored and status_role not in authored and isinstance(legacy, str) and legacy.startswith("sensor."):
+        status = legacy
+    elif not status and isinstance(legacy, str) and legacy.startswith("sensor."):
+        status = legacy
+    if not status:
+        return None
+    value = _normalized_signal(_state_value(hass, status))
+    return {"installed": "ok", "not_installed": "missing", "low_water": "low_water"}.get(value, "unknown")
 
 
 def _tick_device_pass(

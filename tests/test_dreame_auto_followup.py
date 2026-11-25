@@ -78,3 +78,39 @@ def test_report_runtime_has_no_unmeasured_consumption_or_automatic_refill():
         assert state['used_ml'] == 0
         assert not state.get('last_refill_ts')
     assert state.get('accounting_incomplete')
+
+def test_live_advisory_transitions_and_legacy_binding_are_non_quantitative():
+    desc = descriptor()
+    settings = {'signal_overrides': {'vacuum.saubi': {'dock_clean_water_sensor': 'sensor.saubi_clean_water_tank_status'}}}
+    device = effective(settings, desc)
+    entity = 'sensor.saubi_clean_water_tank_status'
+    state = {'initialized': True, 'used_ml': 120, 'last_reset_ts': 42, 'calibration_factor': 1.2}
+    for idx, (raw, expected) in enumerate([('low_water', 'low_water'), ('not_installed', 'missing'),
+            ('installed', 'ok'), ('unavailable', 'unknown'), ('unknown', 'unknown')]):
+        h = _Hass({entity: _S(raw), 'vacuum.saubi': _S('docked')})
+        state, changed = tick.tick_device(h, device, state, now_ts=10000000 + idx * 60000)
+        assert state['clean_tank_advisory'] == expected
+        assert state['used_ml'] == 120
+        assert state['last_reset_ts'] == 42
+        assert state['calibration_factor'] == 1.2
+        assert not state.get('water_empty_active')
+        assert not state.get('water_anchor_kind')
+        if idx < 4:
+            assert changed
+
+def test_legacy_manual_binding_wins_and_explicit_status_override_wins():
+    h = _Hass({'sensor.manual': _S('low_water'), 'sensor.auto': _S('installed')})
+    d = {'integration_adapter':'dreame_vacuum', 'clean_water_tank_status_sensor':'sensor.auto',
+         'dock_clean_water_sensor':'sensor.manual', '_explicit_fields':('dock_clean_water_sensor',)}
+    assert tick._dreame_clean_tank_advisory(h,d) == 'low_water'
+    d['signal_overrides_applied'] = ['clean_water_tank_status_sensor']
+    assert tick._dreame_clean_tank_advisory(h,d) == 'ok'
+    d['integration_adapter'] = 'roborock'
+    assert tick._dreame_clean_tank_advisory(h,d) is None
+
+def test_health_exposes_same_advisory_and_does_not_mark_empty():
+    from test_issue10_missing_rate import health
+    report = health.robot_health({'vacuum_entity':'vacuum.saubi'}, {},
+        {'clean_tank_advisory':'low_water'}, {})
+    assert report['clean_tank_advisory'] == 'low_water'
+    assert not report['tank_empty']

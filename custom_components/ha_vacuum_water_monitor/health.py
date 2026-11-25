@@ -206,6 +206,7 @@ def robot_health(
         "auto_refill": method == "dock_auto",
         "initialized": bool(estimate.get("initialized")),
         "tank_empty": bool(tank_state.get("water_empty_active")) and not plumbed_supply,
+        "clean_tank_advisory": tank_state.get("clean_tank_advisory"),
         "remaining_percent": estimate.get("remaining_percent"),
         "supply": supply_forecast(tank_state, estimate.get("remaining_ml"),
                                   now_ts if now_ts is not None else int(time.time() * 1000)),
