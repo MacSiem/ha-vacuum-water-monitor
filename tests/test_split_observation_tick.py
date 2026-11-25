@@ -129,3 +129,36 @@ def test_sensor_fresh_sessions_survive_old_binding_gap_but_not_new_gaps_or_rises
     s=step(s,2040000,'mopping',10,3245.0)
     s=step(s,2100000,'docked',10,3245.0)
     assert len(s['split_sensor_measurements'])==before
+
+
+def test_bound_sensor_keeps_standalone_dock_wash_open_until_counter_completion():
+    device = {'vacuum_entity':'vacuum.test', 'dock_status_sensor':'sensor.dock',
+              'area_sensor':'sensor.area', 'cleaning_mode_entity':'select.clean',
+              'mop_mode_entity':'select.mop', 'mop_intensity_entity':'select.water',
+              'wash_mode_entity':'select.wash', 'wash_completed_sensor':'sensor.completed',
+              'tracked_reservoir':'dock_clean', 'water_volume_sensor':'sensor.tank',
+              'water_volume_reservoir':'dock_clean', 'dock_variant':'dock', 'firmware':'1',
+              'integration_adapter':'test', 'integration_version':'1',
+              'split_no_unmeasured_transfer':True}
+    def step(state, ts, dock, count, volume):
+        values={'vacuum.test':_State('docked'), 'sensor.dock':_State(dock),
+                'sensor.area':_State('0',{'unit_of_measurement':'m²'}),
+                'sensor.tank':_State(str(volume),{'unit_of_measurement':'ml'}),
+                'sensor.completed':_State(str(count)), 'select.clean':_State('mopping'),
+                'select.mop':_State('wet'), 'select.water':_State('high'),
+                'select.wash':_State('normal')}
+        return tick.tick_device(_Hass(values),device,state,now_ts=ts)[0]
+    s=step({},60000,'idle',0,3500.0)
+    s=step(s,120000,'washing_mop',0,3500.0)
+    assert s['session_start_ts']==120000
+    assert s['split_session_observation']['valid']
+    s=step(s,180000,'washing_mop',0,3485.0)
+    assert s['session_start_ts']==120000
+    s=step(s,240000,'idle',1,3470.0)
+    samples=s['split_sensor_measurements']
+    assert len(samples)==1
+    assert samples[0]['area_m2']==0 and samples[0]['wash_count']==1
+    assert samples[0]['observed_ml']==30.0
+    s=step(s,300000,'idle',1,3470.0)
+    assert len(s['split_sensor_measurements'])==1
+    assert s['used_ml']==30.0

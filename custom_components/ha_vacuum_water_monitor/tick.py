@@ -1525,7 +1525,7 @@ def _tick_device_pass(
         _record_accounting(state, "real_sensor", None, "measured_volume", reason)
         state.update(last_area=curr_area, last_duration_seconds=curr_duration_seconds,
                      last_status=curr_status, last_dock_status=curr_dock_status, last_tick_ts=now_ts)
-        _finish_session(state, session_running, curr_status, now_ts, curr_area)
+        _finish_session(state, session_running or wash_now, curr_status, now_ts, curr_area)
         return state, True
 
     last_area = _float_or_none(state.get("last_area"))
