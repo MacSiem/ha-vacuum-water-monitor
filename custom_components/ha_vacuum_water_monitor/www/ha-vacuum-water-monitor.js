@@ -2992,7 +2992,7 @@ const CALIBRATION_DATA = {
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
+    "mop_system": "rotating_pads",
     "profile_descriptor": {
       "profile_key": "dreame_x50_ultra",
       "profile_source": "locked_override",
@@ -3000,11 +3000,19 @@ const CALIBRATION_DATA = {
       "capability": "calibration_required",
       "evidence": "not_published",
       "sources": [
+        "https://ae.dreametech.com/products/x40-ultra-rotary-mop-pads",
         "https://dv.tasshack.com/guide/more/supported-devices",
         "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
         "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md"
       ],
       "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://ae.dreametech.com/products/x40-ultra-rotary-mop-pads",
+          "claim": "Manufacturer lists X50 Ultra for rotary mop pads; no consumption rates inferred.",
+          "last_verified": "2026-11-25",
+          "retrieval_status": "read"
+        },
         {
           "source_type": "integration_documentation",
           "url": "https://dv.tasshack.com/guide/more/supported-devices",
@@ -3043,7 +3051,7 @@ const CALIBRATION_DATA = {
       "rate_signal": null,
       "time_accounting_evidence": "not_published",
       "estimated_m2_per_active_minute": null,
-      "mop_system": "unknown",
+      "mop_system": "rotating_pads",
       "estimate_basis": null,
       "water_anchor_reservoir": "dock_clean",
       "water_anchor_reservoir_inferred": true,
@@ -3056,6 +3064,7 @@ const CALIBRATION_DATA = {
     "water_per_m2": {},
     "mop_wash_ml": null,
     "source_urls": [
+      "https://ae.dreametech.com/products/x40-ultra-rotary-mop-pads",
       "https://dv.tasshack.com/guide/more/supported-devices",
       "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
       "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md"
