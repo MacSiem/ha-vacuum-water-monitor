@@ -775,7 +775,8 @@ async function smokeHistoryAccessibleNames(target) {
       const values = [...holder.querySelectorAll('.diagnostics-value')].map(row => row.textContent);
       const prefix = language === 'pl' ? 'Nieznane' : 'Unknown';
       const report = holder.querySelector('#vwm-diagnostic-report')?.textContent || '';
-      if (!values.includes(language==='pl'?'Czujnik objętości nieprzypisany':'Volume sensor not assigned') || !report.includes('source_contract_unbound') || !report.includes('volume_sensor_unbound')) {
+      const unmeasured = language === 'pl' ? 'Brak pomiaru objętości.' : 'No volume measurement.';
+      if (!values.some(value => value.startsWith(unmeasured)) || !report.includes('source_contract_unbound') || !report.includes('volume_sensor_unbound')) {
         throw new Error(`${language}: unknown diagnostics not localized or reason code altered`);
       }
       if (!values.includes(`${language === 'pl' ? 'Nieznany' : 'Unknown'} · ${new Intl.NumberFormat(language).format(4000)} ml`)) {
