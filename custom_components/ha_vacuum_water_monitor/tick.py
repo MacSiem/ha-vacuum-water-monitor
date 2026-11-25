@@ -626,13 +626,22 @@ def _tick_device_pass(
     # can wash while the vacuum entity still says "docked" or "charging".
     docked_states = {"docked", "charging", "charging_complete", "charging_completed"}
     previous_dock_status = state.get("last_dock_status")
-    previous_observation = _positive_number(state.get("last_tick_ts")) or _positive_number(state.get("last_reset_ts"))
+    gap_start = _positive_number(state.get("gap_started_ts"))
+    previous_area = _float_or_none(state.get("last_area"))
+    short_idle_gap = bool(
+        gap_start is not None and state.get("area_gap") and not state.get("gap_exposure_possible")
+        and previous_area is not None and curr_area is not None and previous_area == curr_area
+        and 0 <= now_ts - gap_start <= MAX_ACTIVE_INTERVAL_SECONDS * 1000
+    )
+    previous_observation = (gap_start if short_idle_gap else
+        _positive_number(state.get("last_tick_ts")) or _positive_number(state.get("last_reset_ts")))
     settled_dock = bool(
         state.get("last_status") in docked_states and curr_status in docked_states
         and vac_state in docked_states and cleaning_active is not True
         and (not device.get("cleaning_active_sensor") or cleaning_active is False)
         and not state.get("session_start_ts") and not state.get("verified_wash_active")
-        and not state.get("gap_exposure_possible") and not state.get("gap_started_ts") and not state.get("area_gap")
+        and not state.get("gap_exposure_possible")
+        and (short_idle_gap or (not state.get("gap_started_ts") and not state.get("area_gap")))
         and previous_observation is not None and 0 <= now_ts - previous_observation <= MAX_ACTIVE_INTERVAL_SECONDS * 1000
         and curr_area is not None
         and (state.get("last_area") is None or _float_or_none(state.get("last_area")) == curr_area)

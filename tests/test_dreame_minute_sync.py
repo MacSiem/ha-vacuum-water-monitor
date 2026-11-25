@@ -116,6 +116,44 @@ class DreameMinuteSyncTests(unittest.TestCase):
         result, _ = tick.tick_device(sample(dock='idle'), device, state, now_ts=20_018_000)
         self.assertFalse(result['accounting_incomplete'])
 
+    def test_short_restart_gap_keeps_idle_balance_without_restarting_learning(self):
+        device = {**fixture(), 'dock_status_sensor': 'sensor.dock',
+                  'tracked_reservoir': 'dock_clean', 'tracked_capacity_ml': 4500}
+        state = {**BASE, 'used_ml': 500, 'last_area': 45, 'last_status': 'charging',
+                 'last_dock_status': 'idle', 'last_tick_ts': 20_000_000,
+                 'nominal_time_start_pending': True, 'nominal_time_waiting_for_settings': True}
+        state, _ = tick.tick_device(sample(vacuum='unavailable', dock='idle'), device, state,
+                                    now_ts=20_010_000)
+        self.assertTrue(state['area_gap'])
+        self.assertFalse(state['gap_exposure_possible'])
+        self.assertFalse(state['nominal_time_start_pending'])
+        state, _ = tick.tick_device(sample(dock='idle'), device, state, now_ts=20_070_000)
+        self.assertFalse(state.get('accounting_incomplete', False))
+        self.assertEqual(state['used_ml'], 500)
+        self.assertIsNone((state.get('nominal_time_learning') or {}).get('cycle'))
+        self.assertNotIn('nominal_time_waiting_for_settings', state)
+
+    def test_restart_gap_without_idle_evidence_does_not_get_the_exception(self):
+        device = {**fixture(), 'dock_status_sensor': 'sensor.dock'}
+        cases = [
+            ({}, '46', 20_070_000),
+            ({'last_status': 'cleaning', 'session_start_ts': 19_900_000}, '45', 20_070_000),
+            ({'last_status': 'cleaning'}, '45', 20_070_000),
+            ({}, '45', 20_181_000),
+            ({'last_area': None}, '45', 20_070_000),
+            ({'last_dock_status': 'unrecognized'}, '45', 20_070_000),
+        ]
+        for changes, area, recovery_time in cases:
+            with self.subTest(changes=changes, area=area, recovery_time=recovery_time):
+                state = {**BASE, 'used_ml': 500, 'last_area': 45, 'last_status': 'charging',
+                         'last_dock_status': 'idle', 'last_tick_ts': 20_000_000,
+                         'last_reset_ts': 20_170_000, **changes}
+                state, _ = tick.tick_device(sample(vacuum='unavailable', dock='idle'), device, state,
+                                            now_ts=20_010_000)
+                state, _ = tick.tick_device(sample(area=area, dock='idle'), device, state,
+                                            now_ts=recovery_time)
+                self.assertTrue(state['accounting_incomplete'])
+
     def test_missing_initial_area_is_attributed_to_missing_exposure(self):
         state = {**BASE, 'last_area': None, 'last_status': 'cleaning', 'last_tick_ts': 0}
         result, _ = tick.tick_device(sample(status='cleaning', vacuum='cleaning', wetness='16'),
