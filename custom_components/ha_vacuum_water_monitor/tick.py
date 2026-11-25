@@ -814,6 +814,7 @@ def _tick_device_pass(
         if any(item["value"] is None for item in observed_settings.values()):
             state.update(accounting_incomplete=True, session_accounting_valid=False,
                          session_exposure_complete=False, session_water_broken=True)
+            _record_accounting(state, "context", None, None, "observed_setting_unavailable")
     consumption_context = deepcopy(device.get("consumption_context") or {
         "model_id": device.get("profile_key"), "sku": device.get("sku"),
         "dock_variant": device.get("dock_variant"), "firmware": device.get("firmware"),
@@ -1387,6 +1388,7 @@ def _tick_device_pass(
             # Missing first exposure invalidates the tank as well as the run.
             state.update(accounting_incomplete=True, session_water_broken=True,
                          session_accounting_valid=False)
+            _record_accounting(state, "area", None, evidence, "initial_area_exposure_unobserved")
     split_volume = split_resolution = None
     split_sensor = device.get("water_volume_sensor")
     if split_sensor:
