@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.15.0-beta.3 (Unreleased)
+
+- Use the automatically discovered Dreame clean-water tank status to show low water or a missing tank without changing the water balance or recording a refill (#32).
+- Show detected bindings in the Automatic option, and distinguish tank status, measured volume and estimates in the water card.
+- Record the Dreame X50 Ultra's rotary mop pads in the model catalog. Consumption rates still require calibration evidence.
+
 ## 5.15.0-beta.2 (2026-11-25)
 
 - Match Matter devices that expose a robot's identity across separate device entries to the corresponding vacuum profile.

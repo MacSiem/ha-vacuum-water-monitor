@@ -385,7 +385,7 @@ def tick_device(
 
 def _dreame_clean_tank_advisory(hass: HomeAssistant, device: dict[str, Any]) -> str | None:
     """Live Dreame enum status; the legacy dock binding may be an enum alias."""
-    if device.get("integration_adapter") != "dreame_vacuum":
+    if device.get("integration_adapter") != "dreame_vacuum" or device.get("dock_variant") == "plumbed":
         return None
     status_role = "clean_water_tank_status_sensor"
     legacy_role = "dock_clean_water_sensor"

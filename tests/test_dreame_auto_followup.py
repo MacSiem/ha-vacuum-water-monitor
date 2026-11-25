@@ -105,6 +105,7 @@ def test_legacy_manual_binding_wins_and_explicit_status_override_wins():
     assert tick._dreame_clean_tank_advisory(h,d) == 'low_water'
     d['signal_overrides_applied'] = ['clean_water_tank_status_sensor']
     assert tick._dreame_clean_tank_advisory(h,d) == 'ok'
+    assert tick._dreame_clean_tank_advisory(h, {**d, 'dock_variant': 'plumbed'}) is None
     d['integration_adapter'] = 'roborock'
     assert tick._dreame_clean_tank_advisory(h,d) is None
 
