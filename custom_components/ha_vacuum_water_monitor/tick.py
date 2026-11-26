@@ -813,28 +813,47 @@ def _tick_device_pass(
                     "context_cleangenius_mode_entity", "wash_frequency_entity"}
     dreame = device.get("integration_adapter") == "dreame_vacuum"
     vacuum_registry_id = None
-    try:
-        from homeassistant.helpers import entity_registry as er
-        vacuum_entry = er.async_get(hass).async_get(vacuum_entity)
-        vacuum_registry_id = getattr(vacuum_entry, "id", None)
-    except (ImportError, AttributeError, KeyError, TypeError):
-        pass
-    scope = _digest({"vacuum": vacuum_entity, "vacuum_registry_id": vacuum_registry_id,
-                     "identity": device.get("measurement_identity"),
-                     "bindings": {r: device.get(r) for r in (*CONTEXT_SETTING_ROLES, *_OBSERVED_WASH_ROLES)}})
+    if dreame:
+        try:
+            from homeassistant.helpers import entity_registry as er
+            vacuum_entry = er.async_get(hass).async_get(vacuum_entity)
+            vacuum_registry_id = getattr(vacuum_entry, "id", None)
+        except (ImportError, AttributeError, KeyError, TypeError):
+            pass
+    scope = (_digest({"vacuum": vacuum_entity, "vacuum_registry_id": vacuum_registry_id,
+                      "identity": device.get("measurement_identity"),
+                      "bindings": {r: device.get(r) for r in (*CONTEXT_SETTING_ROLES, *_OBSERVED_WASH_ROLES)}})
+             if dreame else None)
     cache = state.get("dreame_locked_settings") or {}
+    scope_failed = bool(dreame and cache and cache.get("scope") != scope and cache.get("pending"))
     if not dreame or cache.get("scope") != scope:
         cache = {"scope": scope, "values": {}}
     cached_values = cache.setdefault("values", {})
     cache_times = cache.setdefault("times", {})
-    if _is_cleaning(vac_state, curr_status, cleaning_active):
+    active_task = _is_cleaning(vac_state, curr_status, cleaning_active)
+    end_states = {"docked", "charging", "completed", "charging_complete", "charging_completed"}
+    lock_failed = scope_failed
+    if dreame and cache.get("started_ts"):
+        if curr_status in end_states and not active_task:
+            cache.setdefault("ended_ts", now_ts)
+        elif active_task and cache.get("ended_ts"):
+            # A second task cannot inherit the first task's locked controls.
+            lock_failed = bool(cache.get("pending"))
+            cache = {"scope": scope, "values": {}, "times": {}}
+            cached_values, cache_times = cache["values"], cache["times"]
+        if cache.get("ended_ts") and now_ts - cache["ended_ts"] > 120_000:
+            lock_failed = bool(cache.get("pending"))
+            cache = {"scope": scope, "values": {}, "times": {}}
+            cached_values, cache_times = cache["values"], cache["times"]
+    if dreame and active_task:
         cache.setdefault("started_ts", now_ts)
     lock_states = _ACTIVE_CLEANING_STATES | MOP_WASH_STATES | {
         "clean_add_water", "returning", "returning_home", "returning_to_drain",
-        "docking", "docked", "charging", "completed", "charging_complete", "charging_completed"}
-    locked_active = bool(cache.get("started_ts") and curr_status in lock_states
+        "docking", *end_states}
+    locked_active = bool(dreame and cache.get("started_ts") and curr_status in lock_states
                          and 0 <= now_ts - cache["started_ts"] <= 12 * 3600 * 1000)
     used_locked_value = False
+    pending = cache.setdefault("pending", {})
     for role in (*CONTEXT_SETTING_ROLES, *_OBSERVED_WASH_ROLES):
         entity_id = device.get(role)
         if not entity_id:
@@ -861,6 +880,11 @@ def _tick_device_pass(
         if dreame and role in locked_roles:
             previous = cached_values.get(key)
             if value is not None:
+                expected = pending.get(key)
+                if expected is not None:
+                    if expected != item:
+                        lock_failed = True
+                    pending.pop(key, None)
                 cached_values[key] = deepcopy(item)
                 cache_times[key] = now_ts
             elif (obj is not None and str(getattr(obj, "state", "")).lower() == "unavailable"
@@ -869,10 +893,14 @@ def _tick_device_pass(
                   and 0 <= now_ts - cache_times.get(key, 0) <= MAX_ACTIVE_INTERVAL_SECONDS * 1000):
                 item = deepcopy(previous)
                 used_locked_value = True
+                pending.setdefault(key, deepcopy(previous))
                 cache_times[key] = now_ts
             elif not (obj is not None and str(getattr(obj, "state", "")).lower() == "unavailable" and settled_dock):
                 # No carry-forward after a missing/unknown entity or unlocked
                 # unavailable control; require a fresh observation next time.
+                if key in pending:
+                    lock_failed = True
+                    pending.pop(key, None)
                 cached_values.pop(key, None)
                 cache_times.pop(key, None)
         observed_settings[key] = item
@@ -892,6 +920,21 @@ def _tick_device_pass(
                 live_settings[role] = item["value"]
                 break
     if dreame:
+        if lock_failed:
+            state["dreame_lock_failed_reset"] = state.get("last_reset_ts") or 0
+            state.pop("dreame_pending_nominal_sample", None)
+            if state.get("nominal_time_learning"):
+                state["nominal_time_learning"] = nominal_time_learning.invalidate(
+                    state["nominal_time_learning"], "dreame_lock_unverified")
+        elif not pending:
+            deferred = state.pop("dreame_pending_nominal_sample", None)
+            if (isinstance(deferred, dict) and deferred.get("reset") == (state.get("last_reset_ts") or 0)
+                    and deferred.get("contexts") == (state.get("nominal_time_learning") or {}).get("contexts")):
+                state["nominal_time_learning"] = deferred["result"]
+            if cache.get("ended_ts") and not used_locked_value:
+                if (state.get("dreame_lock_unverified_reset") == (state.get("last_reset_ts") or 0)
+                        and state.get("dreame_lock_failed_reset") != (state.get("last_reset_ts") or 0)):
+                    state.pop("dreame_lock_unverified_reset", None)
         if used_locked_value:
             state["dreame_lock_unverified_reset"] = state.get("last_reset_ts") or 0
         elif settled_dock:
@@ -1146,7 +1189,7 @@ def _tick_device_pass(
         if tapovac and not device.get("cleaning_mode_entity") and device.get("mop_mode_entity"):
             known_mode = bool(mop_mode and (mop_mode in _MOP_DISABLED_MODES
                 or _is_mop_active(None, mop_mode, None, require_evidence=True)))
-        if used_locked_value or (observed_settings and any(item["value"] is None for item in observed_settings.values())):
+        if observed_settings and any(item["value"] is None for item in observed_settings.values()):
             known_mode = False
         learning = state.get("nominal_time_learning") or {}
         waiting = bool(state.get("nominal_time_waiting_for_settings"))
@@ -2074,6 +2117,12 @@ def _tick_device_pass(
             learned = nominal_time_learning.finish_empty(state.get("nominal_time_learning") or {},
                 context=nominal_time_context, capacity_ml=nominal_capacity, now_ts=now_ts,
                 identity_aliases=nominal_identity_aliases)
+            if dreame and pending and not lock_failed:
+                original = state.get("nominal_time_learning") or {}
+                state["dreame_pending_nominal_sample"] = {
+                    "reset": state.get("last_reset_ts") or 0,
+                    "contexts": deepcopy(original.get("contexts")), "result": learned}
+                learned = nominal_time_learning.invalidate(original, "dreame_lock_confirmation_pending")
             state["nominal_time_learning"] = learned
             state["nominal_time_resolution"] = nominal_time_learning.resolve(learned,
                 context=nominal_time_context, capacity_ml=nominal_capacity,
@@ -2901,6 +2950,7 @@ def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
     state.pop("nominal_time_waiting_for_settings", None)
     state.pop("dreame_locked_settings", None)
+    state.pop("dreame_pending_nominal_sample", None)
     if isinstance(state.get("split_session_observation"), dict):
         state["split_session_observation"]["valid"] = False
     if isinstance(state.get("physical_learning"), dict) and state["physical_learning"].get("cycle"):
