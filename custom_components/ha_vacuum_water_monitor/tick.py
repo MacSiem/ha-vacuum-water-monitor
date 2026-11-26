@@ -805,6 +805,36 @@ def _tick_device_pass(
     # Capture every bound setting together, once per tick. A numeric control's
     # range/unit are provenance; it is not itself a volumetric measurement.
     observed_settings = {}
+    # These Dreame controls are deliberately unavailable while a task is
+    # started (upstream PROPERTY_AVAILABILITY). Cache only actual readings,
+    # tied to the complete binding and vacuum; a missing entity is not a lock.
+    locked_roles = {"context_cleaning_route_entity", "context_auto_rewashing_entity",
+                    "context_auto_recleaning_entity", "context_cleangenius_entity",
+                    "context_cleangenius_mode_entity", "wash_frequency_entity"}
+    dreame = device.get("integration_adapter") == "dreame_vacuum"
+    vacuum_registry_id = None
+    try:
+        from homeassistant.helpers import entity_registry as er
+        vacuum_entry = er.async_get(hass).async_get(vacuum_entity)
+        vacuum_registry_id = getattr(vacuum_entry, "id", None)
+    except (ImportError, AttributeError, KeyError, TypeError):
+        pass
+    scope = _digest({"vacuum": vacuum_entity, "vacuum_registry_id": vacuum_registry_id,
+                     "identity": device.get("measurement_identity"),
+                     "bindings": {r: device.get(r) for r in (*CONTEXT_SETTING_ROLES, *_OBSERVED_WASH_ROLES)}})
+    cache = state.get("dreame_locked_settings") or {}
+    if not dreame or cache.get("scope") != scope:
+        cache = {"scope": scope, "values": {}}
+    cached_values = cache.setdefault("values", {})
+    cache_times = cache.setdefault("times", {})
+    if _is_cleaning(vac_state, curr_status, cleaning_active):
+        cache.setdefault("started_ts", now_ts)
+    lock_states = _ACTIVE_CLEANING_STATES | MOP_WASH_STATES | {
+        "clean_add_water", "returning", "returning_home", "returning_to_drain",
+        "docking", "docked", "charging", "completed", "charging_complete", "charging_completed"}
+    locked_active = bool(cache.get("started_ts") and curr_status in lock_states
+                         and 0 <= now_ts - cache["started_ts"] <= 12 * 3600 * 1000)
+    used_locked_value = False
     for role in (*CONTEXT_SETTING_ROLES, *_OBSERVED_WASH_ROLES):
         entity_id = device.get(role)
         if not entity_id:
@@ -824,10 +854,51 @@ def _tick_device_pass(
         except (ImportError, AttributeError, KeyError, TypeError):
             pass  # Standalone consumers lack the HA registry; never assume a rename.
         identity = "registry:" + registry_id if isinstance(registry_id, str) and registry_id else "entity:" + entity_id
-        observed_settings[key] = {"value": value, "unit": attrs.get("unit_of_measurement"),
+        item = {"value": value, "unit": attrs.get("unit_of_measurement"),
                                   "min": safe_number("min"), "max": safe_number("max"),
                                   "source": hashlib.sha256(identity.encode()).hexdigest()[:16],
                                   "source_registry_id": registry_id, "source_entity": entity_id}
+        if dreame and role in locked_roles:
+            previous = cached_values.get(key)
+            if value is not None:
+                cached_values[key] = deepcopy(item)
+                cache_times[key] = now_ts
+            elif (obj is not None and str(getattr(obj, "state", "")).lower() == "unavailable"
+                  and locked_active and isinstance(previous, dict)
+                  and previous.get("source") == item["source"]
+                  and 0 <= now_ts - cache_times.get(key, 0) <= MAX_ACTIVE_INTERVAL_SECONDS * 1000):
+                item = deepcopy(previous)
+                used_locked_value = True
+                cache_times[key] = now_ts
+            elif not (obj is not None and str(getattr(obj, "state", "")).lower() == "unavailable" and settled_dock):
+                # No carry-forward after a missing/unknown entity or unlocked
+                # unavailable control; require a fresh observation next time.
+                cached_values.pop(key, None)
+                cache_times.pop(key, None)
+        observed_settings[key] = item
+    # Cleangenius mode is inapplicable when Cleangenius is explicitly off.
+    mode = observed_settings.get("cleangenius_mode")
+    genius = observed_settings.get("cleangenius")
+    mode_obj = hass.states.get(device.get("context_cleangenius_mode_entity")) if mode else None
+    if (dreame and mode and mode["value"] is None and genius and genius["value"] == "off"
+            and mode_obj is not None and str(mode_obj.state).lower() == "unavailable"):
+        mode["value"] = "not_applicable"
+    # The same bound wash/route control can also appear in the legacy context.
+    for role in tuple(live_settings):
+        if not role.endswith("_entity") or not device.get(role):
+            continue
+        for item in observed_settings.values():
+            if item["source_entity"] == device[role]:
+                live_settings[role] = item["value"]
+                break
+    if dreame:
+        if used_locked_value:
+            state["dreame_lock_unverified_reset"] = state.get("last_reset_ts") or 0
+        elif settled_dock:
+            cache.pop("started_ts", None)
+        state["dreame_locked_settings"] = cache
+    else:
+        state.pop("dreame_locked_settings", None)
     # Registry loss must not silently erase a previously observed axis and
     # requalify the tank under a less-specific context. Keep its slot unknown.
     previous_keys = set(state.get("observed_setting_keys") or [])
@@ -898,7 +969,8 @@ def _tick_device_pass(
                 settings_context["water_level"] = mop_intensity
             for setting in CONSUMPTION_SETTINGS:
                 if device.get(setting + "_entity"):
-                    settings_context[setting] = _normalized_signal(_state_value(hass, device[setting + "_entity"]))
+                    role = setting + "_entity"
+                    settings_context[setting] = live_settings.get(role, _normalized_signal(_state_value(hass, device[role])))
         # Dreame exposes frequency type and numeric thresholds separately.
         # Preserve exact observed controls in the existing frequency axis: a
         # threshold change must never reuse an earlier setting's calibration.
@@ -1074,7 +1146,7 @@ def _tick_device_pass(
         if tapovac and not device.get("cleaning_mode_entity") and device.get("mop_mode_entity"):
             known_mode = bool(mop_mode and (mop_mode in _MOP_DISABLED_MODES
                 or _is_mop_active(None, mop_mode, None, require_evidence=True)))
-        if observed_settings and any(item["value"] is None for item in observed_settings.values()):
+        if used_locked_value or (observed_settings and any(item["value"] is None for item in observed_settings.values())):
             known_mode = False
         learning = state.get("nominal_time_learning") or {}
         waiting = bool(state.get("nominal_time_waiting_for_settings"))
@@ -1431,6 +1503,8 @@ def _tick_device_pass(
             state.update(accounting_incomplete=True, session_water_broken=True,
                          session_accounting_valid=False)
             _record_accounting(state, "area", None, evidence, "initial_area_exposure_unobserved")
+    if used_locked_value and state.get("session_start_ts"):
+        state["session_exposure_complete"] = False
     split_volume = split_resolution = None
     split_sensor = device.get("water_volume_sensor")
     if split_sensor:
@@ -2045,7 +2119,8 @@ def _tick_device_pass(
             reason = "calibration_sample_full_unconfirmed"
             if not refilled_since_last_anchor:
                 reason = "calibration_sample_no_refill_since_empty"
-            elif state.get("accounting_incomplete"):
+            elif (state.get("accounting_incomplete") or
+                  state.get("dreame_lock_unverified_reset") == (state.get("last_reset_ts") or 0)):
                 reason = "calibration_sample_incomplete_cycle"
             elif not cycle_long_enough:
                 reason = "low_water_detected_without_sample"
@@ -2825,6 +2900,7 @@ def _water_anchor_states(
 def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
     state.pop("nominal_time_waiting_for_settings", None)
+    state.pop("dreame_locked_settings", None)
     if isinstance(state.get("split_session_observation"), dict):
         state["split_session_observation"]["valid"] = False
     if isinstance(state.get("physical_learning"), dict) and state["physical_learning"].get("cycle"):
