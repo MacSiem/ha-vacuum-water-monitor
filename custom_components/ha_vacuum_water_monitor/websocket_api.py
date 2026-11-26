@@ -114,7 +114,8 @@ def _redact_observed_sources(item: Any, can_read) -> Any:
 def _shared_tank(state: dict[str, Any]) -> dict[str, Any]:
     """Live balance only, without a measurement bank or origin details."""
     fields = ("initialized", "used_ml", "accounting_incomplete", "water_empty_active", "last_reset_ts",
-              "last_reset_iso", "last_water_volume_ml", "last_status", "external_counter", "external_metadata")
+              "last_reset_iso", "last_water_volume_ml", "last_status", "external_counter", "external_metadata",
+              "clean_tank_advisory")
     result = {key: state[key] for key in fields if key in state}
     result["refill_full_unconfirmed"] = (state.get("refill_full_unconfirmed") is True or
         (state.get("last_reset_source") in {"lid", "dock_cleared", "tank_reinserted"} and state.get("cycle_full_confirmed") is not True))
@@ -162,11 +163,11 @@ async def _filtered_result(hass, user_id, value):
                                  {field: x[field] for field in ("vacuum_entity", "name") if field in x}
                                  for x in settings[key] if isinstance(x, dict) and x.get("vacuum_entity") in allowed]
         keyed = ("refill_config", "refill_settings", "device_options", "sessions", "measurement_plans",
-                 "local_measurements", "consumption_calibrations", "signal_overrides", "robot_links")
+                 "local_measurements", "split_measurements", "consumption_calibrations", "signal_overrides", "robot_links")
         for key in keyed:
             if not isinstance(settings.get(key), dict):
                 continue
-            permitted = measurements if key in ("local_measurements", "consumption_calibrations", "measurement_plans") else settings_allowed
+            permitted = measurements if key in ("local_measurements", "split_measurements", "consumption_calibrations", "measurement_plans") else settings_allowed
             settings[key] = {k: v for k, v in settings[key].items() if
                 (k if str(k).startswith("vacuum.") else "vacuum." + str(k)) in permitted
                 and (key != "robot_links" or v == "distinct" or v in allowed)}
@@ -215,7 +216,7 @@ async def _filtered_result(hass, user_id, value):
     if not await check_access(hass, user_id, "settings", "read", policy=policy) and isinstance(value.get("settings"), dict):
         safe = {"configured_devices", "user_devices", "robot_links", "warning_threshold", "critical_threshold"}
         if await check_access(hass, user_id, "measurements", "read", policy=policy):
-            safe.update({"local_measurements", "consumption_calibrations", "measurement_plans", "custom_calibration",
+            safe.update({"local_measurements", "split_measurements", "consumption_calibrations", "measurement_plans", "custom_calibration",
                          "calibration_sharing", "sharing_intro_choice"})
         value["settings"] = {key: value["settings"][key] for key in safe if key in value["settings"]}
     for key in ("vacuums", "robots"):
@@ -294,7 +295,7 @@ def _response_entity_ids(result: Any) -> set[str]:
         for key in ("configured_devices", "user_devices"):
             found.update(item.get("vacuum_entity") for item in (settings.get(key) or []) if isinstance(item, dict))
         for key in ("refill_config", "refill_settings", "device_options", "sessions", "measurement_plans",
-                    "local_measurements", "consumption_calibrations", "signal_overrides", "robot_links", "custom_calibration"):
+                    "local_measurements", "split_measurements", "consumption_calibrations", "signal_overrides", "robot_links", "custom_calibration"):
             mapping = settings.get(key)
             if not isinstance(mapping, dict):
                 continue
@@ -338,7 +339,7 @@ def _authorize(feature: str, operation: str):
             features = {feature}
             if msg.get("type") == f"{DOMAIN}/set_settings":
                 patch = msg.get("patch") or {}
-                measurement_keys = {"custom_calibration", "local_measurements", "consumption_calibrations",
+                measurement_keys = {"custom_calibration", "local_measurements", "split_measurements", "consumption_calibrations",
                                     "measurement_plans", "calibration_sharing", "sharing_intro_choice"}
                 if set(patch) & measurement_keys:
                     features.add("measurements")
@@ -502,6 +503,7 @@ def _authorize(feature: str, operation: str):
                 owner = result.get("vacuum_entity") or msg.get("vacuum_entity")
                 if msg.get("type") == f"{DOMAIN}/save_measurement" and not can_read("measurements", owner):
                     result.pop("calibration", None)
+                    result.pop("split_calibration", None)
                     result.pop("sample_count", None)
                 if isinstance(result.get("state"), dict) and not can_read("measurements", owner):
                     result["state"] = _shared_tank(result["state"])
@@ -512,13 +514,13 @@ def _authorize(feature: str, operation: str):
                         safe = {"configured_devices", "user_devices", "robot_links", "warning_threshold", "critical_threshold"}
                         if feature_access_allowed(policy, "measurements", "read", user_id=user.id,
                                 is_active=user.is_active, is_admin=user.is_admin):
-                            safe.update({"local_measurements", "consumption_calibrations", "measurement_plans",
+                            safe.update({"local_measurements", "split_measurements", "consumption_calibrations", "measurement_plans",
                                          "custom_calibration", "calibration_sharing", "sharing_intro_choice"})
                         result["settings"] = settings_result = {k: v for k, v in settings_result.items() if k in safe}
                     all_robots = {item.get("entity_id") for item in list_vacuums(hass) if isinstance(item, dict) and item.get("entity_id")}
                     all_robots.update(((_storage(hass)._data or {}).get("tank_states") or {}).keys())
                     can_read_default = bool(all_robots) and all(can_read("measurements", entity) for entity in all_robots)
-                    for key in ("local_measurements", "consumption_calibrations", "measurement_plans", "custom_calibration"):
+                    for key in ("local_measurements", "split_measurements", "consumption_calibrations", "measurement_plans", "custom_calibration"):
                         mapping = settings_result.get(key)
                         if isinstance(mapping, dict):
                             settings_result[key] = {entity: data for entity, data in mapping.items()
@@ -1081,7 +1083,8 @@ async def _ws_save_measurement(hass, connection, msg):
     except ValueError as err:
         connection.send_error(msg["id"], "invalid_payload", str(err))
         return
-    result["bindings_refreshed"] = await _refresh_bindings(hass) if result.get("calibration") else None
+    split = result.get("split_calibration") or {}
+    result["bindings_refreshed"] = await _refresh_bindings(hass) if result.get("calibration") or any(split.values()) else None
     _notify_store_updated(hass, {"settings": await _storage(hass).async_get_settings()})
     connection.send_result(msg["id"], result)
 

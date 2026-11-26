@@ -165,6 +165,17 @@ def robot_health(
         elif reason in {"vacuum_unavailable", "status_unavailable", "area_unavailable", "duration_unavailable",
                         "real_sensor_unavailable"}:
             add("signal_unavailable", "info", None, reason=reason)
+        # Exposure telemetry starts tracking by itself; split fitting needs
+        # independent water quantities and a completion counter, not buttons
+        # or a station phase. These are informational, not setup blockers.
+        if (effective.get("tracked_reservoir") == "dock_clean" and not plumbed_supply
+                and (effective.get("area_sensor") or effective.get("area_attribute"))):
+            if not effective.get("wash_completed_sensor"):
+                add("split_wash_completion_missing", "info", None)
+            if (not effective.get("split_measurements") and not tank_state.get("split_sensor_measurements")
+                    and not (effective.get("water_volume_sensor") and
+                             effective.get("water_volume_reservoir") == "dock_clean")):
+                add("split_water_measurement_missing", "info", None)
         if method == "manual" and not plumbed_supply:
             add("manual_refill", "info", None)
         if not can_calibrate and not missing_rate and not plumbed_supply:
@@ -195,6 +206,7 @@ def robot_health(
         "auto_refill": method == "dock_auto",
         "initialized": bool(estimate.get("initialized")),
         "tank_empty": bool(tank_state.get("water_empty_active")) and not plumbed_supply,
+        "clean_tank_advisory": tank_state.get("clean_tank_advisory"),
         "remaining_percent": estimate.get("remaining_percent"),
         "supply": supply_forecast(tank_state, estimate.get("remaining_ml"),
                                   now_ts if now_ts is not None else int(time.time() * 1000)),

@@ -169,6 +169,7 @@ def apply_refill(
         last_wash_charged_ml=0,
     )
     state["nominal_time_start_pending"] = state["cycle_full_confirmed"]
+    state.pop("nominal_time_waiting_for_settings", None)
     record = {
         "ts": now_ts,
         "source": source,

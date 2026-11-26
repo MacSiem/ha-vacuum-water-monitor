@@ -1,6 +1,31 @@
 # Changelog
 
-## 5.14.1 (Unreleased)
+## 5.15.0-beta.4 (2026-11-26)
+
+- Handle Dreame controls locked during cleaning using task-scoped evidence, and reject stale or unverified settings when learning or bridging area gaps.
+- Treat an Ecovacs sequential mopping phase as unobserved when its state cannot be established, keeping uncertainty explicit.
+
+## 5.15.0-beta.3 (2026-11-25)
+
+- Preserve a confirmed tank balance when an optional setting is unavailable during an observed, settled dock interval; continue to flag uncertain water use and identify missing settings in interruption diagnostics (#32).
+- Use the automatically discovered Dreame clean-water tank status to show low water or a missing tank without changing the water balance or recording a refill (#32).
+- Show detected bindings in the Automatic option, and distinguish tank status, measured volume and estimates in the water card.
+- Record the Dreame X50 Ultra's rotary mop pads in the model catalog. Consumption rates still require calibration evidence.
+
+## 5.15.0-beta.2 (2026-11-25)
+
+- Match Matter devices that expose a robot's identity across separate device entries to the corresponding vacuum profile.
+- Explain when sparse telemetry limits water estimates and which measurements can improve them.
+- Make duplicate-device suggestions more precise for Dreame X50 Ultra (#32).
+
+## 5.15.0-beta.1 (2026-11-25)
+
+- Recognize the Dreame X50 Ultra identifiers reported by Dreame Cloud and Matter. Existing settings and history are preserved when refreshing a detected profile.
+- Show mop washing on the water card, including the French Roborock status. Preserve the water balance across a brief loss of the area reading when the counter resumes with continuous values and unchanged settings.
+- Learn separate estimates for floor mopping and mop washes from compatible measured water use and a completed-wash counter. Keep measurements local and keep unavailable or unverified values explicit, including on Ecovacs T90.
+- Consolidate refreshes when multiple robot entities are registered together.
+
+## 5.14.1 (2026-11-25)
 
 - Recognize TapoVac mop-washing status and count a separately established wash dose once for the dock clean-water reservoir; unknown doses remain unknown. A wash status does not establish completion or measured volume.
 - Clarify regional model and integration evidence for Ecovacs T90 Pro Omni and Roborock Qrevo Curv 2 Flow without treating uncertain reservoir descriptions as measured capacities or consumption.

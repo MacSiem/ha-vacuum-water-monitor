@@ -1,4 +1,4 @@
-/* HA Vacuum Water Monitor v5.14.1 — HACS integration bundled card */
+/* HA Vacuum Water Monitor v5.15.0-beta.4 — HACS integration bundled card */
 (function() {
 'use strict';
 
@@ -179,7 +179,7 @@ const supportDismissed = () => { try { return localStorage.getItem(SUPPORT_DISMI
 const ownDonateFooter = (lang = "en") => `<section class="donate-section" data-source="own-card"><a href="https://buymeacoffee.com/macsiem" target="_blank" rel="noopener noreferrer">${lang === "pl" ? "Opcjonalne wsparcie HA Tools" : "Optional support for HA Tools"}</a><button type="button" class="support-dismiss" aria-label="${lang === "pl" ? "Ukryj odnośnik wsparcia" : "Dismiss support link"}">×</button></section>`;
 
 const VWM_DOMAIN = 'ha_vacuum_water_monitor';
-const VWM_VERSION = '5.14.1';
+const VWM_VERSION = '5.15.0-beta.4';
 const VWM_SHARE_SCHEMA = 'vwm-calibration-share/1';
 const VWM_SHARE_ISSUE_URL = 'https://github.com/MacSiem/ha-vacuum-water-monitor/issues/new';
 // Mirrors estimation.py: deterministic uncertainty per estimate basis.
@@ -423,6 +423,9 @@ const VWM_WATER_TEXT_PL = {
   "The configured duration signal is unavailable. No elapsed time is inferred.": "Przypisany sygnał czasu jest niedostępny. Czas nie jest zgadywany.",
   "The authoritative volume sensor is unavailable. Estimates will not replace it.": "Czujnik objętości jest niedostępny. Szacunki go nie zastępują.",
   "Confirm which reservoir the volume sensor measures.": "Potwierdź, który zbiornik mierzy czujnik objętości.",
+  "Dock clean-water tank status": "Stan zbiornika czystej wody stacji",
+  "Dock dirty-water tank status": "Stan zbiornika brudnej wody stacji",
+  "Tank status reports conditions such as empty or missing, not the volume in ml. Recognized states depend on the integration. Water remaining may be estimated; a volume sensor measures it.": "Stan zbiornika informuje np. o pustym lub wyjętym zbiorniku, a nie o objętości w ml. Rozpoznawane stany zależą od integracji. Pozostałą ilość wody można oszacować; czujnik objętości ją mierzy.",
   "Volume sensor must publish mL or L.": "Czujnik objętości musi podawać mL lub L.",
   "Typical for this mop system": "Szacunek dla tego systemu mopowania",
   "Generic mopping estimate": "Początkowy szacunek mopowania",
@@ -676,6 +679,7 @@ const VWM_WATER_TEXT_PL = {
   "Low": "Mało",
   "Cleaning": "Sprzątanie",
   "Idle": "Bezczynny",
+  "Mop washing": "Mycie mopa",
   "Last session": "Ostatnia sesja",
   "Filter life": "Żywotność filtra",
   "days": "dni",
@@ -822,6 +826,8 @@ const VWM_SETUP_TEXT = {
     confirmAgain: 'Tap again to confirm',
     markedEmpty: 'Marked empty; the estimate learns from this tank.',
     info: {
+      split_wash_completion_missing: 'Separate floor and mop-wash learning needs an absolute completed-wash counter. A station state or action button does not confirm completion; basic tracking still runs.',
+      split_water_measurement_missing: 'Separate floor and mop-wash learning needs measured water use: a measured full refill or a clean-tank volume sensor. Area and wash state alone do not provide ml.',
       manual_refill: 'Tip: the robot\u2019s device page has a Refilled button you can put on a dashboard or an NFC tag.',
       no_empty_signal: 'This robot does not report an empty tank. When it runs out of water, press the button below (or the robot\u2019s Tank empty button) so the estimate learns.',
       signal_unavailable: 'A robot signal is unavailable right now; counting resumes when it is back.',
@@ -863,6 +869,8 @@ const VWM_SETUP_TEXT = {
     confirmAgain: 'Naci\u015Bnij ponownie, aby potwierdzi\u0107',
     markedEmpty: 'Oznaczono jako pusty; szacunek uczy si\u0119 z tego zbiornika.',
     info: {
+      split_wash_completion_missing: 'Oddzielne uczenie podłogi i mycia mopa wymaga bezwzględnego licznika ukończonych myć. Stan stacji ani przycisk nie potwierdzają ukończenia; podstawowe śledzenie nadal działa.',
+      split_water_measurement_missing: 'Oddzielne uczenie podłogi i mycia mopa wymaga pomiaru wody: zmierzonego dolania do pełna albo czujnika objętości czystego zbiornika. Powierzchnia i stan mycia nie podają ml.',
       manual_refill: 'Wskaz\u00F3wka: strona urz\u0105dzenia robota ma przycisk Dolane, kt\u00F3ry mo\u017Cesz doda\u0107 do panelu albo tagu NFC.',
       no_empty_signal: 'Ten robot nie zg\u0142asza pustego zbiornika. Gdy sko\u0144czy mu si\u0119 woda, naci\u015Bnij przycisk poni\u017Cej (albo przycisk Zbiornik pusty robota), a szacunek si\u0119 nauczy.',
       signal_unavailable: 'Sygna\u0142 robota jest chwilowo niedost\u0119pny; liczenie wr\u00F3ci, gdy si\u0119 pojawi.',
@@ -2984,18 +2992,33 @@ const CALIBRATION_DATA = {
     "robot_clean_tank_ml": null,
     "robot_dirty_tank_ml": null,
     "detergent_tank_ml": null,
-    "mop_system": "unknown",
+    "mop_system": "rotating_pads",
     "profile_descriptor": {
       "profile_key": "dreame_x50_ultra",
       "profile_source": "locked_override",
       "profile_confidence": "high",
-      "capability": "automatic_estimate",
-      "evidence": "labeled_estimate",
+      "capability": "calibration_required",
+      "evidence": "not_published",
       "sources": [
+        "https://ae.dreametech.com/products/x40-ultra-rotary-mop-pads",
+        "https://dv.tasshack.com/guide/more/supported-devices",
         "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
         "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md"
       ],
       "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://ae.dreametech.com/products/x40-ultra-rotary-mop-pads",
+          "claim": "Manufacturer lists X50 Ultra for rotary mop pads; no consumption rates inferred.",
+          "last_verified": "2026-11-25",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://dv.tasshack.com/guide/more/supported-devices",
+          "claim": "Upstream lists dreame.vacuum.r2538z as X50 Ultra Complete; R2538Z (98), split into registry model R2538Z and model_id 98, is the Matter identity reported for the same robot in issue 32. Identity evidence only; no hardware or consumption claims.",
+          "last_verified": "2026-11-25"
+        },
         {
           "source_type": "manufacturer_spec",
           "url": "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
@@ -3020,47 +3043,34 @@ const CALIBRATION_DATA = {
         "robot_dirty": null,
         "detergent": null
       },
-      "usage_ml_per_m2": {
-        "default": 7
-      },
+      "usage_ml_per_m2": {},
       "usage_ml_per_active_minute": {},
-      "wash_volume_ml": 120,
-      "accounting_evidence": "labeled_estimate",
-      "uncertainty_percent": 65,
-      "rate_signal": "mop_mode",
+      "wash_volume_ml": null,
+      "accounting_evidence": "not_published",
+      "uncertainty_percent": null,
+      "rate_signal": null,
       "time_accounting_evidence": "not_published",
       "estimated_m2_per_active_minute": null,
-      "mop_system": "unknown",
-      "estimate_basis": "generic_prior",
+      "mop_system": "rotating_pads",
+      "estimate_basis": null,
       "water_anchor_reservoir": "dock_clean",
       "water_anchor_reservoir_inferred": true,
       "refill_on_clear": true,
-      "refill_on_clear_inferred": true,
-      "intensity_factor": {
-        "low": 0.7,
-        "medium": 1.0,
-        "high": 1.3,
-        "extreme": 1.5,
-        "default": 1.0
-      },
-      "calibration_scope": "floor_only",
-      "estimate_sources": [
-        "Engineering generic_prior for unknown: based on owner-device accounting and structural assumptions; not a measurement for this model."
-      ]
+      "refill_on_clear_inferred": true
     },
-    "estimate_basis": "generic_prior",
-    "estimate_label": "Generic mopping estimate; calibrates automatically",
-    "uncertainty_percent": 65,
-    "water_per_m2": {
-      "any mode": 7
-    },
-    "mop_wash_ml": 120,
+    "estimate_basis": null,
+    "estimate_label": null,
+    "uncertainty_percent": null,
+    "water_per_m2": {},
+    "mop_wash_ml": null,
     "source_urls": [
+      "https://ae.dreametech.com/products/x40-ultra-rotary-mop-pads",
+      "https://dv.tasshack.com/guide/more/supported-devices",
       "https://www.dreametech.com/products/x50-ultra-robot-vacuum",
       "https://github.com/Tasshack/dreame-vacuum/blob/master/docs/entities.md"
     ],
     "data_quality": "capacity_verified",
-    "notes": "Generic mopping estimate; calibrates automatically. Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
+    "notes": "Unknown capacities stay unknown; the device calibrates its own scale from empty-tank signals."
   },
   "dreame_z10_pro": {
     "label": "Dreame Z10 Pro",
@@ -14695,8 +14705,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
         parts.push(`<div class="alert-banner alert-warn dup-banner">${tapo ? (pl
           ? `Czy to ten sam robot? Połącz „${nameOf(v.entity_id)}” (Matter) z „${nameOf(target)}”. Karta wykorzysta dane z Tapo i wybrany program z Matter.`
           : `Is this the same robot? Link "${nameOf(v.entity_id)}" (Matter) with "${nameOf(target)}". The card will use data from Tapo and the selected program from Matter.`) : pl
-          ? `„${nameOf(v.entity_id)}” (Matter) wygląda na tego samego robota co „${nameOf(target)}”. Ukryć duplikat?`
-          : `"${nameOf(v.entity_id)}" (Matter) looks like the same robot as "${nameOf(target)}". Hide the duplicate?`}
+          ? `„${nameOf(v.entity_id)}” (Matter) wygląda na tego samego robota co „${nameOf(target)}”. Ukryć duplikat? Bilans będzie pochodził z integracji ${_esc(vacuums.find(x => x.entity_id === target)?.platform || target)}.`
+          : `"${nameOf(v.entity_id)}" (Matter) looks like the same robot as "${nameOf(target)}". Hide the duplicate? The balance will use the ${_esc(vacuums.find(x => x.entity_id === target)?.platform || target)} integration.`}
           <div class="dup-actions">
             <button class="dup-btn" data-dup="${_esc(v.entity_id)}" data-target="${_esc(target)}">${tapo ? (pl ? 'Połącz' : 'Link') : (pl ? 'Ukryj duplikat' : 'Hide duplicate')}</button>
             <button class="dup-btn" data-dup="${_esc(v.entity_id)}" data-target="distinct">${pl ? 'To inny robot' : 'It is another robot'}</button>
@@ -14832,6 +14842,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const totalMl = isPlumbed ? 0 : (Number.isFinite(optionCapacity) && optionCapacity > 0 ? optionCapacity : 0) || serverCapacity || configuredCapacity || customCalib.tracked_capacity_ml || resolvedCapacity || ((!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'profile_key')) && Number.isFinite(profileCapacity) && profileCapacity > 0 ? profileCapacity : 0);
     let remainingL = null, percentRemaining = null, usedMl = null;
     const tankState = this._loadWaterState(device);
+    // The live tank state takes precedence even when it explicitly clears the advisory.
+    const liveTank = this._serverState?.tank_states?.[device.vacuum_entity];
+    const advisory = liveTank && Object.prototype.hasOwnProperty.call(liveTank, 'clean_tank_advisory')
+      ? liveTank.clean_tank_advisory : this._healthFor(device)?.clean_tank_advisory;
+    const cleanTankAdvisory = !isPlumbed && ['low_water', 'missing'].includes(advisory) ? advisory : null;
     const measuredVolume = Boolean(device.water_volume_sensor || tankState.last_accounting_source === 'real_sensor');
     const calibrationWindow = _vwmStoredWindow(tankState) || [];
     const legacyResetTs = Number(tankState.last_reset_ts);
@@ -14930,6 +14945,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const waterLow = !isPlumbed && !externalMode && anchorActive && waterAnchorKind === 'shortage';
     const waterEmpty = !isPlumbed && !externalMode && anchorActive && !waterLow;
     const vacState = this._getStateValue(device.vacuum_entity);
+    // Match the backend's explicit wash vocabulary and its status-source precedence.
+    const washKey = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const washStates = ['washing', 'washing_the_mop', 'washing_the_mop_2', 'clean_mop_cleaning', 'segment_clean_mop_cleaning', 'zoned_clean_mop_cleaning', 'lavage_de_la_serpillere', 'lavage_des_serpilleres', 'mop_washing', 'washing_mop'];
+    const activity = device.status_sensor ? this._getStateValue(device.status_sensor) : (this._getAttr(device.vacuum_entity, 'status') || vacState);
+    const isMopWashing = washStates.includes(washKey(activity)) || washStates.includes(washKey(this._getStateValue(device.dock_status_sensor))) || (device.integration_adapter === 'tapo_rv30' && device.tapo_status_contract !== 2 && this._getAttr(device.vacuum_entity, 'status_code') === 15);
     const isCleaning = device.integration_adapter === 'tapo_rv30'
       ? (device.tapo_status_contract === 2 ? this._normaliseModelKey(this._getStateValue(device.status_sensor)) === 'cleaning' : this._getAttr(device.vacuum_entity, 'status_code') === 1)
       : ['cleaning', 'running', 'sweeping', 'mopping', 'vacuuming'].includes(this._normaliseModelKey(vacState));
@@ -14994,7 +15014,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       partialUsedMl: stateReason === 'accounting_incomplete' && initialized
         && typeof tankState.used_ml === 'number' && Number.isFinite(tankState.used_ml)
         && tankState.used_ml >= 0 ? tankState.used_ml : null,
-      initialized, stateReason, externalMode,
+      initialized, stateReason, externalMode, cleanTankAdvisory,
       sessionActive: Boolean(tankState.session_start_ts),
       profileKey: device.profile_key || profileKey || null,
       profileSource: device.profile_source || (device.profile_key ? 'backend' : 'legacy_client_fallback'),
@@ -15042,7 +15062,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       reservoirsMl: device.reservoirs_ml && typeof device.reservoirs_ml === 'object' ? device.reservoirs_ml : {},
       trackedReservoir: device.tracked_reservoir || null,
       signals: device.signals && typeof device.signals === 'object' ? device.signals : {},
-      waterEmpty, waterLow, isCleaning, filterDays, sessionMl, lastReset, vacState, charge,
+      waterEmpty, waterLow, isCleaning, isMopWashing, filterDays, sessionMl, lastReset, vacState, charge,
       mainBrushH, sideBrushH, filterH, sensorH, dockBrushH, dockStrainerH,
       dockCleanWaterState, dockDirtyWaterState, dockCleanWaterProblem, dockDirtyWaterProblem,
       dockCleanWaterFull, dockDirtyWaterFull, waterShortage, mopAttached, mopDrying,
@@ -15303,7 +15323,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ? `<div class="row"><span class="row-label">${this._waterText('Recorded estimate (incomplete)')}</span><span class="row-val">${this._formatUi().number(data.partialUsedMl / 1000, {minimumFractionDigits:2,maximumFractionDigits:2})} L</span></div>` : '';
 
     const vacStateChip = data.vacState
-      ? `<span class="chip ${data.isCleaning ? 'chip-active' : 'chip-idle'}">${data.isCleaning ? '\uD83E\uDDF9 ' + this._waterText('Cleaning') : '\uD83D\uDECC ' + this._waterText('Idle')}</span>`
+      ? `<span class="chip ${data.isCleaning || data.isMopWashing ? 'chip-active' : 'chip-idle'}">${data.isMopWashing ? '\uD83D\uDCA7 ' + this._waterText('Mop washing') : data.isCleaning ? '\uD83E\uDDF9 ' + this._waterText('Cleaning') : '\uD83D\uDECC ' + this._waterText('Idle')}</span>`
       : '';
 
     let extraRows = '';
@@ -15338,6 +15358,14 @@ class HAVacuumWaterMonitor extends HTMLElement {
       ? `<button type="button" class="refill-btn" data-vacuum="${_esc(device.vacuum_entity || '')}">${this._lang === 'pl' ? 'Dolano' : 'Refilled'}</button>` : '';
 
     const alertBanner = this._buildWaterAlert(device, data);
+    const tankAdvisory = data.cleanTankAdvisory === 'low_water'
+      ? (this._lang === 'pl' ? 'Stacja zgłasza niski poziom wody w zbiorniku' : 'Station reports low water in the tank')
+      : data.cleanTankAdvisory === 'missing'
+        ? (this._lang === 'pl' ? 'Stacja zgłasza brak zbiornika czystej wody' : 'Station reports the clean-water tank is missing') : '';
+    const shortTankAdvisory = data.cleanTankAdvisory === 'low_water'
+      ? (this._lang === 'pl' ? 'Mało wody · stacja' : 'Low water · station')
+      : data.cleanTankAdvisory === 'missing'
+        ? (this._lang === 'pl' ? 'Brak zbiornika · stacja' : 'Tank missing · station') : '';
 
     const configMissingBanner = data.configMissing
       ? `<div style="padding:12px 16px;background:rgba(245,158,11,0.08);border:1.5px solid #f59e0b;border-radius:8px;margin-bottom:12px;">
@@ -15351,6 +15379,15 @@ class HAVacuumWaterMonitor extends HTMLElement {
       : '';
 
     const healthReport = data.externalMode ? null : this._healthFor(device);
+    // Describe only the currently assigned inputs, not a model-wide capability claim.
+    const sparseMatter = device.platform === 'matter' && data.profileKey === 'dreame_x50_ultra' && !data.externalMode && !data.initialized
+      && !['area_sensor','area_attribute','mopped_distance_sensor','water_volume_sensor','water_sensor','water_used_sensor','water_used_input','tank_level_sensor','dock_tank_level_sensor','wash_completed_sensor','dock_status_sensor'].some(key => device[key] || data.signals?.[key])
+      && !['usage_ml_per_m2','usage_ml_per_m','usage_ml_per_active_minute','wash_volume_ml','mop_wash_ml'].some(key => typeof device[key] === 'object' ? Object.keys(device[key] || {}).length : Boolean(device[key]))
+      && !Object.keys(this._effectiveCustomCalibration(device).usage_ml_per_m2 || {}).length
+      && !Object.keys(this._effectiveCustomCalibration(device).usage_ml_per_active_minute || {}).length;
+    const sparseMatterHtml = sparseMatter ? `<p role="status">${this._lang === 'pl'
+      ? 'Dla tego połączenia Matter nie przypisano sygnałów powierzchni, wody ani mycia mopa. Stan wody pozostaje nieznany; pojemność modelu to specyfikacja, nie pomiar.'
+      : 'No area, water or mop-wash signals are assigned for this Matter connection. Water remaining is unknown; model capacity is a specification, not a measurement.'}</p>` : '';
     const setupHtml = data.stateReason === 'plumbed_supply_unmeasured' ? '' : this._buildSetupPanel(device, healthReport);
     const setupBlocking = Boolean(healthReport && healthReport.status === 'action_needed');
     // The setup panel asks the question the guidance box would only describe.
@@ -15381,11 +15418,11 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const settings=this._serverState?.settings||{};
       const authoredPercent=this._authoredConfigKeys?.has('warning_threshold')||this._authoredConfigKeys?.has('critical_threshold') ||
         (settings.warning_threshold != null && Number(settings.warning_threshold)!==20) || (settings.critical_threshold != null && Number(settings.critical_threshold)!==10);
-      const warning = data.waterEmpty || data.waterLow || data.waterShortage ? status.label
+      const warning = data.waterEmpty ? status.label : shortTankAdvisory || (data.waterLow || data.waterShortage ? status.label
         : authoredPercent && percent!==null && percent<=Number(cfg.critical_threshold||10) ? this._waterText('Critical')
         : authoredPercent && percent!==null && percent<=Number(cfg.warning_threshold||20) ? this._waterText('Low')
         : !authoredPercent && forecast && Number.isFinite(runs) && runs < 1 ? (this._lang==='pl'?'Krytycznie mało wody':'Water critically low')
-        : !authoredPercent && forecast && Number.isFinite(runs) && runs <= 2 ? (this._lang==='pl'?'Mało wody':'Water low') : '';
+        : !authoredPercent && forecast && Number.isFinite(runs) && runs <= 2 ? (this._lang==='pl'?'Mało wody':'Water low') : '');
       const critical = data.waterEmpty || (authoredPercent && percent!==null && percent<=Number(cfg.critical_threshold||10)) || (!authoredPercent && forecast && runs<1);
       const tone = critical ? 'crit' : warning ? 'warn' : 'normal';
       const meter = percent == null ? '' : `<div class="vwm-meter ${tone}" role="progressbar" aria-label="${_esc(L.remaining)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div>`;
@@ -15393,8 +15430,8 @@ class HAVacuumWaterMonitor extends HTMLElement {
       const shortValue = data.remainingL == null ? unknown : `${this._formatUi().number(data.remainingL,{maximumFractionDigits:2})} L${percent===null?'':' · '+this._formatUi().number(percent,{maximumFractionDigits:0})+'%'}`;
       if (tile) return `<div class="tab-content vwm-compact vwm-tile"><button type="button" class="vwm-tile-surface" id="vwm-expand" data-r6-open>
         <span class="vwm-icon ${tone}"><ha-icon icon="mdi:water-percent" aria-hidden="true"></ha-icon></span><span class="vwm-tile-copy"><strong>${_esc(displayTitle)}</strong>
-        <span class="vwm-tile-long">${_esc(data.remainingL == null ? unknown : shortValue+(forecast?' · '+forecastText:''))}</span>
-        <span class="vwm-tile-short">${_esc(shortValue)}</span></span></button>
+        <span class="vwm-tile-long">${_esc(data.remainingL == null ? shortTankAdvisory || unknown : shortValue + (shortTankAdvisory ? ' · ' + shortTankAdvisory : forecast ? ' · ' + forecastText : ''))}</span>
+        <span class="vwm-tile-short">${_esc(shortTankAdvisory || shortValue)}</span></span></button>
         <div class="vwm-tile-action">${compactRefill}</div></div>`;
       const name=device.name || device.device_name || device.vacuum_entity || '';
       const subtitle=(data.lastReset?this._formatReset(data.lastReset)+' · ':'')+name;
@@ -15410,6 +15447,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       <div class="tab-content">
         ${this._buildSupplyAnswer(device, data)}
         ${alertBanner}
+        ${tankAdvisory ? `<section class="water-alert section-block" role="status" aria-live="polite">⚠ ${_esc(tankAdvisory)}</section>` : ''}
         ${noWaterTracking ? `<p class="tank-unknown" role="status">${this._lang === 'pl' ? 'Stan zbiornika nieznany' : 'Tank state unknown'}</p>${refillBtn}` : `
         <div class="device-body">
           <div class="gauge-wrap">
@@ -15426,7 +15464,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
         ${refillBtn ? `<div class="refill-wrap">${refillBtn}</div>` : ''}`}
         ${noWaterTracking && data.charge !== null ? `<div class="details">${this._buildBatteryBar(data.charge)}</div>` : ''}
         ${dockHtml}
-        <details class="water-details section-block"><summary>${this._waterText('Details')}</summary>${configMissingBanner}${setupHtml}${accountingHtml}${diagnosticsHtml}</details>
+        <details class="water-details section-block"><summary>${this._waterText('Details')}</summary>${configMissingBanner}${sparseMatterHtml}${setupHtml}${accountingHtml}${diagnosticsHtml}</details>
         ${data.externalMode ? '' : this._buildEstimateConfidence(device, data)}
       </div>`;
   }
@@ -15695,7 +15733,12 @@ class HAVacuumWaterMonitor extends HTMLElement {
     const text = value => this._waterText(value);
     // Original translated prefix must also be recognized in PL.
     for (const [name, level] of Object.entries(data.reservoirLevels || {})) {
-      if (label === `${text('Physical')} ${name}`) return [code(name), level?.volume_ml == null ? code(level?.reason || 'unknown') : this._formatMl(level.volume_ml)];
+      if (label === `${text('Physical')} ${name}`) {
+        const title = `${code(name)} · ${pl ? 'zmierzona objętość' : 'measured volume'}`;
+        if (level?.volume_ml != null) return [title, this._formatMl(level.volume_ml)];
+        if (level?.reason === 'volume_sensor_unbound') return [title, pl ? 'Brak pomiaru objętości. Stan zbiornika nie podaje ml; dostępny szacunek poziomu jest pokazywany osobno.' : 'No volume measurement. Tank status does not report ml; an available estimated level is shown separately.'];
+        return [title, code(level?.reason || 'unknown')];
+      }
     }
     if (label.startsWith(text('Balanced') + ' ')) return [code(label.slice((text('Balanced')+' ').length)), value];
     if (label in (data.reservoirsMl || {})) return [code(label), value];
@@ -15785,9 +15828,6 @@ class HAVacuumWaterMonitor extends HTMLElement {
           </button>
           <div id="vwm-custom-calibration-body" style="display:none;margin-top:8px">
             ${effectiveCalibration}
-            <button type="button" style="padding:8px;border:1px solid var(--bento-border);border-radius:6px;background:var(--bento-bg);color:var(--bento-text);cursor:pointer" onclick="this.getRootNode().host._reprofileDevice()">${this._waterText("Refresh detected profile")}</button>
-            <div id="vwm-reprofile-status" role="status" aria-live="polite">${this._reprofileStatus && this._reprofileStatus.owner === device?.vacuum_entity ? _esc(this._reprofileStatus.text) : ''}</div>
-            <p>${this._waterText("Refresh updates robot recognition from Home Assistant. Your tank sizes, calibration, signal assignments and history are kept.")}</p>
             <div style="font-size:11px;color:var(--bento-text-secondary);margin-bottom:10px;line-height:1.5">
               ${this._waterText("With supported refill and empty-tank signals, calibration learns during normal cleaning. You do not need to test each mode. The measurements below are optional overrides.")}
             </div>
@@ -16281,6 +16321,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
     return `<details id="cal-plan" class="section-block"><summary>${this._waterText('Prepare optional future measurements')}</summary>
       <p>${this._waterText('Normal tracking continues automatically. Missing wash and device settings can be declared here for future collection. This does not change the robot or old history. Leave unknown values blank; use not_applicable only for settings this device does not have.')}</p>
       ${fields}
+      <label><input type="checkbox" id="cal-plan-no-transfer" ${plan.split_no_unmeasured_transfer === true ? 'checked' : ''} /> ${this._waterText('I confirm there are no unmeasured transfers or other water uses from this tank during a measurement cycle.')}</label>
       <label><input type="checkbox" id="cal-plan-confirm" ${plan.confirmed === true ? 'checked' : ''} /> ${this._waterText('I checked these technical settings for future cycles.')}</label>
       <button type="button" id="cal-plan-save" class="maint-add-btn">${this._waterText('Save collection settings')}</button>
       <p id="cal-plan-status" role="status" aria-live="polite"></p>
@@ -16294,7 +16335,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
       return false;
     }
     const axes = new Set(['sku','dock_variant','firmware','integration_version']);
-    const plan = {confirmed:true,settings:{}};
+    const plan = {confirmed:true, settings:{}, split_no_unmeasured_transfer: !!sr.getElementById('cal-plan-no-transfer')?.checked};
     sr.querySelectorAll('[data-measurement-field]').forEach(input => {
       if (input.readOnly) return;
       const key = input.dataset.measurementField, value = input.value.trim() || null;
@@ -16518,7 +16559,13 @@ class HAVacuumWaterMonitor extends HTMLElement {
   // ── TAB: DATABASE ─────────────────────────────────────────────────────────
 
 
-  async _reprofileDevice() {
+  _reprofileDevice() {
+    if (this._reprofilePromise) return this._reprofilePromise;
+    this._reprofilePromise = this._runReprofileDevice().finally(() => { this._reprofilePromise = null; });
+    return this._reprofilePromise;
+  }
+
+  async _runReprofileDevice() {
     const device = this._selectedDevice() || {};
     const status = this.shadowRoot?.getElementById('vwm-reprofile-status');
     if (!device.vacuum_entity || !this._hass?.callWS) return false;
@@ -16530,7 +16577,9 @@ class HAVacuumWaterMonitor extends HTMLElement {
       this._discoveredVacuums = result.vacuums || [];
       this._balanceLinks = result.balance_links;
       if (result.bindings_refreshed === false) this._bindingRefreshState = 'failed';
-      this._reprofileStatus = {owner: device.vacuum_entity, text: result.bindings_refreshed === false ? this._bindingRefreshMessage() : this._waterText("Profile refreshed. Your calibration and history are preserved.")};
+      this._reprofileStatus = {owner: device.vacuum_entity, text: result.bindings_refreshed === false ? this._bindingRefreshMessage() : (!(result.vacuums || []).find(v => v.entity_id === device.vacuum_entity)?.profile_key
+        ? (this._lang === 'pl' ? 'Odświeżono profil, ale model nadal jest nieznany. Kalibracja i historia zostały zachowane.' : 'Profile refreshed, but the model is still unknown. Calibration and history are preserved.')
+        : this._waterText("Profile refreshed. Your calibration and history are preserved."))};
       this._render({preserveDraft:true});
       return true;
     } catch (error) {
@@ -16968,7 +17017,7 @@ class HAVacuumWaterMonitor extends HTMLElement {
           <p data-learning-status>${this._waterText('Learning status')}: ${this._waterText('Learned tanks')} <b>${Math.max(0, Number(data.calibrationSamples) || 0)}</b> · ${this._waterText('Correction factor')} <b>×${this._formatUi().number(Number(data.calibrationFactor || 1), {maximumFractionDigits:2})}</b></p>
           ${this._buildCalibrationInfo(device, data)}${this._buildCustomMeasurements(device, data)}${this._buildPrivateMeasurements(device)}${this._buildCalibrationSharingSection(device, data)}
         </section>` : ''}
-        <section id="vwm-settings-model" tabindex="-1"><h3>${this._waterText('Model and capacity')}</h3>${this._buildSetupPanel(device, this._healthFor(device))}${this._buildDatabaseTab()}</section>
+        <section id="vwm-settings-model" tabindex="-1"><h3>${this._waterText('Model and capacity')}</h3><button type="button" onclick="this.getRootNode().host._reprofileDevice()">${this._waterText("Refresh detected profile")}</button><div id="vwm-reprofile-status" role="status" aria-live="polite">${this._reprofileStatus && this._reprofileStatus.owner === device?.vacuum_entity ? _esc(this._reprofileStatus.text) : ''}</div><p>${this._waterText("Refresh updates robot recognition from Home Assistant. Your tank sizes, calibration, signal assignments and history are kept.")}</p>${this._buildSetupPanel(device, this._healthFor(device))}${this._buildDatabaseTab()}</section>
         ${this._buildFeatureAccessEditor()}
         <p>${this._waterText('Card appearance and sensor overrides remain in the dashboard YAML editor.')}</p>
       </div>`;
@@ -17178,14 +17227,15 @@ target:
       ['status_sensor', 'Vacuum status'],
       ['area_sensor', 'Cleaned area'],
       ['duration_sensor', 'Cleaning time'],
+      ['wash_completed_sensor', 'Completed mop washes (absolute integer counter)'],
       ['mop_mode_entity', 'Mop mode'],
       ['mop_intensity_entity', 'Water output level'],
       ['cleaning_mode_entity', 'Cleaning mode'],
       ['mop_attached_sensor', 'Mop attached'],
       ['water_box_attached_sensor', 'Water tank attached'],
       ['water_shortage_sensor', 'Water shortage'],
-      ['dock_clean_water_sensor', 'Dock clean water'],
-      ['dock_dirty_water_sensor', 'Dock dirty water'],
+      ['dock_clean_water_sensor', 'Dock clean-water tank status'],
+      ['dock_dirty_water_sensor', 'Dock dirty-water tank status'],
     ];
   }
 
@@ -17194,7 +17244,7 @@ target:
   // writes a non-signal device field from stored settings.
   _overridableSignalRoles() {
     return new Set([
-      'status_sensor', 'cleaning_active_sensor', 'area_sensor', 'duration_sensor',
+      'status_sensor', 'cleaning_active_sensor', 'area_sensor', 'duration_sensor', 'wash_completed_sensor',
       'mop_mode_entity', 'mop_intensity_entity', 'cleaning_mode_entity',
       'mop_attached_sensor', 'water_box_attached_sensor', 'water_box_detached_sensor',
       'water_shortage_sensor', 'dock_clean_water_sensor', 'dock_dirty_water_sensor',
@@ -17226,6 +17276,7 @@ target:
       </div>
       <div style="font-size:12px;color:var(--bento-text-secondary);margin-bottom:12px;line-height:1.5">
         ${this._waterText("Signals are detected automatically. Choose a signal here to replace automatic detection; choose Automatic to restore it.")}
+        <p>${this._waterText("Tank status reports conditions such as empty or missing, not the volume in ml. Recognized states depend on the integration. Water remaining may be estimated; a volume sensor measures it.")}</p>
       </div>`;
 
     const vacId = String(device?.vacuum_entity || '');
@@ -17257,15 +17308,26 @@ target:
     const selectSt = 'width:100%;margin-top:6px;padding:7px 10px;border:1.5px solid var(--vwm-border,#e5e7eb);border-radius:8px;font-size:12px;background:var(--vwm-bg,#fff);color:var(--vwm-text,#1e293b);font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,system-ui))';
     const labelSt = 'font-size:12px;font-weight:700;color:var(--bento-text)';
 
+    const descriptor = this._backendDescriptor(device);
+    const explicit = this._explicitDeviceKeys(device);
+    const dreameTankRoles = {
+      dock_clean_water_sensor: 'clean_water_tank_status_sensor',
+      dock_dirty_water_sensor: 'dirty_water_tank_status_sensor',
+    };
     const rows = this._signalRoleCatalog().map(([role, label]) => {
-      const current = String(overrides[role] ?? signals[role] ?? '');
+      const current = String(overrides[role] || '');
+      const dreameRole = dreameTankRoles[role];
+      const discoveredStatus = device?.integration_adapter === 'dreame_vacuum' && dreameRole && !explicit.has(role) && !explicit.has('signals')
+        ? descriptor?.signals?.[dreameRole] || signals[dreameRole] : '';
+      const automatic = current ? '' : String(device?.[role] || signals[role] || discoveredStatus || '');
       const listed = siblings.some(entry => String(entry.entity_id) === current);
-      const options = [`<option value="">${this._waterText("Automatic")}</option>`];
+      const options = [`<option value=""${current ? '' : ' selected'}>${this._waterText("Automatic")}${automatic ? ` — ${_esc(automatic)}` : ''}</option>`];
       if (current && !listed) {
         options.push(`<option value="${_esc(current)}" selected>${_esc(current)} (${this._waterText("currently bound")})</option>`);
       }
       for (const entry of siblings) {
         const entityId = String(entry.entity_id);
+        if (role === 'wash_completed_sensor' && !/^(sensor|counter)\./.test(entityId)) continue;
         options.push(`<option value="${_esc(entityId)}"${entityId === current ? ' selected' : ''}>${_esc(optionLabel(entry))}</option>`);
       }
       // Once the user has assigned this role by hand, the backend's ambiguity
@@ -17368,7 +17430,7 @@ target:
     const badgeTone = status.color === '#ef4444' ? 'crit' : status.color === '#f59e0b' ? 'warn' : status.color === '#22c55e' ? 'ok' : 'unknown';
     const deviceHeader = devices.length > 0 ? `
       <div class="device-header">
-        <div class="device-name">${_esc(this._deviceIcon(device.icon))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>
+        <div><div class="device-name">${_esc(this._deviceIcon(device.icon))} ${_esc(this._sanitize(device.name || 'Vacuum'))}</div>${data.profileKey && data.profileKey !== 'generic' && CALIBRATION_DATA[data.profileKey]?.label ? `<div>Model: ${_esc(CALIBRATION_DATA[data.profileKey].label)}</div>` : ''}</div>
         ${data.vacState !== undefined ? `<div class="status-badge" style="background:${status.color}20;color:var(--vwm-badge-${badgeTone},${status.color});border:1px solid ${status.color}40">${status.icon} ${status.label}</div>` : ''}
       </div>` : '';
 

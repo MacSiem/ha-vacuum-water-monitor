@@ -1510,7 +1510,9 @@
     },
     "dreame_x50_ultra": {
       "identifiers": [
-        "Dreame X50 Ultra"
+        "Dreame X50 Ultra",
+        "dreame.vacuum.r2538z",
+        "R2538Z (98)"
       ],
       "manufacturer": "Dreame",
       "model": "X50 Ultra",
@@ -1522,7 +1524,9 @@
           "equivalence_verified": false
         }
       ],
-      "observed_ha_identifiers": [],
+      "observed_ha_identifiers": [
+        {"kind": "registry_composite", "manufacturer": "Dreame", "integration_adapter": "matter", "model": "R2538Z", "model_id": "98"}
+      ],
       "integration_adapters": [
         "dreame_vacuum"
       ],
@@ -1536,6 +1540,8 @@
       },
       "tracked_reservoir": "dock_clean",
       "tracked_capacity_ml": 4500,
+      "mop_system": "rotating_pads",
+      "allow_class_prior": false,
       "capability": "calibration_required",
       "confidence": "high",
       "accounting": {
@@ -1546,6 +1552,19 @@
         "rate_signal": null
       },
       "provenance": [
+        {
+          "source_type": "manufacturer_spec",
+          "url": "https://ae.dreametech.com/products/x40-ultra-rotary-mop-pads",
+          "claim": "Manufacturer lists X50 Ultra for rotary mop pads; no consumption rates inferred.",
+          "last_verified": "2026-11-25",
+          "retrieval_status": "read"
+        },
+        {
+          "source_type": "integration_documentation",
+          "url": "https://dv.tasshack.com/guide/more/supported-devices",
+          "claim": "Upstream lists dreame.vacuum.r2538z as X50 Ultra Complete; R2538Z (98), split into registry model R2538Z and model_id 98, is the Matter identity reported for the same robot in issue 32. Identity evidence only; no hardware or consumption claims.",
+          "last_verified": "2026-11-25"
+        },
         {
           "source_type": "manufacturer_spec",
           "url": "https://www.dreametech.com/products/x50-ultra-robot-vacuum",

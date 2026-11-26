@@ -483,6 +483,7 @@ def _water_state_attributes(
         "uncertainty_percent": estimate.get("uncertainty_percent"),
         "physical_accuracy_verified": estimate.get("physical_accuracy_verified", False),
         "water_empty_active": bool(tank_state.get("water_empty_active")),
+        "clean_tank_advisory": tank_state.get("clean_tank_advisory"),
         "accounting_incomplete": bool(tank_state.get("accounting_incomplete")),
         **setup_guidance(estimate.get("state_reason")),
     }

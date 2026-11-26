@@ -10,6 +10,7 @@ import json
 import re
 from typing import Any
 import unicodedata
+import uuid
 
 from homeassistant.core import HomeAssistant
 
@@ -21,8 +22,11 @@ from .profiles import resolve_consumption_profile, CONSUMPTION_SETTINGS, _compat
 from . import profiles as consumption_profiles
 from . import accounting_v2
 from . import estimation
-from . import nominal_time_learning, physical_learning
+from . import nominal_time_learning, physical_learning, split_observation
 from .const import VERSION
+
+# Persisted lock evidence is not proof of continuity across a process restart.
+_DREAME_PROCESS_EPOCH = uuid.uuid4().hex
 
 _OBSERVED_WASH_ROLES = ("wash_mode_entity", "wash_frequency_entity", "wash_area_threshold_entity",
                         "wash_time_threshold_entity", "wash_temperature_entity")
@@ -240,7 +244,7 @@ async def async_tick_water_state(
         return changed
     # A refill recorded by this pass (button, lid, dock) is written at once.
     refilled = any(state.get("last_reset_ts") != expected_reset_ts.get(vacuum) for vacuum, state in changed.items())
-    # An idle heartbeat changes only last_tick_ts: keep it in memory instead of
+    # Keep heartbeat and its process-local split baseline in memory instead of
     # rewriting the whole Store every minute.
     written = await storage.async_set_tank_states(
         changed, expected_reset_ts=expected_reset_ts, delay_seconds=None if refilled else delay_save_seconds,
@@ -295,7 +299,7 @@ def _charge_consumption(state, amount, action, source, evidence, now_ts, exposur
 
 
 def _only_tick_timestamp_changed(before: dict[str, Any], after: dict[str, Any]) -> bool:
-    keys = (set(before) | set(after)) - {"last_tick_ts", _PASS_REASONS_KEY}
+    keys = (set(before) | set(after)) - {"last_tick_ts", "split_idle_baseline", _PASS_REASONS_KEY}
     return all(before.get(key) == after.get(key) for key in keys)
 
 
@@ -354,6 +358,12 @@ def tick_device(
     used_before = _number(state.get("used_ml"), 0)
     reset_before = state.get("last_reset_ts")
     new_state, dirty = _tick_device_pass(hass, device, state, now_ts=now_ts)
+    # Dreame tank enums are current advisories only, never water quantities or
+    # refill/empty evidence. Recompute even when accounting returns early.
+    advisory = _dreame_clean_tank_advisory(hass, device)
+    if new_state.get("clean_tank_advisory") != advisory:
+        new_state["clean_tank_advisory"] = advisory
+        dirty = True
     if (tank_empty and new_state.get("water_empty_active") and new_state.get("last_reset_ts") == reset_before
             ):
         new_state["used_ml"] = min(used_before, _number(new_state.get("used_ml"), 0))
@@ -375,6 +385,25 @@ def tick_device(
     new_state.pop(_PASS_FIRST_SOURCE_KEY, None)
     new_state.pop(_PASS_AREA_OBSERVATION_KEY, None)
     return new_state, dirty
+
+
+def _dreame_clean_tank_advisory(hass: HomeAssistant, device: dict[str, Any]) -> str | None:
+    """Live Dreame enum status; the legacy dock binding may be an enum alias."""
+    if device.get("integration_adapter") != "dreame_vacuum" or device.get("dock_variant") == "plumbed":
+        return None
+    status_role = "clean_water_tank_status_sensor"
+    legacy_role = "dock_clean_water_sensor"
+    authored = set(device.get("_explicit_fields") or ()) | set(device.get("signal_overrides_applied") or ())
+    status = device.get(status_role)
+    legacy = device.get(legacy_role)
+    if legacy_role in authored and status_role not in authored and isinstance(legacy, str) and legacy.startswith("sensor."):
+        status = legacy
+    elif not status and isinstance(legacy, str) and legacy.startswith("sensor."):
+        status = legacy
+    if not status:
+        return None
+    value = _normalized_signal(_state_value(hass, status))
+    return {"installed": "ok", "not_installed": "missing", "low_water": "low_water"}.get(value, "unknown")
 
 
 def _tick_device_pass(
@@ -596,6 +625,49 @@ def _tick_device_pass(
     cleaning_active = _binary_active(
         _state_value(hass, device.get("cleaning_active_sensor"))
     )
+    # Ecovacs work_mode is a selected plan and its stats are aggregate. In a
+    # vacuum-then-mop plan neither the pad nor the water setting identifies
+    # which phase is currently running. A false mop_active here means unknown,
+    # not proof that the whole interval is dry.
+    ecovacs_sequential_unknown = bool(
+        device.get("integration_adapter") == "ecovacs" and cleaning_mode
+        and any(part in cleaning_mode.split("_") for part in ("then", "after"))
+        and _is_cleaning(vac_state, curr_status, cleaning_active)
+        and curr_status not in MOP_WASH_STATES and curr_dock_status not in DOCK_WASH_STATES
+        and mop_attached is not False and water_box_attached is not False)
+    if ecovacs_sequential_unknown:
+        state.update(accounting_incomplete=True, session_accounting_valid=False,
+                     session_exposure_complete=False, session_water_broken=True)
+        _record_accounting(state, "unknown", None, None, "sequential_phase_unobserved")
+    # Only a continuously observed docked interval is safe for ignoring a
+    # missing optional setting in the water balance. In particular, a dock
+    # can wash while the vacuum entity still says "docked" or "charging".
+    docked_states = {"docked", "charging", "charging_complete", "charging_completed"}
+    previous_dock_status = state.get("last_dock_status")
+    gap_start = _positive_number(state.get("gap_started_ts"))
+    previous_area = _float_or_none(state.get("last_area"))
+    short_idle_gap = bool(
+        gap_start is not None and state.get("area_gap") and not state.get("gap_exposure_possible")
+        and previous_area is not None and curr_area is not None and previous_area == curr_area
+        and 0 <= now_ts - gap_start <= MAX_ACTIVE_INTERVAL_SECONDS * 1000
+    )
+    previous_observation = (gap_start if short_idle_gap else
+        _positive_number(state.get("last_tick_ts")) or _positive_number(state.get("last_reset_ts")))
+    settled_dock = bool(
+        state.get("last_status") in docked_states and curr_status in docked_states
+        and vac_state in docked_states and cleaning_active is not True
+        and (not device.get("cleaning_active_sensor") or cleaning_active is False)
+        and not state.get("session_start_ts") and not state.get("verified_wash_active")
+        and not state.get("gap_exposure_possible")
+        and (short_idle_gap or (not state.get("gap_started_ts") and not state.get("area_gap")))
+        and previous_observation is not None and 0 <= now_ts - previous_observation <= MAX_ACTIVE_INTERVAL_SECONDS * 1000
+        and curr_area is not None
+        and (state.get("last_area") is None or _float_or_none(state.get("last_area")) == curr_area)
+        and previous_dock_status not in DOCK_WASH_STATES and curr_dock_status not in DOCK_WASH_STATES
+        # A bound station must explicitly report an idle state at both ends;
+        # an unfamiliar enum cannot prove that the station is not washing.
+        and (not device.get("dock_status_sensor") or (previous_dock_status == "idle" and curr_dock_status == "idle"))
+    )
     curr_duration_seconds = _duration_seconds(
         hass, device.get("duration_sensor")
     )
@@ -724,8 +796,7 @@ def _tick_device_pass(
         if (gap_exposure and continuous and kept_pace and gap_seconds <= BRIDGE_GAP_MAX_SECONDS
                 and state.get("last_rate_settings") == rate_settings):
             bridge_area = True
-            state["bridged_gaps"] = int(state.get("bridged_gaps") or 0) + 1
-            _record_accounting(state, "area", None, evidence, "gap_bridged")
+
         elif gap_exposure:
             state["accounting_incomplete"] = True
             state.update(session_accounting_valid=False, session_water_broken=True)
@@ -751,6 +822,57 @@ def _tick_device_pass(
     # Capture every bound setting together, once per tick. A numeric control's
     # range/unit are provenance; it is not itself a volumetric measurement.
     observed_settings = {}
+    # These Dreame controls are deliberately unavailable while a task is
+    # started (upstream PROPERTY_AVAILABILITY). Cache only actual readings,
+    # tied to the complete binding and vacuum; a missing entity is not a lock.
+    locked_roles = {"context_cleaning_route_entity", "context_auto_rewashing_entity",
+                    "context_auto_recleaning_entity", "context_cleangenius_entity",
+                    "context_cleangenius_mode_entity", "wash_frequency_entity"}
+    dreame = device.get("integration_adapter") == "dreame_vacuum"
+    vacuum_registry_id = None
+    if dreame:
+        try:
+            from homeassistant.helpers import entity_registry as er
+            vacuum_entry = er.async_get(hass).async_get(vacuum_entity)
+            vacuum_registry_id = getattr(vacuum_entry, "id", None)
+        except (ImportError, AttributeError, KeyError, TypeError):
+            pass
+    scope = (_digest({"epoch": _DREAME_PROCESS_EPOCH, "vacuum": vacuum_entity, "vacuum_registry_id": vacuum_registry_id,
+                      "identity": device.get("measurement_identity"),
+                      "bindings": {r: device.get(r) for r in (*CONTEXT_SETTING_ROLES, *_OBSERVED_WASH_ROLES)}})
+             if dreame else None)
+    cache = state.get("dreame_locked_settings") or {}
+    scope_failed = bool(dreame and cache and cache.get("scope") != scope
+                        and (cache.get("pending") or state.get("dreame_pending_nominal_sample")
+                             or (state.get("nominal_time_learning") or {}).get("cycle")))
+    if not dreame or cache.get("scope") != scope:
+        cache = {"scope": scope, "values": {}}
+    cached_values = cache.setdefault("values", {})
+    cache_times = cache.setdefault("times", {})
+    active_task = _is_cleaning(vac_state, curr_status, cleaning_active)
+    end_states = {"docked", "charging", "completed", "charging_complete", "charging_completed"}
+    lock_failed = scope_failed
+    if dreame and cache.get("started_ts"):
+        if curr_status in end_states and not active_task:
+            cache.setdefault("ended_ts", now_ts)
+        elif active_task and cache.get("ended_ts"):
+            # A second task cannot inherit the first task's locked controls.
+            lock_failed = bool(cache.get("pending"))
+            cache = {"scope": scope, "values": {}, "times": {}}
+            cached_values, cache_times = cache["values"], cache["times"]
+        if cache.get("ended_ts") and now_ts - cache["ended_ts"] > 120_000:
+            lock_failed = bool(cache.get("pending"))
+            cache = {"scope": scope, "values": {}, "times": {}}
+            cached_values, cache_times = cache["values"], cache["times"]
+    if dreame and active_task:
+        cache.setdefault("started_ts", now_ts)
+    lock_states = _ACTIVE_CLEANING_STATES | MOP_WASH_STATES | {
+        "clean_add_water", "returning", "returning_home", "returning_to_drain",
+        "docking", *end_states}
+    locked_active = bool(dreame and cache.get("started_ts") and curr_status in lock_states
+                         and 0 <= now_ts - cache["started_ts"] <= 12 * 3600 * 1000)
+    used_locked_value = False
+    pending = cache.setdefault("pending", {})
     for role in (*CONTEXT_SETTING_ROLES, *_OBSERVED_WASH_ROLES):
         entity_id = device.get(role)
         if not entity_id:
@@ -770,16 +892,87 @@ def _tick_device_pass(
         except (ImportError, AttributeError, KeyError, TypeError):
             pass  # Standalone consumers lack the HA registry; never assume a rename.
         identity = "registry:" + registry_id if isinstance(registry_id, str) and registry_id else "entity:" + entity_id
-        observed_settings[key] = {"value": value, "unit": attrs.get("unit_of_measurement"),
+        item = {"value": value, "unit": attrs.get("unit_of_measurement"),
                                   "min": safe_number("min"), "max": safe_number("max"),
                                   "source": hashlib.sha256(identity.encode()).hexdigest()[:16],
                                   "source_registry_id": registry_id, "source_entity": entity_id}
+        if dreame and role in locked_roles:
+            previous = cached_values.get(key)
+            if value is not None:
+                expected = pending.get(key)
+                if expected is not None:
+                    if expected != item:
+                        lock_failed = True
+                    pending.pop(key, None)
+                cached_values[key] = deepcopy(item)
+                cache_times[key] = now_ts
+            elif (obj is not None and str(getattr(obj, "state", "")).lower() == "unavailable"
+                  and locked_active and isinstance(previous, dict)
+                  and previous.get("source") == item["source"]
+                  and 0 <= now_ts - cache_times.get(key, 0) <= MAX_ACTIVE_INTERVAL_SECONDS * 1000):
+                item = deepcopy(previous)
+                used_locked_value = True
+                pending.setdefault(key, deepcopy(previous))
+                cache_times[key] = now_ts
+            elif not (obj is not None and str(getattr(obj, "state", "")).lower() == "unavailable" and settled_dock):
+                # No carry-forward after a missing/unknown entity or unlocked
+                # unavailable control; require a fresh observation next time.
+                if key in pending:
+                    lock_failed = True
+                    pending.pop(key, None)
+                cached_values.pop(key, None)
+                cache_times.pop(key, None)
+        observed_settings[key] = item
+    # Cleangenius mode is inapplicable when Cleangenius is explicitly off.
+    mode = observed_settings.get("cleangenius_mode")
+    genius = observed_settings.get("cleangenius")
+    mode_obj = hass.states.get(device.get("context_cleangenius_mode_entity")) if mode else None
+    if (dreame and mode and genius and genius["value"] == "off"
+            and mode_obj is not None and str(mode_obj.state).lower() == "unavailable"):
+        mode["value"] = "not_applicable"
+    # The same bound wash/route control can also appear in the legacy context.
+    for role in tuple(live_settings):
+        if not role.endswith("_entity") or not device.get(role):
+            continue
+        for item in observed_settings.values():
+            if item["source_entity"] == device[role]:
+                live_settings[role] = item["value"]
+                break
+    if dreame:
+        if lock_failed:
+            state["dreame_lock_failed_reset"] = state.get("last_reset_ts") or 0
+            state.pop("dreame_pending_nominal_sample", None)
+            if state.get("nominal_time_learning"):
+                state["nominal_time_learning"] = nominal_time_learning.invalidate(
+                    state["nominal_time_learning"], "dreame_lock_unverified")
+        if used_locked_value:
+            state["dreame_lock_unverified_reset"] = state.get("last_reset_ts") or 0
+        elif settled_dock:
+            cache.pop("started_ts", None)
+        state["dreame_locked_settings"] = cache
+    else:
+        state.pop("dreame_locked_settings", None)
     # Registry loss must not silently erase a previously observed axis and
     # requalify the tank under a less-specific context. Keep its slot unknown.
     previous_keys = set(state.get("observed_setting_keys") or [])
     current_keys = set(observed_settings)
     for key in previous_keys - current_keys:
         observed_settings[key] = {"value": None, "unit": None, "min": None, "max": None, "source": None, "source_registry_id": None, "source_entity": None}
+    # The area counter proves only exposure, not the setting in effect across
+    # the gap. Dreame locked selects need a complete, matching snapshot at both
+    # ends; equal unknowns are not confirmation.
+    if bridge_area and dreame:
+        known = all(item.get("value") is not None for item in observed_settings.values())
+        prior = state.get("dreame_gap_observed_digest")
+        if used_locked_value or not known or prior is None or prior != _digest(observed_settings):
+            bridge_area = False
+            state.update(accounting_incomplete=True, session_accounting_valid=False, session_water_broken=True)
+            _record_accounting(state, "unknown", None, None, "gap_not_bridged")
+    if gap_started is not None and curr_area is not None:
+        state.pop("dreame_gap_observed_digest", None)
+    if bridge_area:
+        state["bridged_gaps"] = int(state.get("bridged_gaps") or 0) + 1
+        _record_accounting(state, "area", None, evidence, "gap_bridged")
     if observed_settings:
         state["observed_setting_keys"] = sorted(previous_keys | current_keys)
 
@@ -787,8 +980,15 @@ def _tick_device_pass(
         # A bound control that disappears is not the same as "off". Until it
         # returns, a full-to-empty cycle cannot be used to learn a rate.
         if any(item["value"] is None for item in observed_settings.values()):
-            state.update(accounting_incomplete=True, session_accounting_valid=False,
-                         session_exposure_complete=False, session_water_broken=True)
+            if settled_dock:
+                # This is not a usable learning context, but no water exposure
+                # was observed in this interval. Do not invalidate the balance.
+                if state.get("nominal_time_start_pending"):
+                    state["nominal_time_waiting_for_settings"] = True
+            else:
+                state.update(accounting_incomplete=True, session_accounting_valid=False,
+                             session_exposure_complete=False, session_water_broken=True)
+                _record_accounting(state, "context", None, None, "observed_setting_unavailable")
     consumption_context = deepcopy(device.get("consumption_context") or {
         "model_id": device.get("profile_key"), "sku": device.get("sku"),
         "dock_variant": device.get("dock_variant"), "firmware": device.get("firmware"),
@@ -820,6 +1020,8 @@ def _tick_device_pass(
                 consumption_context["settings"][key] = value
                 field_sources[key] = "declared"
     whole_cycle_calibration = None
+    split_rates = None
+    split_floor_identity = None
     auto_profile = None
     closing_whole_cycle = False
     whole_cycle_fallback = False
@@ -835,7 +1037,8 @@ def _tick_device_pass(
                 settings_context["water_level"] = mop_intensity
             for setting in CONSUMPTION_SETTINGS:
                 if device.get(setting + "_entity"):
-                    settings_context[setting] = _normalized_signal(_state_value(hass, device[setting + "_entity"]))
+                    role = setting + "_entity"
+                    settings_context[setting] = live_settings.get(role, _normalized_signal(_state_value(hass, device[role])))
         # Dreame exposes frequency type and numeric thresholds separately.
         # Preserve exact observed controls in the existing frequency axis: a
         # threshold change must never reuse an earlier setting's calibration.
@@ -943,6 +1146,42 @@ def _tick_device_pass(
                 calibration_factor = 1
             elif resolution.get("source") not in {"unknown", "manufacturer_data"} and whole_cycle_calibration is None:
                 state["consumption_resolution"] = {**resolution, "source": "unknown", "reason": "action_accounting_required"}
+        # Resolve against this tick's observed controls, never the previous
+        # observation's cached identity. A configured volume sensor remains
+        # authoritative even while its current reading is unavailable.
+        samples = (device.get("split_measurements") or []) + (state.get("split_sensor_measurements") or [])
+        split_identity = split_observation.identity(device, consumption_context, live_settings)
+        if split_identity is not None:
+            split_floor_identity = _digest({k: split_identity.get(k) for k in
+                                            ("robot", "station", "reservoir", "floor_context")})
+        split_allowed = bool(samples and reservoir_matches and not plumbed_supply
+                and not device.get("water_volume_sensor") and whole_cycle_calibration is None
+                and resolution.get("scope") != "whole_cycle"
+                and not wash_covered_by_cycle_rate)
+        state["split_resolution"] = {"sample_count": len(samples),
+            "reason": ("no_samples" if not samples else "context_unavailable" if split_identity is None
+                       else "source_or_scope_precedence" if not split_allowed else "no_compatible_rate")}
+        if split_allowed:
+            from . import split_learning
+            split_rates = split_learning.resolve(samples, split_identity)
+            if any(_positive_number((split_rates or {}).get(key)) is not None for key in
+                   ("floor_ml_per_m2", "wash_ml_per_completed_action")):
+                state["split_resolution"] = {"sample_count": len(samples), "reason": "qualified",
+                    "floor_ml_per_m2": split_rates.get("floor_ml_per_m2"),
+                    "wash_ml_per_completed_action": split_rates.get("wash_ml_per_completed_action")}
+            if not isinstance(split_rates, dict):
+                split_rates = None
+            floor_rate = _positive_number((split_rates or {}).get("floor_ml_per_m2"))
+            if (floor_rate is not None and usage_per_m2 is None and usage_per_minute is None
+                    and not device.get("usage_ml_per_m2")
+                    and not device.get("usage_ml_per_active_minute")
+                    and device.get("wash_volume_ml") is None):
+                usage_per_m2 = floor_rate
+                calibration_factor = intensity_factor = 1
+                evidence = "split_learning"
+                state["consumption_resolution"] = {
+                    "scope": "floor_only", "method": "area", "coefficient": floor_rate,
+                    "source": evidence, "reason": None}
     else:
         consumption_context = None
     # Missing ml/min must not prevent learning independently observed exposure.
@@ -970,6 +1209,15 @@ def _tick_device_pass(
         nominal_time_context["device_id"] = device.get("measurement_identity") or vacuum_entity
         if tapovac:
             nominal_time_context["time_observation"] = "clean_time_min"
+        if dreame and not pending:
+            deferred = state.pop("dreame_pending_nominal_sample", None)
+            if (isinstance(deferred, dict) and not lock_failed
+                    and deferred.get("reset") == (state.get("last_reset_ts") or 0)
+                    and deferred.get("contexts") == (state.get("nominal_time_learning") or {}).get("contexts")
+                    and all(item.get("value") is not None for item in observed_settings.values())
+                    and nominal_time_learning.same_context(deferred.get("context"), nominal_time_context,
+                                                           nominal_identity_aliases)):
+                state["nominal_time_learning"] = deferred["result"]
         known_mode = bool(cleaning_mode and (_recognized_mop_cleaning_mode(cleaning_mode)
             or cleaning_mode in _MOP_DISABLED_MODES or "vacuum_only" in cleaning_mode))
         if tapovac and not device.get("cleaning_mode_entity") and device.get("mop_mode_entity"):
@@ -978,7 +1226,13 @@ def _tick_device_pass(
         if observed_settings and any(item["value"] is None for item in observed_settings.values()):
             known_mode = False
         learning = state.get("nominal_time_learning") or {}
-        if state.pop("nominal_time_start_pending", False):
+        waiting = bool(state.get("nominal_time_waiting_for_settings"))
+        defer_start = waiting and settled_dock and not known_mode
+        start_pending = bool(state.get("nominal_time_start_pending")) and not defer_start
+        if start_pending:
+            state.pop("nominal_time_start_pending", None)
+            state.pop("nominal_time_waiting_for_settings", None)
+        if start_pending and (not waiting or (settled_dock and known_mode)):
             learning = nominal_time_learning.start_full(learning,
                 context=nominal_time_context, capacity_ml=nominal_capacity, now_ts=now_ts,
                 residual_percent=_nominal_residual_percent(device))
@@ -1039,6 +1293,7 @@ def _tick_device_pass(
         state["nominal_time_resolution"] = {"status": "unavailable", "reason": "time_method_replaced"}
     if not nominal_eligible:
         state.pop("nominal_time_start_pending", None)
+        state.pop("nominal_time_waiting_for_settings", None)
     state["last_consumption_context"] = deepcopy(consumption_context)
     context_values = {key: device.get(key) for key in (
         "profile_key", "model_id", "integration_adapter", "tracked_reservoir", "tracked_capacity_ml",
@@ -1090,6 +1345,9 @@ def _tick_device_pass(
         and (device.get("integration_adapter") != "tapo_rv30" or mop_active)
         and whole_cycle_calibration is None and not device.get("water_volume_sensor")
         and curr_area is not None and _positive_number(state.get("last_floor_usage_per_m2")) is not None
+        and (state.get("last_floor_evidence") != "split_learning" or
+             (split_floor_identity == state.get("last_floor_split_identity") and
+              _positive_number((split_rates or {}).get("floor_ml_per_m2")) == state.get("last_floor_usage_per_m2")))
     )
     if closing_floor:
         # Reuse the resolved dose, including numeric output ranges and strict
@@ -1123,6 +1381,8 @@ def _tick_device_pass(
     state["accounting_calibration_context"] = calibration_context
     # 5.6 state has only the legacy hash; the first 5.7 pass adopts it silently.
     if old_interval_context is not None and old_interval_context not in (context, legacy_context) and not closing_floor and not closing_whole_cycle:
+        if isinstance(state.get("split_session_observation"), dict):
+            state["split_session_observation"]["valid"] = False
         if isinstance(state.get("physical_learning"), dict) and state["physical_learning"].get("cycle"):
             state["physical_learning"] = {**state["physical_learning"], "cycle": None,
                                           "blocked_session_id": state.get("session_start_ts"),
@@ -1259,6 +1519,13 @@ def _tick_device_pass(
         wash_context = deepcopy(consumption_context)
         wash_context["action"] = "mop_wash"
         wash_resolution = resolve_consumption_profile(wash_context, {"action_count": 1})
+        if (wash_resolution.get("scope") != "wash_only" or wash_resolution.get("method") != "action"):
+            split_wash = _positive_number((split_rates or {}).get("wash_ml_per_completed_action"))
+            if (split_wash is not None and device.get("wash_volume_ml") is None
+                    and not device.get("usage_ml_per_m2")
+                    and not device.get("usage_ml_per_active_minute")):
+                wash_resolution = {"scope": "wash_only", "method": "action",
+                                   "coefficient": split_wash, "source": "split_learning"}
         if wash_resolution.get("scope") == "wash_only" and wash_resolution.get("method") == "action":
             # A phase ending or a command does not prove completion. A bound
             # completed-action counter must advance exactly once without a gap.
@@ -1312,6 +1579,42 @@ def _tick_device_pass(
             # Missing first exposure invalidates the tank as well as the run.
             state.update(accounting_incomplete=True, session_water_broken=True,
                          session_accounting_valid=False)
+            _record_accounting(state, "area", None, evidence, "initial_area_exposure_unobserved")
+    if used_locked_value and state.get("session_start_ts"):
+        state["session_exposure_complete"] = False
+    if ecovacs_sequential_unknown and state.get("session_start_ts"):
+        state.update(session_accounting_valid=False, session_exposure_complete=False, session_water_broken=True)
+    split_volume = split_resolution = None
+    split_sensor = device.get("water_volume_sensor")
+    if split_sensor:
+        sample = hass.states.get(split_sensor)
+        raw_volume = getattr(sample, "state", None)
+        unit = (getattr(sample, "attributes", {}) or {}).get("unit_of_measurement")
+        split_volume = _float_or_none(raw_volume)
+        if split_volume is not None and unit in {"ml", "mL", "l", "L"}:
+            scale = 1000 if unit in {"l", "L"} else 1
+            split_volume *= scale
+            capacity = _positive_number(device.get("tracked_capacity_ml"))
+            if split_volume < 0 or (capacity is not None and split_volume > capacity):
+                split_volume = None
+            try:
+                from decimal import Decimal
+                split_resolution = float(Decimal(10) ** Decimal(str(raw_volume)).as_tuple().exponent) * scale
+            except (ValueError, ArithmeticError):
+                split_volume = split_resolution = None
+        else:
+            split_volume = None
+    split_observation.observe(state, device, consumption_context, live_settings,
+        now=now_ts, area=curr_area, wet=mop_active, cleaning=really_cleaning,
+        washing=wash_now and curr_status != "going_to_wash_the_mop",
+        completed=_float_or_none(_state_value(hass, device.get("wash_completed_sensor"))),
+        status=curr_status, continuity_ok=not bool(state.get("session_forecast_interrupted")) and (
+            bool(split_sensor) or not bool(state.get("area_gap"))),
+        volume=split_volume, resolution=split_resolution,
+        volume_binding_ok=bool(split_sensor and device.get("water_volume_reservoir") == device.get("tracked_reservoir")
+                               and device.get("split_no_unmeasured_transfer") is True),
+        max_interval=MAX_ACTIVE_INTERVAL_SECONDS * 1000,
+        max_area=_positive_number(device.get("area_anomaly_ceiling_m2")) or DEFAULT_AREA_ANOMALY_CEILING_M2)
     # A dock return alone does not prove a normal finish. Preserve explicit
     # failures/cancellations seen during the task even if it later docks.
     if state.get("session_start_ts") and curr_status in {"error", "cancelled", "canceled", "canceling", "cancelling", "aborted", "abort", "stopped"}:
@@ -1444,7 +1747,7 @@ def _tick_device_pass(
         _record_accounting(state, "real_sensor", None, "measured_volume", reason)
         state.update(last_area=curr_area, last_duration_seconds=curr_duration_seconds,
                      last_status=curr_status, last_dock_status=curr_dock_status, last_tick_ts=now_ts)
-        _finish_session(state, session_running, curr_status, now_ts, curr_area)
+        _finish_session(state, session_running or wash_now, curr_status, now_ts, curr_area)
         return state, True
 
     last_area = _float_or_none(state.get("last_area"))
@@ -1614,6 +1917,17 @@ def _tick_device_pass(
     last_duration_seconds = _float_or_none(state.get("last_duration_seconds"))
     should_use_time = not distance_counted and (curr_area is None or state.get("area_time_fallback")
                        or (usage_per_m2 is None and usage_per_minute is not None)) and not wash_now
+    # With only an area rate, duration cannot account for a missing area sample.
+    # Wait for the cumulative counter and its continuity checks instead of
+    # treating a stationary or reset duration counter as lost water. Never
+    # clear an earlier interruption or defer beyond the existing bridge limit.
+    pending_area = (curr_area is None and (device.get("area_sensor") or device.get("area_attribute"))
+                    and usage_per_m2 is not None and usage_per_minute is None
+                    and not nominal_time_applied and last_area is not None
+                    and _positive_number(state.get("gap_started_ts")) is not None
+                    and 0 <= now_ts - state["gap_started_ts"] <= BRIDGE_GAP_MAX_SECONDS * 1000)
+    if pending_area:
+        should_use_time = False
     # Nominal observation measures the preceding interval. Entering a wash
     # closes the last floor interval; it does not make that interval a wash.
     if nominal_time_applied and nominal_time_elapsed and nominal_time_elapsed > 0:
@@ -1662,17 +1976,8 @@ def _tick_device_pass(
                 state, "active_time", None, time_evidence, "missing_intensity_factor"
             )
         elif usage_per_minute is None:
-            pending_area = (curr_area is None and (device.get("area_sensor") or device.get("area_attribute"))
-                            and usage_per_m2 is not None and last_area is not None
-                            and _positive_number(state.get("gap_started_ts")) is not None
-                            and 0 <= now_ts - state["gap_started_ts"] <= BRIDGE_GAP_MAX_SECONDS * 1000)
-            # A cumulative area counter can still cover this short interval.
-            # Its return is checked for continuity, pace and unchanged settings
-            # above. Missing a fallback time coefficient is not yet lost water.
             dirty |= _record_accounting(
-                state, "area" if pending_area else "active_time", None,
-                evidence if pending_area else time_evidence,
-                "area_unavailable" if pending_area else "missing_time_rate"
+                state, "active_time", None, time_evidence, "missing_time_rate"
             )
         else:
             time_interval_counted = True
@@ -1848,6 +2153,12 @@ def _tick_device_pass(
             learned = nominal_time_learning.finish_empty(state.get("nominal_time_learning") or {},
                 context=nominal_time_context, capacity_ml=nominal_capacity, now_ts=now_ts,
                 identity_aliases=nominal_identity_aliases)
+            if dreame and pending and not lock_failed:
+                original = state.get("nominal_time_learning") or {}
+                state["dreame_pending_nominal_sample"] = {
+                    "reset": state.get("last_reset_ts") or 0, "context": deepcopy(nominal_time_context),
+                    "contexts": deepcopy(original.get("contexts")), "result": learned}
+                learned = nominal_time_learning.invalidate(original, "dreame_lock_confirmation_pending")
             state["nominal_time_learning"] = learned
             state["nominal_time_resolution"] = nominal_time_learning.resolve(learned,
                 context=nominal_time_context, capacity_ml=nominal_capacity,
@@ -1893,7 +2204,8 @@ def _tick_device_pass(
             reason = "calibration_sample_full_unconfirmed"
             if not refilled_since_last_anchor:
                 reason = "calibration_sample_no_refill_since_empty"
-            elif state.get("accounting_incomplete"):
+            elif (state.get("accounting_incomplete") or
+                  state.get("dreame_lock_unverified_reset") == (state.get("last_reset_ts") or 0)):
                 reason = "calibration_sample_incomplete_cycle"
             elif not cycle_long_enough:
                 reason = "low_water_detected_without_sample"
@@ -2084,6 +2396,7 @@ def _tick_device_pass(
         state.update(last_floor_ts=now_ts, last_floor_identity=floor_identity,
                      last_floor_rate_settings=deepcopy(rate_settings),
                      last_floor_usage_per_m2=usage_per_m2,
+                     last_floor_split_identity=split_floor_identity,
                      last_floor_intensity_factor=intensity_factor, last_floor_evidence=evidence)
         if curr_area == state.get("session_start_area"):
             state["session_context"] = deepcopy(consumption_context)
@@ -2202,13 +2515,17 @@ def _finish_session(state, running, status, now_ts, area):
         state.update(session_accounting_valid=False, session_water_broken=True)
     if running or status not in _SESSION_END_STATES:
         return
-    measured = state.get("last_accounting_evidence") in {"measured_volume", "user_calibration", "explicit_user_configuration", "device_calibrated", "verified_model", "device_calibration", estimation.LABELED_ESTIMATE}
-    measured = measured or (state.get("session_resolution") or {}).get("source") in {"verified_model", "device_calibration"}
+    measured = state.get("last_accounting_evidence") in {"measured_volume", "user_calibration", "explicit_user_configuration", "device_calibrated", "verified_model", "device_calibration", "split_learning", estimation.LABELED_ESTIMATE}
+    measured = measured or (state.get("session_resolution") or {}).get("source") in {"verified_model", "device_calibration", "split_learning"}
     # accounting_valid marks a clean measurement (one context, no refill) for
     # calibration and sharing. The history keeps the water of any run whose
     # counting was never broken, including one that changed settings or was
     # refilled midway.
     counted = state.get("session_accounting_valid") or not state.get("session_water_broken", True)
+    split_estimate = ((state.get("session_resolution") or {}).get("source") == "split_learning"
+                      or state.get("last_accounting_evidence") == "split_learning")
+    if split_estimate and not state.get("session_exposure_complete"):
+        counted = False
     water = max(0, _number(state.get("used_ml"),0)-_number(state.get("session_start_used_ml"),0)) if measured and counted else None
     first_area = _float_or_none(state.get("session_start_area"))
     record = {"ts": now_ts, "started_ts": start, "type": "automatic", "water": water,
@@ -2225,6 +2542,7 @@ def _finish_session(state, running, status, now_ts, area):
               "exposures": deepcopy(state.get("session_exposures") or {}),
               "accounting_version": 3,
               "completed": status not in {"idle", "standby", "sleeping"} and not state.get("water_empty_active") and not state.get("session_forecast_interrupted")}
+    split_observation.finish(state, record, status)
     state["automatic_sessions"] = [record, *(state.get("automatic_sessions") or [])][:50]
     state["session_start_ts"] = None
     state.pop("session_settled_context_change", None)
@@ -2666,6 +2984,19 @@ def _water_anchor_states(
 
 def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
+    state.pop("nominal_time_waiting_for_settings", None)
+    if not _positive_number(state.get("gap_started_ts")):
+        context = state.get("last_consumption_context") or {}
+        if context.get("integration_id") == "dreame_vacuum":
+            observed = context.get("observed_settings") or {}
+            if all(isinstance(item, dict) and item.get("value") is not None for item in observed.values()):
+                state["dreame_gap_observed_digest"] = _digest(observed)
+            else:
+                state.pop("dreame_gap_observed_digest", None)
+    state.pop("dreame_locked_settings", None)
+    state.pop("dreame_pending_nominal_sample", None)
+    if isinstance(state.get("split_session_observation"), dict):
+        state["split_session_observation"]["valid"] = False
     if isinstance(state.get("physical_learning"), dict) and state["physical_learning"].get("cycle"):
         state["physical_learning"] = {**state["physical_learning"], "cycle": None,
                                       "blocked_session_id": state.get("session_start_ts"),

@@ -85,7 +85,7 @@ test('diagnostic codes are confined to escaped copyable report; evidence retaine
  sr.innerHTML=card._buildDiagnostics(data);
  const human=sr.querySelector('.diagnostics-grid').textContent;
  assert.doesNotMatch(human,/dock_clean|dock_dirty|volume_sensor_unbound|incomplete_context|model_id|area_delta_too_large/);
- assert.match(human,language==='pl'?/Czujnik objętości nieprzypisany/:/Volume sensor not assigned/);
+ assert.match(human,language==='pl'?/Brak pomiaru objętości\. Stan zbiornika nie podaje ml/:/No volume measurement\. Tank status does not report ml/);
  assert.match(human,/118/);assert.match(human,/120/);assert.match(human,/60/);
  assert.match(human,language==='pl'?/Dokładność nie została ustalona/:/Accuracy has not been established/);
  const report=sr.querySelector('#vwm-diagnostic-report');assert.match(report.textContent,/volume_sensor_unbound/);assert.match(report.textContent,/area_delta_too_large/);assert.equal(sr.querySelector('script'),null);
