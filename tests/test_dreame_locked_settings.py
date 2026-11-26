@@ -117,6 +117,29 @@ class LockedSettings(unittest.TestCase):
         self.assertIsNone(state['nominal_time_learning']['cycle'])
         self.assertNotIn('dreame_pending_nominal_sample', state)
 
+    def test_area_gap_requires_known_matching_dreame_settings(self):
+        dev = device()
+        for recovery, expected in (('standard', 40), ('other', 20), ('unavailable', 20)):
+            with self.subTest(recovery=recovery):
+                state = step(dev, {**BASE, 'last_area': 0}, 10_000_000)
+                state = step(dev, state, 10_060_000, status='cleaning', vacuum='cleaning', area=0)
+                state = step(dev, state, 10_120_000, status='cleaning', vacuum='cleaning', area=2)
+                self.assertEqual(state['used_ml'], 20)
+                state = step(dev, state, 10_130_000, status='cleaning', vacuum='cleaning', area='unavailable')
+                state = step(dev, state, 10_140_000, status='cleaning', vacuum='cleaning', area=4, route=recovery)
+                self.assertEqual(state['used_ml'], expected)
+                self.assertEqual(state.get('bridged_gaps', 0), 1 if expected == 40 else 0)
+
+    def test_area_gap_with_preexisting_unknown_controls_is_not_proof(self):
+        dev = device()
+        state = step(dev, {**BASE, 'last_area': 0}, 10_000_000, status='cleaning', vacuum='cleaning', route='unavailable')
+        state = step(dev, state, 10_060_000, status='cleaning', vacuum='cleaning', area=2, route='unavailable')
+        before = state['used_ml']
+        state = step(dev, state, 10_120_000, status='cleaning', vacuum='cleaning', area='unavailable', route='unavailable')
+        state = step(dev, state, 10_180_000, status='cleaning', vacuum='cleaning', area=4, route='unavailable')
+        self.assertEqual(state['used_ml'], before)
+        self.assertEqual(state.get('bridged_gaps', 0), 0)
+
     def test_other_integrations_do_not_use_dreame_lock(self):
         dev = {**device(), 'integration_adapter': 'roborock'}
         state = step(dev, {**BASE, 'last_area': 0}, 10_000_000, mode='normal')

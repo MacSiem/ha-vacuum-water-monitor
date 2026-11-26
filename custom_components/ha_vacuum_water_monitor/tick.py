@@ -778,8 +778,7 @@ def _tick_device_pass(
         if (gap_exposure and continuous and kept_pace and gap_seconds <= BRIDGE_GAP_MAX_SECONDS
                 and state.get("last_rate_settings") == rate_settings):
             bridge_area = True
-            state["bridged_gaps"] = int(state.get("bridged_gaps") or 0) + 1
-            _record_accounting(state, "area", None, evidence, "gap_bridged")
+
         elif gap_exposure:
             state["accounting_incomplete"] = True
             state.update(session_accounting_valid=False, session_water_broken=True)
@@ -948,6 +947,21 @@ def _tick_device_pass(
     current_keys = set(observed_settings)
     for key in previous_keys - current_keys:
         observed_settings[key] = {"value": None, "unit": None, "min": None, "max": None, "source": None, "source_registry_id": None, "source_entity": None}
+    # The area counter proves only exposure, not the setting in effect across
+    # the gap. Dreame locked selects need a complete, matching snapshot at both
+    # ends; equal unknowns are not confirmation.
+    if bridge_area and dreame:
+        known = all(item.get("value") is not None for item in observed_settings.values())
+        prior = state.get("dreame_gap_observed_digest")
+        if used_locked_value or not known or prior is None or prior != _digest(observed_settings):
+            bridge_area = False
+            state.update(accounting_incomplete=True, session_accounting_valid=False, session_water_broken=True)
+            _record_accounting(state, "unknown", None, None, "gap_not_bridged")
+    if gap_started is not None and curr_area is not None:
+        state.pop("dreame_gap_observed_digest", None)
+    if bridge_area:
+        state["bridged_gaps"] = int(state.get("bridged_gaps") or 0) + 1
+        _record_accounting(state, "area", None, evidence, "gap_bridged")
     if observed_settings:
         state["observed_setting_keys"] = sorted(previous_keys | current_keys)
 
@@ -2949,6 +2963,14 @@ def _water_anchor_states(
 def _open_observation_gap(state: dict[str, Any], started_ts: int) -> None:
     """Remember when observation stopped and whether water could flow meanwhile."""
     state.pop("nominal_time_waiting_for_settings", None)
+    if not _positive_number(state.get("gap_started_ts")):
+        context = state.get("last_consumption_context") or {}
+        if context.get("integration_id") == "dreame_vacuum":
+            observed = context.get("observed_settings") or {}
+            if all(isinstance(item, dict) and item.get("value") is not None for item in observed.values()):
+                state["dreame_gap_observed_digest"] = _digest(observed)
+            else:
+                state.pop("dreame_gap_observed_digest", None)
     state.pop("dreame_locked_settings", None)
     state.pop("dreame_pending_nominal_sample", None)
     if isinstance(state.get("split_session_observation"), dict):
