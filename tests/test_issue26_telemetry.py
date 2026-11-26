@@ -58,3 +58,53 @@ def test_discovery_and_tick_without_measurements_or_buttons_as_completion():
     dry=step({"used_ml":0},300000,**{'vacuum.test':'cleaning','select.mode':'vacuum','sensor.area':0,'sensor.station':'idle'})
     dry=step(dry,360000,**{'sensor.area':3})
     assert dry['used_ml']==0 and dry.get('missing_usage_rate_reason') is None
+
+
+def test_ecovacs_sequential_mode_cannot_prove_floor_phase_or_full_tank():
+    roles = {'sensor.area': 'stats_area', 'sensor.time': 'stats_time',
+             'number.flow': 'water_amount', 'select.mode': 'work_mode',
+             'binary_sensor.mop': 'water_mop_attached', 'sensor.station': 'station_state'}
+    entities = [{'entity_id': 'vacuum.test', 'platform': 'ecovacs', 'device_id': 'd', 'unique_id': 'vac'}]
+    entities += [{'entity_id': e, 'platform': 'ecovacs', 'device_id': 'd', 'unique_id': e,
+                  'translation_key': key} for e, key in roles.items()]
+    desc = discovery.discover_descriptors(entities, [{'id': 'd', 'manufacturer': 'Ecovacs',
+        'model_id': 'k2iwaq'}], {})[0]
+    device = {**effective({}, desc), 'usage_ml_per_m2': {'default': 10}, 'calibration_scope': 'floor_only'}
+    values = {'vacuum.test': _S('cleaning'), 'sensor.area': _S('0', {'unit_of_measurement': 'm²'}),
+              'sensor.time': _S('0', {'unit_of_measurement': 'min'}),
+              'number.flow': _S('20', {'min': 0, 'max': 50}), 'select.mode': _S('mop_after_vacuum'),
+              'binary_sensor.mop': _S('on'), 'sensor.station': _S('idle')}
+    initial = {'used_ml': 0, 'initialized': True, 'last_area': 0, 'last_status': 'charging',
+               'last_tick_ts': 60_000, 'last_reset_ts': 60_000, 'cycle_full_confirmed': True}
+    def run(mode):
+        values['select.mode'] = _S(mode)
+        values['sensor.area'] = _S('0', {'unit_of_measurement': 'm²'})
+        state, _ = tick.tick_device(_Hass(values), device, initial, now_ts=120_000)
+        values['sensor.area'] = _S('2', {'unit_of_measurement': 'm²'})
+        values['sensor.time'] = _S('1', {'unit_of_measurement': 'min'})
+        return tick.tick_device(_Hass(values), device, state, now_ts=180_000)[0]
+    sequential = run('mop_after_vacuum')
+    assert sequential['used_ml'] == 0
+    assert sequential['accounting_incomplete']
+    assert not sequential['session_accounting_valid']
+    assert sc.estimate_water_state(device, sequential)['remaining_ml'] is None
+    for mode in ('mop', 'vacuum_and_mop'):
+        result = run(mode)
+        assert not result.get('accounting_incomplete', False)
+        assert result['used_ml'] == 20
+    # A physical reservoir reading remains authoritative despite unknown floor phase.
+    measured_device = {**device, 'water_volume_sensor': 'sensor.actual_volume',
+                       'water_volume_reservoir': 'dock_clean', 'tracked_reservoir': 'dock_clean',
+                       'tracked_capacity_ml': 4000}
+    values['select.mode'] = _S('mop_after_vacuum')
+    values['sensor.actual_volume'] = _S('3500', {'unit_of_measurement': 'ml'})
+    measured, _ = tick.tick_device(_Hass(values), measured_device, initial, now_ts=120_000)
+    assert sc.estimate_water_state(measured_device, measured)['remaining_ml'] == 3500
+    # A separately observed station wash remains chargeable with an explicit dose.
+    wash_device = {**device, 'wash_volume_ml': 150, 'tracked_reservoir': 'dock_clean'}
+    values['sensor.station'] = _S('idle')
+    wash, _ = tick.tick_device(_Hass(values), wash_device, initial, now_ts=120_000)
+    values['sensor.station'] = _S('washing_mop')
+    wash, _ = tick.tick_device(_Hass(values), wash_device, wash, now_ts=180_000)
+    assert wash['last_wash_charged_ml'] == 150
+    assert wash['used_ml'] == 150

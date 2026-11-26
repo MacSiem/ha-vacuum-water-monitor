@@ -625,6 +625,20 @@ def _tick_device_pass(
     cleaning_active = _binary_active(
         _state_value(hass, device.get("cleaning_active_sensor"))
     )
+    # Ecovacs work_mode is a selected plan and its stats are aggregate. In a
+    # vacuum-then-mop plan neither the pad nor the water setting identifies
+    # which phase is currently running. A false mop_active here means unknown,
+    # not proof that the whole interval is dry.
+    ecovacs_sequential_unknown = bool(
+        device.get("integration_adapter") == "ecovacs" and cleaning_mode
+        and any(part in cleaning_mode.split("_") for part in ("then", "after"))
+        and _is_cleaning(vac_state, curr_status, cleaning_active)
+        and curr_status not in MOP_WASH_STATES and curr_dock_status not in DOCK_WASH_STATES
+        and mop_attached is not False and water_box_attached is not False)
+    if ecovacs_sequential_unknown:
+        state.update(accounting_incomplete=True, session_accounting_valid=False,
+                     session_exposure_complete=False, session_water_broken=True)
+        _record_accounting(state, "unknown", None, None, "sequential_phase_unobserved")
     # Only a continuously observed docked interval is safe for ignoring a
     # missing optional setting in the water balance. In particular, a dock
     # can wash while the vacuum entity still says "docked" or "charging".
@@ -1568,6 +1582,8 @@ def _tick_device_pass(
             _record_accounting(state, "area", None, evidence, "initial_area_exposure_unobserved")
     if used_locked_value and state.get("session_start_ts"):
         state["session_exposure_complete"] = False
+    if ecovacs_sequential_unknown and state.get("session_start_ts"):
+        state.update(session_accounting_valid=False, session_exposure_complete=False, session_water_broken=True)
     split_volume = split_resolution = None
     split_sensor = device.get("water_volume_sensor")
     if split_sensor:
