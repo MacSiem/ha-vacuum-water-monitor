@@ -1,15 +1,17 @@
 """Dreame task locks must preserve only fresh, bound observations."""
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 from test_beta_runtime_path import BASE, _S, hass, tick
 from test_dreame_observed_settings import fixture
 
 
 def sample(status='charging', vacuum='docked', area=0, route='standard', remop='off',
-           reclean='off', genius='off', mode='unavailable'):
+           reclean='off', genius='off', mode='unavailable', wetness='16'):
     values = {'sensor.robot_state': _S(status),
               'sensor.robot_area': _S(str(area), {'unit_of_measurement': 'm²'}),
               'select.robot_mode': _S('mopping'), 'select.robot_humidity': _S('medium'),
-              'number.robot_wetness': _S('16', {'min': 1, 'max': 32}),
+              'number.robot_wetness': _S(wetness, {'min': 1, 'max': 32}),
               'select.robot_route': _S(route), 'select.robot_remop': _S(remop),
               'select.robot_reclean': _S(reclean), 'switch.robot_smart': _S('off'),
               'select.genius': _S(genius), 'select.genius_mode': _S(mode)}
@@ -140,13 +142,95 @@ class LockedSettings(unittest.TestCase):
         self.assertEqual(state['used_ml'], before)
         self.assertEqual(state.get('bridged_gaps', 0), 0)
 
+    def test_registry_identity_loss_or_replacement_rejects_cached_value(self):
+        import homeassistant.helpers as helpers
+        for replacement in (None, 'new-registry-id'):
+            with self.subTest(replacement=replacement):
+                ids = {'vacuum.robot': 'vacuum-id', 'select.robot_route': 'original-id'}
+                registry = SimpleNamespace(async_get=lambda entity: SimpleNamespace(id=ids[entity]) if ids.get(entity) else None)
+                with patch.object(helpers, 'entity_registry', SimpleNamespace(async_get=lambda hass: registry), create=True):
+                    dev = device()
+                    state = step(dev, {**BASE, 'last_area': 0}, 10_000_000)
+                    ids['select.robot_route'] = replacement
+                    state = step(dev, state, 10_060_000, status='cleaning', vacuum='cleaning', route='unavailable')
+                    self.assertIsNone(state['last_consumption_context']['observed_settings']['cleaning_route']['value'])
+                    self.assertTrue(state['accounting_incomplete'])
+
+    def test_process_restart_during_lock_discards_cached_and_pending_evidence(self):
+        dev = device()
+        state = step(dev, {**BASE, 'last_area': 0}, 10_000_000)
+        state = step(dev, state, 10_060_000, status='cleaning', vacuum='cleaning', route='unavailable')
+        self.assertEqual(state['last_consumption_context']['observed_settings']['cleaning_route']['value'], 'standard')
+        state['dreame_pending_nominal_sample'] = {'result': 'must not be used'}
+        epoch = tick._DREAME_PROCESS_EPOCH
+        try:
+            tick._DREAME_PROCESS_EPOCH = 'new-process'
+            state = step(dev, state, 10_120_000, status='cleaning', vacuum='cleaning', route='unavailable')
+            self.assertIsNone(state['last_consumption_context']['observed_settings']['cleaning_route']['value'])
+            self.assertNotIn('dreame_pending_nominal_sample', state)
+            self.assertTrue(state['accounting_incomplete'])
+        finally:
+            tick._DREAME_PROCESS_EPOCH = epoch
+
+    def test_restart_at_dock_does_not_carry_open_nominal_cycle(self):
+        dev = {**device(), 'usage_ml_per_m2': {}, 'tracked_reservoir': 'dock_clean', 'tracked_capacity_ml': 4500}
+        refill = __import__(tick.__package__ + '.refill', fromlist=['apply_refill']).apply_refill
+        state = {}
+        refill(state, 10_000_000, 'service', rebaseline=True)
+        state = step(dev, state, 10_000_000)
+        self.assertIsNotNone(state['nominal_time_learning']['cycle'])
+        epoch = tick._DREAME_PROCESS_EPOCH
+        try:
+            tick._DREAME_PROCESS_EPOCH = 'new-process'
+            state = step(dev, state, 10_060_000)
+            self.assertIsNone(state['nominal_time_learning']['cycle'])
+            self.assertEqual(state['nominal_time_learning']['last_reason'], 'dreame_lock_unverified')
+        finally:
+            tick._DREAME_PROCESS_EPOCH = epoch
+
+    def test_process_restart_at_dock_reacquires_direct_observations(self):
+        dev = device()
+        state = step(dev, {**BASE, 'last_area': 0}, 10_000_000)
+        epoch = tick._DREAME_PROCESS_EPOCH
+        try:
+            tick._DREAME_PROCESS_EPOCH = 'new-process'
+            state = step(dev, state, 10_060_000)
+            state = step(dev, state, 10_120_000, status='cleaning', vacuum='cleaning', route='unavailable')
+            self.assertEqual(state['last_consumption_context']['observed_settings']['cleaning_route']['value'], 'standard')
+            self.assertFalse(state.get('accounting_incomplete', False))
+        finally:
+            tick._DREAME_PROCESS_EPOCH = epoch
+
     def test_other_integrations_do_not_use_dreame_lock(self):
-        dev = {**device(), 'integration_adapter': 'roborock'}
-        state = step(dev, {**BASE, 'last_area': 0}, 10_000_000, mode='normal')
-        state = step(dev, state, 10_060_000, status='cleaning', vacuum='cleaning', route='unavailable', mode='normal')
-        self.assertTrue(state['accounting_incomplete'])
+        for adapter in ('roborock', 'ecovacs', 'matter'):
+            with self.subTest(adapter=adapter):
+                dev = {**device(), 'integration_adapter': adapter}
+                state = step(dev, {**BASE, 'last_area': 0}, 10_000_000, mode='normal')
+                state = step(dev, state, 10_060_000, status='cleaning', vacuum='cleaning', route='unavailable', mode='normal')
+                self.assertTrue(state['accounting_incomplete'])
+                self.assertNotIn('dreame_locked_settings', state)
 
 class LockedNominalLearning(unittest.TestCase):
+    def test_pending_sample_is_discarded_if_another_control_changes_or_disappears(self):
+        dev = {**device(), 'usage_ml_per_m2': {}, 'tracked_reservoir': 'dock_clean', 'tracked_capacity_ml': 4500}
+        refill = __import__(tick.__package__ + '.refill', fromlist=['apply_refill']).apply_refill
+        locked = dict(route='unavailable', remop='unavailable', reclean='unavailable', genius='unavailable')
+        for wetness in ('17', 'unknown', 'unavailable'):
+            with self.subTest(wetness=wetness):
+                state = {}
+                refill(state, 10_000_000, 'service', rebaseline=True)
+                state = step(dev, state, 10_000_000)
+                state = step(dev, state, 10_060_000, status='cleaning', vacuum='cleaning')
+                for minute in range(2, 8):
+                    state = step(dev, state, 10_000_000 + minute * 60_000,
+                                 status='cleaning', vacuum='cleaning', area=minute - 1, **locked)
+                state['user_empty_active'] = True
+                state = step(dev, state, 10_480_000, status='cleaning', vacuum='cleaning', area=7, **locked)
+                self.assertIsNotNone(state.get('dreame_pending_nominal_sample'))
+                state = step(dev, state, 10_540_000, status='charging', area=7, wetness=wetness)
+                self.assertNotIn('dreame_pending_nominal_sample', state)
+                self.assertFalse(state['nominal_time_learning']['contexts'])
+
     def test_locked_full_tanks_are_confirmed_on_unlock_and_rate_remains_usable(self):
         dev = {**device(), 'usage_ml_per_m2': {}, 'tracked_reservoir': 'dock_clean',
                'tracked_capacity_ml': 4500}
