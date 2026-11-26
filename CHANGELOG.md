@@ -1,6 +1,11 @@
 # Changelog
 
-## 5.15.0-beta.3 (Unreleased)
+## 5.15.0-beta.4 (2026-11-26)
+
+- Handle Dreame controls locked during cleaning using task-scoped evidence, and reject stale or unverified settings when learning or bridging area gaps.
+- Treat an Ecovacs sequential mopping phase as unobserved when its state cannot be established, keeping uncertainty explicit.
+
+## 5.15.0-beta.3 (2026-11-25)
 
 - Preserve a confirmed tank balance when an optional setting is unavailable during an observed, settled dock interval; continue to flag uncertain water use and identify missing settings in interruption diagnostics (#32).
 - Use the automatically discovered Dreame clean-water tank status to show low water or a missing tank without changing the water balance or recording a refill (#32).
