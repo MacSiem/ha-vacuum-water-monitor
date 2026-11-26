@@ -880,7 +880,7 @@ def _tick_device_pass(
     mode = observed_settings.get("cleangenius_mode")
     genius = observed_settings.get("cleangenius")
     mode_obj = hass.states.get(device.get("context_cleangenius_mode_entity")) if mode else None
-    if (dreame and mode and mode["value"] is None and genius and genius["value"] == "off"
+    if (dreame and mode and genius and genius["value"] == "off"
             and mode_obj is not None and str(mode_obj.state).lower() == "unavailable"):
         mode["value"] = "not_applicable"
     # The same bound wash/route control can also appear in the legacy context.
